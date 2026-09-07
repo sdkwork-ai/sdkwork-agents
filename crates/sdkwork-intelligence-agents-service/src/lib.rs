@@ -1,5 +1,4 @@
 mod agent_engine_catalog;
-mod agent_model_catalog;
 mod agent_turn;
 mod agent_turn_input_queue;
 mod api;

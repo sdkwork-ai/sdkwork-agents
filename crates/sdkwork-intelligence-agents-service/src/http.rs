@@ -71,7 +71,6 @@ use crate::dto::{
 use crate::list_cursors::{
     decode_audit_event_list_cursor, decode_created_at_cursor, decode_session_list_cursor,
 };
-use crate::agent_model_catalog::{list_models, AppModelCatalogPageDto, ModelCatalogListQuery};
 use crate::mcp_marketplace::McpServerMarketplaceRecord;
 use crate::ports::{
     AgentAuditSink, AgentRepository, AuditEventListQuery, CompositionSlotListQuery,
@@ -2770,10 +2769,11 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
             "/app/v3/api/ai/agent_engines",
             get(app_list_agent_engines),
         )
-        .route(
-            "/app/v3/api/ai/models",
-            get(app_list_models),
-        )
+        // NOTE: `GET /app/v3/api/ai/models` is intentionally NOT registered here.
+        // The sdkwork-models catalog app router (merged by cloudrouter
+        // routes.rs) is the single authoritative provider for this path;
+        // registering the snapshot projection below as well triggers an axum
+        // "Overlapping method route" panic at gateway composition time.
         .route(
             "/app/v3/api/ai/model_configurations/apply",
             post(app_apply_model_configuration),
@@ -4196,20 +4196,6 @@ struct ListMcpServersQueryParams {
     q: Option<String>,
     page: Option<usize>,
     page_size: Option<usize>,
-}
-
-#[derive(Debug, Clone, Deserialize, Default)]
-struct ListModelsQueryParams {
-    q: Option<String>,
-    page: Option<usize>,
-    page_size: Option<usize>,
-    vendor_code: Option<String>,
-    #[serde(default)]
-    vendor_codes: Vec<String>,
-    #[serde(default)]
-    modalities: Vec<String>,
-    #[serde(default)]
-    capabilities: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -6960,30 +6946,6 @@ async fn app_list_agent_engines(
         let catalog =
             with_service(&state, |service| service.list_agent_engine_catalog(subject)).await?;
         Ok(ResourceData { item: catalog })
-    }
-    .await;
-    finish_api_json(&web_ctx, result)
-}
-
-async fn app_list_models(
-    Extension(context): Extension<AgentRequestContext>,
-    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
-    query: Result<Query<ListModelsQueryParams>, QueryRejection>,
-) -> Response {
-    let result: ApiResult<AppModelCatalogPageDto> = async {
-        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
-        let scope = RequestScope::from_context(context);
-        scope.tenant_id_u64()?;
-        let (page, page_size) = normalized_pagination(query.page, query.page_size)?;
-        Ok(list_models(ModelCatalogListQuery {
-            page,
-            page_size,
-            q: query.q,
-            vendor_code: query.vendor_code,
-            vendor_codes: query.vendor_codes,
-            modalities: query.modalities,
-            capabilities: query.capabilities,
-        }))
     }
     .await;
     finish_api_json(&web_ctx, result)
