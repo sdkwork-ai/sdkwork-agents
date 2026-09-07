@@ -72,8 +72,9 @@ target/
 etc/**/*.local.*
 /bin/
 
-# Workspace junk / temp directories
+# Workspace junk / temp files and directories
 _tmp_*/
+_tmp_*
 .workbuddy/
 
 # Generated SDK build output (rebuilt by regenerating SDK, not hand-edited)
