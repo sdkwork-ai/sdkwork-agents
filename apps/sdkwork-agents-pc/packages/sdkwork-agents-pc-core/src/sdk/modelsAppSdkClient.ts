@@ -34,6 +34,13 @@ function normalizeGeneratedSdkBaseUrl(baseUrl: string): string {
   return normalized;
 }
 
+export function configureModelsAppSdkClientProvider(
+  provider: () => SdkworkModelsAppClient,
+): void {
+  modelsAppSdkClientProvider = provider;
+  modelsAppSdkClient = null;
+}
+
 export function resolveModelsAppSdkBaseUrl(): string | null {
   const fromEnv = readRuntimeEnv("VITE_SDKWORK_AGENTS_PC_MODELS_APP_API_BASE_URL")
     ?? readRuntimeEnv("VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL");
