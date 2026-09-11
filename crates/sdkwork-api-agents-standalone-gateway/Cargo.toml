@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-api-agents-standalone-gateway"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "SDKWork Agents runnable HTTP API server"
 
+
+[lints]
+workspace = true
 [lib]
 name = "sdkwork_api_agents_standalone_gateway"
 path = "src/lib.rs"

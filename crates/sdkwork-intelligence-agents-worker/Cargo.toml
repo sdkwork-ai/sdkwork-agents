@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-intelligence-agents-worker"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Horizontally scalable SDKWork Agents task scheduler and execution worker"
 
+
+[lints]
+workspace = true
 [lib]
 name = "sdkwork_intelligence_agents_worker"
 path = "src/lib.rs"

@@ -12521,6 +12521,24 @@ const TURN_STREAMING_CHECKPOINT_BYTES: usize = 8 * 1024;
 /// Flush the streaming checkpoint at least this often while deltas arrive.
 const TURN_STREAMING_CHECKPOINT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(2);
 
+/// How long the SSE turn handler waits for the first provider signal before it
+/// opens the response anyway.
+///
+/// The window is deliberately short: a *fast* failure (unmapped model, empty
+/// account group, exhausted capacity) still becomes a canonical Problem+json
+/// response the client can localize, while a slow provider — or one whose first
+/// token arrives seconds later — no longer leaves the request pending with no
+/// response head.
+const TURN_STREAM_FIRST_SIGNAL_GRACE: std::time::Duration =
+    std::time::Duration::from_millis(500);
+
+/// Leading SSE comment frame.
+///
+/// Comment lines are ignored by every event parser, and flushing one
+/// immediately defeats proxy/edge response buffering so `delta` frames reach the
+/// client as they arrive instead of stalling behind a buffer threshold.
+const TURN_STREAM_OPEN_FRAME: &[u8] = b": stream-open\n\n";
+
 impl HttpTurnExecutionStreamSink {
     fn new(
         service: Arc<HttpService>,
@@ -12750,12 +12768,18 @@ async fn streaming_turn_execution_http_response(
         }
     });
 
-    let first = receiver.recv().await.ok_or_else(|| {
-        ApiProblem::internal("Turn stream closed before the first event or error")
-    })?;
-    let first = match first {
-        TurnHttpStreamSignal::Failed(problem) => return Err(problem),
-        chunk @ TurnHttpStreamSignal::Chunk(_) => chunk,
+    // The response head must never wait for the whole turn. Before this, the
+    // handler blocked on `receiver.recv()` until the first frame existed — and
+    // for a runtime that emits no incremental delta at all, the first frame was
+    // the terminal `completion`, so the browser saw a request pending for the
+    // entire turn (up to TURN_EXECUTION_TIMEOUT) with no response head.
+    //
+    // A fast failure still short-circuits into a problem response; only a slow
+    // producer falls through to an already-open stream.
+    let first = match tokio::time::timeout(TURN_STREAM_FIRST_SIGNAL_GRACE, receiver.recv()).await {
+        Ok(Some(TurnHttpStreamSignal::Failed(problem))) => return Err(problem),
+        Ok(Some(chunk)) => Some(chunk),
+        Ok(None) | Err(_) => None,
     };
 
     // Heartbeat: long inference silences must not look like a dead stream to
@@ -12765,11 +12789,21 @@ async fn streaming_turn_execution_http_response(
     // heartbeat must never keep the response open.
     let mut heartbeat = tokio::time::interval(std::time::Duration::from_secs(15));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-    let first_bytes = match first {
-        TurnHttpStreamSignal::Chunk(chunk) => Ok::<Bytes, std::io::Error>(Bytes::from(chunk)),
-        TurnHttpStreamSignal::Failed(problem) => Err(std::io::Error::other(problem.message)),
-    };
-    let body_stream = tokio_stream::iter([first_bytes]).chain(futures_util::stream::unfold(
+    let mut initial: Vec<Result<Bytes, std::io::Error>> = Vec::with_capacity(2);
+    match first {
+        // Regular case: the producer was ready within the grace window, so the
+        // body starts with its real frame and the byte-level contract for
+        // SSE clients is unchanged.
+        Some(TurnHttpStreamSignal::Chunk(chunk)) => initial.push(Ok(Bytes::from(chunk))),
+        Some(TurnHttpStreamSignal::Failed(problem)) => {
+            initial.push(Err(std::io::Error::other(problem.message)))
+        }
+        // Timed out waiting for the provider: open the body with a comment
+        // frame so the client sees a live `text/event-stream` immediately
+        // instead of an idle connection that some edges abort.
+        None => initial.push(Ok(Bytes::from_static(TURN_STREAM_OPEN_FRAME))),
+    }
+    let body_stream = tokio_stream::iter(initial).chain(futures_util::stream::unfold(
         (receiver, heartbeat),
         |(mut receiver, mut heartbeat)| async move {
             tokio::select! {
@@ -12798,6 +12832,11 @@ async fn streaming_turn_execution_http_response(
     let mut response = Response::builder()
         .status(StatusCode::OK)
         .header(CONTENT_TYPE, "text/event-stream")
+        // Reverse proxies and edges must not buffer or transform the stream:
+        // `X-Accel-Buffering` covers nginx-style buffers, and
+        // `no-cache, no-transform` covers generic intermediaries.
+        .header("X-Accel-Buffering", "no")
+        .header("Cache-Control", "no-cache, no-transform")
         .body(Body::from_stream(body_stream))
         .map_err(|error| ApiProblem::internal(format!("failed to build SSE response: {error}")))?;
     if let Ok(value) = HeaderValue::from_str(&trace_id) {

@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-generations"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Generations MCP tool for sdkwork-agents, wrapping sdkwork-generations service."
 
+
+[lints]
+workspace = true
 [lib]
 name = "sdkwork_agents_tool_generations"
 path = "src/lib.rs"

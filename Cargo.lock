@@ -1957,7 +1957,7 @@ name = "cloudrouter-open-sdk"
 version = "0.1.0"
 dependencies = [
  "http 1.4.2",
- "reqwest 0.12.28",
+ "reqwest 0.13.4",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -10321,7 +10321,6 @@ dependencies = [
  "js-sys",
  "log",
  "mime",
- "mime_guess",
  "native-tls",
  "percent-encoding",
  "pin-project-lite",
@@ -10378,6 +10377,7 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sync_wrapper",
  "tokio",
  "tokio-rustls 0.26.4",
@@ -11313,6 +11313,7 @@ dependencies = [
 name = "sdkwork-agents-tool-audio"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "cloudrouter-open-sdk",
  "sdkwork-agent-kernel",
  "sdkwork-agents-tool-cloudrouter",
@@ -11468,7 +11469,15 @@ name = "sdkwork-api-assets-assembly"
 version = "0.1.0"
 dependencies = [
  "axum 0.8.9",
+ "sdkwork-database-sqlx",
+ "sdkwork-drive-http",
+ "sdkwork-drive-workspace-service",
+ "sdkwork-routes-assets-app-api",
+ "sdkwork-routes-drive-app-api",
  "sdkwork-web-bootstrap",
+ "sdkwork-web-core",
+ "serde_json",
+ "sqlx",
  "tokio",
 ]
 
@@ -11504,14 +11513,13 @@ dependencies = [
  "axum 0.8.9",
  "chrono",
  "sdkwork-api-assets-assembly",
- "sdkwork-api-drive-assembly",
  "sdkwork-database-sqlx",
  "sdkwork-generations-database-host",
+ "sdkwork-generations-provider-adapter",
  "sdkwork-iam-database-host",
  "sdkwork-iam-embedded-application-bootstrap",
  "sdkwork-iam-web-adapter",
  "sdkwork-intelligence-generations-service",
- "sdkwork-routes-drive-app-api",
  "sdkwork-routes-generations-app-api",
  "sdkwork-routes-generations-backend-api",
  "sdkwork-routes-generations-http-shared",
@@ -11570,7 +11578,6 @@ dependencies = [
  "serde_json",
  "sqlx",
  "thiserror 2.0.18",
- "tokio",
 ]
 
 [[package]]
@@ -11611,7 +11618,6 @@ dependencies = [
  "serde_json",
  "sqlx",
  "thiserror 2.0.18",
- "tokio",
  "tracing",
 ]
 
@@ -11839,6 +11845,21 @@ dependencies = [
  "dotenvy",
  "sdkwork-database-config",
  "sdkwork-database-sqlx",
+]
+
+[[package]]
+name = "sdkwork-generations-provider-adapter"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "cloudrouter-open-sdk",
+ "sdkwork-intelligence-generations-service",
+ "serde",
+ "serde_json",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -12120,6 +12141,24 @@ dependencies = [
  "sdkwork-routes-agents-http-shared",
  "sdkwork-web-contract",
  "tokio",
+ "tower 0.5.3",
+]
+
+[[package]]
+name = "sdkwork-routes-assets-app-api"
+version = "0.1.0"
+dependencies = [
+ "axum 0.8.9",
+ "chrono",
+ "sdkwork-drive-contract",
+ "sdkwork-drive-http",
+ "sdkwork-drive-workspace-service",
+ "sdkwork-routes-drive-app-api",
+ "sdkwork-utils-rust",
+ "sdkwork-web-core",
+ "serde",
+ "serde_json",
+ "sqlx",
  "tower 0.5.3",
 ]
 

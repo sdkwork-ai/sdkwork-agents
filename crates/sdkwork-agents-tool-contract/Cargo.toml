@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-contract"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Extensible media tool definition contract for SDKWork Agents (category, definitions, calls, results)"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 serde.workspace = true

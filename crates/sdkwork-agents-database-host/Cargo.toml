@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-database-host"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "SDKWork Agents application database lifecycle host"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-database-config.workspace = true
 sdkwork-database-lifecycle.workspace = true

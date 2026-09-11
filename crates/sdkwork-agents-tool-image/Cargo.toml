@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-image"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Image media tool sub-crate for SDKWork Agents: generation, edits, and variations via cloudrouter open-api"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agents-tool-contract.workspace = true

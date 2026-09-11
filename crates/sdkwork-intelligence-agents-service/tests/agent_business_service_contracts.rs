@@ -1227,7 +1227,12 @@ fn execute_turn_persists_user_input_and_assistant_output() {
         requested_by: sample_subject(),
         requested_at: "2026-06-01T05:01:30Z".to_string(),
         prefer_stream: false,
+        // Contract fixture: the turn runs through the injected agent engine, so
+        // no request-supplied system prompt and no cloudrouter dual-token
+        // credentials are projected onto it.
+        system_prompt: None,
         auth_token: None,
+        access_token: None,
     };
     let result = service
         .execute_turn(turn_command.clone())

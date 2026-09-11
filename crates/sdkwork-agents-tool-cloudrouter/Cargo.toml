@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-cloudrouter"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Shared sdkwork-cloudrouter open-api client adapter for the SDKWork Agents media tool family (auth-token account-pool routing)"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agent-provider-rig.workspace = true

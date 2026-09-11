@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-video"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Video media tool sub-crate for SDKWork Agents: generation, edits, extensions, remix, and characters via cloudrouter open-api"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agents-tool-contract.workspace = true

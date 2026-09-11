@@ -18,6 +18,7 @@
   "scripts": {
     "workflow:materialize-client-env": "node ../sdkwork-specs/tools/materialize-client-env.mjs --root .",
     "check:client-env": "node ../sdkwork-specs/tools/materialize-client-env.mjs --root . --check",
+    "check:cors-standard": "node ../sdkwork-specs/tools/check-cors-standard.mjs --root .",
     "stop": "pnpm exec sdkwork-app stop",
     "dev": "pnpm dev:standalone",
     "dev:standalone": "pnpm exec sdkwork-app dev --deployment-profile standalone",
@@ -90,7 +91,7 @@
     "_sdkwork:dev:standalone": "node scripts/agents-dev.mjs",
     "_sdkwork:test": "node scripts/cargo-test-workspace.mjs && node --test tests/contract/platform-integration.contract.test.mjs tests/contract/database-framework.contract.test.mjs tests/contract/root-quality-gates.contract.test.mjs tests/contract/production-security.contract.test.mjs tests/contract/frontend-service-identity.contract.test.mjs tests/contract/agents-im-boundary.contract.test.mjs tests/contract/rust-service-module-boundaries.contract.test.mjs tests/contract/component-spec-inventory.contract.test.mjs tests/contract/dev-runtime-access.contract.test.mjs tests/contract/development-bootstrap.contract.test.mjs && node scripts/agents-open-sdk-surface-contract.test.mjs && node scripts/mini-program-runtime-contract.test.mjs && node scripts/client-surface-readiness-contract.test.mjs",
     "_sdkwork:check": "pnpm run check:app-composition && pnpm check:component-port-bindings && pnpm check:frontend-composition && pnpm check:frontend-service-identity && pnpm check:agents-im-boundary && pnpm check:pc-upload-boundary && pnpm check:permission-composition && pnpm check:composition-resolver && pnpm check:rust-backend-composition && pnpm check:architecture-alignment && pnpm check:identity-alignment && pnpm check:api-envelope && pnpm check:api-operation-patterns && pnpm check:route-path-collisions && pnpm check:pagination && pnpm check:app-sdk-consumer-imports && pnpm check:agent-sdk-workspace && pnpm check:apps-directory-index && pnpm check:production-security && pnpm check:release-supply-chain && pnpm check:deploy && pnpm check:source-config-standard && pnpm deploy:validate:cloud && pnpm check:docs && pnpm check:pnpm-script-standard && pnpm check:agent-workflow-standard && pnpm topology:validate && pnpm db:validate",
-    "_sdkwork:verify": "pnpm check && pnpm workflow:build-agents-app-sdk && cargo build --workspace && node scripts/cargo-test-workspace.mjs && pnpm --filter @sdkwork/agents-mini-program build && pnpm check:contracts && pnpm workflow:typecheck-client-surfaces && pnpm --filter @sdkwork/agents-pc test:agent-contracts",
+    "_sdkwork:verify": "pnpm check && pnpm workflow:build-agents-app-sdk && cargo build --workspace && node scripts/cargo-test-workspace.mjs && pnpm --filter @sdkwork/agents-mini-program build && pnpm check:contracts && pnpm workflow:typecheck-client-surfaces && pnpm --filter @sdkwork/agents-pc test:agent-contracts && pnpm check:cors-standard",
     "_sdkwork:clean": "cargo clean"
   },
   "exports": {

@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-routes-agents-backend-api"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Backend API route boundary for SDKWork agents managed store HTTP surfaces."
 
+
+[lints]
+workspace = true
 [dependencies]
 axum.workspace = true
 sdkwork-intelligence-agents-service = { workspace = true, features = ["http-axum"] }

@@ -1,9 +1,13 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-contract"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "SDKWork Agents runtime environment helpers shared by route and integration-test crates"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-utils-rust.workspace = true

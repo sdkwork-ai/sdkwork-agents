@@ -382,6 +382,13 @@ export class ChatService {
         || latest.mediaResources?.map((item) => item.fileName ?? item.id).join(', ')
         || 'Attachment';
       const systemPrompt = defaultAgent(options.model).systemPrompt;
+      // Deltas are the incremental writer of the assistant text; the terminal
+      // completion is the authoritative one. Runtimes may legitimately stream
+      // nothing and answer in a single frame (the cloudrouter account-pool path
+      // emits one final `completion`), so track whether any delta arrived and
+      // fall back to the completion text instead of leaving the bubble empty
+      // until the session is reloaded.
+      let sawDelta = false;
       const response = port.sendMessageStream
         ? await port.sendMessageStream(
             DEFAULT_CHAT_AGENT_ID,
@@ -389,7 +396,12 @@ export class ChatService {
             content,
             options.model,
             latest.mediaResources,
-            (delta) => options.onMessageUpdate(delta),
+            (delta) => {
+              if (delta) {
+                sawDelta = true;
+              }
+              options.onMessageUpdate(delta);
+            },
             systemPrompt,
           )
         : await port.sendMessage(
@@ -404,7 +416,7 @@ export class ChatService {
         options.onError?.({ message: 'AbortError' });
         return;
       }
-      if (!port.sendMessageStream) {
+      if (!port.sendMessageStream || !sawDelta) {
         options.onMessageUpdate(response.content);
       }
       options.onComplete?.({ id: response.id });

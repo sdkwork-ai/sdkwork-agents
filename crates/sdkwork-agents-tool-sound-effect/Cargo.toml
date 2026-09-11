@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-sound-effect"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Sound-effect media tool sub-crate for SDKWork Agents (capability reserved until cloudrouter opens a sound-effect endpoint)"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agents-tool-contract.workspace = true

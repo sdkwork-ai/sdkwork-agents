@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-audio"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Audio media tool sub-crate for SDKWork Agents: speech synthesis, transcription, translation, and voice listing via cloudrouter open-api"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agents-tool-contract.workspace = true

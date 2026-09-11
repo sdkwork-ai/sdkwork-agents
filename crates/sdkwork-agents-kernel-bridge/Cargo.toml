@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-kernel-bridge"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Composition boundary between SDKWork Agents application and sdkwork-kernel"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-server = { workspace = true }
 sdkwork-agent-kernel = { workspace = true }

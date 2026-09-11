@@ -5279,8 +5279,15 @@ async fn app_turn_stream_should_return_problem_detail_when_execution_fails_befor
     let detail = problem["detail"]
         .as_str()
         .expect("problem detail should be a string");
-    assert!(
-        detail.contains("temporarily unavailable"),
+    // The executor's business-safe reason must survive into `detail`.
+    // `SdkWorkProblemDetail::platform_enriched` normally redacts
+    // dependency-unavailable failures to a generic "A required dependency is
+    // temporarily unavailable" text, but `ApiProblem::into_response_for`
+    // deliberately keeps the real reason so callers can tell account-pool,
+    // auth-token, and provider failures apart (`response.rs`). Asserting the
+    // generic text here would re-hide exactly what that change exposed.
+    assert_eq!(
+        "provider unavailable before first stream frame", detail,
         "unexpected problem: {problem}"
     );
 }

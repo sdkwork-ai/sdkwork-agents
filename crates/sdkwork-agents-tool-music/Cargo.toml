@@ -1,10 +1,14 @@
 [package]
+rust-version.workspace = true
 name = "sdkwork-agents-tool-music"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Music media tool sub-crate for SDKWork Agents: Suno music generation and task polling via cloudrouter open-api"
 
+
+[lints]
+workspace = true
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agents-tool-contract.workspace = true
