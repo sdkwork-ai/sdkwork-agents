@@ -340,3 +340,103 @@ canonical repository command fail fast with guidance).
 - Authoritative specs: `MODULE_BIN_SPEC.md`, `DOCKER_SPEC.md`,
   `DEPLOYMENT_SPEC.md`, `OPERATIONS_SPEC.md`.
 <!-- /SDKWORK-DEPLOYMENT-STANDARD: scaffolded -->
+
+<!-- SDKWORK-ROLLBACK-RESTRICTION-STANDARD: v1 -->
+## Rollback Restriction And Fix-Forward Discipline
+
+Authority: `../sdkwork-specs/ROLLBACK_RESTRICTION_SPEC.md`.
+
+Errors are fixed forward. Version-control history is never rewound to make an error disappear.
+
+- A rollback is any operation that moves a ref, resets the index or the working tree to an earlier
+  state, discards uncommitted or committed work, or rewrites published history. It is FORBIDDEN as
+  the remedy for a defect — a build failure, a type error, a lint failure, a failing test, a merge
+  conflict, a runtime regression, a bad refactor, or an unclear diff. Repair forward instead, by
+  adding, editing, or restoring content through a new commit.
+- FORBIDDEN by an agent or a human-issued command: `git reset --hard` in any form;
+  `git reset --merge`/`--keep`; `git reset <ref>` that discards staged or working-tree content;
+  `git checkout -f`, `git switch -f`, `git restore --source=<ref> --worktree .`;
+  `git revert` as a reflex error remedy; `git stash drop`/`clear` and `git stash pop` over a
+  conflict; `git branch -D` on a branch with unmerged work; `git update-ref -d` and direct
+  `.git/refs/` edits; `git reflog expire`, `git gc --prune=now`, `git prune`;
+  `git commit --amend` over a pushed commit; `git rebase`, `git rebase -i`, `git rebase --onto`;
+  `git filter-branch`; `git push --force`, `git push --force-with-lease`, and
+  `git push --delete`.
+- A rollback is never inferred from context or tone. "Fix it", "it's broken", "this is a mess",
+  "start over", "just revert it", and "退回" are not rollback instructions. If the intent is
+  ambiguous, STOP and ask — including whether the instruction means to discard work or to restore
+  lost work, because that distinction decides the permissible operation.
+- Discarding work requires a separate, explicit, human-issued instruction that names the operation,
+  the target ref, the discarded span, and the reason, and that acknowledges the loss. The
+  authorization must be quoted in the commit message. A standing authorization is not accepted.
+- Recovery is ADDITIVE: `git restore --worktree --source=<ref> -- <exact paths>`, or
+  `git checkout <good-ref> --pathspec-from-file=<repo-relative-list>` with the list written inside
+  the repository. The pathspec must be an explicit enumerated list — never a directory, glob, brace
+  expansion, or the repository root — and a restore is never combined with a build, install,
+  publish, or commit step in the same shell invocation.
+- Before a bulk restore: commit any local modification as a checkpoint; create a backup branch AND a
+  tag AND a patch file and verify they point at the pre-restore state; produce a written
+  three-snapshot blob comparison (damaged revision vs its parent vs the candidate older snapshot)
+  that separates REPLACED files from files the damaged revision legitimately AUTHORED; restore the
+  relative complement, not the whole tree; and keep the files the damaged revision added.
+- Never treat a local tracking ref as evidence about a remote. Confirm with
+  `git ls-remote <remote> <branch>` and record the returned object id.
+- After a restore, verify by content hash rather than by reading files, re-run the gates that cover
+  the restored surface, and classify each remaining failure as caused-by-the-restore or
+  pre-existing. A pre-existing claim must be proven by showing the same failure at the prior
+  revision with `git show <ref>:<path>`, not reasoned about. Fix forward. Never un-restore.
+- Never bypass a hook, signature, or gate with `--force`, `--no-verify`, or `--no-gpg-sign` to
+  land a repair.
+
+Verification (from the repository root):
+
+```bash
+node ../sdkwork-specs/tools/sync-agent-rollback-restriction-standard.mjs --root . --check
+```
+<!-- /SDKWORK-ROLLBACK-RESTRICTION-STANDARD: v1 -->
+
+<!-- SDKWORK-DESTRUCTIVE-OPERATION-STANDARD: v1 -->
+## Destructive Operation Safety
+
+Authority: `../sdkwork-specs/DESTRUCTIVE_OPERATION_SPEC.md`.
+
+Deletion must be explicit, enumerated, and reviewable. Deleting by pattern instead of by named
+path is forbidden. Wildcards are for read-only commands only.
+
+- `git rm -r`, `git rm` over a directory or pattern, and `git clean -f`/`-fd`/`-fdx` are
+  FORBIDDEN. A recursive `git rm` stages many deletions in one index transaction; if the process
+  is interrupted (SIGTERM, timeout, sandbox kill, crash) entries are already gone from disk while
+  the index is only half-written, which is silent non-atomic mass data loss.
+- Delete tracked files with `rm <exact/path>` on each named path, let `git status --short`
+  record the `D` entries, then stage only the enumerated paths. Commit the deletion separately
+  from functional changes.
+- Shell and script deletion by wildcard is FORBIDDEN: `rm -rf`/`rm -r`/`rm -f` with
+  `*`/`**`/`?`/`[...]`/brace expansion, `find ... -delete`, `find ... -exec rm`,
+  `find ... | xargs rm`, `for f in *; do rm ...`, `del /S /Q`, `rd /S /Q`,
+  `Remove-Item -Recurse -Force` on a glob, `shutil.rmtree`, `fs.rm(dir, { recursive: true })`,
+  and `rimraf` over a glob.
+- A deletion MUST NOT be combined in one shell invocation with a build, install, network, or
+  publish step, and MUST NOT derive its targets from an unvalidated argument, environment
+  variable, or configuration value.
+- Permitted narrow deletion: `rm <exact/path>`; a short literal path list owned by the tool that
+  declares it; the module's own generated artifacts through its owning tool
+  (`pnpm clean`, `cargo clean`) per `CODE_STYLE_SPEC.md` §7; and
+  `git restore --worktree --source=HEAD -- <exact paths>`.
+- Required sequence before any deletion: enumerate exact paths; confirm every path resolves inside
+  the active repository or module root; classify tracked/generated/cached/unknown; prefer `rm`
+  plus tracked `git status`; delete in batches of 20 or fewer with a status check between
+  batches; report the removed paths and the authorizing decision.
+- Request explicit human confirmation before deleting any git-tracked path, any directory tree,
+  any path resolving outside the active repository root, or more than 20 paths.
+- Recovery after an accidental mass deletion: clear a stale `.git/index.lock`, write the path
+  list to a file INSIDE the repository (never `/tmp` on Windows, where the Git Bash path space
+  and the native tool path space disagree), and run a single
+  `git restore --worktree --pathspec-from-file=<repo-relative-list>`. Never loop one
+  version-control call per path; the same termination cause interrupts the loop part-way.
+
+Verification (from the repository root):
+
+```bash
+node ../sdkwork-specs/tools/sync-agent-destructive-operation-standard.mjs --root . --check
+```
+<!-- /SDKWORK-DESTRUCTIVE-OPERATION-STANDARD: v1 -->
