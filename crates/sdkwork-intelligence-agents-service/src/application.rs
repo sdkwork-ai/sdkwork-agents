@@ -6,6 +6,7 @@ mod turn_input_queue;
 pub use commands::*;
 pub use turn_input_queue::*;
 
+use crate::agent_turn::AgentTurnMode;
 use crate::agent_turn::{AgentTurnRecord, AgentTurnStatus};
 use crate::domain::{
     AgentAuditAction, AgentAuditPayload, AgentBusinessRecord, AgentBusinessStatus,
@@ -22,7 +23,6 @@ use crate::domain::{
     SessionAuditPayload, SessionItemAuditPayload, TaskAuditPayload,
     DEFAULT_AGENT_MANAGEMENT_POLICY_CATEGORY,
 };
-use crate::agent_turn::AgentTurnMode;
 use crate::dto::AgentManagementProfileDto;
 use crate::list_cursors::{
     encode_created_at_cursor, encode_session_list_cursor, CreatedAtListCursor, SessionListCursor,
@@ -37,12 +37,12 @@ use crate::project::{
     AgentProjectRecord, AgentProjectStatus, AgentProjectVisibility,
 };
 use crate::provider_stream_items::{
-    project_terminal_provider_turn_items, terminal_provider_assistant_item_id,
-    MAX_PROVIDER_TURN_FACTS,
+    project_terminal_provider_turn_items, reasoning_content_from_stream_events,
+    terminal_provider_assistant_item_id, MAX_PROVIDER_TURN_FACTS,
 };
 use crate::runtime_facade_bridge::{
-    engine_key_for_binding_id, execute_preview_response, execute_prompt_optimization,
-    RUNTIME_MODE_CONTRACT_FALLBACK,
+    build_agent_call_input, engine_key_for_binding_id, execute_agent_call_engine,
+    execute_preview_response, execute_prompt_optimization, RUNTIME_MODE_CONTRACT_FALLBACK,
 };
 use crate::session_activity::SessionActivitySummaryRecord;
 use crate::session_id_scheme::{
@@ -1148,7 +1148,8 @@ where
         requested_at: &str,
     ) -> KernelResult<()> {
         if sdkwork_agents_runtime_facade::agent_engine_agent_id(engine_key) != Some(agent_id)
-            || sdkwork_agents_runtime_facade::agent_engine_binding_id(engine_key) != Some(binding_id)
+            || sdkwork_agents_runtime_facade::agent_engine_binding_id(engine_key)
+                != Some(binding_id)
         {
             return Err(KernelError::validation(
                 "agent-engine runtime identity is not canonical",
@@ -1700,6 +1701,895 @@ where
             command.requested_at,
         )?;
         Ok(record)
+    }
+
+    /// Executes one structured agent call (`agents.calls.create`).
+    ///
+    /// The call pipeline itself lives in `sdkwork-agents-runtime-facade`
+    /// (format mechanics) and `runtime_facade_bridge` (engine execution);
+    /// this method owns authorization, agent existence, idempotency-key
+    /// validation, durable persistence, and audit. Structured calls fail
+    /// closed without an active agent-engine binding — a contract fallback
+    /// cannot guarantee schema conformance.
+    ///
+    /// `executionMode: "sync"` runs the pipeline inside the request and
+    /// returns the terminal record. `executionMode: "async"` persists a
+    /// `queued` record and returns immediately; the terminal state becomes
+    /// observable through `agents.calls.retrieve` once
+    /// [`Self::execute_queued_agent_call`] finishes.
+    pub fn create_agent_call(
+        &self,
+        command: AgentStructuredCallCommand,
+    ) -> KernelResult<AgentRuntimeExecutionRecord> {
+        validate_agent_id(command.agent_id.as_str())?;
+        self.authorize(
+            "agent.business.runtime.agent_call",
+            command.requested_by.clone(),
+            format!("agent.business.{}", command.agent_id),
+            "runtime.agent_call",
+        )?;
+        self.repository
+            .get(command.tenant_id, command.agent_id.as_str())?
+            .ok_or_else(|| KernelError::not_found("agent not found"))?;
+        validate_standard_id(
+            command.execution_id.as_str(),
+            "executionId",
+            Some(ID_PREFIX_EXECUTION),
+        )?;
+
+        // Input validation runs before any model invocation for both modes;
+        // malformed enum/cross-field input never reaches the queue.
+        let call_input =
+            build_agent_call_input(&command).map_err(|error| KernelError::validation(error))?;
+        let input_payload_json = agent_call_input_payload_json(&command)?;
+
+        let record = match command.execution_mode {
+            crate::domain::AgentCallExecutionMode::Sync => {
+                let execution = execute_agent_call_engine(
+                    self.repository
+                        .get_active_provider_binding(command.tenant_id, command.agent_id.as_str())?
+                        .as_ref(),
+                    &call_input,
+                );
+                compose_agent_call_record(
+                    &command,
+                    input_payload_json,
+                    execution,
+                    AgentRuntimeExecutionStatus::Completed,
+                    command.requested_at.clone(),
+                )
+            }
+            crate::domain::AgentCallExecutionMode::Async => {
+                let queued_dto = crate::dto::AgentCallRecordDto {
+                    execution_id: command.execution_id.clone(),
+                    agent_id: command.agent_id.clone(),
+                    tenant_id: command.tenant_id.to_string(),
+                    status: "queued".to_string(),
+                    output: serde_json::Value::Null,
+                    raw_text: None,
+                    agent_error: None,
+                    validation: crate::dto::AgentCallValidationDto {
+                        valid: false,
+                        errors: Vec::new(),
+                    },
+                    usage: crate::dto::AgentCallUsageDto {
+                        duration_ms: 0,
+                        attempts: 0,
+                        runtime_mode: "pending".to_string(),
+                    },
+                    correlation: crate::dto::AgentCallCorrelationDto {
+                        execution_id: command.execution_id.clone(),
+                        agent_id: command.agent_id.clone(),
+                        tenant_id: command.tenant_id.to_string(),
+                    },
+                };
+                let output_payload_json = serde_json::to_string(&queued_dto).map_err(|error| {
+                    KernelError::validation(format!("agent call payload encode failed: {error}"))
+                })?;
+                AgentRuntimeExecutionRecord {
+                    tenant_id: command.tenant_id,
+                    agent_id: command.agent_id.clone(),
+                    execution_id: command.execution_id.clone(),
+                    operation: AgentRuntimeExecutionOperation::AgentCall,
+                    status: AgentRuntimeExecutionStatus::Queued,
+                    input_payload_json,
+                    output_payload_json,
+                    requested_at: command.requested_at.clone(),
+                    // Completion marker doubles as the staleness marker until
+                    // the terminal transition; see recover_stale_agent_calls.
+                    completed_at: command.requested_at.clone(),
+                }
+            }
+        };
+
+        self.repository.insert_runtime_execution(record.clone())?;
+        let audit_action = match record.status {
+            AgentRuntimeExecutionStatus::Queued => AgentAuditAction::RuntimeExecutionQueued,
+            _ => AgentAuditAction::RuntimeExecutionCompleted,
+        };
+        self.emit_runtime_execution_audit_event(
+            audit_action,
+            &record,
+            command.requested_by,
+            command.requested_at,
+        )?;
+        Ok(record)
+    }
+
+    /// Drives one queued structured agent call to its terminal state.
+    ///
+    /// Called by the HTTP layer right after an async `agents.calls.create`
+    /// returns 202 (in-process execution) and by recovery tooling after a
+    /// process restart. The transition `queued -> running` is persisted
+    /// before the engine executes so a crash leaves an observable state.
+    pub fn execute_queued_agent_call(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+        requested_by: PolicySubject,
+        requested_at: String,
+    ) -> KernelResult<AgentRuntimeExecutionRecord> {
+        validate_agent_id(agent_id)?;
+        validate_standard_id(execution_id, "executionId", Some(ID_PREFIX_EXECUTION))?;
+        let record = self
+            .repository
+            .get_runtime_execution(tenant_id, agent_id, execution_id)?
+            .ok_or_else(|| KernelError::not_found("agent call not found"))?;
+        if record.status != AgentRuntimeExecutionStatus::Queued {
+            return Err(KernelError::conflict(format!(
+                "agent call {execution_id} is not queued (status: {})",
+                record.status.as_str()
+            )));
+        }
+
+        let command = agent_call_command_from_payload(&record)?;
+        let running = AgentRuntimeExecutionRecord {
+            status: AgentRuntimeExecutionStatus::Running,
+            ..record
+        };
+        self.repository.update_runtime_execution(running.clone())?;
+
+        let execution = execute_agent_call_engine(
+            self.repository
+                .get_active_provider_binding(tenant_id, agent_id)?
+                .as_ref(),
+            &build_agent_call_input(&command).map_err(|error| KernelError::validation(error))?,
+        );
+        let terminal_status =
+            if execution.call.status == sdkwork_agents_runtime_facade::AgentCallStatus::Succeeded {
+                AgentRuntimeExecutionStatus::Completed
+            } else {
+                AgentRuntimeExecutionStatus::Failed
+            };
+        let record = compose_agent_call_record(
+            &command,
+            running.input_payload_json.clone(),
+            execution,
+            terminal_status,
+            requested_at.clone(),
+        );
+        self.repository.update_runtime_execution(record.clone())?;
+        self.emit_runtime_execution_audit_event(
+            if terminal_status == AgentRuntimeExecutionStatus::Completed {
+                AgentAuditAction::RuntimeExecutionCompleted
+            } else {
+                AgentAuditAction::RuntimeExecutionFailed
+            },
+            &record,
+            requested_by,
+            requested_at,
+        )?;
+        Ok(record)
+    }
+
+    /// Recovers `queued`/`running` agent calls that were not updated since
+    /// `updated_before` (RFC 3339). Used after process restarts: in-process
+    /// executors die with the process, so orphaned non-terminal records are
+    /// marked `failed` with an explicit recovery error.
+    pub fn recover_stale_agent_calls(
+        &self,
+        tenant_id: u64,
+        updated_before: &str,
+        occurred_at: String,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRecord>> {
+        parse_rfc3339_datetime(updated_before, "updatedBefore")?;
+        let system_subject =
+            PolicySubject::new("system.agents.agent-call-recovery", tenant_id.to_string());
+        let stale = self.repository.list_stale_runtime_executions(
+            tenant_id,
+            updated_before,
+            limit.clamp(1, 1_000),
+        )?;
+        let mut recovered = Vec::with_capacity(stale.len());
+        for record in stale {
+            let failed_dto = crate::dto::AgentCallRecordDto {
+                execution_id: record.execution_id.clone(),
+                agent_id: record.agent_id.clone(),
+                tenant_id: record.tenant_id.to_string(),
+                status: "failed".to_string(),
+                output: serde_json::Value::Null,
+                raw_text: None,
+                agent_error: Some(
+                    "agent call was abandoned before completion and recovered as failed"
+                        .to_string(),
+                ),
+                validation: crate::dto::AgentCallValidationDto {
+                    valid: false,
+                    errors: Vec::new(),
+                },
+                usage: crate::dto::AgentCallUsageDto {
+                    duration_ms: 0,
+                    attempts: 0,
+                    runtime_mode: "recovered".to_string(),
+                },
+                correlation: crate::dto::AgentCallCorrelationDto {
+                    execution_id: record.execution_id.clone(),
+                    agent_id: record.agent_id.clone(),
+                    tenant_id: record.tenant_id.to_string(),
+                },
+            };
+            let output_payload_json = serde_json::to_string(&failed_dto).map_err(|error| {
+                KernelError::validation(format!("agent call payload encode failed: {error}"))
+            })?;
+            let record = AgentRuntimeExecutionRecord {
+                status: AgentRuntimeExecutionStatus::Failed,
+                output_payload_json,
+                completed_at: occurred_at.clone(),
+                ..record
+            };
+            self.repository.update_runtime_execution(record.clone())?;
+            self.emit_runtime_execution_audit_event(
+                AgentAuditAction::RuntimeExecutionFailed,
+                &record,
+                system_subject.clone(),
+                occurred_at.clone(),
+            )?;
+            recovered.push(record);
+        }
+        Ok(recovered)
+    }
+
+    /// Returns one persisted structured agent call (`agents.calls.retrieve`).
+    pub fn get_agent_call(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+        requested_by: PolicySubject,
+    ) -> KernelResult<AgentRuntimeExecutionRecord> {
+        validate_agent_id(agent_id)?;
+        validate_standard_id(execution_id, "executionId", Some(ID_PREFIX_EXECUTION))?;
+        self.authorize(
+            "agent.business.runtime.agent_call",
+            requested_by,
+            format!("agent.business.{agent_id}"),
+            "runtime.agent_call",
+        )?;
+        self.repository
+            .get_runtime_execution(tenant_id, agent_id, execution_id)?
+            .filter(|record| record.operation == AgentRuntimeExecutionOperation::AgentCall)
+            .ok_or_else(|| KernelError::not_found("agent call not found"))
+    }
+
+    /// Lists persisted structured agent calls (`agents.calls.list`) with
+    /// keyset pagination ordered by `(requestedAt, executionId)` descending.
+    pub fn list_agent_calls(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        status: Option<String>,
+        pagination: PaginationParams,
+        cursor_token: Option<String>,
+        requested_by: PolicySubject,
+    ) -> KernelResult<PaginatedResult<AgentRuntimeExecutionRecord>> {
+        validate_agent_id(agent_id)?;
+        self.authorize(
+            "agent.business.runtime.agent_call",
+            requested_by,
+            format!("agent.business.{agent_id}"),
+            "runtime.agent_call",
+        )?;
+        let status_code = match status.as_deref() {
+            None | Some("") => None,
+            Some(code) => {
+                crate::domain::AgentRuntimeExecutionStatus::from_code(code).ok_or_else(|| {
+                    KernelError::validation(
+                        "status must be one of: queued, running, completed, failed",
+                    )
+                })?;
+                Some(code.to_string())
+            }
+        };
+        let scope_fingerprint =
+            crate::runtime_execution_cursor::runtime_execution_scope_fingerprint(
+                tenant_id,
+                agent_id,
+                status_code.as_deref(),
+            );
+        let cursor = cursor_token
+            .as_deref()
+            .map(crate::runtime_execution_cursor::decode_runtime_execution_cursor)
+            .transpose()?;
+        if let Some(cursor) = cursor.as_ref() {
+            if cursor.scope_fingerprint != scope_fingerprint {
+                return Err(KernelError::validation(
+                    "cursor does not match the requested agent call scope",
+                ));
+            }
+        }
+        let mut query = crate::ports::RuntimeExecutionListQuery::for_agent(tenant_id, agent_id)
+            .with_pagination(pagination);
+        if let Some(status_code) = status_code.as_deref() {
+            query = query.with_status(status_code);
+        }
+        if let Some(cursor) = cursor {
+            query = query.with_cursor(cursor);
+        }
+        let page_size = query.pagination.page_size;
+        let mut items = self.repository.list_runtime_executions(&query)?;
+        let has_more = items.len() > page_size;
+        items.truncate(page_size);
+        let next_page_token = if has_more {
+            items
+                .last()
+                .map(|record| {
+                    crate::runtime_execution_cursor::encode_runtime_execution_cursor(
+                        &crate::runtime_execution_cursor::RuntimeExecutionCursor {
+                            requested_at: record.requested_at.clone(),
+                            execution_id: record.execution_id.clone(),
+                            scope_fingerprint,
+                        },
+                    )
+                })
+                .transpose()?
+        } else {
+            None
+        };
+        Ok(PaginatedResult::new(items, next_page_token, None))
+    }
+
+    /// `agents.usage.summary` — aggregated token/turn totals for one tenant
+    /// scope and filter window, computed from the durable turn facts.
+    pub fn get_usage_summary(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: Option<String>,
+        session_id: Option<String>,
+        model_id: Option<String>,
+        from: Option<String>,
+        to: Option<String>,
+        requested_by: PolicySubject,
+    ) -> KernelResult<crate::usage::AgentUsageSummary> {
+        self.authorize(
+            "agent.business.usage.summary",
+            requested_by,
+            "agent.business.usage",
+            "usage.summary",
+        )?;
+        let mut query = crate::usage::UsageSummaryQuery::for_tenant(tenant_id, organization_id);
+        if let Some(agent_id) = normalize_usage_filter(agent_id, "agentId")? {
+            query = query.with_agent(agent_id);
+        }
+        if let Some(session_id) = normalize_usage_filter(session_id, "sessionId")? {
+            query = query.with_session(session_id);
+        }
+        if let Some(model_id) = normalize_usage_filter(model_id, "modelId")? {
+            query = query.with_model(model_id);
+        }
+        if from.is_some() || to.is_some() {
+            let from = from.unwrap_or_default();
+            let to = to.unwrap_or_default();
+            if from.is_empty() || to.is_empty() {
+                return Err(KernelError::validation(
+                    "usage window requires both from and to",
+                ));
+            }
+            query = query.with_window(from, to);
+        }
+        let query = query.validated()?;
+        self.repository.summarize_usage(&query)
+    }
+
+    /// `agents.usage.records` — turn-level usage feed ordered by
+    /// `(created_at, id)` descending with an opaque scope-bound cursor.
+    pub fn list_usage_records(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: Option<String>,
+        session_id: Option<String>,
+        model_id: Option<String>,
+        from: Option<String>,
+        to: Option<String>,
+        pagination: PaginationParams,
+        cursor_token: Option<String>,
+        requested_by: PolicySubject,
+    ) -> KernelResult<PaginatedResult<crate::usage::AgentUsageRecord>> {
+        self.authorize(
+            "agent.business.usage.records",
+            requested_by,
+            "agent.business.usage",
+            "usage.records",
+        )?;
+        let mut query = crate::usage::UsageRecordListQuery::for_tenant(tenant_id, organization_id)
+            .with_pagination(pagination);
+        if let Some(agent_id) = normalize_usage_filter(agent_id, "agentId")? {
+            query = query.with_agent(agent_id);
+        }
+        if let Some(session_id) = normalize_usage_filter(session_id, "sessionId")? {
+            query = query.with_session(session_id);
+        }
+        if let Some(model_id) = normalize_usage_filter(model_id, "modelId")? {
+            query = query.with_model(model_id);
+        }
+        if from.is_some() || to.is_some() {
+            let from = from.unwrap_or_default();
+            let to = to.unwrap_or_default();
+            if from.is_empty() || to.is_empty() {
+                return Err(KernelError::validation(
+                    "usage window requires both from and to",
+                ));
+            }
+            query = query.with_window(from, to);
+        }
+        let query = query.validated()?;
+        let scope_fingerprint = crate::usage::usage_list_scope_fingerprint(
+            query.tenant_id,
+            query.organization_id,
+            query.agent_id.as_deref(),
+            query.session_id.as_deref(),
+            query.model_id.as_deref(),
+            query.from.as_deref(),
+            query.to.as_deref(),
+        );
+        let cursor = cursor_token
+            .as_deref()
+            .map(crate::usage::decode_usage_record_cursor)
+            .transpose()?;
+        if let Some(cursor) = cursor.as_ref() {
+            if cursor.scope_fingerprint != scope_fingerprint {
+                return Err(KernelError::validation(
+                    "cursor does not match the requested usage scope",
+                ));
+            }
+        }
+        let mut query = query;
+        if let Some(cursor) = cursor {
+            query = query.with_cursor(cursor);
+        }
+        let page_size = query.pagination.page_size;
+        let mut items = self.repository.list_usage_records(&query)?;
+        let has_more = items.len() > page_size;
+        items.truncate(page_size);
+        let next_page_token = if has_more {
+            items
+                .last()
+                .map(|record| {
+                    crate::usage::encode_usage_record_cursor(
+                        &crate::list_cursors::CreatedAtListCursor {
+                            created_at: record.created_at.clone(),
+                            internal_id: record.internal_id,
+                            scope_fingerprint,
+                        },
+                    )
+                })
+                .transpose()?
+        } else {
+            None
+        };
+        Ok(PaginatedResult::new(items, next_page_token, None))
+    }
+
+    /// `agents.versions.create` — snapshots the current agent definition as
+    /// a new immutable version. The version number increases monotonically;
+    /// replaying a `versionId` is a conflict.
+    pub fn create_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: String,
+        description: Option<String>,
+        requested_by: PolicySubject,
+        occurred_at: &str,
+    ) -> KernelResult<crate::domain::AgentVersionRecord> {
+        validate_agent_id(agent_id)?;
+        validate_version_id(&version_id)?;
+        if let Some(description) = description.as_deref() {
+            require_non_blank(description, "description")?;
+        }
+        self.authorize(
+            "agent.business.versions.create",
+            requested_by.clone(),
+            format!("agent.business.{agent_id}"),
+            "create",
+        )?;
+        let record = self
+            .repository
+            .get(tenant_id, agent_id)?
+            .ok_or_else(|| KernelError::not_found("agent not found"))?;
+        if record.is_deleted() {
+            return Err(KernelError::validation("deleted agent cannot be versioned"));
+        }
+        let next_version_number = self
+            .repository
+            .list_agent_versions(
+                &crate::ports::AgentVersionListQuery::for_agent(
+                    tenant_id,
+                    organization_id,
+                    agent_id,
+                )
+                .with_pagination(crate::ports::PaginationParams {
+                    page_size: 1,
+                    ..crate::ports::PaginationParams::default()
+                }),
+            )?
+            .first()
+            .map(|latest| latest.version_number + 1)
+            .unwrap_or(1);
+        let version = crate::domain::AgentVersionRecord {
+            id: self.repository.next_id()?,
+            tenant_id,
+            organization_id,
+            agent_id: agent_id.to_string(),
+            version_id,
+            version_number: next_version_number,
+            manifest_json: crate::persistence::manifest_to_json(&record.manifest)?,
+            default_code_task_intent_json: crate::persistence::intent_to_json(
+                record.default_code_task_intent.as_ref(),
+            )?,
+            implementation_provider_id: record.implementation_provider_id.clone(),
+            implementation_kind: record.implementation_kind,
+            implementation_type: record.implementation_type,
+            description,
+            created_by: record.owner_user_id,
+            created_at: occurred_at.to_string(),
+            activated_at: None,
+        };
+        self.repository.insert_agent_version(version)
+    }
+
+    /// `agents.versions.retrieve`.
+    pub fn get_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        requested_by: PolicySubject,
+    ) -> KernelResult<crate::domain::AgentVersionRecord> {
+        validate_agent_id(agent_id)?;
+        validate_version_id(version_id)?;
+        self.authorize(
+            "agent.business.versions.retrieve",
+            requested_by,
+            format!("agent.business.{agent_id}"),
+            "read",
+        )?;
+        self.repository
+            .get_agent_version(tenant_id, organization_id, agent_id, version_id)?
+            .ok_or_else(|| KernelError::not_found("agent version not found"))
+    }
+
+    /// `agents.versions.list` — keyset-paginated by version number descending.
+    pub fn list_agent_versions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        pagination: PaginationParams,
+        cursor_token: Option<String>,
+        requested_by: PolicySubject,
+    ) -> KernelResult<PaginatedResult<crate::domain::AgentVersionRecord>> {
+        validate_agent_id(agent_id)?;
+        self.authorize(
+            "agent.business.versions.list",
+            requested_by,
+            format!("agent.business.{agent_id}"),
+            "read",
+        )?;
+        let mut query =
+            crate::ports::AgentVersionListQuery::for_agent(tenant_id, organization_id, agent_id)
+                .with_pagination(pagination);
+        if let Some(cursor) = cursor_token.as_deref() {
+            let decoded = crate::list_cursors::decode_created_at_cursor(cursor, "agent-version")?;
+            query = query.with_cursor(decoded);
+        }
+        let page_size = query.pagination.page_size;
+        let mut items = self.repository.list_agent_versions(&query)?;
+        let has_more = items.len() > page_size;
+        items.truncate(page_size);
+        let next_page_token = if has_more {
+            items
+                .last()
+                .map(|record| {
+                    crate::list_cursors::encode_created_at_cursor(
+                        "agent-version",
+                        &crate::list_cursors::CreatedAtListCursor {
+                            created_at: record.created_at.clone(),
+                            internal_id: record.version_number,
+                            scope_fingerprint: agent_version_list_scope_fingerprint(
+                                tenant_id,
+                                organization_id,
+                                agent_id,
+                            ),
+                        },
+                    )
+                })
+                .transpose()?
+        } else {
+            None
+        };
+        Ok(PaginatedResult::new(items, next_page_token, None))
+    }
+
+    /// `agents.versions.activate` — activation IS the rollback path: marking
+    /// an older version active writes its immutable manifest back onto the
+    /// live agent definition. Version rows themselves are never mutated
+    /// except for the `activated_at` marker.
+    pub fn activate_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        requested_by: PolicySubject,
+        occurred_at: &str,
+    ) -> KernelResult<(
+        crate::domain::AgentVersionRecord,
+        crate::domain::AgentBusinessRecord,
+    )> {
+        validate_agent_id(agent_id)?;
+        validate_version_id(version_id)?;
+        self.authorize(
+            "agent.business.versions.activate",
+            requested_by.clone(),
+            format!("agent.business.{agent_id}"),
+            "update",
+        )?;
+        let version = self
+            .repository
+            .activate_agent_version(
+                tenant_id,
+                organization_id,
+                agent_id,
+                version_id,
+                occurred_at,
+            )?
+            .ok_or_else(|| KernelError::not_found("agent version not found"))?;
+        let mut record = self
+            .repository
+            .get(tenant_id, agent_id)?
+            .ok_or_else(|| KernelError::not_found("agent not found"))?;
+        if record.is_deleted() {
+            return Err(KernelError::validation(
+                "deleted agent cannot activate a version",
+            ));
+        }
+        record.manifest = crate::persistence::manifest_from_json(&version.manifest_json)?;
+        record.updated_at = occurred_at.to_string();
+        record.version = record.version.saturating_add(1);
+        self.repository.update(record.clone())?;
+        Ok((version, record))
+    }
+
+    // ========================================================================
+    // Webhook subscriptions (`agents.webhooks.*`, GAP-04)
+    // ========================================================================
+
+    /// `agents.webhooks.create` — registers an HTTPS endpoint bound to a set
+    /// of agent event types and generates the HMAC signing secret. The
+    /// secret is echoed exactly once in this creation response and is never
+    /// returned by retrieve/list.
+    pub fn create_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: String,
+        url: String,
+        event_types: Vec<crate::webhook::AgentWebhookEventType>,
+        description: Option<String>,
+        created_by: u64,
+        requested_by: PolicySubject,
+        occurred_at: &str,
+    ) -> KernelResult<crate::webhook::AgentWebhookRecord> {
+        validate_webhook_id(&webhook_id)?;
+        crate::webhook::validate_webhook_url(&url)?;
+        if event_types.is_empty() {
+            return Err(KernelError::validation("eventTypes must not be empty"));
+        }
+        if let Some(description) = description.as_deref() {
+            require_non_blank(description, "description")?;
+        }
+        self.authorize(
+            "agent.business.webhooks.create",
+            requested_by,
+            format!("agent.business.webhook.{webhook_id}"),
+            "create",
+        )?;
+        let record = crate::webhook::AgentWebhookRecord {
+            id: self.repository.next_id()?,
+            tenant_id,
+            organization_id,
+            webhook_id,
+            url,
+            event_types,
+            status: crate::webhook::AgentWebhookStatus::Active,
+            secret: crate::webhook::generate_webhook_secret(),
+            description,
+            created_by,
+            created_at: occurred_at.to_string(),
+            updated_at: occurred_at.to_string(),
+        };
+        self.repository.insert_webhook_subscription(record)
+    }
+
+    /// `agents.webhooks.retrieve`. The signing secret is redacted.
+    pub fn get_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        requested_by: PolicySubject,
+    ) -> KernelResult<crate::webhook::AgentWebhookRecord> {
+        validate_webhook_id(webhook_id)?;
+        self.authorize(
+            "agent.business.webhooks.retrieve",
+            requested_by,
+            format!("agent.business.webhook.{webhook_id}"),
+            "read",
+        )?;
+        let mut record = self
+            .repository
+            .get_webhook_subscription(tenant_id, organization_id, webhook_id)?
+            .ok_or_else(|| KernelError::not_found("webhook subscription not found"))?;
+        record.secret = String::new();
+        Ok(record)
+    }
+
+    /// `agents.webhooks.list` — offset-paginated (low-volume config set).
+    /// Signing secrets are redacted.
+    pub fn list_webhook_subscriptions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        pagination: PaginationParams,
+        requested_by: PolicySubject,
+    ) -> KernelResult<PaginatedResult<crate::webhook::AgentWebhookRecord>> {
+        self.authorize(
+            "agent.business.webhooks.list",
+            requested_by,
+            format!("agent.business.tenant.{tenant_id}.webhooks"),
+            "read",
+        )?;
+        let query =
+            crate::ports::WebhookSubscriptionListQuery::for_tenant(tenant_id, organization_id)
+                .with_pagination(pagination);
+        let mut items = self.repository.list_webhook_subscriptions(&query)?;
+        for record in items.iter_mut() {
+            record.secret = String::new();
+        }
+        Ok(PaginatedResult::new(items, None, None))
+    }
+
+    /// `agents.webhooks.delete` — removes the subscription. Past deliveries
+    /// are retained for audit purposes.
+    pub fn delete_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        requested_by: PolicySubject,
+    ) -> KernelResult<crate::webhook::AgentWebhookRecord> {
+        validate_webhook_id(webhook_id)?;
+        self.authorize(
+            "agent.business.webhooks.delete",
+            requested_by.clone(),
+            format!("agent.business.webhook.{webhook_id}"),
+            "delete",
+        )?;
+        self.repository
+            .delete_webhook_subscription(tenant_id, organization_id, webhook_id)?
+            .ok_or_else(|| KernelError::not_found("webhook subscription not found"))
+    }
+
+    /// `agents.webhooks.test` — builds a signed `agent_call.completed` test
+    /// delivery for the subscription. The delivery row is recorded as
+    /// `queued`; the HTTP transport performs the outbound POST and records
+    /// the terminal state via `complete_webhook_delivery`.
+    pub fn test_webhook(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        requested_by: PolicySubject,
+        occurred_at: &str,
+    ) -> KernelResult<crate::webhook::AgentWebhookTestOutcome> {
+        validate_webhook_id(webhook_id)?;
+        self.authorize(
+            "agent.business.webhooks.test",
+            requested_by.clone(),
+            format!("agent.business.webhook.{webhook_id}"),
+            "update",
+        )?;
+        let subscription = self
+            .repository
+            .get_webhook_subscription(tenant_id, organization_id, webhook_id)?
+            .ok_or_else(|| KernelError::not_found("webhook subscription not found"))?;
+        let delivery_id = format!("delivery.{}", self.repository.next_id()?);
+        let payload = serde_json::json!({
+            "id": format!("evt_{delivery_id}"),
+            "type": crate::webhook::AgentWebhookEventType::AgentCallCompleted.as_str(),
+            "createdAt": occurred_at,
+            "data": {
+                "webhookId": subscription.webhook_id,
+                "deliveryId": delivery_id,
+                "test": true,
+            },
+        })
+        .to_string();
+        let unix_seconds = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_secs())
+            .unwrap_or(0);
+        let signature =
+            crate::webhook::sign_webhook_payload(&subscription.secret, &payload, unix_seconds);
+        let delivery = crate::webhook::AgentWebhookDeliveryRecord {
+            id: self.repository.next_id()?,
+            tenant_id,
+            organization_id,
+            webhook_id: subscription.webhook_id.clone(),
+            delivery_id,
+            event_type: crate::webhook::AgentWebhookEventType::AgentCallCompleted
+                .as_str()
+                .to_string(),
+            payload_json: payload,
+            signature,
+            status: "queued".to_string(),
+            response_code: None,
+            error_detail: None,
+            created_at: occurred_at.to_string(),
+            completed_at: None,
+        };
+        let delivery = self.repository.insert_webhook_delivery(delivery)?;
+        Ok(crate::webhook::AgentWebhookTestOutcome {
+            delivery,
+            url: subscription.url,
+        })
+    }
+
+    /// Records the terminal delivery outcome after the HTTP transport's
+    /// outbound POST. Internal transport bridge — same trust boundary as the
+    /// `test` use-case that created the delivery.
+    pub fn complete_webhook_delivery(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+        status: &str,
+        response_code: Option<i32>,
+        error_detail: Option<String>,
+        completed_at: &str,
+    ) -> KernelResult<crate::webhook::AgentWebhookDeliveryRecord> {
+        if status != "succeeded" && status != "failed" {
+            return Err(KernelError::validation(
+                "delivery status must be succeeded or failed",
+            ));
+        }
+        self.repository.complete_webhook_delivery(
+            tenant_id,
+            organization_id,
+            webhook_id,
+            delivery_id,
+            status,
+            response_code,
+            error_detail,
+            completed_at,
+        )
     }
 
     pub fn create_composition_slot(
@@ -6848,6 +7738,9 @@ where
             );
             match self.repository.update_turn_state(turn, expected_version) {
                 Ok(record) => {
+                    // Preserve the partially generated reply for reload when
+                    // the reconciled Turn streamed anything (best effort).
+                    let _ = self.persist_interrupted_turn_output(&record, occurred_at);
                     self.emit_turn_audit_event(
                         AgentAuditAction::TurnFailed,
                         &record,
@@ -6879,7 +7772,10 @@ where
     /// conflict would hide the real failure behind "turn execution already
     /// failed". Replays never re-execute the Turn.
     fn failed_turn_replay_error(turn: &AgentTurnRecord) -> KernelError {
-        let error_code = turn.error_code.as_deref().unwrap_or("turn_execution_failed");
+        let error_code = turn
+            .error_code
+            .as_deref()
+            .unwrap_or("turn_execution_failed");
         let detail = turn
             .error_detail
             .clone()
@@ -6889,6 +7785,28 @@ where
             "turn_reconciliation_timeout" => KernelError::timeout(detail),
             "turn_execution_identity_mismatch" => KernelError::Internal { message: detail },
             _ => KernelError::provider_error(error_code, detail),
+        }
+    }
+
+    /// Replays stored assistant output through a live stream sink for
+    /// idempotent `?stream=true` requests. Live turns already pushed deltas
+    /// during execution; completed-turn replays must reconstruct them here.
+    fn replay_completed_turn_stream(
+        result: &mut TurnExecutionResult,
+        sink: &dyn TurnExecutionStreamSink,
+    ) {
+        if result.stream_deltas.is_empty() {
+            if let Some(content) = result
+                .assistant_output_item
+                .content
+                .as_deref()
+                .filter(|value| !value.is_empty())
+            {
+                result.stream_deltas.push(content.to_string());
+            }
+        }
+        for delta in &result.stream_deltas {
+            sink.push_delta(delta);
         }
     }
 
@@ -7071,7 +7989,9 @@ where
         existing_turn.error_detail = None;
         existing_turn.updated_at = command.requested_at.clone();
         existing_turn.version = existing_turn.version.saturating_add(1);
-        let turn = self.repository.update_turn_state(existing_turn, expected_version)?;
+        let turn = self
+            .repository
+            .update_turn_state(existing_turn, expected_version)?;
         self.emit_turn_audit_event(
             AgentAuditAction::TurnRequested,
             &turn,
@@ -7096,7 +8016,7 @@ where
             &user_input_item.item_id,
         )?;
 
-                let session_runtime_binding = match command.runtime_binding_id.as_deref() {
+        let session_runtime_binding = match command.runtime_binding_id.as_deref() {
             Some(runtime_binding_id) => self.repository.get_session_runtime_binding(
                 command.tenant_id,
                 command.organization_id,
@@ -7121,7 +8041,9 @@ where
             Some(binding) => Some(binding),
             None if cloud_router_routed => None,
             None => {
-                return Err(KernelError::not_found("active session runtime binding not found"));
+                return Err(KernelError::not_found(
+                    "active session runtime binding not found",
+                ));
             }
         };
         let provider_binding = if let Some(binding) = session_runtime_binding.as_ref() {
@@ -7295,7 +8217,12 @@ where
                 ));
             }
             if existing_turn.status == AgentTurnStatus::Completed {
-                return self.replay_existing_turn(&command, session, existing_turn);
+                let mut result = self.replay_existing_turn(&command, session, existing_turn)?;
+                if let Some(sink) = stream_sink.as_ref() {
+                    sink.begin_turn(&result.session.session_id, &result.turn.turn_id);
+                    Self::replay_completed_turn_stream(&mut result, sink.as_ref());
+                }
+                return Ok(result);
             }
             if command.turn_mode == AgentTurnMode::Automation {
                 // Task-scheduler retry path: an attempt crashed or failed
@@ -7341,7 +8268,9 @@ where
             Some(binding) => Some(binding),
             None if cloud_router_routed => None,
             None => {
-                return Err(KernelError::not_found("active session runtime binding not found"));
+                return Err(KernelError::not_found(
+                    "active session runtime binding not found",
+                ));
             }
         };
         let provider_binding = if let Some(binding) = session_runtime_binding.as_ref() {
@@ -7571,6 +8500,68 @@ where
             stream_sink,
         );
     }
+    /// Promotes an interrupted Turn's streaming checkpoint into a durable
+    /// partial assistant-output item so the partially generated reply stays
+    /// visible in the session transcript after reload (industry parity:
+    /// Anthropic/OpenAI keep partial content after interruptions). Must be
+    /// called only after the Turn has durably reached a failed/cancelled
+    /// terminal state — completion can then never double-write an assistant
+    /// item for the same Turn. Promotion is best-effort: repository errors are
+    /// swallowed by callers and must never mask the original Turn outcome.
+    fn persist_interrupted_turn_output(
+        &self,
+        turn: &AgentTurnRecord,
+        occurred_at: &str,
+    ) -> KernelResult<()> {
+        // Fast path: nothing streamed, nothing to promote.
+        match self.repository.read_turn_streaming_content(
+            turn.tenant_id,
+            turn.organization_id,
+            &turn.turn_id,
+        )? {
+            Some(content) if !content.trim().is_empty() => {}
+            _ => return Ok(()),
+        }
+        let partial = AgentSessionItemRecord {
+            id: self.repository.next_id()?,
+            item_id: format!("{ID_PREFIX_ITEM}{}", self.repository.next_id()?),
+            tenant_id: turn.tenant_id,
+            organization_id: turn.organization_id,
+            session_id: turn.session_id.clone(),
+            kind: AgentSessionItemKind::AssistantOutput,
+            // The repository takes the authoritative content from the Turn's
+            // streaming checkpoint inside its own write transaction.
+            content: None,
+            content_type: "text/plain".to_string(),
+            status: AgentSessionItemStatus::Completed,
+            sequence: 0,
+            input_tokens: 0,
+            output_tokens: 0,
+            model_id: turn
+                .model_id
+                .clone()
+                .or_else(|| turn.requested_model_id.clone()),
+            provider_id: turn.provider_id.clone(),
+            tool_name: None,
+            tool_call_id: None,
+            tool_arguments_json: None,
+            tool_result_json: None,
+            provider_payload_json: None,
+            parent_item_id: Some(turn.request_item_id.clone()),
+            turn_id: Some(turn.turn_id.clone()),
+            created_by: turn.owner_user_id,
+            version: 0,
+            created_at: occurred_at.to_string(),
+            updated_at: occurred_at.to_string(),
+            completed_at: Some(occurred_at.to_string()),
+            redacted_at: None,
+            redacted_by: None,
+            retention_until: None,
+        };
+        let _ = self.repository.append_interrupted_turn_output(partial)?;
+        Ok(())
+    }
+
     /// Executes a committed Turn request through the provider and persists
     /// the authoritative outcome.
     ///
@@ -7593,10 +8584,7 @@ where
     ) -> KernelResult<TurnExecutionResult> {
         let mut turn = turn;
         let turn_id = turn.turn_id.clone();
-        let user_content = user_input_item
-            .content
-            .clone()
-            .unwrap_or_default();
+        let user_content = user_input_item.content.clone().unwrap_or_default();
         turn.mark_running(command.requested_at.clone());
         // `update_turn_state` expects the pre-incremented version: the caller
         // must bump `turn.version` before the call and pass the stored
@@ -7609,14 +8597,12 @@ where
             agent.default_code_task_intent.as_ref(),
         )
         .and_then(|profile| profile.welcome_message);
-        let provider_has_model_chat = provider_binding
-            .as_ref()
-            .is_some_and(|binding| {
-                binding
-                    .capabilities
-                    .iter()
-                    .any(|capability| capability == "model.chat")
-            });
+        let provider_has_model_chat = provider_binding.as_ref().is_some_and(|binding| {
+            binding
+                .capabilities
+                .iter()
+                .any(|capability| capability == "model.chat")
+        });
 
         let execution_input = TurnExecutionInput {
             turn_id: turn_id.clone(),
@@ -7644,6 +8630,7 @@ where
             system_prompt: command.system_prompt.clone(),
             auth_token: command.auth_token.clone(),
             access_token: command.access_token.clone(),
+            wire_protocol: command.wire_protocol.clone(),
         };
         let completion = if let Some(stream_sink) = stream_sink.as_ref() {
             stream_sink.begin_turn(&session.session_id, &turn_id);
@@ -7674,6 +8661,9 @@ where
             };
             turn.mark_failed(error_code, error_detail, command.requested_at.clone());
             let failed_turn = self.repository.update_turn_state(turn, 1)?;
+            // Preserve the partially generated reply for reload (industry
+            // parity: partial content survives interruptions).
+            let _ = self.persist_interrupted_turn_output(&failed_turn, &command.requested_at);
             self.emit_turn_audit_event(
                 AgentAuditAction::TurnFailed,
                 &failed_turn,
@@ -7734,6 +8724,10 @@ where
                 let cancelled_turn = self
                     .repository
                     .update_turn_state(current_turn, expected_version)?;
+                // Preserve the partially generated reply for reload (industry
+                // parity: partial content survives user-initiated stops).
+                let _ =
+                    self.persist_interrupted_turn_output(&cancelled_turn, &command.requested_at);
                 self.emit_turn_audit_event(
                     AgentAuditAction::TurnCancelled,
                     &cancelled_turn,
@@ -7749,6 +8743,9 @@ where
             &command.session_id,
             &turn_id,
         )?;
+        let has_reasoning_fact = provider_item_facts
+            .iter()
+            .any(|fact| fact.kind == AgentSessionItemKind::Reasoning);
         let completion_model_id = completion
             .model_id
             .clone()
@@ -7864,6 +8861,46 @@ where
             redacted_by: None,
             retention_until: None,
         };
+        // Persist the streamed reasoning/thinking content as a durable
+        // Reasoning session item so the transcript keeps it after reload.
+        // Turn paths with a terminal provider reasoning snapshot (codex /
+        // provider sync) already carry a Reasoning fact — never duplicate it.
+        if !has_reasoning_fact {
+            let reasoning_content = reasoning_content_from_stream_events(&completion.stream_events);
+            if !reasoning_content.trim().is_empty() {
+                completed_items.push(AgentSessionItemRecord {
+                    id: self.repository.next_id()?,
+                    item_id: format!("{ID_PREFIX_ITEM}{}", self.repository.next_id()?),
+                    tenant_id: command.tenant_id,
+                    organization_id: session.organization_id,
+                    session_id: command.session_id.clone(),
+                    kind: AgentSessionItemKind::Reasoning,
+                    content: Some(reasoning_content),
+                    content_type: "text/plain".to_string(),
+                    status: AgentSessionItemStatus::Completed,
+                    sequence: 0,
+                    input_tokens: 0,
+                    output_tokens: 0,
+                    model_id: Some(completion_model_id.clone()),
+                    provider_id: Some(completion.provider_id.clone().unwrap_or_default()),
+                    tool_name: None,
+                    tool_call_id: None,
+                    tool_arguments_json: None,
+                    tool_result_json: None,
+                    provider_payload_json: None,
+                    parent_item_id: Some(user_input_item.item_id.clone()),
+                    turn_id: Some(turn_id.clone()),
+                    created_by: session.owner_user_id,
+                    version: 0,
+                    created_at: command.requested_at.clone(),
+                    updated_at: command.requested_at.clone(),
+                    completed_at: Some(command.requested_at.clone()),
+                    redacted_at: None,
+                    redacted_by: None,
+                    retention_until: None,
+                });
+            }
+        }
         completed_items.push(assistant_output_item.clone());
 
         turn.response_item_id = Some(assistant_output_item.item_id.clone());
@@ -7933,7 +8970,6 @@ where
             stream_events: completion.stream_events,
         })
     }
-
 
     /// Authorizes a policy resource. Callers pass resources shaped like
     /// `agent.business.{agent_id}`, `agent.business.session.{session_id}`, or
@@ -9422,13 +10458,13 @@ where
                         "shared agent engine host is unavailable",
                     )
                 })?;
-        // Deliver the resolution to the provider engine AFTER the interaction
-        // is durably resolved (CAS): a concurrent resolution loses the CAS and
-        // never reaches the engine, so the engine side effect is only ever
-        // issued once for the winning write. An engine delivery failure is
-        // surfaced to the caller; the durable resolution stands and provider
-        // reconciliation converges the engine state.
-                    let turn_id = record.turn_id.as_deref().ok_or_else(|| {
+            // Deliver the resolution to the provider engine AFTER the interaction
+            // is durably resolved (CAS): a concurrent resolution loses the CAS and
+            // never reaches the engine, so the engine side effect is only ever
+            // issued once for the winning write. An engine delivery failure is
+            // surfaced to the caller; the durable resolution stands and provider
+            // reconciliation converges the engine state.
+            let turn_id = record.turn_id.as_deref().ok_or_else(|| {
                 KernelError::validation("provider interaction is missing its canonical Turn")
             })?;
             let resolution: serde_json::Value = serde_json::from_str(&command.resolution_json)
@@ -9810,6 +10846,65 @@ fn validate_agent_id(value: &str) -> KernelResult<()> {
     validate_standard_id(value, "agentId", Some(ID_PREFIX_AGENT))
 }
 
+/// Normalizes an optional usage filter: blank means absent, agent ids are
+/// validated with the standard id scheme, other filters get a length cap.
+fn normalize_usage_filter(
+    value: Option<String>,
+    field: &'static str,
+) -> KernelResult<Option<String>> {
+    let value = match value {
+        None => return Ok(None),
+        Some(value) => value,
+    };
+    let trimmed = value.trim().to_string();
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+    if trimmed.len() > 128 {
+        return Err(KernelError::validation(format!("{field} is too long")));
+    }
+    if field == "agentId" {
+        validate_agent_id(&trimmed)?;
+    }
+    Ok(Some(trimmed))
+}
+
+fn validate_version_id(value: &str) -> KernelResult<()> {
+    validate_standard_id(
+        value,
+        "versionId",
+        Some(crate::validation::ID_PREFIX_VERSION),
+    )
+}
+
+fn validate_webhook_id(value: &str) -> KernelResult<()> {
+    validate_standard_id(
+        value,
+        "webhookId",
+        Some(crate::validation::ID_PREFIX_WEBHOOK),
+    )
+}
+
+/// Cursor scope fingerprint for the agent version history feed.
+fn agent_version_list_scope_fingerprint(
+    tenant_id: u64,
+    organization_id: u64,
+    agent_id: &str,
+) -> String {
+    sdkwork_utils_rust::sha256_hash(
+        serde_json::json!({
+            "version": 1,
+            "kind": "agent-version",
+            "tenantId": tenant_id.to_string(),
+            "organizationId": organization_id.to_string(),
+            "agentId": agent_id,
+            "sort": ["-versionNumber", "-id"],
+        })
+        .to_string()
+        .as_bytes(),
+    )
+}
+
 fn validate_project_drive_access(
     visibility: AgentProjectVisibility,
     drive_access_mode: AgentProjectDriveAccessMode,
@@ -10036,7 +11131,6 @@ fn reject_secret_material(value: &str, field_name: &str) -> KernelResult<()> {
 mod task_tests {
     use super::*;
     use crate::agent_turn::AgentTurnMode;
-    use crate::turn_runtime::{execute_agent_turn, inference_error, TurnExecutionInput};
     use crate::application::{
         CancelTaskCommand, CreateAgentCommand, CreateTaskCommand, ExecuteTaskCommand,
         GetTaskCommand, ListTasksCommand,
@@ -10046,12 +11140,13 @@ mod task_tests {
         IamGatedPolicyProvider, InMemoryAgentAuditSink, InMemoryAgentRepository,
     };
     use crate::ports::TaskListQuery;
+    use crate::turn_runtime::{execute_agent_turn, inference_error, TurnExecutionInput};
     use crate::turn_runtime::{TurnCancellationOutput, TurnExecutionOutput};
     use sdkwork_agent_kernel::{AgentManifest, PolicySubject};
     use std::sync::{Condvar, Mutex};
     use std::time::Duration;
 
-    fn sample_subject() -> PolicySubject {
+    pub(super) fn sample_subject() -> PolicySubject {
         PolicySubject {
             subject_id: "user.100".to_string(),
             tenant_id: "100001".to_string(),
@@ -10059,7 +11154,7 @@ mod task_tests {
         }
     }
 
-    fn test_policy_provider() -> IamGatedPolicyProvider {
+    pub(super) fn test_policy_provider() -> IamGatedPolicyProvider {
         IamGatedPolicyProvider::new("policy.agents.test.iam-gated")
     }
 
@@ -10083,7 +11178,7 @@ mod task_tests {
         }
     }
 
-    fn create_agent_cmd(
+    pub(super) fn create_agent_cmd(
         agent_id: &str,
         tenant_id: u64,
         organization_id: u64,
@@ -10982,9 +12077,10 @@ mod task_tests {
                 requested_by: sample_subject(),
                 requested_at: "2026-08-02T00:00:05Z".to_string(),
                 prefer_stream: false,
-            system_prompt: None,
-            auth_token: None,
-            access_token: None,
+                system_prompt: None,
+                auth_token: None,
+                access_token: None,
+                wire_protocol: None,
             })
         });
         executor.wait_until_started();
@@ -11033,7 +12129,6 @@ mod task_tests {
         assert!(persisted.response_item_id.is_none());
         assert_eq!((persisted.input_tokens, persisted.output_tokens), (0, 0));
     }
-
 
     /// Executor whose failure behavior can be switched mid-test so the same
     /// Turn can first fail and then succeed on a retried attempt.
@@ -11171,6 +12266,7 @@ mod task_tests {
             system_prompt: None,
             auth_token: None,
             access_token: None,
+            wire_protocol: None,
         };
 
         // First attempt: provider failure marks the Turn Failed.
@@ -11209,5 +12305,839 @@ mod task_tests {
         assert_eq!(resumed.turn.status, AgentTurnStatus::Completed);
         assert!(resumed.turn.response_item_id.is_some());
         assert_eq!(resumed.turn.error_code.as_deref(), None);
+    }
+}
+
+#[cfg(test)]
+mod agent_version_tests {
+    use super::task_tests::{create_agent_cmd, sample_subject, test_policy_provider};
+    use crate::application::AgentsService;
+    use crate::infrastructure::{InMemoryAgentAuditSink, InMemoryAgentRepository};
+    use crate::ports::AgentRepository;
+
+    const AGENT_VERSION_TEST_AT: &str = "2026-09-06T12:00:00Z";
+
+    fn agent_call_service() -> AgentsService<
+        InMemoryAgentRepository,
+        InMemoryAgentAuditSink,
+        crate::infrastructure::IamGatedPolicyProvider,
+    > {
+        AgentsService::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        )
+    }
+
+    fn seed_agent(
+        service: &AgentsService<
+            InMemoryAgentRepository,
+            InMemoryAgentAuditSink,
+            crate::infrastructure::IamGatedPolicyProvider,
+        >,
+    ) {
+        service
+            .create_agent(create_agent_cmd(
+                "agent.call.demo",
+                100001,
+                0,
+                100,
+                "call-demo",
+                "Call Demo",
+                "2026-09-06T00:00:00Z",
+            ))
+            .expect("seed agent");
+    }
+
+    type TestService = crate::application::AgentsService<
+        InMemoryAgentRepository,
+        InMemoryAgentAuditSink,
+        crate::infrastructure::IamGatedPolicyProvider,
+    >;
+
+    fn create_version(
+        service: &TestService,
+        version_id: &str,
+        occurred_at: &str,
+    ) -> crate::domain::AgentVersionRecord {
+        service
+            .create_agent_version(
+                100001,
+                0,
+                "agent.call.demo",
+                version_id.to_string(),
+                Some("release notes".to_string()),
+                sample_subject(),
+                occurred_at,
+            )
+            .expect("version snapshot should be created")
+    }
+
+    #[test]
+    fn versions_are_immutable_snapshots_with_monotonic_numbers() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let first = create_version(&service, "version.snapshot.1", "2026-09-06T08:00:00Z");
+        assert_eq!(first.version_number, 1);
+        assert_eq!(first.activated_at, None);
+
+        let second = create_version(&service, "version.snapshot.2", "2026-09-06T09:00:00Z");
+        assert_eq!(second.version_number, 2);
+
+        // Snapshot versionId is write-once.
+        let replay = service.create_agent_version(
+            100001,
+            0,
+            "agent.call.demo",
+            "version.snapshot.1".to_string(),
+            None,
+            sample_subject(),
+            "2026-09-06T10:00:00Z",
+        );
+        assert!(replay.is_err(), "replaying a versionId must conflict");
+
+        // Snapshots are immutable and independent of later definition edits.
+        let retrieved = service
+            .get_agent_version(
+                100001,
+                0,
+                "agent.call.demo",
+                "version.snapshot.1",
+                sample_subject(),
+            )
+            .expect("version should be retrievable");
+        assert_eq!(retrieved.manifest_json, first.manifest_json);
+        assert_eq!(retrieved.activated_at, None);
+    }
+
+    #[test]
+    fn activation_writes_manifest_back_and_rolls_back() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let baseline = create_version(&service, "version.baseline", "2026-09-06T08:00:00Z");
+
+        // Mutate the live definition after the snapshot.
+        let live = service
+            .repository
+            .get(100001, "agent.call.demo")
+            .expect("agent should exist")
+            .expect("agent should resolve");
+        let mut updated = live.clone();
+        updated.display_name = "Renamed After Snapshot".to_string();
+        updated.version += 1;
+        let updated_version = updated.version;
+        service
+            .repository
+            .update(updated)
+            .expect("live definition should update");
+
+        // Activating the baseline snapshot restores its immutable manifest.
+        let (version, record) = service
+            .activate_agent_version(
+                100001,
+                0,
+                "agent.call.demo",
+                "version.baseline",
+                sample_subject(),
+                AGENT_VERSION_TEST_AT,
+            )
+            .expect("activation should succeed");
+        assert_eq!(version.version_id, "version.baseline");
+        assert_eq!(version.activated_at.as_deref(), Some(AGENT_VERSION_TEST_AT));
+        assert_eq!(record.manifest, live.manifest);
+        let _ = baseline;
+
+        let restored = service
+            .repository
+            .get(100001, "agent.call.demo")
+            .expect("agent should exist")
+            .expect("agent should resolve");
+        assert_eq!(restored.manifest, live.manifest);
+        assert!(restored.version > updated_version);
+    }
+}
+
+#[cfg(test)]
+mod webhook_tests {
+    use super::task_tests::{sample_subject, test_policy_provider};
+    use crate::application::AgentsService;
+    use crate::infrastructure::{InMemoryAgentAuditSink, InMemoryAgentRepository};
+    use crate::ports::AgentRepository;
+    use crate::webhook::AgentWebhookEventType;
+
+    const WEBHOOK_TEST_AT: &str = "2026-09-06T14:00:00Z";
+
+    type TestService = AgentsService<
+        InMemoryAgentRepository,
+        InMemoryAgentAuditSink,
+        crate::infrastructure::IamGatedPolicyProvider,
+    >;
+
+    fn webhook_service() -> TestService {
+        AgentsService::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        )
+    }
+
+    fn create_subscription(service: &TestService, webhook_id: &str) {
+        service
+            .create_webhook_subscription(
+                100001,
+                0,
+                webhook_id.to_string(),
+                "https://hooks.example.com/sdkwork".to_string(),
+                vec![
+                    AgentWebhookEventType::AgentCallCompleted,
+                    AgentWebhookEventType::TaskRunFailed,
+                ],
+                Some("ops endpoint".to_string()),
+                100,
+                sample_subject(),
+                WEBHOOK_TEST_AT,
+            )
+            .expect("webhook subscription should be created");
+    }
+
+    #[test]
+    fn webhook_subscription_lifecycle_and_secret_hygiene() {
+        let service = webhook_service();
+        create_subscription(&service, "webhook.ops");
+
+        // The creation response echoes the secret exactly once.
+        let created = service
+            .repository
+            .get_webhook_subscription(100001, 0, "webhook.ops")
+            .expect("repository get")
+            .expect("subscription exists");
+        assert!(created.secret.starts_with("whsec_"));
+
+        // Retrieve and list responses redact the secret.
+        let fetched = service
+            .get_webhook_subscription(100001, 0, "webhook.ops", sample_subject())
+            .expect("webhook retrieve");
+        assert_eq!(fetched.url, "https://hooks.example.com/sdkwork");
+        assert_eq!(
+            fetched
+                .event_types
+                .iter()
+                .map(|event| event.as_str())
+                .collect::<Vec<_>>(),
+            vec!["agent_call.completed", "task_run.failed"]
+        );
+        assert_eq!(fetched.status.as_str(), "active");
+        assert_eq!(fetched.secret, "");
+
+        let listed = service
+            .list_webhook_subscriptions(
+                100001,
+                0,
+                crate::ports::PaginationParams::default(),
+                sample_subject(),
+            )
+            .expect("webhook list");
+        assert_eq!(listed.items.len(), 1);
+        assert_eq!(listed.items[0].secret, "");
+
+        // Recreating the same webhookId conflicts.
+        let conflict = service.create_webhook_subscription(
+            100001,
+            0,
+            "webhook.ops".to_string(),
+            "https://hooks.example.com/other".to_string(),
+            vec![AgentWebhookEventType::AgentCallCompleted],
+            None,
+            100,
+            sample_subject(),
+            WEBHOOK_TEST_AT,
+        );
+        assert!(conflict.is_err());
+
+        // Delete returns the record and removes it.
+        let deleted = service
+            .delete_webhook_subscription(100001, 0, "webhook.ops", sample_subject())
+            .expect("webhook delete");
+        assert_eq!(deleted.webhook_id, "webhook.ops");
+        let gone = service.get_webhook_subscription(100001, 0, "webhook.ops", sample_subject());
+        assert!(gone.is_err());
+    }
+
+    #[test]
+    fn webhook_test_delivery_builds_signed_queued_record_and_completes() {
+        let service = webhook_service();
+        create_subscription(&service, "webhook.ops");
+
+        let outcome = service
+            .test_webhook(100001, 0, "webhook.ops", sample_subject(), WEBHOOK_TEST_AT)
+            .expect("webhook test outcome");
+        assert_eq!(outcome.url, "https://hooks.example.com/sdkwork");
+        let delivery = &outcome.delivery;
+        assert_eq!(delivery.status, "queued");
+        assert_eq!(delivery.event_type, "agent_call.completed");
+        assert!(delivery.completed_at.is_none());
+        assert!(delivery.signature.starts_with("t="));
+        assert!(delivery.signature.contains(",v1="));
+
+        // The payload carries the test envelope and is verifiable with the
+        // stored secret.
+        let payload: serde_json::Value =
+            serde_json::from_str(&delivery.payload_json).expect("payload json");
+        assert_eq!(payload["type"], "agent_call.completed");
+        assert_eq!(payload["data"]["test"], true);
+
+        let completed = service
+            .complete_webhook_delivery(
+                100001,
+                0,
+                "webhook.ops",
+                delivery.delivery_id.as_str(),
+                "succeeded",
+                Some(200),
+                None,
+                "2026-09-06T14:00:01Z",
+            )
+            .expect("delivery completion");
+        assert_eq!(completed.status, "succeeded");
+        assert_eq!(completed.response_code, Some(200));
+        assert_eq!(
+            completed.completed_at.as_deref(),
+            Some("2026-09-06T14:00:01Z")
+        );
+
+        // Invalid terminal status is rejected fail-closed.
+        let rejected = service.complete_webhook_delivery(
+            100001,
+            0,
+            "webhook.ops",
+            delivery.delivery_id.as_str(),
+            "bogus",
+            None,
+            None,
+            "2026-09-06T14:00:02Z",
+        );
+        assert!(rejected.is_err());
+    }
+
+    #[test]
+    fn webhook_create_validates_url_and_event_types_fail_closed() {
+        let service = webhook_service();
+
+        // Plaintext HTTP is rejected.
+        let http_url = service.create_webhook_subscription(
+            100001,
+            0,
+            "webhook.insecure".to_string(),
+            "http://hooks.example.com/sdkwork".to_string(),
+            vec![AgentWebhookEventType::AgentCallCompleted],
+            None,
+            100,
+            sample_subject(),
+            WEBHOOK_TEST_AT,
+        );
+        assert!(http_url.is_err());
+
+        // Unknown event codes never reach the repository.
+        let unknown = service.create_webhook_subscription(
+            100001,
+            0,
+            "webhook.unknown".to_string(),
+            "https://hooks.example.com/sdkwork".to_string(),
+            vec![],
+            None,
+            100,
+            sample_subject(),
+            WEBHOOK_TEST_AT,
+        );
+        assert!(unknown.is_err());
+    }
+}
+
+#[cfg(test)]
+mod agent_call_tests {
+    use super::task_tests::{create_agent_cmd, sample_subject, test_policy_provider};
+    use crate::application::{AgentStructuredCallCommand, AgentsService};
+    use crate::domain::AgentRuntimeExecutionOperation;
+    use crate::infrastructure::{InMemoryAgentAuditSink, InMemoryAgentRepository};
+
+    const REQUESTED_AT: &str = "2026-09-06T00:00:00Z";
+
+    fn agent_call_service() -> AgentsService<
+        InMemoryAgentRepository,
+        InMemoryAgentAuditSink,
+        crate::infrastructure::IamGatedPolicyProvider,
+    > {
+        AgentsService::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        )
+    }
+
+    fn seed_agent(
+        service: &AgentsService<
+            InMemoryAgentRepository,
+            InMemoryAgentAuditSink,
+            crate::infrastructure::IamGatedPolicyProvider,
+        >,
+    ) {
+        service
+            .create_agent(create_agent_cmd(
+                "agent.call.demo",
+                100001,
+                0,
+                100,
+                "call-demo",
+                "Call Demo",
+                REQUESTED_AT,
+            ))
+            .expect("seed agent");
+    }
+
+    fn call_command(mode: &str) -> AgentStructuredCallCommand {
+        AgentStructuredCallCommand {
+            tenant_id: 100001,
+            agent_id: "agent.call.demo".to_string(),
+            execution_id: "execution.structuredcall.1".to_string(),
+            mode: mode.to_string(),
+            prompt: Some("return the answer as json".to_string()),
+            params: None,
+            param_schema: None,
+            output_format: "json".to_string(),
+            output_schema: None,
+            output_root_element: None,
+            strict: true,
+            timeout_ms: 60_000,
+            execution_mode: crate::domain::AgentCallExecutionMode::Sync,
+            requested_by: sample_subject(),
+            requested_at: REQUESTED_AT.to_string(),
+        }
+    }
+
+    #[test]
+    fn agent_call_fails_closed_without_active_binding() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let record = service
+            .create_agent_call(call_command("prompt"))
+            .expect("agent_failed is a completed business outcome, not a transport error");
+
+        assert_eq!(record.operation, AgentRuntimeExecutionOperation::AgentCall);
+        let payload: serde_json::Value =
+            serde_json::from_str(record.output_payload_json.as_str()).expect("payload json");
+        assert_eq!(payload["status"], "agent_failed");
+        assert_eq!(payload["output"], serde_json::Value::Null);
+        assert_eq!(payload["usage"]["runtimeMode"], "agents-runtime-facade");
+        assert_eq!(payload["correlation"]["executionId"], record.execution_id);
+        assert!(payload["agentError"]
+            .as_str()
+            .expect("engine failure recorded")
+            .contains("agent-engine provider binding"),);
+    }
+
+    #[test]
+    fn agent_call_rejects_invalid_execution_id() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let mut command = call_command("prompt");
+        command.execution_id = "not-an-execution-id".to_string();
+        let error = service
+            .create_agent_call(command)
+            .expect_err("invalid id must fail");
+        assert_eq!(
+            error.kind(),
+            sdkwork_agent_kernel::KernelErrorKind::ValidationError
+        );
+    }
+
+    #[test]
+    fn agent_call_rejects_unknown_mode_and_format_before_model() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let mut command = call_command("streaming");
+        command.execution_id = "execution.structuredcall.2".to_string();
+        let error = service
+            .create_agent_call(command)
+            .expect_err("unknown mode must fail");
+        assert_eq!(
+            error.kind(),
+            sdkwork_agent_kernel::KernelErrorKind::ValidationError
+        );
+
+        let mut command = call_command("prompt");
+        command.output_format = "yaml".to_string();
+        command.execution_id = "execution.structuredcall.3".to_string();
+        let error = service
+            .create_agent_call(command)
+            .expect_err("unknown output format must fail");
+        assert_eq!(
+            error.kind(),
+            sdkwork_agent_kernel::KernelErrorKind::ValidationError
+        );
+    }
+
+    #[test]
+    fn agent_call_async_queues_record_and_executes_to_terminal() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let mut command = call_command("prompt");
+        command.execution_id = "execution.structuredcall.async1".to_string();
+        command.execution_mode = crate::domain::AgentCallExecutionMode::Async;
+        let queued = service
+            .create_agent_call(command)
+            .expect("async create must queue the call");
+
+        assert_eq!(
+            queued.status,
+            crate::domain::AgentRuntimeExecutionStatus::Queued
+        );
+        let payload: serde_json::Value =
+            serde_json::from_str(queued.output_payload_json.as_str()).expect("payload json");
+        assert_eq!(payload["status"], "queued");
+        assert_eq!(payload["output"], serde_json::Value::Null);
+
+        let terminal = service
+            .execute_queued_agent_call(
+                100001,
+                "agent.call.demo",
+                "execution.structuredcall.async1",
+                sample_subject(),
+                "2026-09-06T00:00:05Z".to_string(),
+            )
+            .expect("queued call must reach a terminal state");
+
+        // No active binding -> fail-closed agent_failed outcome.
+        assert_eq!(
+            terminal.status,
+            crate::domain::AgentRuntimeExecutionStatus::Failed
+        );
+        let payload: serde_json::Value =
+            serde_json::from_str(terminal.output_payload_json.as_str()).expect("payload json");
+        assert_eq!(payload["status"], "agent_failed");
+        assert_eq!(payload["correlation"]["executionId"], terminal.execution_id);
+
+        // Re-execution after a terminal state must conflict.
+        let error = service
+            .execute_queued_agent_call(
+                100001,
+                "agent.call.demo",
+                "execution.structuredcall.async1",
+                sample_subject(),
+                "2026-09-06T00:00:06Z".to_string(),
+            )
+            .expect_err("terminal record must not re-execute");
+        assert_eq!(
+            error.kind(),
+            sdkwork_agent_kernel::KernelErrorKind::Conflict
+        );
+
+        // Retrieve must return the durable record.
+        let fetched = service
+            .get_agent_call(
+                100001,
+                "agent.call.demo",
+                "execution.structuredcall.async1",
+                sample_subject(),
+            )
+            .expect("durable record must be retrievable");
+        assert_eq!(fetched.execution_id, terminal.execution_id);
+    }
+
+    #[test]
+    fn agent_call_async_rejects_invalid_input_before_queueing() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let mut command = call_command("prompt");
+        command.execution_id = "execution.structuredcall.async2".to_string();
+        command.execution_mode = crate::domain::AgentCallExecutionMode::Async;
+        command.output_format = "yaml".to_string();
+        let error = service
+            .create_agent_call(command)
+            .expect_err("malformed async input must fail before queueing");
+        assert_eq!(
+            error.kind(),
+            sdkwork_agent_kernel::KernelErrorKind::ValidationError
+        );
+    }
+
+    #[test]
+    fn agent_call_list_orders_and_paginates_by_requested_at_desc() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        for (index, requested_at) in [
+            "2026-09-06T00:00:01Z",
+            "2026-09-06T00:00:02Z",
+            "2026-09-06T00:00:03Z",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut command = call_command("prompt");
+            command.execution_id = format!("execution.structuredcall.list{index}");
+            command.execution_mode = crate::domain::AgentCallExecutionMode::Async;
+            command.requested_at = requested_at.to_string();
+            service
+                .create_agent_call(command)
+                .expect("queued call must persist");
+        }
+
+        let page = service
+            .list_agent_calls(
+                100001,
+                "agent.call.demo",
+                None,
+                crate::ports::PaginationParams {
+                    page_size: 2,
+                    ..crate::ports::PaginationParams::default()
+                },
+                None,
+                sample_subject(),
+            )
+            .expect("first page");
+        assert_eq!(page.items.len(), 2);
+        assert!(page.has_more);
+        assert_eq!(page.items[0].execution_id, "execution.structuredcall.list2");
+        assert_eq!(page.items[1].execution_id, "execution.structuredcall.list1");
+
+        let page_two = service
+            .list_agent_calls(
+                100001,
+                "agent.call.demo",
+                None,
+                crate::ports::PaginationParams {
+                    page_size: 2,
+                    ..crate::ports::PaginationParams::default()
+                },
+                page.next_page_token,
+                sample_subject(),
+            )
+            .expect("second page");
+        assert_eq!(page_two.items.len(), 1);
+        assert_eq!(
+            page_two.items[0].execution_id,
+            "execution.structuredcall.list0"
+        );
+
+        // Status filter narrows to non-terminal records only (all queued here).
+        let queued = service
+            .list_agent_calls(
+                100001,
+                "agent.call.demo",
+                Some("queued".to_string()),
+                crate::ports::PaginationParams::default(),
+                None,
+                sample_subject(),
+            )
+            .expect("status-filtered page");
+        assert_eq!(queued.items.len(), 3);
+    }
+
+    #[test]
+    fn agent_call_recovery_marks_stale_records_failed() {
+        let service = agent_call_service();
+        seed_agent(&service);
+
+        let mut command = call_command("prompt");
+        command.execution_id = "execution.structuredcall.stale1".to_string();
+        command.execution_mode = crate::domain::AgentCallExecutionMode::Async;
+        command.requested_at = "2026-09-06T00:00:00Z".to_string();
+        service
+            .create_agent_call(command)
+            .expect("queued call must persist");
+
+        let recovered = service
+            .recover_stale_agent_calls(
+                100001,
+                "2026-09-06T01:00:00Z",
+                "2026-09-06T01:00:00Z".to_string(),
+                100,
+            )
+            .expect("recovery must succeed");
+        assert_eq!(recovered.len(), 1);
+        assert_eq!(
+            recovered[0].status,
+            crate::domain::AgentRuntimeExecutionStatus::Failed
+        );
+        let payload: serde_json::Value =
+            serde_json::from_str(recovered[0].output_payload_json.as_str()).expect("payload json");
+        assert_eq!(payload["status"], "failed");
+        assert!(payload["agentError"]
+            .as_str()
+            .expect("recovery error recorded")
+            .contains("recovered as failed"));
+
+        let again = service
+            .recover_stale_agent_calls(
+                100001,
+                "2026-09-06T02:00:00Z",
+                "2026-09-06T02:00:00Z".to_string(),
+                100,
+            )
+            .expect("second recovery must succeed");
+        assert!(again.is_empty(), "terminal records are not stale");
+    }
+
+    #[test]
+    fn agent_call_requires_existing_agent() {
+        let service = agent_call_service();
+        let error = service
+            .create_agent_call(call_command("prompt"))
+            .expect_err("missing agent must fail");
+        // not_found is carried as a ValidationError with an sdkwork.not_found
+        // detail so HTTP adapters map it to 404 without parsing message text.
+        assert_eq!(
+            error.kind(),
+            sdkwork_agent_kernel::KernelErrorKind::ValidationError
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Structured agent call record composition helpers
+// ---------------------------------------------------------------------------
+
+/// Serializes the durable input payload for one structured agent call. The
+/// payload is the replay source for async execution
+/// (`execute_queued_agent_call`).
+fn agent_call_input_payload_json(command: &AgentStructuredCallCommand) -> KernelResult<String> {
+    serde_json::to_string(&serde_json::json!({
+        "mode": command.mode,
+        "prompt": command.prompt,
+        "params": command.params,
+        "paramSchema": command.param_schema,
+        "output": {
+            "format": command.output_format,
+            "schema": command.output_schema,
+            "rootElement": command.output_root_element,
+            "strict": command.strict,
+        },
+        "policy": { "timeoutMs": command.timeout_ms },
+    }))
+    .map_err(|error| KernelError::validation(format!("agent call input encode failed: {error}")))
+}
+
+/// Rebuilds the structured call command from its durable input payload.
+fn agent_call_command_from_payload(
+    record: &AgentRuntimeExecutionRecord,
+) -> KernelResult<AgentStructuredCallCommand> {
+    let payload: serde_json::Value = serde_json::from_str(record.input_payload_json.as_str())
+        .map_err(|error| {
+            KernelError::validation(format!("agent call input payload decode failed: {error}"))
+        })?;
+    let output = payload
+        .get("output")
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!({}));
+    Ok(AgentStructuredCallCommand {
+        tenant_id: record.tenant_id,
+        agent_id: record.agent_id.clone(),
+        execution_id: record.execution_id.clone(),
+        mode: payload
+            .get("mode")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        prompt: payload
+            .get("prompt")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        params: payload
+            .get("params")
+            .cloned()
+            .filter(|value| !value.is_null()),
+        param_schema: payload
+            .get("paramSchema")
+            .cloned()
+            .filter(|value| !value.is_null()),
+        output_format: output
+            .get("format")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("json")
+            .to_string(),
+        output_schema: output
+            .get("schema")
+            .cloned()
+            .filter(|value| !value.is_null()),
+        output_root_element: output
+            .get("rootElement")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        strict: output
+            .get("strict")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true),
+        timeout_ms: payload
+            .get("policy")
+            .and_then(|policy| policy.get("timeoutMs"))
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(sdkwork_agents_runtime_facade::DEFAULT_STRUCTURED_CALL_TIMEOUT_MS),
+        execution_mode: crate::domain::AgentCallExecutionMode::Async,
+        requested_by: PolicySubject::new(
+            "system.agents.agent-call-executor",
+            record.tenant_id.to_string(),
+        ),
+        requested_at: record.requested_at.clone(),
+    })
+}
+
+/// Builds the terminal `AgentRuntimeExecutionRecord` for one structured call
+/// execution (shared by the sync path and async completion).
+fn compose_agent_call_record(
+    command: &AgentStructuredCallCommand,
+    input_payload_json: String,
+    execution: crate::runtime_facade_bridge::AgentCallExecution,
+    status: AgentRuntimeExecutionStatus,
+    completed_at: String,
+) -> AgentRuntimeExecutionRecord {
+    let call = execution.call;
+    let validation = crate::dto::AgentCallValidationDto {
+        valid: call.status == sdkwork_agents_runtime_facade::AgentCallStatus::Succeeded,
+        errors: call.validation_errors.clone(),
+    };
+    let record_dto = crate::dto::AgentCallRecordDto {
+        execution_id: command.execution_id.clone(),
+        agent_id: command.agent_id.clone(),
+        tenant_id: command.tenant_id.to_string(),
+        status: call.status.as_str().to_string(),
+        output: call.output.clone(),
+        raw_text: call.raw_text.clone(),
+        agent_error: call.agent_error.clone(),
+        validation,
+        usage: crate::dto::AgentCallUsageDto {
+            duration_ms: execution.duration_ms,
+            attempts: call.attempts,
+            runtime_mode: execution.runtime_mode.to_string(),
+        },
+        correlation: crate::dto::AgentCallCorrelationDto {
+            execution_id: command.execution_id.clone(),
+            agent_id: command.agent_id.clone(),
+            tenant_id: command.tenant_id.to_string(),
+        },
+    };
+    let output_payload_json = match serde_json::to_string(&record_dto) {
+        Ok(payload) => payload,
+        Err(_) => format!(
+            "{{\"executionId\":\"{}\",\"status\":\"failed\"}}",
+            command.execution_id
+        ),
+    };
+    AgentRuntimeExecutionRecord {
+        tenant_id: command.tenant_id,
+        agent_id: command.agent_id.clone(),
+        execution_id: command.execution_id.clone(),
+        operation: AgentRuntimeExecutionOperation::AgentCall,
+        status,
+        input_payload_json,
+        output_payload_json,
+        requested_at: command.requested_at.clone(),
+        completed_at,
     }
 }

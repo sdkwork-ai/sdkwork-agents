@@ -11,20 +11,21 @@ use crate::domain::{
     AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentItemDriveRefRecord,
     AgentItemFeedbackRating, AgentItemFeedbackRecord, AgentItemResourceRole,
     AgentProviderBindingRecord, AgentResourceType, AgentResourceUserStateRecord,
+    AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord, AgentRuntimeExecutionStatus,
     AgentSessionCheckpointRecord, AgentSessionCheckpointStatus, AgentSessionEntrySurface,
     AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionKind,
     AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentSessionRuntimeBindingStatus,
     AgentSessionStatus, AgentSessionTitleSource, AgentTaskRecord, AgentTaskStatus,
-    AgentToolAssetRecord, AgentToolConfigurationRecord, AgentVisibility,
+    AgentToolAssetRecord, AgentToolConfigurationRecord, AgentVersionRecord, AgentVisibility,
 };
 use crate::ports::{
     validate_completed_turn_items, AgentAuditSink, AgentListQuery, AgentRepository,
     AuditEventListQuery, CompositionSlotListQuery, InteractionListQuery, ItemFeedbackListQuery,
     McpMarketplaceListQuery, ProjectCompositionSlotListQuery, ProjectListQuery,
-    ProviderBindingListQuery, ResourceUserStateListQuery, SessionActivitySummaryListQuery,
-    SessionCheckpointListQuery, SessionItemListQuery, SessionItemListSort, SessionListQuery,
-    SessionRuntimeBindingListQuery, TaskListQuery, TurnListQuery, TurnRequestWriteOutcome,
-    WorkspaceListQuery,
+    ProviderBindingListQuery, ResourceUserStateListQuery, RuntimeExecutionListQuery,
+    SessionActivitySummaryListQuery, SessionCheckpointListQuery, SessionItemListQuery,
+    SessionItemListSort, SessionListQuery, SessionRuntimeBindingListQuery, TaskListQuery,
+    TurnListQuery, TurnRequestWriteOutcome, WorkspaceListQuery,
 };
 #[cfg(feature = "postgres-sync")]
 use crate::postgres_sync_pool::{BlockingPostgresPool, PgRow};
@@ -144,15 +145,21 @@ use sdkwork_database_id::{NodeAllocatorConfig, NodeLease, SnowflakeNodeAllocator
 mod sql;
 
 pub use sql::{
-    SQL_ACTIVATE_AGENT_PROVIDER_BINDING, SQL_COUNT_AGENT, SQL_COUNT_AGENT_COMPOSITION_SLOTS,
-    SQL_COUNT_AGENT_PROVIDER_BINDINGS, SQL_COUNT_AUDIT_EVENTS_BY_TENANT_AND_AGENT_ID,
-    SQL_COUNT_MCP_MARKETPLACE_SLOTS, SQL_DEACTIVATE_ACTIVE_AGENT_PROVIDER_BINDINGS,
+    SQL_ACTIVATE_AGENT_PROVIDER_BINDING, SQL_ACTIVATE_AGENT_VERSION, SQL_COMPLETE_WEBHOOK_DELIVERY,
+    SQL_COUNT_AGENT, SQL_COUNT_AGENT_COMPOSITION_SLOTS, SQL_COUNT_AGENT_PROVIDER_BINDINGS,
+    SQL_COUNT_AUDIT_EVENTS_BY_TENANT_AND_AGENT_ID, SQL_COUNT_MCP_MARKETPLACE_SLOTS,
+    SQL_DEACTIVATE_ACTIVE_AGENT_PROVIDER_BINDINGS, SQL_DELETE_WEBHOOK_SUBSCRIPTION,
     SQL_INSERT_AGENT, SQL_INSERT_AGENT_COMPOSITION_SLOT, SQL_INSERT_AGENT_PROVIDER_BINDING,
-    SQL_INSERT_AUDIT_EVENT, SQL_LIST_AGENT, SQL_LIST_AGENT_COMPOSITION_SLOTS,
-    SQL_LIST_AGENT_PROVIDER_BINDINGS, SQL_LIST_MCP_MARKETPLACE_SLOTS,
+    SQL_INSERT_AGENT_VERSION, SQL_INSERT_AUDIT_EVENT, SQL_INSERT_RUNTIME_EXECUTION,
+    SQL_INSERT_WEBHOOK_DELIVERY, SQL_INSERT_WEBHOOK_SUBSCRIPTION, SQL_LIST_AGENT,
+    SQL_LIST_AGENT_COMPOSITION_SLOTS, SQL_LIST_AGENT_PROVIDER_BINDINGS,
+    SQL_LIST_AGENT_USAGE_RECORDS, SQL_LIST_AGENT_VERSIONS, SQL_LIST_MCP_MARKETPLACE_SLOTS,
+    SQL_LIST_RUNTIME_EXECUTIONS, SQL_LIST_STALE_RUNTIME_EXECUTIONS, SQL_LIST_WEBHOOK_SUBSCRIPTIONS,
     SQL_SELECT_ACTIVE_AGENT_PROVIDER_BINDING, SQL_SELECT_AGENT_BY_TENANT_AND_AGENT_ID,
-    SQL_SELECT_AGENT_COMPOSITION_SLOT, SQL_SELECT_AGENT_PROVIDER_BINDING, SQL_UPDATE_AGENT,
-    SQL_UPDATE_AGENT_COMPOSITION_SLOT, SQL_UPDATE_AGENT_PROVIDER_BINDING,
+    SQL_SELECT_AGENT_COMPOSITION_SLOT, SQL_SELECT_AGENT_PROVIDER_BINDING, SQL_SELECT_AGENT_VERSION,
+    SQL_SELECT_RUNTIME_EXECUTION, SQL_SELECT_WEBHOOK_DELIVERY, SQL_SELECT_WEBHOOK_SUBSCRIPTION,
+    SQL_SUMMARIZE_AGENT_USAGE, SQL_UPDATE_AGENT, SQL_UPDATE_AGENT_COMPOSITION_SLOT,
+    SQL_UPDATE_AGENT_PROVIDER_BINDING, SQL_UPDATE_RUNTIME_EXECUTION,
 };
 #[cfg(feature = "postgres-sync")]
 pub use sql::{
@@ -185,12 +192,14 @@ pub use sql::{
     SQL_SELECT_AGENT_PROJECT_BY_WORKSPACE_NAME, SQL_SELECT_AGENT_PROJECT_COMPOSITION_SLOT,
     SQL_SELECT_AGENT_RESOURCE_USER_STATE, SQL_SELECT_AGENT_SESSION,
     SQL_SELECT_AGENT_SESSION_BY_CREATE_IDEMPOTENCY, SQL_SELECT_AGENT_SESSION_CHECKPOINT,
-    SQL_SELECT_AGENT_SESSION_ITEM, SQL_SELECT_AGENT_SESSION_RUNTIME_BINDING,
+    SQL_SELECT_AGENT_SESSION_ITEM, SQL_SELECT_AGENT_SESSION_ITEM_ID_BY_TURN_AND_KIND,
+    SQL_SELECT_AGENT_SESSION_RUNTIME_BINDING,
     SQL_SELECT_AGENT_SESSION_RUNTIME_BINDING_BY_PROVIDER_SESSION, SQL_SELECT_AGENT_TASK,
     SQL_SELECT_AGENT_TOOL_CONFIGURATION, SQL_SELECT_AGENT_TURN,
-    SQL_SELECT_AGENT_TURN_BY_IDEMPOTENCY, SQL_SELECT_AGENT_WORKSPACE,
-    SQL_SELECT_CURRENT_AGENT_SESSION_RUNTIME_BINDING, SQL_SELECT_DEFAULT_AGENT_WORKSPACE,
-    SQL_SELECT_TASK_SCHEDULER_METRICS_SNAPSHOT, SQL_SELECT_TURN_INPUT_QUEUE_ENTRY,
+    SQL_SELECT_AGENT_TURN_BY_IDEMPOTENCY, SQL_SELECT_AGENT_TURN_FOR_UPDATE,
+    SQL_SELECT_AGENT_WORKSPACE, SQL_SELECT_CURRENT_AGENT_SESSION_RUNTIME_BINDING,
+    SQL_SELECT_DEFAULT_AGENT_WORKSPACE, SQL_SELECT_TASK_SCHEDULER_METRICS_SNAPSHOT,
+    SQL_SELECT_TURN_INPUT_QUEUE_ENTRY, SQL_SELECT_TURN_STREAMING_CONTENT,
     SQL_UPDATE_AGENT_INTERACTION, SQL_UPDATE_AGENT_PROJECT,
     SQL_UPDATE_AGENT_PROJECT_COMPOSITION_SLOT, SQL_UPDATE_AGENT_SESSION,
     SQL_UPDATE_AGENT_SESSION_CHECKPOINT, SQL_UPDATE_AGENT_SESSION_ITEM,
@@ -1540,6 +1549,185 @@ impl AgentSessionItemRow {
 // AgentInteractionRow — persistence row for ai_agent_interaction
 // ============================================================================
 
+/// Durable row shape for `ai_agent_version`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentVersionRow {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub agent_id: String,
+    pub version_id: String,
+    pub version_number: u64,
+    pub manifest_json: String,
+    pub default_code_task_intent_json: Option<String>,
+    pub implementation_provider_id: Option<String>,
+    pub implementation_kind: Option<String>,
+    pub implementation_type: String,
+    pub description: Option<String>,
+    pub created_by: u64,
+    pub created_at: String,
+    pub activated_at: Option<String>,
+}
+
+impl AgentVersionRow {
+    pub fn from_record(record: &AgentVersionRecord) -> Self {
+        Self {
+            id: record.id,
+            tenant_id: record.tenant_id,
+            organization_id: record.organization_id,
+            agent_id: record.agent_id.clone(),
+            version_id: record.version_id.clone(),
+            version_number: record.version_number,
+            manifest_json: record.manifest_json.clone(),
+            default_code_task_intent_json: record.default_code_task_intent_json.clone(),
+            implementation_provider_id: record.implementation_provider_id.clone(),
+            implementation_kind: record
+                .implementation_kind
+                .map(|kind| kind.as_str().to_string()),
+            implementation_type: record.implementation_type.as_str().to_string(),
+            description: record.description.clone(),
+            created_by: record.created_by,
+            created_at: record.created_at.clone(),
+            activated_at: record.activated_at.clone(),
+        }
+    }
+
+    pub fn into_record(self) -> KernelResult<AgentVersionRecord> {
+        Ok(AgentVersionRecord {
+            id: self.id,
+            tenant_id: self.tenant_id,
+            organization_id: self.organization_id,
+            agent_id: self.agent_id,
+            version_id: self.version_id,
+            version_number: self.version_number,
+            manifest_json: self.manifest_json,
+            default_code_task_intent_json: self.default_code_task_intent_json,
+            implementation_provider_id: self.implementation_provider_id,
+            implementation_kind: self
+                .implementation_kind
+                .as_deref()
+                .map(parse_implementation_kind)
+                .transpose()?,
+            implementation_type: parse_implementation_type(&self.implementation_type)?,
+            description: self.description,
+            created_by: self.created_by,
+            created_at: self.created_at,
+            activated_at: self.activated_at,
+        })
+    }
+}
+
+/// Durable row shape for `ai_agent_webhook_subscription`. The signing secret
+/// is stored as-is and is never re-exposed through read APIs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentWebhookRow {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub webhook_id: String,
+    pub url: String,
+    pub event_types_json: String,
+    pub status: i16,
+    pub secret: String,
+    pub description: Option<String>,
+    pub created_by: u64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl AgentWebhookRow {
+    pub fn from_record(record: &crate::webhook::AgentWebhookRecord) -> Self {
+        Self {
+            id: record.id,
+            tenant_id: record.tenant_id,
+            organization_id: record.organization_id,
+            webhook_id: record.webhook_id.clone(),
+            url: record.url.clone(),
+            event_types_json: crate::webhook::event_types_to_json(&record.event_types),
+            status: record.status.as_db_code(),
+            secret: record.secret.clone(),
+            description: record.description.clone(),
+            created_by: record.created_by,
+            created_at: record.created_at.clone(),
+            updated_at: record.updated_at.clone(),
+        }
+    }
+
+    pub fn into_record(self) -> KernelResult<crate::webhook::AgentWebhookRecord> {
+        Ok(crate::webhook::AgentWebhookRecord {
+            id: self.id,
+            tenant_id: self.tenant_id,
+            organization_id: self.organization_id,
+            webhook_id: self.webhook_id,
+            url: self.url,
+            event_types: crate::webhook::event_types_from_json(&self.event_types_json)?,
+            status: crate::webhook::AgentWebhookStatus::from_db_code(self.status)
+                .ok_or_else(|| KernelError::validation("unknown webhook status code"))?,
+            secret: self.secret,
+            description: self.description,
+            created_by: self.created_by,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        })
+    }
+}
+
+/// Durable row shape for `ai_agent_webhook_delivery`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentWebhookDeliveryRow {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub webhook_id: String,
+    pub delivery_id: String,
+    pub event_type: String,
+    pub payload_json: String,
+    pub signature: String,
+    pub status: String,
+    pub response_code: Option<i32>,
+    pub error_detail: Option<String>,
+    pub created_at: String,
+    pub completed_at: Option<String>,
+}
+
+impl AgentWebhookDeliveryRow {
+    pub fn from_record(record: &crate::webhook::AgentWebhookDeliveryRecord) -> Self {
+        Self {
+            id: record.id,
+            tenant_id: record.tenant_id,
+            organization_id: record.organization_id,
+            webhook_id: record.webhook_id.clone(),
+            delivery_id: record.delivery_id.clone(),
+            event_type: record.event_type.clone(),
+            payload_json: record.payload_json.clone(),
+            signature: record.signature.clone(),
+            status: record.status.clone(),
+            response_code: record.response_code,
+            error_detail: record.error_detail.clone(),
+            created_at: record.created_at.clone(),
+            completed_at: record.completed_at.clone(),
+        }
+    }
+
+    pub fn into_record(self) -> KernelResult<crate::webhook::AgentWebhookDeliveryRecord> {
+        Ok(crate::webhook::AgentWebhookDeliveryRecord {
+            id: self.id,
+            tenant_id: self.tenant_id,
+            organization_id: self.organization_id,
+            webhook_id: self.webhook_id,
+            delivery_id: self.delivery_id,
+            event_type: self.event_type,
+            payload_json: self.payload_json,
+            signature: self.signature,
+            status: self.status,
+            response_code: self.response_code,
+            error_detail: self.error_detail,
+            created_at: self.created_at,
+            completed_at: self.completed_at,
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentTurnRow {
     pub id: u64,
@@ -2234,7 +2422,187 @@ pub enum AgentTurnRequestRowsOutcome {
 /// (e.g. an `Arc<Mutex<...>>` wrapped pool or a connection pool that
 /// internally manages transactional state). This aligns with the stateless
 /// `AgentRepository` trait and eliminates the global Mutex bottleneck.
+/// Storage row for one runtime execution record
+/// (`ai_agent_runtime_execution`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentRuntimeExecutionRow {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub agent_id: String,
+    pub execution_id: String,
+    pub operation: String,
+    pub status: String,
+    pub input_payload_json: String,
+    pub output_payload_json: String,
+    pub requested_at: String,
+    pub completed_at: String,
+}
+
+impl AgentRuntimeExecutionRow {
+    pub fn from_record(record: &AgentRuntimeExecutionRecord) -> Self {
+        Self {
+            id: 0,
+            tenant_id: record.tenant_id,
+            agent_id: record.agent_id.clone(),
+            execution_id: record.execution_id.clone(),
+            operation: record.operation.as_str().to_string(),
+            status: record.status.as_str().to_string(),
+            input_payload_json: record.input_payload_json.clone(),
+            output_payload_json: record.output_payload_json.clone(),
+            requested_at: record.requested_at.clone(),
+            completed_at: record.completed_at.clone(),
+        }
+    }
+
+    pub fn into_record(self) -> KernelResult<AgentRuntimeExecutionRecord> {
+        let status =
+            AgentRuntimeExecutionStatus::from_code(self.status.as_str()).ok_or_else(|| {
+                KernelError::validation(format!(
+                    "unknown runtime execution status: {}",
+                    self.status
+                ))
+            })?;
+        let operation = AgentRuntimeExecutionOperation::from_code(self.operation.as_str())
+            .ok_or_else(|| {
+                KernelError::validation(format!(
+                    "unknown runtime execution operation: {}",
+                    self.operation
+                ))
+            })?;
+        Ok(AgentRuntimeExecutionRecord {
+            tenant_id: self.tenant_id,
+            agent_id: self.agent_id,
+            execution_id: self.execution_id,
+            operation,
+            status,
+            input_payload_json: self.input_payload_json,
+            output_payload_json: self.output_payload_json,
+            requested_at: self.requested_at,
+            completed_at: self.completed_at,
+        })
+    }
+
+    #[cfg(feature = "postgres-sync")]
+    fn from_pg_row(row: &PgRow) -> KernelResult<Self> {
+        Ok(Self {
+            id: int64_to_u64(row.try_get::<i64, _>("id").map_err(map_sqlx_error)?, "id")?,
+            tenant_id: int64_to_u64(
+                row.try_get::<i64, _>("tenant_id").map_err(map_sqlx_error)?,
+                "tenant_id",
+            )?,
+            agent_id: row.try_get("agent_id").map_err(map_sqlx_error)?,
+            execution_id: row.try_get("execution_id").map_err(map_sqlx_error)?,
+            operation: row.try_get("operation").map_err(map_sqlx_error)?,
+            status: row.try_get("status").map_err(map_sqlx_error)?,
+            input_payload_json: row.try_get("input_payload_json").map_err(map_sqlx_error)?,
+            output_payload_json: row.try_get("output_payload_json").map_err(map_sqlx_error)?,
+            requested_at: row.try_get("requested_at").map_err(map_sqlx_error)?,
+            completed_at: row.try_get("completed_at").map_err(map_sqlx_error)?,
+        })
+    }
+}
+
 pub trait AgentRepositoryAdapter: Send + Sync {
+    fn insert_runtime_execution_row(&self, row: AgentRuntimeExecutionRow) -> KernelResult<()>;
+
+    fn update_runtime_execution_row(&self, row: AgentRuntimeExecutionRow) -> KernelResult<()>;
+
+    fn get_runtime_execution_row(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+    ) -> KernelResult<Option<AgentRuntimeExecutionRow>>;
+
+    fn list_runtime_execution_rows(
+        &self,
+        query: &RuntimeExecutionListQuery,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRow>>;
+
+    fn list_stale_runtime_execution_rows(
+        &self,
+        tenant_id: u64,
+        updated_before: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRow>>;
+
+    fn summarize_usage(
+        &self,
+        query: &crate::usage::UsageSummaryQuery,
+    ) -> KernelResult<crate::usage::AgentUsageSummary>;
+
+    fn list_usage_record_rows(
+        &self,
+        query: &crate::usage::UsageRecordListQuery,
+    ) -> KernelResult<Vec<crate::usage::AgentUsageRecord>>;
+
+    fn insert_agent_version_row(&self, row: AgentVersionRow) -> KernelResult<()>;
+
+    fn get_agent_version_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+    ) -> KernelResult<Option<AgentVersionRow>>;
+
+    fn list_agent_version_rows(
+        &self,
+        query: &crate::ports::AgentVersionListQuery,
+    ) -> KernelResult<Vec<AgentVersionRow>>;
+
+    fn activate_agent_version_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        activated_at: &str,
+    ) -> KernelResult<Option<AgentVersionRow>>;
+
+    fn insert_webhook_subscription_row(&self, row: AgentWebhookRow) -> KernelResult<()>;
+
+    fn get_webhook_subscription_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<Option<AgentWebhookRow>>;
+
+    fn list_webhook_subscription_rows(
+        &self,
+        query: &crate::ports::WebhookSubscriptionListQuery,
+    ) -> KernelResult<Vec<AgentWebhookRow>>;
+
+    fn delete_webhook_subscription_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<u64>;
+
+    fn insert_webhook_delivery_row(&self, row: AgentWebhookDeliveryRow) -> KernelResult<()>;
+
+    fn get_webhook_delivery_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+    ) -> KernelResult<Option<AgentWebhookDeliveryRow>>;
+
+    fn complete_webhook_delivery_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+        status: &str,
+        response_code: Option<i32>,
+        error_detail: Option<String>,
+        completed_at: &str,
+    ) -> KernelResult<u64>;
+
     fn check_readiness(&self) -> KernelResult<()>;
     fn next_id(&self) -> KernelResult<u64>;
     fn insert_row(&self, row: AgentBusinessRow) -> KernelResult<()>;
@@ -2678,6 +3046,29 @@ pub trait AgentRepositoryAdapter: Send + Sync {
             message: "clear_turn_streaming_content requires an adapter override".to_string(),
         })
     }
+    /// Reads the retained streaming checkpoint of one Turn, if any.
+    fn read_turn_streaming_content_record(
+        &self,
+        _tenant_id: u64,
+        _organization_id: u64,
+        _turn_id: &str,
+    ) -> KernelResult<Option<String>> {
+        Err(KernelError::Internal {
+            message: "read_turn_streaming_content_record requires an adapter override".to_string(),
+        })
+    }
+    /// Promotes the streaming checkpoint of a failed/cancelled Turn into a
+    /// durable partial assistant-output item. Idempotent; the checkpoint value
+    /// stored in the adapter is authoritative for the promoted content.
+    fn append_interrupted_turn_output_record(
+        &self,
+        _item: AgentSessionItemRow,
+    ) -> KernelResult<Option<AgentSessionItemRow>> {
+        Err(KernelError::Internal {
+            message: "append_interrupted_turn_output_record requires an adapter override"
+                .to_string(),
+        })
+    }
     fn insert_turn_request_rows(
         &self,
         _turn: AgentTurnRow,
@@ -2816,6 +3207,214 @@ where
 
     fn count_agents(&self, query: &AgentListQuery) -> KernelResult<u64> {
         self.adapter.count_rows(query)
+    }
+
+    fn insert_runtime_execution(&self, record: AgentRuntimeExecutionRecord) -> KernelResult<()> {
+        let mut row = AgentRuntimeExecutionRow::from_record(&record);
+        row.id = self.adapter.next_id()?;
+        self.adapter.insert_runtime_execution_row(row)
+    }
+
+    fn update_runtime_execution(&self, record: AgentRuntimeExecutionRecord) -> KernelResult<()> {
+        self.adapter
+            .update_runtime_execution_row(AgentRuntimeExecutionRow::from_record(&record))
+    }
+
+    fn get_runtime_execution(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+    ) -> KernelResult<Option<AgentRuntimeExecutionRecord>> {
+        self.adapter
+            .get_runtime_execution_row(tenant_id, agent_id, execution_id)?
+            .map(AgentRuntimeExecutionRow::into_record)
+            .transpose()
+    }
+
+    fn list_runtime_executions(
+        &self,
+        query: &RuntimeExecutionListQuery,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRecord>> {
+        self.adapter
+            .list_runtime_execution_rows(query)?
+            .into_iter()
+            .map(AgentRuntimeExecutionRow::into_record)
+            .collect()
+    }
+
+    fn list_stale_runtime_executions(
+        &self,
+        tenant_id: u64,
+        updated_before: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRecord>> {
+        self.adapter
+            .list_stale_runtime_execution_rows(tenant_id, updated_before, limit)?
+            .into_iter()
+            .map(AgentRuntimeExecutionRow::into_record)
+            .collect()
+    }
+
+    fn summarize_usage(
+        &self,
+        query: &crate::usage::UsageSummaryQuery,
+    ) -> KernelResult<crate::usage::AgentUsageSummary> {
+        self.adapter.summarize_usage(query)
+    }
+
+    fn list_usage_records(
+        &self,
+        query: &crate::usage::UsageRecordListQuery,
+    ) -> KernelResult<Vec<crate::usage::AgentUsageRecord>> {
+        self.adapter.list_usage_record_rows(query)
+    }
+
+    fn insert_agent_version(
+        &self,
+        record: crate::domain::AgentVersionRecord,
+    ) -> KernelResult<crate::domain::AgentVersionRecord> {
+        let row = AgentVersionRow::from_record(&record);
+        self.adapter.insert_agent_version_row(row)?;
+        Ok(record)
+    }
+
+    fn get_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentVersionRecord>> {
+        self.adapter
+            .get_agent_version_row(tenant_id, organization_id, agent_id, version_id)?
+            .map(AgentVersionRow::into_record)
+            .transpose()
+    }
+
+    fn list_agent_versions(
+        &self,
+        query: &crate::ports::AgentVersionListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentVersionRecord>> {
+        self.adapter
+            .list_agent_version_rows(query)?
+            .into_iter()
+            .map(AgentVersionRow::into_record)
+            .collect()
+    }
+
+    fn activate_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        activated_at: &str,
+    ) -> KernelResult<Option<crate::domain::AgentVersionRecord>> {
+        self.adapter
+            .activate_agent_version_row(
+                tenant_id,
+                organization_id,
+                agent_id,
+                version_id,
+                activated_at,
+            )?
+            .map(AgentVersionRow::into_record)
+            .transpose()
+    }
+
+    fn insert_webhook_subscription(
+        &self,
+        record: crate::webhook::AgentWebhookRecord,
+    ) -> KernelResult<crate::webhook::AgentWebhookRecord> {
+        self.adapter
+            .insert_webhook_subscription_row(AgentWebhookRow::from_record(&record))?;
+        Ok(record)
+    }
+
+    fn get_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<Option<crate::webhook::AgentWebhookRecord>> {
+        self.adapter
+            .get_webhook_subscription_row(tenant_id, organization_id, webhook_id)?
+            .map(AgentWebhookRow::into_record)
+            .transpose()
+    }
+
+    fn list_webhook_subscriptions(
+        &self,
+        query: &crate::ports::WebhookSubscriptionListQuery,
+    ) -> KernelResult<Vec<crate::webhook::AgentWebhookRecord>> {
+        self.adapter
+            .list_webhook_subscription_rows(query)?
+            .into_iter()
+            .map(AgentWebhookRow::into_record)
+            .collect()
+    }
+
+    fn delete_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<Option<crate::webhook::AgentWebhookRecord>> {
+        let existing = self
+            .adapter
+            .get_webhook_subscription_row(tenant_id, organization_id, webhook_id)?
+            .map(AgentWebhookRow::into_record)
+            .transpose()?;
+        if existing.is_some() {
+            self.adapter
+                .delete_webhook_subscription_row(tenant_id, organization_id, webhook_id)?;
+        }
+        Ok(existing)
+    }
+
+    fn insert_webhook_delivery(
+        &self,
+        record: crate::webhook::AgentWebhookDeliveryRecord,
+    ) -> KernelResult<crate::webhook::AgentWebhookDeliveryRecord> {
+        self.adapter
+            .insert_webhook_delivery_row(AgentWebhookDeliveryRow::from_record(&record))?;
+        Ok(record)
+    }
+
+    fn complete_webhook_delivery(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+        status: &str,
+        response_code: Option<i32>,
+        error_detail: Option<String>,
+        completed_at: &str,
+    ) -> KernelResult<crate::webhook::AgentWebhookDeliveryRecord> {
+        let updated = self.adapter.complete_webhook_delivery_row(
+            tenant_id,
+            organization_id,
+            webhook_id,
+            delivery_id,
+            status,
+            response_code,
+            error_detail,
+            completed_at,
+        )?;
+        if updated == 0 {
+            return Err(KernelError::not_found(format!(
+                "webhook delivery not found: {delivery_id}"
+            )));
+        }
+        self.adapter
+            .get_webhook_delivery_row(tenant_id, organization_id, webhook_id, delivery_id)?
+            .map(AgentWebhookDeliveryRow::into_record)
+            .transpose()?
+            .ok_or_else(|| {
+                KernelError::not_found(format!("webhook delivery not found: {delivery_id}"))
+            })
     }
 
     fn insert_workspace(&self, record: AgentWorkspaceRecord) -> KernelResult<()> {
@@ -3808,6 +4407,28 @@ where
             .clear_turn_streaming_content(tenant_id, organization_id, turn_id)
     }
 
+    fn read_turn_streaming_content(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+    ) -> KernelResult<Option<String>> {
+        self.adapter
+            .read_turn_streaming_content_record(tenant_id, organization_id, turn_id)
+    }
+
+    fn append_interrupted_turn_output(
+        &self,
+        record: AgentSessionItemRecord,
+    ) -> KernelResult<Option<AgentSessionItemRecord>> {
+        let item_row = AgentSessionItemRow::from_record(&record)?;
+        Ok(self
+            .adapter
+            .append_interrupted_turn_output_record(item_row)?
+            .map(|row| row.into_record())
+            .transpose()?)
+    }
+
     fn insert_turn_request(
         &self,
         turn: AgentTurnRecord,
@@ -4795,6 +5416,86 @@ async fn insert_session_item_in_transaction(
     Ok(())
 }
 
+/// Promotes the streaming checkpoint of a failed/cancelled Turn into one
+/// durable partial assistant-output item. Runs inside an open transaction:
+/// the Turn row is locked `FOR UPDATE`, the checkpoint stored in the Turn row
+/// is authoritative for the promoted content, the promotion happens at most
+/// once per Turn, and the checkpoint is consumed atomically with the insert.
+#[cfg(feature = "postgres-sync")]
+async fn append_interrupted_turn_output_in_transaction(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    item: &AgentSessionItemRow,
+) -> Result<Option<AgentSessionItemRow>, sqlx::Error> {
+    let tenant_id = u64_to_i64(item.tenant_id, "item.tenant_id").map_err(transaction_error)?;
+    let organization_id =
+        u64_to_i64(item.organization_id, "item.organization_id").map_err(transaction_error)?;
+    let turn_id = item.turn_id.clone().ok_or_else(|| {
+        transaction_error(KernelError::validation(
+            "interrupted turn output requires a turn",
+        ))
+    })?;
+
+    let row = sqlx::query(SQL_SELECT_AGENT_TURN_FOR_UPDATE)
+        .bind(tenant_id)
+        .bind(organization_id)
+        .bind(&turn_id)
+        .fetch_optional(&mut **tx)
+        .await?
+        .ok_or_else(|| transaction_error(KernelError::not_found("turn not found")))?;
+    let checkpoint: Option<String> = row
+        .try_get("streaming_content")
+        .map_err(map_sqlx_error)
+        .map_err(transaction_error)?;
+    let turn = pg_row_to_agent_turn_row(row).map_err(transaction_error)?;
+    if turn.session_id != item.session_id {
+        return Err(transaction_error(KernelError::validation(
+            "interrupted turn output scope mismatch",
+        )));
+    }
+    if turn.status != AgentTurnStatus::Failed.as_db_code()
+        && turn.status != AgentTurnStatus::Cancelled.as_db_code()
+    {
+        // Not a promotable terminal state: nothing to do (idempotent no-op).
+        return Ok(None);
+    }
+    let Some(checkpoint) = checkpoint.filter(|content| !content.trim().is_empty()) else {
+        return Ok(None);
+    };
+
+    // Promote at most once per Turn: an existing assistant item wins.
+    let existing = sqlx::query(SQL_SELECT_AGENT_SESSION_ITEM_ID_BY_TURN_AND_KIND)
+        .bind(tenant_id)
+        .bind(organization_id)
+        .bind(&item.session_id)
+        .bind(&turn_id)
+        .bind(AgentSessionItemKind::AssistantOutput.as_db_code())
+        .fetch_optional(&mut **tx)
+        .await?;
+    if existing.is_some() {
+        return Ok(None);
+    }
+
+    let mut promoted = item.clone();
+    let session = record_session_item_in_transaction(tx, &promoted, true).await?;
+    if session.agent_id != turn.agent_id || session.owner_user_id != turn.owner_user_id {
+        return Err(transaction_error(KernelError::validation(
+            "interrupted turn output does not belong to the Session agent and owner",
+        )));
+    }
+    promoted.sequence = session.last_item_sequence;
+    promoted.content = Some(checkpoint);
+    insert_session_item_in_transaction(tx, &promoted).await?;
+
+    // Consume the checkpoint atomically with the promotion.
+    sqlx::query(SQL_CLEAR_TURN_STREAMING_CONTENT)
+        .bind(tenant_id)
+        .bind(organization_id)
+        .bind(&turn_id)
+        .execute(&mut **tx)
+        .await?;
+    Ok(Some(promoted))
+}
+
 #[cfg(feature = "postgres-sync")]
 async fn insert_drive_ref_in_transaction(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -4836,6 +5537,514 @@ async fn insert_drive_ref_in_transaction(
 
 #[cfg(feature = "postgres-sync")]
 impl AgentRepositoryAdapter for SyncPostgresAdapter {
+    fn insert_runtime_execution_row(&self, row: AgentRuntimeExecutionRow) -> KernelResult<()> {
+        let id = u64_to_i64(row.id, "id")?;
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_INSERT_RUNTIME_EXECUTION,
+                id,
+                tenant_id,
+                row.agent_id,
+                row.execution_id,
+                row.operation,
+                row.status,
+                row.input_payload_json,
+                row.output_payload_json,
+                row.requested_at,
+                row.completed_at
+            )?;
+            Ok(())
+        })
+    }
+
+    fn update_runtime_execution_row(&self, row: AgentRuntimeExecutionRow) -> KernelResult<()> {
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+
+        self.with_pool(|pool| {
+            let updated = pg_execute!(
+                pool,
+                SQL_UPDATE_RUNTIME_EXECUTION,
+                row.status,
+                row.output_payload_json,
+                row.completed_at,
+                tenant_id,
+                row.agent_id,
+                row.execution_id
+            )?;
+            if updated == 0 {
+                return Err(KernelError::not_found("runtime execution not found"));
+            }
+            Ok(())
+        })
+    }
+
+    fn get_runtime_execution_row(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+    ) -> KernelResult<Option<AgentRuntimeExecutionRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_SELECT_RUNTIME_EXECUTION,
+                tenant_id,
+                agent_id,
+                execution_id
+            )?;
+            row.map(|value| AgentRuntimeExecutionRow::from_pg_row(&value))
+                .transpose()
+        })
+    }
+
+    fn list_runtime_execution_rows(
+        &self,
+        query: &RuntimeExecutionListQuery,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRow>> {
+        let tenant_id = u64_to_i64(query.tenant_id, "tenant_id")?;
+        let store_limit = query.pagination.page_size.saturating_add(1) as i64;
+        let cursor_requested_at = query
+            .cursor
+            .as_ref()
+            .map(|cursor| cursor.requested_at.as_str());
+        let cursor_execution_id = query
+            .cursor
+            .as_ref()
+            .map(|cursor| cursor.execution_id.as_str());
+        self.with_pool(|pool| {
+            let rows = pg_query!(
+                pool,
+                SQL_LIST_RUNTIME_EXECUTIONS,
+                tenant_id,
+                query.agent_id,
+                query.status,
+                cursor_requested_at,
+                cursor_execution_id,
+                store_limit
+            )?;
+            rows.iter()
+                .map(AgentRuntimeExecutionRow::from_pg_row)
+                .collect()
+        })
+    }
+
+    fn list_stale_runtime_execution_rows(
+        &self,
+        tenant_id: u64,
+        updated_before: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentRuntimeExecutionRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        self.with_pool(|pool| {
+            let rows = pg_query!(
+                pool,
+                SQL_LIST_STALE_RUNTIME_EXECUTIONS,
+                tenant_id,
+                updated_before,
+                limit.clamp(1, 1_000) as i64
+            )?;
+            rows.iter()
+                .map(AgentRuntimeExecutionRow::from_pg_row)
+                .collect()
+        })
+    }
+
+    fn summarize_usage(
+        &self,
+        query: &crate::usage::UsageSummaryQuery,
+    ) -> KernelResult<crate::usage::AgentUsageSummary> {
+        let tenant_id = u64_to_i64(query.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(query.organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_SUMMARIZE_AGENT_USAGE,
+                tenant_id,
+                organization_id,
+                query.agent_id.as_deref(),
+                query.session_id.as_deref(),
+                query.model_id.as_deref(),
+                query.from.as_deref(),
+                query.to.as_deref()
+            )?;
+            let row = row.ok_or_else(|| KernelError::Internal {
+                message: "usage summary aggregation returned no row".to_string(),
+            })?;
+            let read_total = |name: &str| -> KernelResult<u64> {
+                int64_to_u64(row.try_get::<i64, _>(name).map_err(map_sqlx_error)?, name)
+            };
+            Ok(crate::usage::AgentUsageSummary {
+                turn_count: read_total("turn_count")?,
+                session_count: read_total("session_count")?,
+                input_tokens: read_total("input_tokens")?,
+                output_tokens: read_total("output_tokens")?,
+                cached_tokens: read_total("cached_tokens")?,
+            })
+        })
+    }
+
+    fn list_usage_record_rows(
+        &self,
+        query: &crate::usage::UsageRecordListQuery,
+    ) -> KernelResult<Vec<crate::usage::AgentUsageRecord>> {
+        let tenant_id = u64_to_i64(query.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(query.organization_id, "organization_id")?;
+        let store_limit = i64::try_from(query.pagination.page_size.saturating_add(1))
+            .map_err(|_| KernelError::validation("page_size overflow"))?;
+        let cursor_created_at = query
+            .cursor
+            .as_ref()
+            .map(|cursor| cursor.created_at.as_str());
+        let cursor_internal_id = query
+            .cursor
+            .as_ref()
+            .map(|cursor| u64_to_i64(cursor.internal_id, "cursor.internal_id"))
+            .transpose()?;
+        self.with_pool(|pool| {
+            let rows = pg_query!(
+                pool,
+                SQL_LIST_AGENT_USAGE_RECORDS,
+                tenant_id,
+                organization_id,
+                query.agent_id.as_deref(),
+                query.session_id.as_deref(),
+                query.model_id.as_deref(),
+                query.from.as_deref(),
+                query.to.as_deref(),
+                cursor_created_at,
+                cursor_internal_id,
+                store_limit
+            )?;
+            rows.iter()
+                .map(|row| {
+                    let status_code: i16 = row.try_get("status").map_err(map_sqlx_error)?;
+                    let status = AgentTurnStatus::from_db_code(status_code).ok_or_else(|| {
+                        KernelError::Internal {
+                            message: format!("unknown turn status code {status_code}"),
+                        }
+                    })?;
+                    Ok(crate::usage::AgentUsageRecord {
+                        internal_id: int64_to_u64(
+                            row.try_get::<i64, _>("id").map_err(map_sqlx_error)?,
+                            "id",
+                        )?,
+                        turn_id: row.try_get("turn_id").map_err(map_sqlx_error)?,
+                        session_id: row.try_get("session_id").map_err(map_sqlx_error)?,
+                        agent_id: row.try_get("agent_id").map_err(map_sqlx_error)?,
+                        owner_user_id: int64_to_u64(
+                            row.try_get::<i64, _>("owner_user_id")
+                                .map_err(map_sqlx_error)?,
+                            "owner_user_id",
+                        )?,
+                        status: status.as_str().to_string(),
+                        model_id: row.try_get("model_id").map_err(map_sqlx_error)?,
+                        provider_id: row.try_get("provider_id").map_err(map_sqlx_error)?,
+                        input_tokens: int64_to_u64(
+                            row.try_get::<i64, _>("input_tokens")
+                                .map_err(map_sqlx_error)?,
+                            "input_tokens",
+                        )?,
+                        output_tokens: int64_to_u64(
+                            row.try_get::<i64, _>("output_tokens")
+                                .map_err(map_sqlx_error)?,
+                            "output_tokens",
+                        )?,
+                        cached_tokens: int64_to_u64(
+                            row.try_get::<i64, _>("cached_tokens")
+                                .map_err(map_sqlx_error)?,
+                            "cached_tokens",
+                        )?,
+                        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+                        completed_at: row.try_get("completed_at").map_err(map_sqlx_error)?,
+                    })
+                })
+                .collect()
+        })
+    }
+
+    fn insert_agent_version_row(&self, row: AgentVersionRow) -> KernelResult<()> {
+        let id = u64_to_i64(row.id, "id")?;
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(row.organization_id, "organization_id")?;
+        let version_number = u64_to_i64(row.version_number, "version_number")?;
+        let created_by = u64_to_i64(row.created_by, "created_by")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_INSERT_AGENT_VERSION,
+                id,
+                tenant_id,
+                organization_id,
+                row.agent_id,
+                row.version_id,
+                version_number,
+                row.manifest_json,
+                row.default_code_task_intent_json,
+                row.implementation_provider_id,
+                row.implementation_kind,
+                row.implementation_type,
+                row.description,
+                created_by,
+                row.created_at,
+                row.activated_at
+            )?;
+            Ok(())
+        })
+    }
+
+    fn get_agent_version_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+    ) -> KernelResult<Option<AgentVersionRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_SELECT_AGENT_VERSION,
+                tenant_id,
+                organization_id,
+                agent_id,
+                version_id
+            )?;
+            row.map(|row| pg_row_to_agent_version_row(&row)).transpose()
+        })
+    }
+
+    fn list_agent_version_rows(
+        &self,
+        query: &crate::ports::AgentVersionListQuery,
+    ) -> KernelResult<Vec<AgentVersionRow>> {
+        let tenant_id = u64_to_i64(query.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(query.organization_id, "organization_id")?;
+        let store_limit = i64::try_from(query.pagination.page_size.saturating_add(1))
+            .map_err(|_| KernelError::validation("page_size overflow"))?;
+        let cursor_version_number = query
+            .cursor
+            .as_ref()
+            .map(|cursor| u64_to_i64(cursor.internal_id, "cursor.internal_id"))
+            .transpose()?;
+        self.with_pool(|pool| {
+            let rows = pg_query!(
+                pool,
+                SQL_LIST_AGENT_VERSIONS,
+                tenant_id,
+                organization_id,
+                query.agent_id,
+                cursor_version_number,
+                store_limit
+            )?;
+            rows.iter().map(pg_row_to_agent_version_row).collect()
+        })
+    }
+
+    fn activate_agent_version_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        activated_at: &str,
+    ) -> KernelResult<Option<AgentVersionRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        let updated = self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_ACTIVATE_AGENT_VERSION,
+                tenant_id,
+                organization_id,
+                version_id,
+                activated_at,
+                agent_id
+            )
+        })?;
+        if updated == 0 {
+            return Ok(None);
+        }
+        self.get_agent_version_row(
+            tenant_id as u64,
+            organization_id as u64,
+            agent_id,
+            version_id,
+        )
+    }
+
+    fn insert_webhook_subscription_row(&self, row: AgentWebhookRow) -> KernelResult<()> {
+        let id = u64_to_i64(row.id, "id")?;
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(row.organization_id, "organization_id")?;
+        let created_by = u64_to_i64(row.created_by, "created_by")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_INSERT_WEBHOOK_SUBSCRIPTION,
+                id,
+                tenant_id,
+                organization_id,
+                row.webhook_id,
+                row.url,
+                row.event_types_json,
+                row.status,
+                row.secret,
+                row.description,
+                created_by,
+                row.created_at,
+                row.updated_at
+            )?;
+            Ok(())
+        })
+    }
+
+    fn get_webhook_subscription_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<Option<AgentWebhookRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_SELECT_WEBHOOK_SUBSCRIPTION,
+                tenant_id,
+                organization_id,
+                webhook_id
+            )?;
+            row.map(|row| pg_row_to_webhook_subscription_row(&row))
+                .transpose()
+        })
+    }
+
+    fn list_webhook_subscription_rows(
+        &self,
+        query: &crate::ports::WebhookSubscriptionListQuery,
+    ) -> KernelResult<Vec<AgentWebhookRow>> {
+        let tenant_id = u64_to_i64(query.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(query.organization_id, "organization_id")?;
+        let limit = i64::try_from(query.pagination.page_size)
+            .map_err(|_| KernelError::validation("page_size overflow"))?;
+        let offset = usize_to_i64(query.pagination.offset, "pagination.offset")?;
+        self.with_pool(|pool| {
+            let rows = pg_query!(
+                pool,
+                SQL_LIST_WEBHOOK_SUBSCRIPTIONS,
+                tenant_id,
+                organization_id,
+                limit,
+                offset
+            )?;
+            rows.iter()
+                .map(pg_row_to_webhook_subscription_row)
+                .collect()
+        })
+    }
+
+    fn delete_webhook_subscription_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<u64> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_DELETE_WEBHOOK_SUBSCRIPTION,
+                tenant_id,
+                organization_id,
+                webhook_id
+            )
+        })
+    }
+
+    fn insert_webhook_delivery_row(&self, row: AgentWebhookDeliveryRow) -> KernelResult<()> {
+        let id = u64_to_i64(row.id, "id")?;
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(row.organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_INSERT_WEBHOOK_DELIVERY,
+                id,
+                tenant_id,
+                organization_id,
+                row.webhook_id,
+                row.delivery_id,
+                row.event_type,
+                row.payload_json,
+                row.signature,
+                row.status,
+                row.response_code,
+                row.error_detail,
+                row.created_at,
+                row.completed_at
+            )?;
+            Ok(())
+        })
+    }
+
+    fn get_webhook_delivery_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+    ) -> KernelResult<Option<AgentWebhookDeliveryRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_SELECT_WEBHOOK_DELIVERY,
+                tenant_id,
+                organization_id,
+                webhook_id,
+                delivery_id
+            )?;
+            row.map(|row| pg_row_to_webhook_delivery_row(&row))
+                .transpose()
+        })
+    }
+
+    fn complete_webhook_delivery_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+        status: &str,
+        response_code: Option<i32>,
+        error_detail: Option<String>,
+        completed_at: &str,
+    ) -> KernelResult<u64> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_COMPLETE_WEBHOOK_DELIVERY,
+                tenant_id,
+                organization_id,
+                webhook_id,
+                status,
+                response_code,
+                error_detail,
+                completed_at,
+                delivery_id
+            )
+        })
+    }
+
     fn check_readiness(&self) -> KernelResult<()> {
         if self
             .node_lease
@@ -8691,6 +9900,60 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
         })
     }
 
+    fn read_turn_streaming_content_record(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+    ) -> KernelResult<Option<String>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            Ok(pg_query_optional!(
+                pool,
+                SQL_SELECT_TURN_STREAMING_CONTENT,
+                tenant_id,
+                organization_id,
+                turn_id
+            )?
+            .and_then(|row| {
+                row.try_get::<Option<String>, _>("streaming_content")
+                    .ok()
+                    .flatten()
+            }))
+        })
+    }
+
+    fn append_interrupted_turn_output_record(
+        &self,
+        item: AgentSessionItemRow,
+    ) -> KernelResult<Option<AgentSessionItemRow>> {
+        if item.kind != AgentSessionItemKind::AssistantOutput.as_db_code()
+            || item.status != AgentSessionItemStatus::Completed.as_db_code()
+            || item.sequence != 0
+            || item.content.is_some()
+            || item.turn_id.is_none()
+        {
+            return Err(KernelError::validation(
+                "interrupted turn output must be a completed, unsequenced assistant item without inline content",
+            ));
+        }
+        self.with_pool(|pool| {
+            let pg_pool = pool.pool().clone();
+            pool.run_kernel(async move {
+                retry_postgres_transaction(|| async {
+                    let item = item.clone();
+                    let mut tx = pg_pool.begin().await?;
+                    let outcome =
+                        append_interrupted_turn_output_in_transaction(&mut tx, &item).await?;
+                    tx.commit().await?;
+                    Ok(outcome)
+                })
+                .await
+            })
+        })
+    }
+
     fn insert_turn_request_rows(
         &self,
         turn: AgentTurnRow,
@@ -11805,18 +13068,18 @@ struct AuditPayloadSnapshot {
     payload: String,
 }
 
-fn manifest_to_json(manifest: &AgentManifest) -> KernelResult<String> {
+pub(crate) fn manifest_to_json(manifest: &AgentManifest) -> KernelResult<String> {
     serde_json::to_string(&AgentManifestSnapshot::from(manifest))
         .map_err(|error| KernelError::validation(format!("invalid manifest json: {error}")))
 }
 
-fn manifest_from_json(input: &str) -> KernelResult<AgentManifest> {
+pub(crate) fn manifest_from_json(input: &str) -> KernelResult<AgentManifest> {
     let snapshot: AgentManifestSnapshot = serde_json::from_str(input)
         .map_err(|error| KernelError::validation(format!("invalid manifest json: {error}")))?;
     Ok(snapshot.into())
 }
 
-fn intent_to_json(intent: Option<&CodeTaskIntent>) -> KernelResult<Option<String>> {
+pub(crate) fn intent_to_json(intent: Option<&CodeTaskIntent>) -> KernelResult<Option<String>> {
     intent
         .map(|value| {
             serde_json::to_string(&CodeTaskIntentSnapshot::from(value)).map_err(|error| {
@@ -12645,6 +13908,94 @@ fn pg_row_to_agent_session_item_row(row: PgRow) -> KernelResult<AgentSessionItem
 }
 
 #[cfg(feature = "postgres-sync")]
+fn pg_row_to_agent_version_row(row: &PgRow) -> KernelResult<AgentVersionRow> {
+    Ok(AgentVersionRow {
+        id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
+        tenant_id: int64_to_u64(
+            row.try_get("tenant_id").map_err(map_sqlx_error)?,
+            "tenant_id",
+        )?,
+        organization_id: int64_to_u64(
+            row.try_get("organization_id").map_err(map_sqlx_error)?,
+            "organization_id",
+        )?,
+        agent_id: row.try_get("agent_id").map_err(map_sqlx_error)?,
+        version_id: row.try_get("version_id").map_err(map_sqlx_error)?,
+        version_number: int64_to_u64(
+            row.try_get("version_number").map_err(map_sqlx_error)?,
+            "version_number",
+        )?,
+        manifest_json: row.try_get("manifest_json").map_err(map_sqlx_error)?,
+        default_code_task_intent_json: row
+            .try_get("default_code_task_intent_json")
+            .map_err(map_sqlx_error)?,
+        implementation_provider_id: row
+            .try_get("implementation_provider_id")
+            .map_err(map_sqlx_error)?,
+        implementation_kind: row.try_get("implementation_kind").map_err(map_sqlx_error)?,
+        implementation_type: row.try_get("implementation_type").map_err(map_sqlx_error)?,
+        description: row.try_get("description").map_err(map_sqlx_error)?,
+        created_by: int64_to_u64(
+            row.try_get("created_by").map_err(map_sqlx_error)?,
+            "created_by",
+        )?,
+        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+        activated_at: row.try_get("activated_at").map_err(map_sqlx_error)?,
+    })
+}
+
+#[cfg(feature = "postgres-sync")]
+fn pg_row_to_webhook_subscription_row(row: &PgRow) -> KernelResult<AgentWebhookRow> {
+    Ok(AgentWebhookRow {
+        id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
+        tenant_id: int64_to_u64(
+            row.try_get("tenant_id").map_err(map_sqlx_error)?,
+            "tenant_id",
+        )?,
+        organization_id: int64_to_u64(
+            row.try_get("organization_id").map_err(map_sqlx_error)?,
+            "organization_id",
+        )?,
+        webhook_id: row.try_get("webhook_id").map_err(map_sqlx_error)?,
+        url: row.try_get("url").map_err(map_sqlx_error)?,
+        event_types_json: row.try_get("event_types_json").map_err(map_sqlx_error)?,
+        status: row.try_get::<i16, _>("status").map_err(map_sqlx_error)?,
+        secret: row.try_get("secret").map_err(map_sqlx_error)?,
+        description: row.try_get("description").map_err(map_sqlx_error)?,
+        created_by: int64_to_u64(
+            row.try_get("created_by").map_err(map_sqlx_error)?,
+            "created_by",
+        )?,
+        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+        updated_at: row.try_get("updated_at").map_err(map_sqlx_error)?,
+    })
+}
+
+#[cfg(feature = "postgres-sync")]
+fn pg_row_to_webhook_delivery_row(row: &PgRow) -> KernelResult<AgentWebhookDeliveryRow> {
+    Ok(AgentWebhookDeliveryRow {
+        id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
+        tenant_id: int64_to_u64(
+            row.try_get("tenant_id").map_err(map_sqlx_error)?,
+            "tenant_id",
+        )?,
+        organization_id: int64_to_u64(
+            row.try_get("organization_id").map_err(map_sqlx_error)?,
+            "organization_id",
+        )?,
+        webhook_id: row.try_get("webhook_id").map_err(map_sqlx_error)?,
+        delivery_id: row.try_get("delivery_id").map_err(map_sqlx_error)?,
+        event_type: row.try_get("event_type").map_err(map_sqlx_error)?,
+        payload_json: row.try_get("payload_json").map_err(map_sqlx_error)?,
+        signature: row.try_get("signature").map_err(map_sqlx_error)?,
+        status: row.try_get("status").map_err(map_sqlx_error)?,
+        response_code: row.try_get("response_code").map_err(map_sqlx_error)?,
+        error_detail: row.try_get("error_detail").map_err(map_sqlx_error)?,
+        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+        completed_at: row.try_get("completed_at").map_err(map_sqlx_error)?,
+    })
+}
+
 fn pg_row_to_agent_turn_row(row: PgRow) -> KernelResult<AgentTurnRow> {
     Ok(AgentTurnRow {
         id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,

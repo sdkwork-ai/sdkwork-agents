@@ -240,6 +240,32 @@ fn parse_provider_item_event(
     }))
 }
 
+/// Concatenates the reasoning deltas carried by `agent.stream.message.delta`
+/// kernel events (payload `kind: "reasoning"`).
+///
+/// Turn paths that stream reasoning through the rich event channel
+/// (cloudrouter live stream, agent-engine facade) have no terminal provider
+/// reasoning item snapshot, so the durable Reasoning session item is
+/// synthesized from these events at Turn completion.
+pub(crate) fn reasoning_content_from_stream_events(events: &[KernelEvent]) -> String {
+    let mut content = String::new();
+    for event in events {
+        if event.event_type.as_str() != "agent.stream.message.delta" {
+            continue;
+        }
+        let Ok(payload) = serde_json::from_str::<Value>(&event.payload) else {
+            continue;
+        };
+        if payload.get("kind").and_then(Value::as_str) != Some("reasoning") {
+            continue;
+        }
+        if let Some(delta) = payload.get("delta").and_then(Value::as_str) {
+            content.push_str(delta);
+        }
+    }
+    content
+}
+
 fn project_terminal_item(
     terminal: ParsedProviderItemEvent,
     session_id: &str,

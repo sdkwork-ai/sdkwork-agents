@@ -21,6 +21,10 @@ pub struct MediaToolCall {
     /// Owning session id when available.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+    /// Inbound request trace id, forwarded to upstream tool providers (e.g.
+    /// the cloudrouter gateway) so one trace id spans the whole call chain.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trace_id: Option<String>,
 }
 
 impl MediaToolCall {
@@ -110,6 +114,7 @@ mod tests {
             tool_id: "audio.speech.create".to_string(),
             arguments: serde_json::json!({ "input": "hello", "voice": "alloy" }),
             session_id: None,
+            trace_id: None,
         };
         assert_eq!(call.string_arg("input").unwrap(), "hello");
         assert_eq!(call.optional_string_arg("voice").unwrap(), "alloy");
@@ -124,6 +129,7 @@ mod tests {
             tool_id: "audio.speech.create".to_string(),
             arguments: serde_json::json!({ "speed": 1.25 }),
             session_id: None,
+            trace_id: None,
         };
         assert_eq!(call.optional_number_arg("speed"), Some(1.25));
         assert!(call.optional_number_arg("missing").is_none());

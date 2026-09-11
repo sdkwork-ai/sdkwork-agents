@@ -1,9 +1,9 @@
 {
-  "SDKWORK_AGENTS_APP_API_BASE_URL": "https://api-dev.sdkwork.com/app/v3/api",
+  "SDKWORK_AGENTS_APP_API_BASE_URL": "http://127.0.0.1:3900",
   "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL": "https://api.sdkwork.com",
   "SDKWORK_AGENTS_DEPLOYMENT_PROFILE": "cloud",
   "SDKWORK_AGENTS_ENVIRONMENT": "development",
-  "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": "https://api-dev.sdkwork.com",
+  "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": "http://127.0.0.1:3900",
   "SDKWORK_AGENTS_PROFILE_ID": "cloud.development",
   "SDKWORK_AGENTS_RUNTIME_TARGET": "flutter-android",
   "SDKWORK_DEPLOYMENT_PROFILE": "cloud",

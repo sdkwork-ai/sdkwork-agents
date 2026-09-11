@@ -87,6 +87,10 @@ pub fn media_tool_call(call: &ToolCall) -> Result<crate::MediaToolCall, KernelEr
         tool_id: call.tool_id.clone(),
         arguments,
         session_id: call.session_id.clone(),
+        trace_id: call
+            .trace_context
+            .as_ref()
+            .map(|context| context.trace_id.clone()),
     })
 }
 

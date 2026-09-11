@@ -112,6 +112,8 @@ pub enum AgentAuditAction {
     Restore,
     ChangeStatus,
     RuntimeExecutionCompleted,
+    RuntimeExecutionQueued,
+    RuntimeExecutionFailed,
     ProviderBindingChanged,
     CompositionSlotCreated,
     CompositionSlotUpdated,
@@ -175,6 +177,8 @@ impl AgentAuditAction {
             Self::Restore => "agent.business.restored",
             Self::ChangeStatus => "agent.business.status_changed",
             Self::RuntimeExecutionCompleted => "agent.business.runtime.executed",
+            Self::RuntimeExecutionQueued => "agent.business.runtime.queued",
+            Self::RuntimeExecutionFailed => "agent.business.runtime.failed",
             Self::ProviderBindingChanged => "agent.business.provider_binding_changed",
             Self::CompositionSlotCreated => "agent.business.composition_slot.created",
             Self::CompositionSlotUpdated => "agent.business.composition_slot.updated",
@@ -248,6 +252,8 @@ impl AgentAuditAction {
             Self::Restore => "restored",
             Self::ChangeStatus => "status_changed",
             Self::RuntimeExecutionCompleted => "runtime_executed",
+            Self::RuntimeExecutionQueued => "runtime_queued",
+            Self::RuntimeExecutionFailed => "runtime_failed",
             Self::ProviderBindingChanged => "provider_binding_changed",
             Self::CompositionSlotCreated => "composition_slot_created",
             Self::CompositionSlotUpdated => "composition_slot_updated",
@@ -575,6 +581,7 @@ impl SessionItemAuditPayload {
 pub enum AgentRuntimeExecutionOperation {
     PreviewResponse,
     PromptOptimization,
+    AgentCall,
 }
 
 impl AgentRuntimeExecutionOperation {
@@ -582,19 +589,74 @@ impl AgentRuntimeExecutionOperation {
         match self {
             Self::PreviewResponse => "preview_response",
             Self::PromptOptimization => "prompt_optimization",
+            Self::AgentCall => "agent_call",
+        }
+    }
+
+    pub(crate) fn from_code(value: &str) -> Option<Self> {
+        match value {
+            "preview_response" => Some(Self::PreviewResponse),
+            "prompt_optimization" => Some(Self::PromptOptimization),
+            "agent_call" => Some(Self::AgentCall),
+            _ => None,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentRuntimeExecutionStatus {
+    Queued,
+    Running,
     Completed,
+    Failed,
 }
 
 impl AgentRuntimeExecutionStatus {
     pub fn as_str(&self) -> &'static str {
         match self {
+            Self::Queued => "queued",
+            Self::Running => "running",
             Self::Completed => "completed",
+            Self::Failed => "failed",
+        }
+    }
+
+    pub(crate) fn from_code(value: &str) -> Option<Self> {
+        match value {
+            "queued" => Some(Self::Queued),
+            "running" => Some(Self::Running),
+            "completed" => Some(Self::Completed),
+            "failed" => Some(Self::Failed),
+            _ => None,
+        }
+    }
+}
+
+/// Delivery mode of one structured agent call (`agents.calls.create`).
+///
+/// `Sync` executes the call inside the HTTP request and returns the terminal
+/// record. `Async` persists a `queued` runtime-execution record, returns 202,
+/// and the terminal state becomes observable through `agents.calls.retrieve`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum AgentCallExecutionMode {
+    #[default]
+    Sync,
+    Async,
+}
+
+impl AgentCallExecutionMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Sync => "sync",
+            Self::Async => "async",
+        }
+    }
+
+    pub(crate) fn from_code(value: &str) -> Option<Self> {
+        match value {
+            "sync" => Some(Self::Sync),
+            "async" => Some(Self::Async),
+            _ => None,
         }
     }
 }
@@ -708,6 +770,29 @@ pub struct AgentBusinessRecord {
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
+}
+
+/// Immutable published snapshot of one agent definition (`agents.versions.*`).
+/// A version row is write-once: manifest and metadata never change after
+/// creation; activation is tracked by `activated_at` (exactly one active
+/// version per agent).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentVersionRecord {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub agent_id: String,
+    pub version_id: String,
+    pub version_number: u64,
+    pub manifest_json: String,
+    pub default_code_task_intent_json: Option<String>,
+    pub implementation_provider_id: Option<String>,
+    pub implementation_kind: Option<AgentImplementationKind>,
+    pub implementation_type: AgentImplementationType,
+    pub description: Option<String>,
+    pub created_by: u64,
+    pub created_at: String,
+    pub activated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -2,9 +2,12 @@ import {
   createClient,
   completeAgentTurn,
   completeAgentTurnStream,
+  TURN_EVENT_PROTOCOL_KERNEL_V1,
   type CompleteAgentTurnResult,
   type SdkworkAppClient as GeneratedSdkworkAgentsAppClient,
   type SdkworkAppConfig,
+  type TurnRichToolEvent,
+  type TurnStreamHandlers,
 } from "@sdkwork/agents-app-sdk";
 import type { Interceptors } from "@sdkwork/sdk-common";
 
@@ -124,5 +127,5 @@ export type {
   UpdateAgentSessionRuntimeBindingRequest,
 } from "@sdkwork/agents-app-sdk";
 
-export { completeAgentTurn, completeAgentTurnStream };
-export type { CompleteAgentTurnResult };
+export { completeAgentTurn, completeAgentTurnStream, TURN_EVENT_PROTOCOL_KERNEL_V1 };
+export type { CompleteAgentTurnResult, TurnRichToolEvent, TurnStreamHandlers };

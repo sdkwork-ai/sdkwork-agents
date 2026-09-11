@@ -56,9 +56,9 @@ export const VoiceSettingsDropdown: React.FC<VoiceSettingsDropdownProps> = ({
       )}
     >
       {/* Header & Categories */}
-      <div className="p-3 pb-2 border-b border-white/5 shrink-0">
+      <div className="p-3 pb-2 border-b border-black/5 dark:border-white/5 shrink-0">
         <div className="flex items-center justify-between mb-3 px-1">
-          <span className="text-[14px] font-medium text-zinc-200">选择音色</span>
+          <span className="text-[14px] font-medium text-zinc-800 dark:text-zinc-200">选择音色</span>
           <button className="text-[12px] flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors">
             <Mic size={12} /> 我的声音
           </button>
@@ -73,9 +73,9 @@ export const VoiceSettingsDropdown: React.FC<VoiceSettingsDropdownProps> = ({
               }}
               className={cn(
                 "px-3 py-1.5 rounded-full text-[13px] whitespace-nowrap transition-colors border",
-                activeVoiceCategory === category.id 
-                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20" 
-                  : "bg-[#1a1a1a] text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-[#2a2a2a]"
+                activeVoiceCategory === category.id
+                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+                  : "bg-black/5 dark:bg-[#1a1a1a] text-zinc-500 dark:text-zinc-400 border-transparent hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-black/10 dark:hover:bg-[#2a2a2a]"
               )}
             >
               {category.label}
@@ -85,7 +85,7 @@ export const VoiceSettingsDropdown: React.FC<VoiceSettingsDropdownProps> = ({
       </div>
 
       {/* Search Input */}
-      <div className="px-3 py-2 shrink-0 border-b border-white/5">
+      <div className="px-3 py-2 shrink-0 border-b border-black/5 dark:border-white/5">
         <div className="relative flex items-center w-full">
           <Search size={14} className="absolute left-3 text-zinc-500" />
           <input 
@@ -93,7 +93,7 @@ export const VoiceSettingsDropdown: React.FC<VoiceSettingsDropdownProps> = ({
             placeholder="搜索音色..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8 bg-black/40 border border-transparent focus:border-white/10 rounded-lg pl-8 pr-3 text-[13px] text-zinc-200 outline-none transition-colors placeholder:text-zinc-600"
+            className="w-full h-8 bg-zinc-100 dark:bg-black/40 border border-transparent focus:border-black/10 dark:focus:border-white/10 rounded-lg pl-8 pr-3 text-[13px] text-zinc-800 dark:text-zinc-200 outline-none transition-colors placeholder:text-zinc-600"
           />
         </div>
       </div>
@@ -105,7 +105,7 @@ export const VoiceSettingsDropdown: React.FC<VoiceSettingsDropdownProps> = ({
             key={voice.id}
             className={cn(
               "group flex flex-col gap-2 p-3 rounded-xl transition-colors cursor-pointer relative overflow-hidden",
-              selectedVoice === voice.id ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-white/5 border border-transparent"
+              selectedVoice === voice.id ? "bg-cyan-500/10 border border-cyan-500/20" : "hover:bg-black/5 dark:hover:bg-[#2a2a2a] border border-transparent"
             )}
             onClick={() => {
               setSelectedVoice(voice.id);
@@ -131,7 +131,7 @@ export const VoiceSettingsDropdown: React.FC<VoiceSettingsDropdownProps> = ({
                 </button>
                 <div className="flex flex-col gap-0.5">
                   <div className="flex items-center gap-2">
-                    <span className={cn("text-[14px] font-medium", selectedVoice === voice.id ? "text-cyan-400" : "text-zinc-200")}>
+                    <span className={cn("text-[14px] font-medium", selectedVoice === voice.id ? "text-cyan-400" : "text-zinc-800 dark:text-zinc-200")}>
                       {voice.name}
                     </span>
                     {voice.premium && (

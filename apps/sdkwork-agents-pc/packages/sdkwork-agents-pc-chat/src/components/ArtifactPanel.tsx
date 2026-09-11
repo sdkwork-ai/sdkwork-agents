@@ -15,9 +15,8 @@ interface ArtifactPanelProps {
 export const ArtifactPanel: React.FC<ArtifactPanelProps> = ({ artifact, onClose, onModeChange, onCodeChange }) => {
   const { t } = useTranslation('chat');
   const { t: tCommon } = useTranslation('common');
-  const { theme: currentTheme } = useTheme();
-
-  const isDark = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   if (!artifact) return null;
 

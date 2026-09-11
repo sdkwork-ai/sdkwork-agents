@@ -11,9 +11,9 @@ export interface AppliedAgentModelConfigurationRecord {
   defaultModelId: string;
   supportedModelIds: string[];
   supportedProviderIds: AgentModelProviderId[];
-  inputContextTokens?: string | null;
-  outputContextTokens?: string | null;
-  toolCallRounds?: string | null;
+  inputContextTokens?: string;
+  outputContextTokens?: string;
+  toolCallRounds?: string;
   supportsMultimodal: boolean;
   apiKeyConfigured: boolean;
 }

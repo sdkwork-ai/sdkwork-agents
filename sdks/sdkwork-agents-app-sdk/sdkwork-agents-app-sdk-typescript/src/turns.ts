@@ -42,7 +42,7 @@ export async function completeAgentTurn(
   });
 }
 
-/** One SSE `delta` event from the streaming turn protocol. */
+/** One SSE `delta` event from the streaming turn protocol (visible text). */
 export interface TurnStreamDeltaEvent {
   eventType?: 'delta';
   index?: number;
@@ -55,31 +55,125 @@ export interface TurnStreamCompletionEvent {
   response?: { data?: { item?: CompleteAgentTurnResult } };
 }
 
-export type TurnStreamEvent = TurnStreamDeltaEvent | TurnStreamCompletionEvent;
+/** Rich turn-stream protocol: emit `agent.stream.*` events (`event_protocol=kernel-v1`). */
+export const TURN_EVENT_PROTOCOL_KERNEL_V1 = 'kernel-v1';
 
 /**
- * Executes one turn with SSE streaming (`?stream=true`): `delta` events carry
- * incremental text chunks (invoked on `onDelta`), and the trailing
- * `completion` event carries the final response envelope.
+ * One streamed tool/skill/MCP invocation event from the kernel-v1 protocol.
+ * Keeps tool-call JSON out of visible text so chat UIs can render tool calls
+ * as first-class, collapsible cards.
+ */
+export interface TurnRichToolEvent {
+  phase: 'start' | 'delta' | 'stop';
+  toolCallId?: string;
+  toolName?: string;
+  delta?: string;
+}
+
+/** Streaming delivery handlers for `completeAgentTurnStream`. */
+export interface TurnStreamHandlers {
+  /** Visible assistant-text delta. */
+  onDelta?: (delta: string) => void;
+  /** Reasoning/thinking delta (rendered as a collapsible block). */
+  onReasoning?: (reasoning: string) => void;
+  /** Tool/skill/MCP invocation lifecycle event. */
+  onToolEvent?: (event: TurnRichToolEvent) => void;
+}
+
+/** One SSE `event` event from the kernel-v1 rich stream. */
+export interface TurnStreamRichEvent {
+  eventType?: 'event';
+  event?: {
+    type?: string;
+    payload?: {
+      message_id?: string;
+      kind?: string;
+      delta?: string;
+      tool_call_id?: string;
+      tool_name?: string;
+    };
+  };
+}
+
+export type TurnStreamEvent =
+  | TurnStreamDeltaEvent
+  | TurnStreamRichEvent
+  | TurnStreamCompletionEvent;
+
+function dispatchRichEvent(raw: TurnStreamRichEvent, handlers: TurnStreamHandlers): void {
+  const event = raw.event;
+  if (!event) return;
+  const type = event.type ?? '';
+  const payload = event.payload ?? {};
+  if (type === 'agent.stream.message.delta') {
+    // Reasoning deltas surface only via rich events. Visible answer text is
+    // already delivered by the sibling `delta` SSE frames, so forwarding
+    // text-kind events here would double-render the answer.
+    if (payload.kind !== 'reasoning') return;
+    const delta = payload.delta;
+    if (typeof delta !== 'string' || !delta) return;
+    handlers.onReasoning?.(delta);
+    return;
+  }
+  if (type === 'agent.stream.tool.call.start') {
+    handlers.onToolEvent?.({
+      phase: 'start',
+      toolCallId: payload.tool_call_id,
+      toolName: payload.tool_name,
+    });
+    return;
+  }
+  if (type === 'agent.stream.tool.call.delta') {
+    handlers.onToolEvent?.({
+      phase: 'delta',
+      toolCallId: payload.tool_call_id,
+      delta: payload.delta,
+    });
+    return;
+  }
+  if (type === 'agent.stream.tool.call.stop') {
+    handlers.onToolEvent?.({
+      phase: 'stop',
+      toolCallId: payload.tool_call_id,
+      toolName: payload.tool_name,
+    });
+  }
+}
+
+/**
+ * Executes one turn with SSE streaming (`?stream=true&event_protocol=kernel-v1`).
+ * Visible text arrives as `delta` events (via `onDelta`); the rich `event`
+ * events carry reasoning deltas (via `onReasoning`) and tool/skill/MCP
+ * invocations (via `onToolEvent`). The trailing `completion` event carries the
+ * final response envelope.
  */
 export async function completeAgentTurnStream(
   client: SdkworkAppClient,
   agentId: string,
   sessionId: string,
   body: CreateAgentTurnRequest,
-  onDelta: (delta: string) => void,
+  handlers: TurnStreamHandlers | ((delta: string) => void),
 ): Promise<CompleteAgentTurnResult> {
   const path = appApiPath(
     `/ai/agents/${pathSegment(agentId, 'agentId')}/sessions/${pathSegment(sessionId, 'sessionId')}/turns`,
   );
+  // Backward-compatible: allow a positional onDelta callback as the last argument.
+  const resolvedHandlers: TurnStreamHandlers =
+    typeof handlers === 'function' ? { onDelta: handlers } : handlers;
+
   let result: CompleteAgentTurnResult | undefined;
-  for await (const event of client.http.streamJson<TurnStreamEvent>(`${path}?stream=true`, {
-    method: 'POST',
-    body,
-    contentType: 'application/json',
-  })) {
-    if (event.eventType === 'delta' && typeof event.delta === 'string' && event.delta) {
-      onDelta(event.delta);
+  for await (const event of client.http.streamJson<TurnStreamEvent>(
+    `${path}?stream=true&event_protocol=${TURN_EVENT_PROTOCOL_KERNEL_V1}`,
+    {
+      method: 'POST',
+      body,
+      contentType: 'application/json',
+    },
+  )) {
+    if (event.eventType === 'event') {
+      dispatchRichEvent(event as TurnStreamRichEvent, resolvedHandlers);
+    } else if (event.eventType === 'delta' && typeof event.delta === 'string' && event.delta) {
+      resolvedHandlers.onDelta?.(event.delta);
     } else if (event.eventType === 'completion' && event.response?.data?.item) {
       result = event.response.data.item;
     }

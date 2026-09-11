@@ -13,6 +13,7 @@ export function configureAgentsWorkbenchPorts(): void {
     updateAgent: (agentId, patch) => agentService.updateAgent(agentId, patch),
     resolveOrCreateSession: (agentId, sessionId, title) =>
       agentChatService.resolveOrCreateNamedSession(agentId, sessionId, title),
+    createSession: (agentId, title) => agentChatService.createSessionSummary(agentId, title),
     listSessions: (agentId) => agentChatService.listSessionSummaries(agentId),
     updateSession: (agentId, sessionId, patch) =>
       agentChatService.updateSession(agentId, sessionId, patch),
@@ -27,11 +28,11 @@ export function configureAgentsWorkbenchPorts(): void {
       agentChatService.updateMessageFeedback(agentId, sessionId, messageId, patch),
     listMessages: (agentId, sessionId) => agentChatService.listMessages(agentId, sessionId),
     resolveMediaPreviewUrl: (driveUri) => agentsDriveUploadService.resolvePreviewUrl(driveUri),
-    sendMessage: (agentId, sessionId, content, model, media, systemPrompt) =>
-      agentChatService.sendMessage(agentId, sessionId, content, model, media, systemPrompt),
-    sendMessageStream: (agentId, sessionId, content, model, media, onDelta, systemPrompt) =>
+    sendMessage: (agentId, sessionId, content, model, media, systemPrompt, wireProtocol) =>
+      agentChatService.sendMessage(agentId, sessionId, content, model, media, systemPrompt, wireProtocol),
+    sendMessageStream: (agentId, sessionId, content, model, media, onDelta, systemPrompt, onReasoning, onToolEvent, wireProtocol) =>
       agentChatService.sendMessageStream(
-        agentId, sessionId, content, model, media, onDelta, systemPrompt,
+        agentId, sessionId, content, model, media, onDelta, systemPrompt, onReasoning, onToolEvent, wireProtocol,
       ),
   });
   configureProjectPort({

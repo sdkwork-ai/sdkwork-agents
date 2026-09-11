@@ -39,6 +39,13 @@ profiles:
           - agents-app-test.dtupay.com
           - agents-open-test.dtupay.com
           - agents-test.dtupay.com
+      - domain: agents-admin-test.noaper.com
+        tls: noaper.com
+        mode: api
+        aliases:
+          - agents-app-test.noaper.com
+          - agents-open-test.noaper.com
+          - agents-test.noaper.com
       - domain: agents-admin-test.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -63,6 +70,69 @@ profiles:
           - agents-app-test.dtupay.cn
           - agents-open-test.dtupay.cn
           - agents-test.dtupay.cn
+      - domain: agents-admin-test.noaper.cn
+        tls: noaper.cn
+        mode: api
+        aliases:
+          - agents-app-test.noaper.cn
+          - agents-open-test.noaper.cn
+          - agents-test.noaper.cn
+      - domain: agents-admin-test.skubc.com
+        tls: skubc.com
+        mode: api
+        aliases:
+          - agents-app-test.skubc.com
+          - agents-open-test.skubc.com
+          - agents-test.skubc.com
+      - domain: agents-admin-test.skubc.cn
+        tls: skubc.cn
+        mode: api
+        aliases:
+          - agents-app-test.skubc.cn
+          - agents-open-test.skubc.cn
+          - agents-test.skubc.cn
+      - domain: agents-admin-test.zowalk.com
+        tls: zowalk.com
+        mode: api
+        aliases:
+          - agents-app-test.zowalk.com
+          - agents-open-test.zowalk.com
+          - agents-test.zowalk.com
+      - domain: agents-admin-test.zowalk.cn
+        tls: zowalk.cn
+        mode: api
+        aliases:
+          - agents-app-test.zowalk.cn
+          - agents-open-test.zowalk.cn
+          - agents-test.zowalk.cn
+      - domain: agents-admin-test.offer86.com
+        tls: offer86.com
+        mode: api
+        aliases:
+          - agents-app-test.offer86.com
+          - agents-open-test.offer86.com
+          - agents-test.offer86.com
+      - domain: agents-admin-test.offer86.cn
+        tls: offer86.cn
+        mode: api
+        aliases:
+          - agents-app-test.offer86.cn
+          - agents-open-test.offer86.cn
+          - agents-test.offer86.cn
+      - domain: agents-admin-test.86offer.com
+        tls: 86offer.com
+        mode: api
+        aliases:
+          - agents-app-test.86offer.com
+          - agents-open-test.86offer.com
+          - agents-test.86offer.com
+      - domain: agents-admin-test.86offer.cn
+        tls: 86offer.cn
+        mode: api
+        aliases:
+          - agents-app-test.86offer.cn
+          - agents-open-test.86offer.cn
+          - agents-test.86offer.cn
     packages: []
     overrides:
       topology:
@@ -113,6 +183,13 @@ profiles:
           - agents-app-staging.dtupay.com
           - agents-open-staging.dtupay.com
           - agents-staging.dtupay.com
+      - domain: agents-admin-staging.noaper.com
+        tls: noaper.com
+        mode: api
+        aliases:
+          - agents-app-staging.noaper.com
+          - agents-open-staging.noaper.com
+          - agents-staging.noaper.com
       - domain: agents-admin-staging.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -137,6 +214,69 @@ profiles:
           - agents-app-staging.dtupay.cn
           - agents-open-staging.dtupay.cn
           - agents-staging.dtupay.cn
+      - domain: agents-admin-staging.noaper.cn
+        tls: noaper.cn
+        mode: api
+        aliases:
+          - agents-app-staging.noaper.cn
+          - agents-open-staging.noaper.cn
+          - agents-staging.noaper.cn
+      - domain: agents-admin-staging.skubc.com
+        tls: skubc.com
+        mode: api
+        aliases:
+          - agents-app-staging.skubc.com
+          - agents-open-staging.skubc.com
+          - agents-staging.skubc.com
+      - domain: agents-admin-staging.skubc.cn
+        tls: skubc.cn
+        mode: api
+        aliases:
+          - agents-app-staging.skubc.cn
+          - agents-open-staging.skubc.cn
+          - agents-staging.skubc.cn
+      - domain: agents-admin-staging.zowalk.com
+        tls: zowalk.com
+        mode: api
+        aliases:
+          - agents-app-staging.zowalk.com
+          - agents-open-staging.zowalk.com
+          - agents-staging.zowalk.com
+      - domain: agents-admin-staging.zowalk.cn
+        tls: zowalk.cn
+        mode: api
+        aliases:
+          - agents-app-staging.zowalk.cn
+          - agents-open-staging.zowalk.cn
+          - agents-staging.zowalk.cn
+      - domain: agents-admin-staging.offer86.com
+        tls: offer86.com
+        mode: api
+        aliases:
+          - agents-app-staging.offer86.com
+          - agents-open-staging.offer86.com
+          - agents-staging.offer86.com
+      - domain: agents-admin-staging.offer86.cn
+        tls: offer86.cn
+        mode: api
+        aliases:
+          - agents-app-staging.offer86.cn
+          - agents-open-staging.offer86.cn
+          - agents-staging.offer86.cn
+      - domain: agents-admin-staging.86offer.com
+        tls: 86offer.com
+        mode: api
+        aliases:
+          - agents-app-staging.86offer.com
+          - agents-open-staging.86offer.com
+          - agents-staging.86offer.com
+      - domain: agents-admin-staging.86offer.cn
+        tls: 86offer.cn
+        mode: api
+        aliases:
+          - agents-app-staging.86offer.cn
+          - agents-open-staging.86offer.cn
+          - agents-staging.86offer.cn
     packages: []
     overrides:
       topology:
@@ -187,6 +327,13 @@ profiles:
           - agents-app.dtupay.com
           - agents-open.dtupay.com
           - agents.dtupay.com
+      - domain: agents-admin.noaper.com
+        tls: noaper.com
+        mode: api
+        aliases:
+          - agents-app.noaper.com
+          - agents-open.noaper.com
+          - agents.noaper.com
       - domain: agents-admin.sdkwork.cn
         tls: sdkwork.cn
         mode: web+api
@@ -211,6 +358,69 @@ profiles:
           - agents-app.dtupay.cn
           - agents-open.dtupay.cn
           - agents.dtupay.cn
+      - domain: agents-admin.noaper.cn
+        tls: noaper.cn
+        mode: api
+        aliases:
+          - agents-app.noaper.cn
+          - agents-open.noaper.cn
+          - agents.noaper.cn
+      - domain: agents-admin.skubc.com
+        tls: skubc.com
+        mode: api
+        aliases:
+          - agents-app.skubc.com
+          - agents-open.skubc.com
+          - agents.skubc.com
+      - domain: agents-admin.skubc.cn
+        tls: skubc.cn
+        mode: api
+        aliases:
+          - agents-app.skubc.cn
+          - agents-open.skubc.cn
+          - agents.skubc.cn
+      - domain: agents-admin.zowalk.com
+        tls: zowalk.com
+        mode: api
+        aliases:
+          - agents-app.zowalk.com
+          - agents-open.zowalk.com
+          - agents.zowalk.com
+      - domain: agents-admin.zowalk.cn
+        tls: zowalk.cn
+        mode: api
+        aliases:
+          - agents-app.zowalk.cn
+          - agents-open.zowalk.cn
+          - agents.zowalk.cn
+      - domain: agents-admin.offer86.com
+        tls: offer86.com
+        mode: api
+        aliases:
+          - agents-app.offer86.com
+          - agents-open.offer86.com
+          - agents.offer86.com
+      - domain: agents-admin.offer86.cn
+        tls: offer86.cn
+        mode: api
+        aliases:
+          - agents-app.offer86.cn
+          - agents-open.offer86.cn
+          - agents.offer86.cn
+      - domain: agents-admin.86offer.com
+        tls: 86offer.com
+        mode: api
+        aliases:
+          - agents-app.86offer.com
+          - agents-open.86offer.com
+          - agents.86offer.com
+      - domain: agents-admin.86offer.cn
+        tls: 86offer.cn
+        mode: api
+        aliases:
+          - agents-app.86offer.cn
+          - agents-open.86offer.cn
+          - agents.86offer.cn
     packages: []
     overrides:
       topology:
@@ -262,6 +472,14 @@ profiles:
           - agents-app.dtupay.com
           - agents-open.dtupay.com
           - agents.dtupay.com
+      - tls: noaper.com
+        mode: web
+        web: adaptive
+        domain: agents-admin.noaper.com
+        aliases:
+          - agents-app.noaper.com
+          - agents-open.noaper.com
+          - agents.noaper.com
       - tls: sdkwork.cn
         mode: web
         web: adaptive
@@ -286,6 +504,78 @@ profiles:
           - agents-app.dtupay.cn
           - agents-open.dtupay.cn
           - agents.dtupay.cn
+      - tls: noaper.cn
+        mode: web
+        web: adaptive
+        domain: agents-admin.noaper.cn
+        aliases:
+          - agents-app.noaper.cn
+          - agents-open.noaper.cn
+          - agents.noaper.cn
+      - tls: skubc.com
+        mode: web
+        web: adaptive
+        domain: agents-admin.skubc.com
+        aliases:
+          - agents-app.skubc.com
+          - agents-open.skubc.com
+          - agents.skubc.com
+      - tls: skubc.cn
+        mode: web
+        web: adaptive
+        domain: agents-admin.skubc.cn
+        aliases:
+          - agents-app.skubc.cn
+          - agents-open.skubc.cn
+          - agents.skubc.cn
+      - tls: zowalk.com
+        mode: web
+        web: adaptive
+        domain: agents-admin.zowalk.com
+        aliases:
+          - agents-app.zowalk.com
+          - agents-open.zowalk.com
+          - agents.zowalk.com
+      - tls: zowalk.cn
+        mode: web
+        web: adaptive
+        domain: agents-admin.zowalk.cn
+        aliases:
+          - agents-app.zowalk.cn
+          - agents-open.zowalk.cn
+          - agents.zowalk.cn
+      - tls: offer86.com
+        mode: web
+        web: adaptive
+        domain: agents-admin.offer86.com
+        aliases:
+          - agents-app.offer86.com
+          - agents-open.offer86.com
+          - agents.offer86.com
+      - tls: offer86.cn
+        mode: web
+        web: adaptive
+        domain: agents-admin.offer86.cn
+        aliases:
+          - agents-app.offer86.cn
+          - agents-open.offer86.cn
+          - agents.offer86.cn
+      - tls: 86offer.com
+        mode: web
+        web: adaptive
+        domain: agents-admin.86offer.com
+        aliases:
+          - agents-app.86offer.com
+          - agents-open.86offer.com
+          - agents.86offer.com
+      - tls: 86offer.cn
+        mode: web
+        web: adaptive
+        domain: agents-admin.86offer.cn
+        aliases:
+          - agents-app.86offer.cn
+          - agents-open.86offer.cn
+          - agents.86offer.cn
     packages: []
     overrides:
       topology:

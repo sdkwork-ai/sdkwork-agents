@@ -1,5 +1,10 @@
-import { lazy, Suspense, useEffect, useState, type ComponentType, type CSSProperties, type LazyExoticComponent } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType, type CSSProperties, type LazyExoticComponent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { X } from 'lucide-react';
+import {
+  AGENTS_OPEN_TOKEN_PLAN_EVENT,
+  AGENTS_TOKEN_PLAN_CLOSED_EVENT,
+} from '@sdkwork/agents-pc-chat';
 import { GlobalSidebar } from './GlobalSidebar';
 import { AgentStatusIndicator } from './AgentStatusIndicator';
 import { DEFAULT_WORKBENCH_TAB, isWorkbenchTab, type WorkbenchTab } from './workbenchTabs';
@@ -53,6 +58,15 @@ interface WorkbenchLayoutProps {
   viewportMode?: WorkbenchViewportMode;
 }
 
+/** Loads the membership runtime shared by both Token Plan surfaces. */
+function useTokenPlanRuntime(): () => void {
+  return useCallback(() => {
+    void import('../bootstrap/tokenPlanRuntime').then(({ initializeAgentsTokenPlanRuntime }) => {
+      initializeAgentsTokenPlanRuntime();
+    });
+  }, []);
+}
+
 export const WorkbenchLayout = ({
   hiddenTabs = [],
   overlayTopInset = '0px',
@@ -61,10 +75,19 @@ export const WorkbenchLayout = ({
 }: WorkbenchLayoutProps) => {
   const [activeTab, setActiveTab] = useState<WorkbenchTab>(DEFAULT_WORKBENCH_TAB);
   const [isTokenPlanOpen, setIsTokenPlanOpen] = useState(false);
+  const [isTokenPlanOverlayOpen, setIsTokenPlanOverlayOpen] = useState(false);
   const { t: tCommon } = useTranslation('common');
+  const initializeTokenPlanRuntime = useTokenPlanRuntime();
 
   const [username, setUsername] = useState(() => localStorage.getItem('profile_username') || tCommon('mockUserName'));
   const [avatarIndex, setAvatarIndex] = useState(() => parseInt(localStorage.getItem('profile_avatar_index') || '0', 10));
+
+  const closeTokenPlanOverlay = useCallback(() => {
+    setIsTokenPlanOverlayOpen(false);
+    // A purchase (or an abandoned checkout) can change the balance; let the
+    // chat surface re-read it once the overlay is gone.
+    window.dispatchEvent(new CustomEvent(AGENTS_TOKEN_PLAN_CLOSED_EVENT));
+  }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -78,15 +101,40 @@ export const WorkbenchLayout = ({
         setActiveTab(customEvent.detail.tab);
       }
     };
+    const handleOpenTokenPlanOverlay = () => {
+      initializeTokenPlanRuntime();
+      setIsTokenPlanOverlayOpen(true);
+    };
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('switch-tab', handleSwitchTab);
+    window.addEventListener(AGENTS_OPEN_TOKEN_PLAN_EVENT, handleOpenTokenPlanOverlay);
     const interval = setInterval(handleStorageChange, 800);
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('switch-tab', handleSwitchTab);
+      window.removeEventListener(AGENTS_OPEN_TOKEN_PLAN_EVENT, handleOpenTokenPlanOverlay);
       clearInterval(interval);
     };
-  }, [tCommon]);
+  }, [tCommon, initializeTokenPlanRuntime]);
+
+  useEffect(() => {
+    if (!isTokenPlanOverlayOpen) {
+      return;
+    }
+    // Lock background scrolling while the full-screen purchase page is open.
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeTokenPlanOverlay();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isTokenPlanOverlayOpen, closeTokenPlanOverlay]);
 
   const avatarBg = AVATAR_COLOR_TEMPLATES[avatarIndex] || AVATAR_COLOR_TEMPLATES[0];
   const safeActiveTab = hiddenTabs.includes(activeTab) ? DEFAULT_WORKBENCH_TAB : activeTab;
@@ -107,10 +155,8 @@ export const WorkbenchLayout = ({
         hiddenTabs={hiddenTabs}
         isTokenPlanOpen={isTokenPlanOpen}
         onOpenTokenPlan={() => {
-          void import('../bootstrap/tokenPlanRuntime').then(({ initializeAgentsTokenPlanRuntime }) => {
-            initializeAgentsTokenPlanRuntime();
-            setIsTokenPlanOpen(true);
-          });
+          initializeTokenPlanRuntime();
+          setIsTokenPlanOpen(true);
         }}
         setActiveTab={(tab) => {
           setIsTokenPlanOpen(false);
@@ -126,6 +172,32 @@ export const WorkbenchLayout = ({
           {isTokenPlanOpen ? <AgentsTokenPlanView /> : <ActiveWorkspace />}
         </Suspense>
       </div>
+
+      {isTokenPlanOverlayOpen && (
+        <div
+          className="sdkwork-agents-token-plan-overlay fixed inset-0 z-[9999] flex h-[100dvh] w-full flex-col bg-black/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={tCommon('tokenPlan', 'Token Plan')}
+        >
+          <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#0e0e11] shadow-2xl">
+            <button
+              aria-label={tCommon('close', 'Close')}
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-colors hover:bg-white/15 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+              onClick={closeTokenPlanOverlay}
+              title={tCommon('close', 'Close')}
+              type="button"
+            >
+              <X aria-hidden size={18} />
+            </button>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-zinc-400">正在加载会员方案...</div>}>
+                <AgentsTokenPlanView />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

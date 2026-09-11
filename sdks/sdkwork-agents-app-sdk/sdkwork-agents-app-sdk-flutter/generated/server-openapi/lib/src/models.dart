@@ -1776,6 +1776,1490 @@ class CreateAgentPreviewResponseRequest {
   }
 }
 
+class CreateAgentCallRequest {
+  final String executionId;
+  final String mode;
+  final String? prompt;
+  final Map<String, dynamic>? params;
+  final Map<String, dynamic>? paramSchema;
+  final AgentCallOutputSpec? output;
+  final AgentCallPolicySpec? policy;
+  final String? executionMode;
+  final String requestedAt;
+
+  CreateAgentCallRequest({
+    required this.executionId,
+    required this.mode,
+    this.prompt,
+    this.params,
+    this.paramSchema,
+    this.output,
+    this.policy,
+    this.executionMode,
+    required this.requestedAt
+  });
+
+  factory CreateAgentCallRequest.fromJson(Map<String, dynamic> json) {
+    return CreateAgentCallRequest(
+      executionId: (() {
+        final value = json['executionId']?.toString();
+        if (value == null) {
+          throw FormatException('CreateAgentCallRequest.executionId is required');
+        }
+        return value;
+      })(),
+      mode: (() {
+        final value = json['mode']?.toString();
+        if (value == null) {
+          throw FormatException('CreateAgentCallRequest.mode is required');
+        }
+        return value;
+      })(),
+      prompt: json['prompt']?.toString(),
+      params: _sdkworkAsMap(json['params']),
+      paramSchema: _sdkworkAsMap(json['paramSchema']),
+      output: (() {
+        final map = _sdkworkAsMap(json['output']);
+        return map == null ? null : AgentCallOutputSpec.fromJson(map);
+      })(),
+      policy: (() {
+        final map = _sdkworkAsMap(json['policy']);
+        return map == null ? null : AgentCallPolicySpec.fromJson(map);
+      })(),
+      executionMode: json['executionMode']?.toString(),
+      requestedAt: (() {
+        final value = json['requestedAt']?.toString();
+        if (value == null) {
+          throw FormatException('CreateAgentCallRequest.requestedAt is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'executionId': executionId,
+      'mode': mode,
+      'prompt': prompt,
+      'params': params,
+      'paramSchema': paramSchema,
+      'output': output?.toJson(),
+      'policy': policy?.toJson(),
+      'executionMode': executionMode,
+      'requestedAt': requestedAt,
+    };
+  }
+}
+
+class AgentCallOutputSpec {
+  final String? format;
+  final Map<String, dynamic>? schema;
+  final String? rootElement;
+  final bool? strict;
+
+  AgentCallOutputSpec({
+    this.format,
+    this.schema,
+    this.rootElement,
+    this.strict
+  });
+
+  factory AgentCallOutputSpec.fromJson(Map<String, dynamic> json) {
+    return AgentCallOutputSpec(
+      format: json['format']?.toString(),
+      schema: _sdkworkAsMap(json['schema']),
+      rootElement: json['rootElement']?.toString(),
+      strict: json['strict'] is bool ? json['strict'] : null
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'format': format,
+      'schema': schema,
+      'rootElement': rootElement,
+      'strict': strict,
+    };
+  }
+}
+
+class AgentCallPolicySpec {
+  final int? timeoutMs;
+
+  AgentCallPolicySpec({
+    this.timeoutMs
+  });
+
+  factory AgentCallPolicySpec.fromJson(Map<String, dynamic> json) {
+    return AgentCallPolicySpec(
+      timeoutMs: json['timeoutMs'] is int ? json['timeoutMs'] : null
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'timeoutMs': timeoutMs,
+    };
+  }
+}
+
+class AgentCallResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentCallResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentCallResponse.fromJson(Map<String, dynamic> json) {
+    return AgentCallResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentCallResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentCallResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentVersionResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentVersionResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentVersionResponse.fromJson(Map<String, dynamic> json) {
+    return AgentVersionResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentVersionResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentVersionResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentVersionListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentVersionListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentVersionListResponse.fromJson(Map<String, dynamic> json) {
+    return AgentVersionListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentVersionListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentVersionListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentVersionRecord {
+  final String versionId;
+  final String agentId;
+  final String versionNumber;
+  final Map<String, dynamic> manifest;
+  final Map<String, dynamic>? defaultCodeTaskIntent;
+  final String? implementationProviderId;
+  final String? implementationKind;
+  final String implementationType;
+  final String? description;
+  final String createdBy;
+  final String createdAt;
+  final String? activatedAt;
+
+  AgentVersionRecord({
+    required this.versionId,
+    required this.agentId,
+    required this.versionNumber,
+    required this.manifest,
+    this.defaultCodeTaskIntent,
+    this.implementationProviderId,
+    this.implementationKind,
+    required this.implementationType,
+    this.description,
+    required this.createdBy,
+    required this.createdAt,
+    this.activatedAt
+  });
+
+  factory AgentVersionRecord.fromJson(Map<String, dynamic> json) {
+    return AgentVersionRecord(
+      versionId: (() {
+        final value = json['versionId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionRecord.versionId is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionRecord.agentId is required');
+        }
+        return value;
+      })(),
+      versionNumber: (() {
+        final value = json['versionNumber']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionRecord.versionNumber is required');
+        }
+        return value;
+      })(),
+      manifest: (() {
+        final map = _sdkworkAsMap(json['manifest']);
+        if (map == null) {
+          throw FormatException('AgentVersionRecord.manifest is required');
+        }
+        return map;
+      })(),
+      defaultCodeTaskIntent: _sdkworkAsMap(json['defaultCodeTaskIntent']),
+      implementationProviderId: json['implementationProviderId']?.toString(),
+      implementationKind: json['implementationKind']?.toString(),
+      implementationType: (() {
+        final value = json['implementationType']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionRecord.implementationType is required');
+        }
+        return value;
+      })(),
+      description: json['description']?.toString(),
+      createdBy: (() {
+        final value = json['createdBy']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionRecord.createdBy is required');
+        }
+        return value;
+      })(),
+      createdAt: (() {
+        final value = json['createdAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentVersionRecord.createdAt is required');
+        }
+        return value;
+      })(),
+      activatedAt: json['activatedAt']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'versionId': versionId,
+      'agentId': agentId,
+      'versionNumber': versionNumber,
+      'manifest': manifest,
+      'defaultCodeTaskIntent': defaultCodeTaskIntent,
+      'implementationProviderId': implementationProviderId,
+      'implementationKind': implementationKind,
+      'implementationType': implementationType,
+      'description': description,
+      'createdBy': createdBy,
+      'createdAt': createdAt,
+      'activatedAt': activatedAt,
+    };
+  }
+}
+
+class CreateAgentVersionRequest {
+  final String versionId;
+  final String? description;
+
+  CreateAgentVersionRequest({
+    required this.versionId,
+    this.description
+  });
+
+  factory CreateAgentVersionRequest.fromJson(Map<String, dynamic> json) {
+    return CreateAgentVersionRequest(
+      versionId: (() {
+        final value = json['versionId']?.toString();
+        if (value == null) {
+          throw FormatException('CreateAgentVersionRequest.versionId is required');
+        }
+        return value;
+      })(),
+      description: json['description']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'versionId': versionId,
+      'description': description,
+    };
+  }
+}
+
+class AgentWebhookSubscriptionResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentWebhookSubscriptionResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentWebhookSubscriptionResponse.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookSubscriptionResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentWebhookSubscriptionResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentWebhookSubscriptionResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentWebhookSubscriptionListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentWebhookSubscriptionListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentWebhookSubscriptionListResponse.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookSubscriptionListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentWebhookSubscriptionListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentWebhookSubscriptionListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentWebhookSubscriptionCreatedResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentWebhookSubscriptionCreatedResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentWebhookSubscriptionCreatedResponse.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookSubscriptionCreatedResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentWebhookSubscriptionCreatedResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentWebhookSubscriptionCreatedResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreatedResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentWebhookDeliveryResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentWebhookDeliveryResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentWebhookDeliveryResponse.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookDeliveryResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentWebhookDeliveryResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentWebhookDeliveryResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDeliveryResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentWebhookSubscription {
+  final String webhookId;
+  final String url;
+  final List<String> eventTypes;
+  final String status;
+  final String? description;
+  final String createdBy;
+  final String createdAt;
+  final String updatedAt;
+
+  AgentWebhookSubscription({
+    required this.webhookId,
+    required this.url,
+    required this.eventTypes,
+    required this.status,
+    this.description,
+    required this.createdBy,
+    required this.createdAt,
+    required this.updatedAt
+  });
+
+  factory AgentWebhookSubscription.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookSubscription(
+      webhookId: (() {
+        final value = json['webhookId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscription.webhookId is required');
+        }
+        return value;
+      })(),
+      url: (() {
+        final value = json['url']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscription.url is required');
+        }
+        return value;
+      })(),
+      eventTypes: (() {
+        final list = _sdkworkAsList(json['eventTypes']);
+        if (list == null) {
+          throw FormatException('AgentWebhookSubscription.eventTypes is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      status: (() {
+        final value = json['status']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscription.status is required');
+        }
+        return value;
+      })(),
+      description: json['description']?.toString(),
+      createdBy: (() {
+        final value = json['createdBy']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscription.createdBy is required');
+        }
+        return value;
+      })(),
+      createdAt: (() {
+        final value = json['createdAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscription.createdAt is required');
+        }
+        return value;
+      })(),
+      updatedAt: (() {
+        final value = json['updatedAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscription.updatedAt is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'webhookId': webhookId,
+      'url': url,
+      'eventTypes': eventTypes.map((item) => item).toList(),
+      'status': status,
+      'description': description,
+      'createdBy': createdBy,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+    };
+  }
+}
+
+class AgentWebhookSubscriptionCreated {
+  final String webhookId;
+  final String url;
+  final List<String> eventTypes;
+  final String status;
+  final String secret;
+  final String? description;
+  final String createdBy;
+  final String createdAt;
+  final String updatedAt;
+
+  AgentWebhookSubscriptionCreated({
+    required this.webhookId,
+    required this.url,
+    required this.eventTypes,
+    required this.status,
+    required this.secret,
+    this.description,
+    required this.createdBy,
+    required this.createdAt,
+    required this.updatedAt
+  });
+
+  factory AgentWebhookSubscriptionCreated.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookSubscriptionCreated(
+      webhookId: (() {
+        final value = json['webhookId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.webhookId is required');
+        }
+        return value;
+      })(),
+      url: (() {
+        final value = json['url']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.url is required');
+        }
+        return value;
+      })(),
+      eventTypes: (() {
+        final list = _sdkworkAsList(json['eventTypes']);
+        if (list == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.eventTypes is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      status: (() {
+        final value = json['status']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.status is required');
+        }
+        return value;
+      })(),
+      secret: (() {
+        final value = json['secret']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.secret is required');
+        }
+        return value;
+      })(),
+      description: json['description']?.toString(),
+      createdBy: (() {
+        final value = json['createdBy']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.createdBy is required');
+        }
+        return value;
+      })(),
+      createdAt: (() {
+        final value = json['createdAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.createdAt is required');
+        }
+        return value;
+      })(),
+      updatedAt: (() {
+        final value = json['updatedAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookSubscriptionCreated.updatedAt is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'webhookId': webhookId,
+      'url': url,
+      'eventTypes': eventTypes.map((item) => item).toList(),
+      'status': status,
+      'secret': secret,
+      'description': description,
+      'createdBy': createdBy,
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+    };
+  }
+}
+
+class AgentWebhookDelivery {
+  final String deliveryId;
+  final String webhookId;
+  final String eventType;
+  final Map<String, dynamic> payload;
+  final String signature;
+  final String status;
+  final int? responseCode;
+  final String? errorDetail;
+  final String createdAt;
+  final String? completedAt;
+
+  AgentWebhookDelivery({
+    required this.deliveryId,
+    required this.webhookId,
+    required this.eventType,
+    required this.payload,
+    required this.signature,
+    required this.status,
+    this.responseCode,
+    this.errorDetail,
+    required this.createdAt,
+    this.completedAt
+  });
+
+  factory AgentWebhookDelivery.fromJson(Map<String, dynamic> json) {
+    return AgentWebhookDelivery(
+      deliveryId: (() {
+        final value = json['deliveryId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDelivery.deliveryId is required');
+        }
+        return value;
+      })(),
+      webhookId: (() {
+        final value = json['webhookId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDelivery.webhookId is required');
+        }
+        return value;
+      })(),
+      eventType: (() {
+        final value = json['eventType']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDelivery.eventType is required');
+        }
+        return value;
+      })(),
+      payload: (() {
+        final map = _sdkworkAsMap(json['payload']);
+        if (map == null) {
+          throw FormatException('AgentWebhookDelivery.payload is required');
+        }
+        return map;
+      })(),
+      signature: (() {
+        final value = json['signature']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDelivery.signature is required');
+        }
+        return value;
+      })(),
+      status: (() {
+        final value = json['status']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDelivery.status is required');
+        }
+        return value;
+      })(),
+      responseCode: json['responseCode'] is int ? json['responseCode'] : null,
+      errorDetail: json['errorDetail']?.toString(),
+      createdAt: (() {
+        final value = json['createdAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentWebhookDelivery.createdAt is required');
+        }
+        return value;
+      })(),
+      completedAt: json['completedAt']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'deliveryId': deliveryId,
+      'webhookId': webhookId,
+      'eventType': eventType,
+      'payload': payload,
+      'signature': signature,
+      'status': status,
+      'responseCode': responseCode,
+      'errorDetail': errorDetail,
+      'createdAt': createdAt,
+      'completedAt': completedAt,
+    };
+  }
+}
+
+class CreateWebhookSubscriptionRequest {
+  final String webhookId;
+  final String url;
+  final List<String> eventTypes;
+  final String? description;
+
+  CreateWebhookSubscriptionRequest({
+    required this.webhookId,
+    required this.url,
+    required this.eventTypes,
+    this.description
+  });
+
+  factory CreateWebhookSubscriptionRequest.fromJson(Map<String, dynamic> json) {
+    return CreateWebhookSubscriptionRequest(
+      webhookId: (() {
+        final value = json['webhookId']?.toString();
+        if (value == null) {
+          throw FormatException('CreateWebhookSubscriptionRequest.webhookId is required');
+        }
+        return value;
+      })(),
+      url: (() {
+        final value = json['url']?.toString();
+        if (value == null) {
+          throw FormatException('CreateWebhookSubscriptionRequest.url is required');
+        }
+        return value;
+      })(),
+      eventTypes: (() {
+        final list = _sdkworkAsList(json['eventTypes']);
+        if (list == null) {
+          throw FormatException('CreateWebhookSubscriptionRequest.eventTypes is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      description: json['description']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'webhookId': webhookId,
+      'url': url,
+      'eventTypes': eventTypes.map((item) => item).toList(),
+      'description': description,
+    };
+  }
+}
+
+class AgentUsageSummaryResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentUsageSummaryResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentUsageSummaryResponse.fromJson(Map<String, dynamic> json) {
+    return AgentUsageSummaryResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentUsageSummaryResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentUsageSummaryResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageSummaryResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentUsageSummary {
+  final String turnCount;
+  final String sessionCount;
+  final String inputTokens;
+  final String outputTokens;
+  final String cachedTokens;
+
+  AgentUsageSummary({
+    required this.turnCount,
+    required this.sessionCount,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.cachedTokens
+  });
+
+  factory AgentUsageSummary.fromJson(Map<String, dynamic> json) {
+    return AgentUsageSummary(
+      turnCount: (() {
+        final value = json['turnCount']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageSummary.turnCount is required');
+        }
+        return value;
+      })(),
+      sessionCount: (() {
+        final value = json['sessionCount']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageSummary.sessionCount is required');
+        }
+        return value;
+      })(),
+      inputTokens: (() {
+        final value = json['inputTokens']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageSummary.inputTokens is required');
+        }
+        return value;
+      })(),
+      outputTokens: (() {
+        final value = json['outputTokens']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageSummary.outputTokens is required');
+        }
+        return value;
+      })(),
+      cachedTokens: (() {
+        final value = json['cachedTokens']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageSummary.cachedTokens is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'turnCount': turnCount,
+      'sessionCount': sessionCount,
+      'inputTokens': inputTokens,
+      'outputTokens': outputTokens,
+      'cachedTokens': cachedTokens,
+    };
+  }
+}
+
+class AgentUsageRecordListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentUsageRecordListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentUsageRecordListResponse.fromJson(Map<String, dynamic> json) {
+    return AgentUsageRecordListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentUsageRecordListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentUsageRecordListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecordListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentUsageRecord {
+  final String turnId;
+  final String sessionId;
+  final String agentId;
+  final String ownerUserId;
+  final String status;
+  final String? modelId;
+  final String? providerId;
+  final String inputTokens;
+  final String outputTokens;
+  final String cachedTokens;
+  final String createdAt;
+  final String? completedAt;
+
+  AgentUsageRecord({
+    required this.turnId,
+    required this.sessionId,
+    required this.agentId,
+    required this.ownerUserId,
+    required this.status,
+    this.modelId,
+    this.providerId,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.cachedTokens,
+    required this.createdAt,
+    this.completedAt
+  });
+
+  factory AgentUsageRecord.fromJson(Map<String, dynamic> json) {
+    return AgentUsageRecord(
+      turnId: (() {
+        final value = json['turnId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.turnId is required');
+        }
+        return value;
+      })(),
+      sessionId: (() {
+        final value = json['sessionId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.sessionId is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.agentId is required');
+        }
+        return value;
+      })(),
+      ownerUserId: (() {
+        final value = json['ownerUserId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.ownerUserId is required');
+        }
+        return value;
+      })(),
+      status: (() {
+        final value = json['status']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.status is required');
+        }
+        return value;
+      })(),
+      modelId: json['modelId']?.toString(),
+      providerId: json['providerId']?.toString(),
+      inputTokens: (() {
+        final value = json['inputTokens']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.inputTokens is required');
+        }
+        return value;
+      })(),
+      outputTokens: (() {
+        final value = json['outputTokens']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.outputTokens is required');
+        }
+        return value;
+      })(),
+      cachedTokens: (() {
+        final value = json['cachedTokens']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.cachedTokens is required');
+        }
+        return value;
+      })(),
+      createdAt: (() {
+        final value = json['createdAt']?.toString();
+        if (value == null) {
+          throw FormatException('AgentUsageRecord.createdAt is required');
+        }
+        return value;
+      })(),
+      completedAt: json['completedAt']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'turnId': turnId,
+      'sessionId': sessionId,
+      'agentId': agentId,
+      'ownerUserId': ownerUserId,
+      'status': status,
+      'modelId': modelId,
+      'providerId': providerId,
+      'inputTokens': inputTokens,
+      'outputTokens': outputTokens,
+      'cachedTokens': cachedTokens,
+      'createdAt': createdAt,
+      'completedAt': completedAt,
+    };
+  }
+}
+
+class AgentCallListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentCallListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentCallListResponse.fromJson(Map<String, dynamic> json) {
+    return AgentCallListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentCallListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('AgentCallListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class AgentCallRecord {
+  final String executionId;
+  final String agentId;
+  final String tenantId;
+  final String status;
+  final dynamic output;
+  final String? rawText;
+  final String? agentError;
+  final AgentCallValidation validation;
+  final AgentCallUsage usage;
+  final AgentCallCorrelation correlation;
+
+  AgentCallRecord({
+    required this.executionId,
+    required this.agentId,
+    required this.tenantId,
+    required this.status,
+    required this.output,
+    this.rawText,
+    this.agentError,
+    required this.validation,
+    required this.usage,
+    required this.correlation
+  });
+
+  factory AgentCallRecord.fromJson(Map<String, dynamic> json) {
+    return AgentCallRecord(
+      executionId: (() {
+        final value = json['executionId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallRecord.executionId is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallRecord.agentId is required');
+        }
+        return value;
+      })(),
+      tenantId: (() {
+        final value = json['tenantId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallRecord.tenantId is required');
+        }
+        return value;
+      })(),
+      status: (() {
+        final value = json['status']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallRecord.status is required');
+        }
+        return value;
+      })(),
+      output: json['output'],
+      rawText: json['rawText']?.toString(),
+      agentError: json['agentError']?.toString(),
+      validation: (() {
+        final map = _sdkworkAsMap(json['validation']);
+        if (map == null) {
+          throw FormatException('AgentCallRecord.validation is required');
+        }
+        return AgentCallValidation.fromJson(map);
+      })(),
+      usage: (() {
+        final map = _sdkworkAsMap(json['usage']);
+        if (map == null) {
+          throw FormatException('AgentCallRecord.usage is required');
+        }
+        return AgentCallUsage.fromJson(map);
+      })(),
+      correlation: (() {
+        final map = _sdkworkAsMap(json['correlation']);
+        if (map == null) {
+          throw FormatException('AgentCallRecord.correlation is required');
+        }
+        return AgentCallCorrelation.fromJson(map);
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'executionId': executionId,
+      'agentId': agentId,
+      'tenantId': tenantId,
+      'status': status,
+      'output': output,
+      'rawText': rawText,
+      'agentError': agentError,
+      'validation': validation.toJson(),
+      'usage': usage.toJson(),
+      'correlation': correlation.toJson(),
+    };
+  }
+}
+
+class AgentCallValidation {
+  final bool valid;
+  final List<String> errors;
+
+  AgentCallValidation({
+    required this.valid,
+    required this.errors
+  });
+
+  factory AgentCallValidation.fromJson(Map<String, dynamic> json) {
+    return AgentCallValidation(
+      valid: (() {
+        final value = json['valid'];
+        if (value is! bool) {
+          throw FormatException('AgentCallValidation.valid is required');
+        }
+        return value;
+      })(),
+      errors: (() {
+        final list = _sdkworkAsList(json['errors']);
+        if (list == null) {
+          throw FormatException('AgentCallValidation.errors is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'valid': valid,
+      'errors': errors.map((item) => item).toList(),
+    };
+  }
+}
+
+class AgentCallUsage {
+  final int durationMs;
+  final int attempts;
+  final String runtimeMode;
+
+  AgentCallUsage({
+    required this.durationMs,
+    required this.attempts,
+    required this.runtimeMode
+  });
+
+  factory AgentCallUsage.fromJson(Map<String, dynamic> json) {
+    return AgentCallUsage(
+      durationMs: (() {
+        final value = json['durationMs'];
+        if (value is! int) {
+          throw FormatException('AgentCallUsage.durationMs is required');
+        }
+        return value;
+      })(),
+      attempts: (() {
+        final value = json['attempts'];
+        if (value is! int) {
+          throw FormatException('AgentCallUsage.attempts is required');
+        }
+        return value;
+      })(),
+      runtimeMode: (() {
+        final value = json['runtimeMode']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallUsage.runtimeMode is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'durationMs': durationMs,
+      'attempts': attempts,
+      'runtimeMode': runtimeMode,
+    };
+  }
+}
+
+class AgentCallCorrelation {
+  final String executionId;
+  final String agentId;
+  final String tenantId;
+
+  AgentCallCorrelation({
+    required this.executionId,
+    required this.agentId,
+    required this.tenantId
+  });
+
+  factory AgentCallCorrelation.fromJson(Map<String, dynamic> json) {
+    return AgentCallCorrelation(
+      executionId: (() {
+        final value = json['executionId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallCorrelation.executionId is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallCorrelation.agentId is required');
+        }
+        return value;
+      })(),
+      tenantId: (() {
+        final value = json['tenantId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentCallCorrelation.tenantId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'executionId': executionId,
+      'agentId': agentId,
+      'tenantId': tenantId,
+    };
+  }
+}
+
 class CreateAgentPromptOptimizationRequest {
   final String executionId;
   final String prompt;
@@ -4586,9 +6070,9 @@ class ApplyAgentModelConfigurationRequest {
   final String defaultModelId;
   final List<String> supportedModelIds;
   final List<String>? supportedProviderIds;
-  final int? inputContextTokens;
-  final int? outputContextTokens;
-  final int? toolCallRounds;
+  final String? inputContextTokens;
+  final String? outputContextTokens;
+  final String? toolCallRounds;
   final bool? supportsMultimodal;
 
   ApplyAgentModelConfigurationRequest({
@@ -4666,9 +6150,9 @@ class ApplyAgentModelConfigurationRequest {
             .whereType<String>()
             .toList();
       })(),
-      inputContextTokens: json['inputContextTokens'] is int ? json['inputContextTokens'] : null,
-      outputContextTokens: json['outputContextTokens'] is int ? json['outputContextTokens'] : null,
-      toolCallRounds: json['toolCallRounds'] is int ? json['toolCallRounds'] : null,
+      inputContextTokens: json['inputContextTokens']?.toString(),
+      outputContextTokens: json['outputContextTokens']?.toString(),
+      toolCallRounds: json['toolCallRounds']?.toString(),
       supportsMultimodal: json['supportsMultimodal'] is bool ? json['supportsMultimodal'] : null
     );
   }
@@ -4703,9 +6187,9 @@ class AppliedAgentModelConfigurationRecord {
   final String defaultModelId;
   final List<String> supportedModelIds;
   final List<String> supportedProviderIds;
-  final int? inputContextTokens;
-  final int? outputContextTokens;
-  final int? toolCallRounds;
+  final String? inputContextTokens;
+  final String? outputContextTokens;
+  final String? toolCallRounds;
   final bool supportsMultimodal;
   final bool apiKeyConfigured;
 
@@ -4805,9 +6289,9 @@ class AppliedAgentModelConfigurationRecord {
             .whereType<String>()
             .toList();
       })(),
-      inputContextTokens: json['inputContextTokens'] is int ? json['inputContextTokens'] : null,
-      outputContextTokens: json['outputContextTokens'] is int ? json['outputContextTokens'] : null,
-      toolCallRounds: json['toolCallRounds'] is int ? json['toolCallRounds'] : null,
+      inputContextTokens: json['inputContextTokens']?.toString(),
+      outputContextTokens: json['outputContextTokens']?.toString(),
+      toolCallRounds: json['toolCallRounds']?.toString(),
       supportsMultimodal: (() {
         final value = json['supportsMultimodal'];
         if (value is! bool) {
@@ -10260,6 +11744,7 @@ class CreateAgentTurnRequest {
   final String? runtimeBindingId;
   final String? requestedModelId;
   final String? accessModeId;
+  final String? wireProtocol;
   final String idempotencyKey;
   final String payloadHash;
   final String? clientRequestId;
@@ -10275,6 +11760,7 @@ class CreateAgentTurnRequest {
     this.runtimeBindingId,
     this.requestedModelId,
     this.accessModeId,
+    this.wireProtocol,
     required this.idempotencyKey,
     required this.payloadHash,
     this.clientRequestId,
@@ -10304,6 +11790,7 @@ class CreateAgentTurnRequest {
       runtimeBindingId: json['runtimeBindingId']?.toString(),
       requestedModelId: json['requestedModelId']?.toString(),
       accessModeId: json['accessModeId']?.toString(),
+      wireProtocol: json['wireProtocol']?.toString(),
       idempotencyKey: (() {
         final value = json['idempotencyKey']?.toString();
         if (value == null) {
@@ -10349,6 +11836,7 @@ class CreateAgentTurnRequest {
       'runtimeBindingId': runtimeBindingId,
       'requestedModelId': requestedModelId,
       'accessModeId': accessModeId,
+      'wireProtocol': wireProtocol,
       'idempotencyKey': idempotencyKey,
       'payloadHash': payloadHash,
       'clientRequestId': clientRequestId,
@@ -10989,7 +12477,7 @@ class AgentInteractionRequestData {
   final Map<String, dynamic>? proposedExecPolicyAmendment;
   final Map<String, dynamic>? proposedNetworkPolicyAmendment;
   final List<AgentInteractionQuestion>? questions;
-  final int? autoResolutionMs;
+  final String? autoResolutionMs;
   final bool? isBlocking;
   final String? question;
   final List<AgentInteractionQuestionOption>? options;
@@ -11053,7 +12541,7 @@ class AgentInteractionRequestData {
             .whereType<AgentInteractionQuestion>()
             .toList();
       })(),
-      autoResolutionMs: json['autoResolutionMs'] is int ? json['autoResolutionMs'] : null,
+      autoResolutionMs: json['autoResolutionMs']?.toString(),
       isBlocking: json['isBlocking'] is bool ? json['isBlocking'] : null,
       question: json['question']?.toString(),
       options: (() {
@@ -13134,7 +14622,7 @@ class MediaToolDirectoryEntry {
   final Map<String, dynamic>? outputSchema;
   final String? sideEffectLevel;
   final List<String>? policyCategories;
-  final int? timeoutMs;
+  final String? timeoutMs;
   final String? availability;
   final bool enabled;
   final bool? saveToDriveDefault;
@@ -13203,7 +14691,7 @@ class MediaToolDirectoryEntry {
             .whereType<String>()
             .toList();
       })(),
-      timeoutMs: json['timeoutMs'] is int ? json['timeoutMs'] : null,
+      timeoutMs: json['timeoutMs']?.toString(),
       availability: json['availability']?.toString(),
       enabled: (() {
         final value = json['enabled'];
@@ -13459,7 +14947,7 @@ class MediaToolConfigurationBody {
   final bool enabled;
   final bool? saveToDriveDefault;
   final Map<String, dynamic>? defaultArguments;
-  final int? expectedVersion;
+  final String? expectedVersion;
 
   MediaToolConfigurationBody({
     required this.enabled,
@@ -13479,7 +14967,7 @@ class MediaToolConfigurationBody {
       })(),
       saveToDriveDefault: json['saveToDriveDefault'] is bool ? json['saveToDriveDefault'] : null,
       defaultArguments: _sdkworkAsMap(json['defaultArguments']),
-      expectedVersion: json['expectedVersion'] is int ? json['expectedVersion'] : null
+      expectedVersion: json['expectedVersion']?.toString()
     );
   }
 

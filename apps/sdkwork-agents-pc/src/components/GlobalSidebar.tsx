@@ -123,7 +123,7 @@ export const GlobalSidebar: FC<GlobalSidebarProps> = ({
         <div className={cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-xs font-bold shadow-sm ring-2 ring-transparent transition-all group-hover:ring-white/10', avatarBg)}>
           {username.substring(0, 2).toUpperCase()}
         </div>
-        <div className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border-[2px] border-[#18181A] bg-cyan-500 text-[8px] font-bold text-black">1</div>
+        <div className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border-[2px] border-zinc-200 dark:border-[#18181A] bg-cyan-500 text-[8px] font-bold text-black">1</div>
       </button>
     </div>
   </div>

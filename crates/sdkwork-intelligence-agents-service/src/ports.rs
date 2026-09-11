@@ -413,6 +413,49 @@ impl CompositionSlotListQuery {
     }
 }
 
+/// Query parameters for listing runtime execution records under one agent.
+///
+/// Backs `agents.calls.list`; the keyset cursor is
+/// `(requested_at, execution_id)` descending.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuntimeExecutionListQuery {
+    pub tenant_id: u64,
+    pub agent_id: String,
+    pub status: Option<String>,
+    pub pagination: PaginationParams,
+    pub cursor: Option<crate::runtime_execution_cursor::RuntimeExecutionCursor>,
+}
+
+impl RuntimeExecutionListQuery {
+    pub fn for_agent(tenant_id: u64, agent_id: impl Into<String>) -> Self {
+        Self {
+            tenant_id,
+            agent_id: agent_id.into(),
+            status: None,
+            pagination: PaginationParams::default(),
+            cursor: None,
+        }
+    }
+
+    pub fn with_status(mut self, status: impl Into<String>) -> Self {
+        self.status = optional_non_blank(status.into());
+        self
+    }
+
+    pub fn with_pagination(mut self, pagination: PaginationParams) -> Self {
+        self.pagination = pagination;
+        self
+    }
+
+    pub fn with_cursor(
+        mut self,
+        cursor: crate::runtime_execution_cursor::RuntimeExecutionCursor,
+    ) -> Self {
+        self.cursor = Some(cursor);
+        self
+    }
+}
+
 /// Query parameters for listing persisted audit events for one agent.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuditEventListQuery {
@@ -1271,6 +1314,62 @@ pub enum TurnRequestWriteOutcome {
 /// (e.g. `Mutex`, `RwLock`, or atomic database transactions). This eliminates
 /// the need for a global `Mutex<AgentsService>` and enables true concurrent
 /// request processing.
+/// Keyset-paginated version history for one agent
+/// (`ORDER BY version_number DESC, id DESC`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentVersionListQuery {
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub agent_id: String,
+    pub pagination: PaginationParams,
+    pub cursor: Option<crate::list_cursors::CreatedAtListCursor>,
+}
+
+impl AgentVersionListQuery {
+    pub fn for_agent(tenant_id: u64, organization_id: u64, agent_id: impl Into<String>) -> Self {
+        Self {
+            tenant_id,
+            organization_id,
+            agent_id: agent_id.into(),
+            pagination: PaginationParams::default(),
+            cursor: None,
+        }
+    }
+
+    pub fn with_pagination(mut self, pagination: PaginationParams) -> Self {
+        self.pagination = pagination;
+        self
+    }
+
+    pub fn with_cursor(mut self, cursor: crate::list_cursors::CreatedAtListCursor) -> Self {
+        self.cursor = Some(cursor);
+        self
+    }
+}
+
+/// Offset-paginated webhook subscription list (low-volume config set).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct WebhookSubscriptionListQuery {
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub pagination: PaginationParams,
+}
+
+impl WebhookSubscriptionListQuery {
+    pub fn for_tenant(tenant_id: u64, organization_id: u64) -> Self {
+        Self {
+            tenant_id,
+            organization_id,
+            pagination: PaginationParams::default(),
+        }
+    }
+
+    pub fn with_pagination(mut self, pagination: PaginationParams) -> Self {
+        self.pagination = pagination;
+        self
+    }
+}
+
 pub trait AgentRepository: Send + Sync {
     /// Verify that the repository's required backing store can serve requests.
     fn check_readiness(&self) -> KernelResult<()>;
@@ -1859,6 +1958,28 @@ pub trait AgentRepository: Send + Sync {
         turn_id: &str,
     ) -> KernelResult<()>;
 
+    /// Reads the retained streaming checkpoint of one Turn, if any. Used as a
+    /// cheap pre-check before promoting an interrupted Turn's partial reply.
+    fn read_turn_streaming_content(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+    ) -> KernelResult<Option<String>>;
+
+    /// Promotes the streaming checkpoint of a failed or cancelled Turn into a
+    /// durable partial assistant-output item so the partially generated reply
+    /// stays visible after reload (industry parity: Anthropic/OpenAI keep
+    /// partial content after interruptions). Idempotent: returns `Ok(None)`
+    /// when the Turn carries no checkpoint, is not in a failed/cancelled
+    /// terminal state, or already owns an assistant item. The persisted item's
+    /// content is taken from the Turn's checkpoint inside the store, not from
+    /// the caller-supplied record.
+    fn append_interrupted_turn_output(
+        &self,
+        record: AgentSessionItemRecord,
+    ) -> KernelResult<Option<AgentSessionItemRecord>>;
+
     /// Atomically persist a requested turn, its user-input item, any Drive
     /// references, and the corresponding session counter update.
     fn insert_turn_request(
@@ -1944,6 +2065,247 @@ pub trait AgentRepository: Send + Sync {
     ) -> KernelResult<Option<AgentTaskRecord>>;
 
     fn list_tasks(&self, query: &TaskListQuery) -> KernelResult<Vec<AgentTaskRecord>>;
+
+    // -----------------------------------------------------------------------
+    // Runtime execution persistence (structured agent calls)
+    // -----------------------------------------------------------------------
+
+    /// Persists one runtime execution record. The
+    /// `(tenant_id, agent_id, execution_id)` tuple is unique; inserting a
+    /// duplicate execution id is a conflict.
+    fn insert_runtime_execution(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+    ) -> KernelResult<()> {
+        let _ = record;
+        Err(KernelError::Internal {
+            message: "runtime execution persistence is not supported by this repository"
+                .to_string(),
+        })
+    }
+
+    /// Replaces the mutable state of one runtime execution record
+    /// (status/output/completed_at) matched by identity.
+    fn update_runtime_execution(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+    ) -> KernelResult<()> {
+        let _ = record;
+        Err(KernelError::Internal {
+            message: "runtime execution persistence is not supported by this repository"
+                .to_string(),
+        })
+    }
+
+    fn get_runtime_execution(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentRuntimeExecutionRecord>> {
+        let _ = (tenant_id, agent_id, execution_id);
+        Err(KernelError::Internal {
+            message: "runtime execution persistence is not supported by this repository"
+                .to_string(),
+        })
+    }
+
+    /// Returns up to `query.pagination.page_size + 1` records sorted by
+    /// `(requested_at, execution_id)` descending so callers can detect
+    /// `has_more`.
+    fn list_runtime_executions(
+        &self,
+        query: &RuntimeExecutionListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentRuntimeExecutionRecord>> {
+        let _ = query;
+        Err(KernelError::Internal {
+            message: "runtime execution persistence is not supported by this repository"
+                .to_string(),
+        })
+    }
+
+    /// Marks `queued`/`running` runtime executions that were not updated
+    /// since `updated_before` as `failed` (crash recovery). Returns the
+    /// recovered records.
+    fn list_stale_runtime_executions(
+        &self,
+        tenant_id: u64,
+        updated_before: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::domain::AgentRuntimeExecutionRecord>> {
+        let _ = (tenant_id, updated_before, limit);
+        Err(KernelError::Internal {
+            message: "runtime execution persistence is not supported by this repository"
+                .to_string(),
+        })
+    }
+
+    /// Aggregated token/turn usage over the durable turn facts for one
+    /// tenant scope and filter window (`agents.usage.summary`).
+    fn summarize_usage(
+        &self,
+        query: &crate::usage::UsageSummaryQuery,
+    ) -> KernelResult<crate::usage::AgentUsageSummary> {
+        let _ = query;
+        Err(KernelError::Internal {
+            message: "usage metering is not supported by this repository".to_string(),
+        })
+    }
+
+    /// Returns up to `query.pagination.page_size + 1` usage records sorted by
+    /// `(created_at, turn internal id)` descending so callers can detect
+    /// `has_more` (`agents.usage.records`).
+    fn list_usage_records(
+        &self,
+        query: &crate::usage::UsageRecordListQuery,
+    ) -> KernelResult<Vec<crate::usage::AgentUsageRecord>> {
+        let _ = query;
+        Err(KernelError::Internal {
+            message: "usage metering is not supported by this repository".to_string(),
+        })
+    }
+    /// Persists a new immutable agent version snapshot. Conflicts on a
+    /// replayed `version_id` or a non-monotonic `version_number`.
+    fn insert_agent_version(
+        &self,
+        record: crate::domain::AgentVersionRecord,
+    ) -> KernelResult<crate::domain::AgentVersionRecord> {
+        let _ = record;
+        Err(KernelError::Internal {
+            message: "agent version persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    fn get_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentVersionRecord>> {
+        let _ = (tenant_id, organization_id, agent_id, version_id);
+        Err(KernelError::Internal {
+            message: "agent version persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    /// Returns up to `query.pagination.page_size + 1` versions ordered by
+    /// `(version_number, id)` descending.
+    fn list_agent_versions(
+        &self,
+        query: &AgentVersionListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentVersionRecord>> {
+        let _ = query;
+        Err(KernelError::Internal {
+            message: "agent version persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    /// Atomically marks exactly one version active: clears `activated_at` on
+    /// the previously active version and sets it on `version_id`. Returns the
+    /// updated record; `None` when the version does not exist.
+    fn activate_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        activated_at: &str,
+    ) -> KernelResult<Option<crate::domain::AgentVersionRecord>> {
+        let _ = (
+            tenant_id,
+            organization_id,
+            agent_id,
+            version_id,
+            activated_at,
+        );
+        Err(KernelError::Internal {
+            message: "agent version persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    fn insert_webhook_subscription(
+        &self,
+        record: crate::webhook::AgentWebhookRecord,
+    ) -> KernelResult<crate::webhook::AgentWebhookRecord> {
+        let _ = record;
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    fn get_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<Option<crate::webhook::AgentWebhookRecord>> {
+        let _ = (tenant_id, organization_id, webhook_id);
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    fn list_webhook_subscriptions(
+        &self,
+        query: &WebhookSubscriptionListQuery,
+    ) -> KernelResult<Vec<crate::webhook::AgentWebhookRecord>> {
+        let _ = query;
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    /// Deletes the subscription. Returns the removed record; `None` when it
+    /// does not exist (delete is idempotent at the HTTP layer).
+    fn delete_webhook_subscription(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+    ) -> KernelResult<Option<crate::webhook::AgentWebhookRecord>> {
+        let _ = (tenant_id, organization_id, webhook_id);
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    fn insert_webhook_delivery(
+        &self,
+        record: crate::webhook::AgentWebhookDeliveryRecord,
+    ) -> KernelResult<crate::webhook::AgentWebhookDeliveryRecord> {
+        let _ = record;
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    /// Records the terminal delivery outcome for one attempt.
+    fn complete_webhook_delivery(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        webhook_id: &str,
+        delivery_id: &str,
+        status: &str,
+        response_code: Option<i32>,
+        error_detail: Option<String>,
+        completed_at: &str,
+    ) -> KernelResult<crate::webhook::AgentWebhookDeliveryRecord> {
+        let _ = (
+            tenant_id,
+            organization_id,
+            webhook_id,
+            delivery_id,
+            status,
+            response_code,
+            error_detail,
+            completed_at,
+        );
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
 }
 
 /// Thread-safe audit event sink port.

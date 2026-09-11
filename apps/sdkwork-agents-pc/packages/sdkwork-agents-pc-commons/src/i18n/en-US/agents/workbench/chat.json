@@ -54,6 +54,7 @@
   "cancel": "Cancel",
   "close": "Close",
   "loading": "Loading",
+  "loadingSessions": "Loading conversations…",
   "playground": {
     "modelPicker": {
       "vendorSection": "Vendors",
@@ -63,6 +64,12 @@
   },
   "retryHint": ", please try again later.",
   "sendErrorFallback": "Failed to generate a response",
+  "balance": {
+    "insufficient": "Your account balance is too low, so new messages may not get a response.",
+    "insufficientWithAmount": "Your account balance is too low ({{amount}} left), so new messages may not get a response.",
+    "buyCredits": "Buy a Token Plan",
+    "dismiss": "Dismiss"
+  },
   "customProvider": {
     "title": "Custom LLM Provider",
     "vendorCode": "Vendor code",

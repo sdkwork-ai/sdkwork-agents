@@ -21,6 +21,11 @@ pub(super) async fn wire_assets_app_router() -> Result<Router, String> {
 mod tests {
     #[test]
     fn assets_router_wire_contract_is_present() {
-        let _ = sdkwork_routes_assets_app_api::gateway_route_manifest();
+        // Assets routes enter through the assets assembly contribution, never
+        // through a direct dependency on sdkwork-routes-assets-app-api
+        // (API_ASSEMBLY_SPEC §3 dependency composition rules). The wire
+        // function is exercised by the standalone bootstrap integration test;
+        // this unit test only pins the assembly-based wiring path.
+        let _ = super::wire_assets_app_router;
     }
 }

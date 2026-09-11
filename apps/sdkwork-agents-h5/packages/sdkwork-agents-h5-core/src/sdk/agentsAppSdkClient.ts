@@ -5,6 +5,7 @@ import {
   type SdkworkAppClient as GeneratedSdkworkAgentsAppClient,
   type SdkworkAppConfig,
 } from "@sdkwork/agents-app-sdk";
+import { resolveBaseUrl, readRuntimeEnv } from "@sdkwork/sdk-common";
 import type { Interceptors } from "@sdkwork/sdk-common";
 
 import {
@@ -15,7 +16,6 @@ import {
   resolveAppSdkAuthToken,
   type SdkworkChatSession,
 } from "../session/session";
-import { readRuntimeEnv } from "./runtimeEnv";
 
 export type SdkworkAgentsAppClient = GeneratedSdkworkAgentsAppClient;
 export type SdkworkAgentsAppClientConfig = SdkworkAppConfig & {
@@ -25,11 +25,14 @@ export type SdkworkAgentsAppClientConfig = SdkworkAppConfig & {
 let agentsAppSdkClient: SdkworkAgentsAppClient | null = null;
 
 export function resolveAgentsAppSdkBaseUrl(): string {
-  const fromEnv = readRuntimeEnv("VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL");
-  if (fromEnv) return fromEnv;
-  const publicUrl =
-    readRuntimeEnv("VITE_SDKWORK_AGENTS_H5_APPLICATION_PUBLIC_HTTP_URL") ?? "http://127.0.0.1:8095";
-  return `${String(publicUrl).replace(/\/+$/u, "")}/app/v3/api`;
+  // Single shared base-url key; candidates may be comma/semicolon separated and
+  // the matching API host is chosen from the current page's environment+brand
+  // (https page -> https://api-*, http page -> http://api-*). preservePath keeps
+  // the /app/v3/api suffix this SDK client expects.
+  return resolveBaseUrl({
+    envKey: "SDKWORK_API_BASE_URL",
+    preservePath: true,
+  }).url;
 }
 
 export function createAgentsAppSdkClientConfig(

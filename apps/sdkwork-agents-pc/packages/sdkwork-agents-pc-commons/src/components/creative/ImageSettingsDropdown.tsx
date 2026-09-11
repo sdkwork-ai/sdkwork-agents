@@ -190,7 +190,7 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
         {/* Recommended Presets Selector */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <div className="text-[12px] text-zinc-400 font-semibold flex items-center gap-1.5">
+            <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-semibold flex items-center gap-1.5">
               <span>常用预设比例</span>
               <span className="bg-cyan-500/10 border border-cyan-400/20 text-cyan-400 text-[8px] font-bold px-1 py-0.5 rounded scale-90 origin-left">
                 推荐
@@ -212,7 +212,7 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
                   "flex flex-col items-center justify-center p-3 rounded-xl transition-all border text-left cursor-pointer select-none",
                   imageRatio === preset.ratio
                     ? "bg-cyan-500/10 border-cyan-400/40 text-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.05)]"
-                    : "border-black/5 bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 hover:border-black/10 dark:border-white/5 dark:bg-white/[0.02] dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-zinc-200 dark:hover:border-white/10"
+                    : "border-black/5 bg-zinc-50 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 hover:border-black/10 dark:border-white/5 dark:bg-[#252525] dark:text-zinc-400 dark:hover:bg-[#2a2a2a] dark:hover:text-zinc-200 dark:hover:border-white/10"
                 )}
               >
                 <div className="h-5 flex items-center justify-center mb-1.5">
@@ -245,8 +245,8 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
                 className={cn(
                   "flex flex-col items-center justify-center py-2.5 rounded-xl transition-all border text-[11px] font-medium cursor-pointer", 
                   imageRatio === ratio 
-                    ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-white/10 dark:border-white/10 dark:text-white" 
-                    : "border-transparent text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-white/5 dark:hover:text-white"
+                    ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-[#333333] dark:border-white/10 dark:text-white" 
+                    : "border-transparent text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-[#2a2a2a] dark:hover:text-white"
                 )}
               >
                 <ImageRatioIcon ratio={ratio} active={imageRatio === ratio} />
@@ -271,8 +271,8 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
               className={cn(
                 "w-full py-2.5 rounded-xl transition-all text-[13px] font-medium border cursor-pointer", 
                 imageResolution === '1K' 
-                  ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-white/10 dark:border-white/10 dark:text-white" 
-                  : "border-transparent bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                  ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-[#333333] dark:border-white/10 dark:text-white" 
+                  : "border-transparent bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-[#2f2f2f] dark:text-zinc-400 dark:hover:bg-[#333333] dark:hover:text-white"
               )}
             >
               标清 1K
@@ -285,8 +285,8 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
               className={cn(
                 "w-full py-2.5 rounded-xl transition-all text-[13px] font-medium border cursor-pointer flex items-center justify-center gap-1", 
                 imageResolution === '2K' 
-                  ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-white/10 dark:border-white/10 dark:text-white" 
-                  : "border-transparent bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                  ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-[#333333] dark:border-white/10 dark:text-white" 
+                  : "border-transparent bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-[#2f2f2f] dark:text-zinc-400 dark:hover:bg-[#333333] dark:hover:text-white"
               )}
             >
               <span>高清 2K</span>
@@ -300,8 +300,8 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
               className={cn(
                 "w-full py-2.5 rounded-xl transition-all text-[13px] font-medium border cursor-pointer flex items-center justify-center gap-1", 
                 imageResolution === '4K' 
-                  ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-white/10 dark:border-white/10 dark:text-white" 
-                  : "border-transparent bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-white/5 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white"
+                  ? "bg-zinc-100 border-zinc-200 text-zinc-900 dark:bg-[#333333] dark:border-white/10 dark:text-white" 
+                  : "border-transparent bg-zinc-100 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 dark:bg-[#2f2f2f] dark:text-zinc-400 dark:hover:bg-[#333333] dark:hover:text-white"
               )}
             >
               <span>超清 4K</span>
@@ -332,7 +332,7 @@ export const ImageSettingsDropdown: React.FC<ImageSettingsDropdownProps> = ({
             className={cn(
               "p-2 rounded-lg transition-colors border cursor-pointer",
               imageAspectRatioLocked 
-                ? "bg-zinc-100 border-zinc-200 text-cyan-600 hover:text-cyan-700 dark:bg-white/5 dark:border-white/10 dark:text-cyan-400 dark:hover:text-cyan-300" 
+                ? "bg-zinc-100 border-zinc-200 text-cyan-600 hover:text-cyan-700 dark:bg-[#2f2f2f] dark:border-white/10 dark:text-cyan-400 dark:hover:text-cyan-300" 
                 : "bg-transparent border-transparent text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
             )}
             title={imageAspectRatioLocked ? "解除比例锁定" : "锁定比例"}

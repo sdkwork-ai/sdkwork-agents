@@ -105,6 +105,7 @@ mod tests {
             tool_id: "image.midjourney.generations.create".to_string(),
             arguments,
             session_id: None,
+            trace_id: None,
         }
     }
 

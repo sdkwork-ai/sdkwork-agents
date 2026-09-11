@@ -2,6 +2,7 @@ import type {
   GenerationMediaResult,
   GenerationRecord,
 } from '@sdkwork/agents-pc-core/sdk/generationsService';
+import { creativeModelCatalogService } from '@sdkwork/agents-pc-commons';
 import { uuid } from '@sdkwork/utils';
 
 import type { CreativeMessage, CreativeSession } from '../types';
@@ -90,9 +91,18 @@ export class CreativeService {
     prompt: string,
     mode: string,
     onUpdate: (message: CreativeMessage) => void,
+    model?: string,
   ): Promise<CreativeMessage> {
     const generationsService = await loadGenerationsService();
     const normalizedMode = mode === 'video' ? 'video' : 'image';
+    // Resolve the selected model through the unified creative model catalog:
+    // stale or deprecated ids fall back to the replacement/default model.
+    const resolvedModel = model
+      ? creativeModelCatalogService.resolveSelection(normalizedMode, model)
+      : undefined;
+    const resolvedModelLabel = resolvedModel
+      ? creativeModelCatalogService.getDefinition(normalizedMode, resolvedModel)?.label ?? resolvedModel
+      : undefined;
     const pendingMessage: CreativeMessage = {
       id: uuid(),
       role: 'assistant',
@@ -100,7 +110,8 @@ export class CreativeService {
       stage: 'thinking',
       progress: 0,
       mode: normalizedMode,
-      modelInfo: normalizedMode === 'video' ? 'SDKWork Video' : 'SDKWork Image',
+      modelInfo: resolvedModelLabel
+        ?? (normalizedMode === 'video' ? 'SDKWork Video' : 'SDKWork Image'),
       imageUrls: [],
       videoUrls: [],
     };
@@ -110,6 +121,7 @@ export class CreativeService {
       modality: normalizedMode,
       operationType: normalizedMode === 'video' ? 'text_to_video' : 'text_to_image',
       prompt,
+      ...(resolvedModel ? { model: resolvedModel } : {}),
     });
     const record = await generationsService.waitForCompletion(command.generation, {
       onStatus(current) {

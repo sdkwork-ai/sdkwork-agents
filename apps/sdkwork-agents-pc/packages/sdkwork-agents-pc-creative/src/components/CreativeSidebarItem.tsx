@@ -42,8 +42,8 @@ export const CreativeSidebarItem: React.FC<CreativeSidebarItemProps> = ({
         editingSessionId === session.id 
           ? "text-zinc-900 dark:text-white" 
           : activeSessionId === session.id 
-            ? "bg-zinc-100 text-zinc-900 dark:bg-white/10 dark:text-white" 
-            : "hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-white/5 dark:text-zinc-400 dark:hover:text-zinc-200"
+            ? "bg-zinc-100 text-zinc-900 dark:bg-[#333333] dark:text-white" 
+            : "hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-[#2a2a2a] dark:text-zinc-400 dark:hover:text-zinc-200"
       )}
     >
       <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -85,7 +85,7 @@ export const CreativeSidebarItem: React.FC<CreativeSidebarItemProps> = ({
               e.stopPropagation();
               setActiveSessionMenuId(activeSessionMenuId === session.id ? null : session.id);
             }}
-            className="p-1 rounded hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-white/10 dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer"
+            className="p-1 rounded hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-[#333333] dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer"
           >
             <MoreHorizontal size={14} />
           </button>
@@ -104,7 +104,7 @@ export const CreativeSidebarItem: React.FC<CreativeSidebarItemProps> = ({
                 setEditingTitle(session.title);
                 setActiveSessionMenuId(null);
               }}
-              className="w-full text-left px-3 py-1.5 hover:bg-black/5 text-zinc-600 hover:text-zinc-900 text-xs flex items-center gap-2 transition-colors cursor-pointer dark:hover:bg-white/5 dark:text-zinc-300 dark:hover:text-white"
+              className="w-full text-left px-3 py-1.5 hover:bg-black/5 text-zinc-600 hover:text-zinc-900 text-xs flex items-center gap-2 transition-colors cursor-pointer dark:hover:bg-[#2a2a2a] dark:text-zinc-300 dark:hover:text-white"
             >
               <Edit3 size={12} className="text-zinc-400 dark:text-zinc-500" />
               重命名 / Rename
@@ -115,7 +115,7 @@ export const CreativeSidebarItem: React.FC<CreativeSidebarItemProps> = ({
                 handleTogglePin(session.id);
                 setActiveSessionMenuId(null);
               }}
-              className="w-full text-left px-3 py-1.5 hover:bg-black/5 text-zinc-600 hover:text-zinc-900 text-xs flex items-center gap-2 transition-colors cursor-pointer dark:hover:bg-white/5 dark:text-zinc-300 dark:hover:text-white"
+              className="w-full text-left px-3 py-1.5 hover:bg-black/5 text-zinc-600 hover:text-zinc-900 text-xs flex items-center gap-2 transition-colors cursor-pointer dark:hover:bg-[#2a2a2a] dark:text-zinc-300 dark:hover:text-white"
             >
               <Pin size={12} className={cn("text-zinc-400 dark:text-zinc-500", session.isPinned ? "rotate-45 text-cyan-500 dark:text-cyan-400" : "")} />
               {session.isPinned ? '取消置顶' : '置顶会话'}

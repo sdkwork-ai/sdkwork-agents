@@ -1,14 +1,14 @@
 use crate::application::{
     ActivateAgentProviderBindingCommand, AgentPreviewResponseCommand,
-    AgentPromptOptimizationCommand, AgentProviderBindingCommand, AnswerInteractionCommand,
-    ApproveInteractionCommand, ArchiveSessionCommand, CancelTaskCommand, CancelTaskRunCommand,
-    ChangeAgentStatusCommand, CloseSessionCommand, CreateAgentCommand, CreateInteractionCommand,
-    CreateSessionCommand, CreateSessionItemCommand, CreateTaskCommand, DeleteAgentCommand,
-    ExecuteTaskCommand, GetAgentCommand, ListAgentsCommand, ListInteractionsCommand,
-    ListSessionItemsCommand, ListSessionsCommand, ListTaskRunAttemptsCommand, ListTaskRunsCommand,
-    ListTasksCommand, PauseTaskCommand, ReconcileTaskRunCommand, ReplaceTaskCommand,
-    RestoreAgentCommand, ResumeTaskCommand, RetryTaskRunCommand, TaskRunReconciliationOutcome,
-    UpdateAgentCommand,
+    AgentPromptOptimizationCommand, AgentProviderBindingCommand, AgentStructuredCallCommand,
+    AnswerInteractionCommand, ApproveInteractionCommand, ArchiveSessionCommand, CancelTaskCommand,
+    CancelTaskRunCommand, ChangeAgentStatusCommand, CloseSessionCommand, CreateAgentCommand,
+    CreateInteractionCommand, CreateSessionCommand, CreateSessionItemCommand, CreateTaskCommand,
+    DeleteAgentCommand, ExecuteTaskCommand, GetAgentCommand, ListAgentsCommand,
+    ListInteractionsCommand, ListSessionItemsCommand, ListSessionsCommand,
+    ListTaskRunAttemptsCommand, ListTaskRunsCommand, ListTasksCommand, PauseTaskCommand,
+    ReconcileTaskRunCommand, ReplaceTaskCommand, RestoreAgentCommand, ResumeTaskCommand,
+    RetryTaskRunCommand, TaskRunReconciliationOutcome, UpdateAgentCommand,
 };
 use crate::domain::{
     AgentBusinessRecord, AgentBusinessStatus, AgentCompositionSlotRecord, AgentImplementationKind,
@@ -772,6 +772,119 @@ impl AgentRuntimeExecutionResponseDto {
             data: AgentRuntimeExecutionRecordDto::from_record(record),
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Agent structured call (agents.calls.create)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentCallOutputSpecDto {
+    pub format: Option<String>,
+    pub schema: Option<Value>,
+    pub root_element: Option<String>,
+    pub strict: Option<bool>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentCallPolicyDto {
+    pub timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreateAgentCallRequestDto {
+    pub tenant_id: String,
+    pub agent_id: String,
+    pub execution_id: String,
+    pub mode: String,
+    pub prompt: Option<String>,
+    pub params: Option<Value>,
+    pub param_schema: Option<Value>,
+    pub output: Option<AgentCallOutputSpecDto>,
+    pub policy: Option<AgentCallPolicyDto>,
+    pub execution_mode: Option<String>,
+    pub requested_at: String,
+}
+
+impl CreateAgentCallRequestDto {
+    pub fn into_command(
+        self,
+        requested_by: PolicySubject,
+    ) -> KernelResult<AgentStructuredCallCommand> {
+        validate_requested_at(&self.requested_at)?;
+        let output = self.output.unwrap_or_default();
+        let policy = self.policy.unwrap_or_default();
+        Ok(AgentStructuredCallCommand {
+            tenant_id: parse_tenant_id(&self.tenant_id)?,
+            agent_id: self.agent_id,
+            execution_id: self.execution_id,
+            mode: self.mode,
+            prompt: self.prompt,
+            params: self.params,
+            param_schema: self.param_schema,
+            output_format: output.format.unwrap_or_else(|| "json".to_string()),
+            output_schema: output.schema,
+            output_root_element: output.root_element,
+            strict: output.strict.unwrap_or(true),
+            timeout_ms: policy
+                .timeout_ms
+                .unwrap_or(sdkwork_agents_runtime_facade::DEFAULT_STRUCTURED_CALL_TIMEOUT_MS),
+            execution_mode: match self.execution_mode.as_deref() {
+                None | Some("") => crate::domain::AgentCallExecutionMode::Sync,
+                Some(code) => {
+                    crate::domain::AgentCallExecutionMode::from_code(code).ok_or_else(|| {
+                        KernelError::validation("executionMode must be one of: sync, async")
+                    })?
+                }
+            },
+            requested_by,
+            requested_at: self.requested_at,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCallValidationDto {
+    pub valid: bool,
+    pub errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCallUsageDto {
+    pub duration_ms: u64,
+    pub attempts: usize,
+    pub runtime_mode: String,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCallCorrelationDto {
+    pub execution_id: String,
+    pub agent_id: String,
+    pub tenant_id: String,
+}
+
+/// Typed structured-call result carried inside `SdkWorkResourceData.item`.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentCallRecordDto {
+    pub execution_id: String,
+    pub agent_id: String,
+    pub tenant_id: String,
+    pub status: String,
+    pub output: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw_text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_error: Option<String>,
+    pub validation: AgentCallValidationDto,
+    pub usage: AgentCallUsageDto,
+    pub correlation: AgentCallCorrelationDto,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]

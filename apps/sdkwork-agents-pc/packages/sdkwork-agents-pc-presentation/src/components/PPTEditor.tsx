@@ -12,9 +12,8 @@ interface PPTEditorProps {
 
 export const PPTEditor: React.FC<PPTEditorProps> = ({ content, setContent, layout }) => {
   const { t } = useTranslation(['ppt']);
-  const { theme } = useTheme();
-  
-  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
 
   if (layout !== 'split' && layout !== 'edit') return null;
 

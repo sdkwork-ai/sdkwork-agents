@@ -76,6 +76,16 @@
       "purpose": "Machine-readable typed Interaction request, resolution, compatibility, and approved boundary."
     },
     {
+      "file": "AGENTS_STRUCTURED_CALL_SPEC.md",
+      "path": "specs/AGENTS_STRUCTURED_CALL_SPEC.md",
+      "purpose": "Canonical structured agent call contract: prompt/params in, validated JSON/XML/text out, agent-as-tool projection."
+    },
+    {
+      "file": "agent-structured-call.contract.json",
+      "path": "specs/agent-structured-call.contract.json",
+      "purpose": "Machine-readable structured-call invariants (modes, formats, pipeline, agent-as-tool limits) and wire-authority alignment."
+    },
+    {
       "file": "AGENTS_KERNEL_BOUNDARY_SPEC.md",
       "path": "specs/AGENTS_KERNEL_BOUNDARY_SPEC.md",
       "purpose": "Kernel vs agents vs product application responsibility boundary."
@@ -94,6 +104,11 @@
       "file": "AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md",
       "path": "specs/AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md",
       "purpose": "Mandatory sdkwork-im consumer direction and Agents/IM database ownership boundary."
+    },
+    {
+      "file": "AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md",
+      "path": "specs/AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md",
+      "purpose": "Mandatory sdkwork-appstore consumer direction and Agents/appstore ownership boundary."
     },
     {
       "file": "AGENTS_AI_COMPOSITION_DATABASE_SPEC.md",
@@ -125,7 +140,7 @@
     ],
     "sdkDependencies": [
       {
-        "workspace": "sdkwork-kernel",
+        "workspace": "sdkwork-agent-internal-sdk",
         "role": "agent-runtime-kernel",
         "required": true,
         "dependencyMode": "platform-kernel",
@@ -153,7 +168,7 @@
         "generatedTransportImportPolicy": "forbidden"
       },
       {
-        "workspace": "sdkwork-memory",
+        "workspace": "sdkwork-memory-app-sdk",
         "role": "memory-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -167,7 +182,7 @@
         }
       },
       {
-        "workspace": "sdkwork-knowledgebase",
+        "workspace": "sdkwork-knowledgebase-app-sdk",
         "role": "knowledgebase-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -181,7 +196,7 @@
         }
       },
       {
-        "workspace": "sdkwork-skills",
+        "workspace": "sdkwork-skills-app-sdk",
         "role": "skills-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -195,7 +210,7 @@
         }
       },
       {
-        "workspace": "sdkwork-prompts",
+        "workspace": "sdkwork-prompts-app-sdk",
         "role": "prompts-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -209,7 +224,7 @@
         }
       },
       {
-        "workspace": "sdkwork-documents",
+        "workspace": "sdkwork-documents-app-sdk",
         "role": "documents-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -223,7 +238,7 @@
         }
       },
       {
-        "workspace": "sdkwork-mcp",
+        "workspace": "sdkwork-mcp-app-sdk",
         "role": "mcp-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -234,7 +249,7 @@
         "generatedTransportImportPolicy": "forbidden"
       },
       {
-        "workspace": "sdkwork-llm",
+        "workspace": "sdkwork-llm-app-sdk",
         "role": "llm-capability-module",
         "required": false,
         "dependencyMode": "independent-capability-module",
@@ -243,7 +258,7 @@
         "generatedTransportImportPolicy": "forbidden"
       },
       {
-        "workspace": "sdkwork-drive",
+        "workspace": "sdkwork-drive-app-sdk",
         "role": "drive-uploader-file-storage",
         "required": true,
         "dependencyMode": "independent-capability-module",

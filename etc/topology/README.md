@@ -14,6 +14,8 @@ contract is [`../../specs/topology.spec.json`](../../specs/topology.spec.json).
 | `cloud.test` | Cloud integration testing |
 | `cloud.staging` | Cloud pre-production validation |
 | `cloud.production` | Cloud production deployment |
+| `standalone.demo` | Standalone independent demo deployment |
+| `cloud.demo` | Cloud independent demo deployment |
 
 `development` uses the Web Framework loopback/private-network policy. Every
 other profile projects an explicit, exact CORS allowlist through

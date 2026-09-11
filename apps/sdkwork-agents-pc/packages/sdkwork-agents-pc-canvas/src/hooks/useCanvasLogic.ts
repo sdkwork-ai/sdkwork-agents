@@ -1775,7 +1775,7 @@ export function useCanvasLogic() {
     } else if (node.type === 'image-gen') {
       CanvasService.generateImage(finalPrompt, finalSettings.ratio || node.ratio || '1:1', (p, msg) => {
         setNodes(prev => prev.map(n => n.id === id ? { ...n, progress: p, content: msg } : n));
-      }).then((url) => {
+      }, finalSettings.model || node.model).then((url) => {
         setNodes(prev => prev.map(n => n.id === id ? { ...n, status: 'completed', progress: 100, mediaUrl: url } : n));
       }).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : '图片生成失败';
@@ -1785,7 +1785,7 @@ export function useCanvasLogic() {
     } else if (node.type === 'video-gen') {
       CanvasService.generateVideo(finalPrompt, (p, msg) => {
         setNodes(prev => prev.map(n => n.id === id ? { ...n, progress: p, content: msg } : n));
-      }).then((url) => {
+      }, finalSettings.model || node.model).then((url) => {
         setNodes(prev => prev.map(n => n.id === id ? { ...n, status: 'completed', progress: 100, mediaUrl: url } : n));
       }).catch((error: unknown) => {
         const message = error instanceof Error ? error.message : '视频生成失败';

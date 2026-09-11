@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle, Inbox } from 'lucide-react';
 import { AssetDetailModal, AssetItem } from './components/AssetDetailModal';
 import { AssetsHeader } from './components/AssetsHeader';
 import { AssetsFilter } from './components/AssetsFilter';
@@ -79,11 +79,19 @@ export const AssetsView = () => {
         <div className="flex-1 flex items-center justify-center text-sm text-zinc-500">
           加载中...
         </div>
+      ) : !loadError && allItems.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-6 text-center">
+          <div className="w-14 h-14 rounded-full bg-zinc-200/70 dark:bg-zinc-800/70 flex items-center justify-center text-zinc-400 dark:text-zinc-500">
+            <Inbox size={26} />
+          </div>
+          <p className="mt-2 text-sm font-semibold text-zinc-800 dark:text-white">暂无资产</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">生成的图片、视频、音频与文档会按时间显示在这里</p>
+        </div>
       ) : (
-        <AssetsGrid 
-          groups={groups} 
-          activeFilter={activeFilter} 
-          onItemClick={handleItemClick} 
+        <AssetsGrid
+          groups={groups}
+          activeFilter={activeFilter}
+          onItemClick={handleItemClick}
         />
       )}
 

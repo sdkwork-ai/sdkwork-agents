@@ -533,11 +533,6 @@ impl ModelStreamSink for ForwardingStreamCollector<'_> {
         if chunk.content.is_empty() {
             return Ok(());
         }
-        if self.deltas.len() >= MAX_AGENT_ENGINE_STREAM_CHUNKS {
-            return Err(sdkwork_agent_kernel::KernelError::resource_exhausted(
-                "agent-engine stream chunk limit exceeded",
-            ));
-        }
         self.bytes = self.bytes.checked_add(chunk.content.len()).ok_or_else(|| {
             sdkwork_agent_kernel::KernelError::resource_exhausted(
                 "agent-engine stream output byte count overflow",
@@ -549,9 +544,33 @@ impl ModelStreamSink for ForwardingStreamCollector<'_> {
             ));
         }
 
-        self.inner.push_chunk(chunk.clone())?;
-        self.deltas.push(chunk.content);
-        Ok(())
+        // Reasoning and tool-call argument deltas carry into the rich
+        // `agent.stream.*` event channel so the visible assistant text
+        // (`stream_deltas`) never mixes in hidden reasoning or serialized
+        // tool-call JSON. Only visible text chunks feed the product text
+        // assembly path.
+        match chunk.chunk_kind {
+            sdkwork_agent_kernel::ModelChunkKind::Reasoning
+            | sdkwork_agent_kernel::ModelChunkKind::ToolCallArguments
+            | sdkwork_agent_kernel::ModelChunkKind::Usage
+            | sdkwork_agent_kernel::ModelChunkKind::Status => {
+                let event =
+                    sdkwork_agent_kernel::AgentStreamEvent::from(&chunk).to_kernel_event();
+                self.inner.push_event(event.clone())?;
+                self.events.push(event);
+                Ok(())
+            }
+            sdkwork_agent_kernel::ModelChunkKind::Text => {
+                if self.deltas.len() >= MAX_AGENT_ENGINE_STREAM_CHUNKS {
+                    return Err(sdkwork_agent_kernel::KernelError::resource_exhausted(
+                        "agent-engine stream chunk limit exceeded",
+                    ));
+                }
+                self.inner.push_chunk(chunk.clone())?;
+                self.deltas.push(chunk.content);
+                Ok(())
+            }
+        }
     }
 
     fn push_event(&mut self, event: KernelEvent) -> KernelResult<()> {
@@ -751,6 +770,41 @@ mod tests {
         assert_eq!(sink.contents, ["Hello", " world"]);
         assert_eq!(deltas, ["Hello", " world"]);
         assert!(events.is_empty());
+    }
+
+    #[test]
+    fn forwarding_stream_collector_routes_reasoning_and_tool_chunks_to_events() {
+        let mut sink = RecordingStreamSink::default();
+        let mut collector = ForwardingStreamCollector::new(&mut sink);
+
+        collector
+            .push_chunk(ModelStreamChunk::reasoning("request-1", 0, "think"))
+            .expect("reasoning chunk");
+        collector
+            .push_chunk(ModelStreamChunk::output("request-1", 1, "answer"))
+            .expect("answer chunk");
+        collector
+            .push_chunk(ModelStreamChunk::tool_arguments(
+                "request-1", 2, "call.1", "{\"q\":1}",
+            ))
+            .expect("tool chunk");
+
+        let (deltas, events) = collector.into_parts();
+        assert_eq!(sink.contents, ["answer"]);
+        assert_eq!(deltas, ["answer"]);
+        assert!(
+            events.len() >= 2,
+            "reasoning and tool deltas must surface as rich events, got {}",
+            events.len()
+        );
+        assert!(
+            events.iter().any(|e| e.event_type == "agent.stream.message.delta"),
+            "expected a reasoning message delta event"
+        );
+        assert!(
+            events.iter().any(|e| e.event_type == "agent.stream.tool.call.delta"),
+            "expected a tool call delta event"
+        );
     }
 
     #[test]

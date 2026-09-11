@@ -8,6 +8,7 @@ interface ChatInputProps {
   setInput: (value: string) => void;
   selectedImages: string[];
   isGenerating: boolean;
+  inputDisabled?: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -22,6 +23,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   setInput,
   selectedImages,
   isGenerating,
+  inputDisabled = false,
   textareaRef,
   fileInputRef,
   handleFileChange,
@@ -135,7 +137,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDownWithMode}
                 placeholder="有问题，尽管问"
-                className="w-full bg-transparent border-none focus:ring-0 text-[16px] resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 outline-none p-0 m-0 leading-relaxed max-h-[200px]"
+                disabled={inputDisabled}
+                className="w-full bg-transparent border-none focus:ring-0 text-[16px] resize-none text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 outline-none p-0 m-0 leading-relaxed max-h-[200px] disabled:cursor-not-allowed disabled:opacity-60"
                 rows={1}
               />
             </div>
@@ -159,8 +162,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ) : (
                 <button
                   onClick={handleSend}
-                  disabled={!input.trim() && selectedImages.length === 0}
-                  className={`w-[34px] h-[34px] flex items-center justify-center rounded-full shadow-sm transition-all transform active:scale-95 ${input.trim() || selectedImages.length > 0 ? 'bg-black dark:bg-white text-white dark:text-black hover:opacity-80' : 'bg-transparent text-gray-400 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3d3d3d]'}`}
+                  disabled={inputDisabled || (!input.trim() && selectedImages.length === 0)}
+                  className={`w-[34px] h-[34px] flex items-center justify-center rounded-full shadow-sm transition-all transform active:scale-95 ${!inputDisabled && (input.trim() || selectedImages.length > 0) ? 'bg-black dark:bg-white text-white dark:text-black hover:opacity-80' : 'bg-transparent text-gray-400 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#3d3d3d] disabled:cursor-not-allowed disabled:opacity-60'}`}
                   title={t('sendMessage')}
                 >
                   {input.trim() || selectedImages.length > 0 ? (

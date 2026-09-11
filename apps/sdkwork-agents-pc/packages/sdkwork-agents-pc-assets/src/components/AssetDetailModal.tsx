@@ -177,7 +177,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
             
             {/* Row 1: Primary Action & Tools */}
             <div className="flex items-center justify-between gap-2.5">
-              <button className="flex-1 h-10 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-white/10 dark:hover:bg-white/15 dark:text-zinc-100 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 border border-black/10 dark:border-white/5">
+              <button className="flex-1 h-10 px-4 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 dark:bg-[#333333] dark:hover:bg-[#3a3a3a] dark:text-zinc-100 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 border border-black/10 dark:border-white/5">
                 <Download size={15} />
                 下载
               </button>
@@ -188,13 +188,13 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                   "w-10 h-10 rounded-xl border flex items-center justify-center transition-all",
                   isFavorite 
                     ? "bg-amber-500/10 border-amber-500/30 text-amber-400" 
-                    : "bg-zinc-100 border-black/10 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200 dark:bg-white/5 dark:border-white/5 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-white/10"
+                    : "bg-zinc-100 border-black/10 text-zinc-500 hover:text-zinc-800 hover:bg-zinc-200 dark:bg-[#2f2f2f] dark:border-white/5 dark:text-zinc-400 dark:hover:text-white dark:hover:bg-[#333333]"
                 )}
               >
                 <Star size={16} fill={isFavorite ? "currentColor" : "none"} />
               </button>
 
-              <button className="w-10 h-10 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-black/10 text-zinc-500 hover:text-zinc-800 dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/5 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition-all">
+              <button className="w-10 h-10 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-black/10 text-zinc-500 hover:text-zinc-800 dark:bg-[#2f2f2f] dark:hover:bg-[#333333] dark:border-white/5 dark:text-zinc-400 dark:hover:text-white flex items-center justify-center transition-all">
                 <MoreHorizontal size={16} />
               </button>
             </div>

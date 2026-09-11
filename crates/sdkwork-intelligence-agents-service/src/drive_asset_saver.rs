@@ -8,7 +8,6 @@
 
 use std::sync::Arc;
 
-use tokio_stream::StreamExt;
 use sdkwork_agents_tool_contract::MediaResource;
 use sdkwork_drive_object_runtime::DriveObjectStoreRuntime;
 use sdkwork_drive_storage_contract::DriveObjectStore;
@@ -18,6 +17,7 @@ use sdkwork_drive_uploader_service::service::{
 };
 use sdkwork_drive_workspace_service::ports::storage_provider_store::DriveStorageProviderStore;
 use sqlx::PgPool;
+use tokio_stream::StreamExt;
 
 /// Application identity recorded on every generated-media upload item.
 const APP_ID: &str = "sdkwork-agents";
@@ -273,16 +273,16 @@ pub async fn fetch_resource_bytes(url: &str) -> Result<Vec<u8>, DriveSaveError> 
 /// multicast targets are rejected so a provider-controlled URL can never
 /// point the server at cloud metadata endpoints or other internal services.
 async fn validate_media_fetch_url(raw: &str) -> Result<reqwest::Url, DriveSaveError> {
-        let url = reqwest::Url::parse(raw)
-            .map_err(|error| DriveSaveError::Fetch(format!("invalid media URL: {error}")))?;
+    let url = reqwest::Url::parse(raw)
+        .map_err(|error| DriveSaveError::Fetch(format!("invalid media URL: {error}")))?;
     if !matches!(url.scheme(), "http" | "https") {
         return Err(DriveSaveError::Fetch(
             "media URL must use http or https".to_string(),
         ));
     }
-    let host = url.host_str().ok_or_else(|| {
-        DriveSaveError::Fetch("media URL has no host".to_string())
-    })?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| DriveSaveError::Fetch("media URL has no host".to_string()))?;
     if host_is_unreachable_from_server(host).await {
         return Err(DriveSaveError::Fetch(format!(
             "media URL host {host} is not reachable from the server"
@@ -330,10 +330,7 @@ fn is_internal_ip(ip: std::net::IpAddr) -> bool {
                 || v4.is_multicast()
         }
         std::net::IpAddr::V6(v6) => {
-            v6.is_loopback()
-                || v6.is_unspecified()
-                || v6.is_multicast()
-                || v6.is_unique_local()
+            v6.is_loopback() || v6.is_unspecified() || v6.is_multicast() || v6.is_unique_local()
         }
     }
 }

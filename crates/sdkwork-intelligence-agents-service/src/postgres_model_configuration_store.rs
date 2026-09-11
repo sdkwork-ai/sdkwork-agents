@@ -154,11 +154,7 @@ impl PostgresAgentConfigurationStore {
     /// Atomic upsert: one statement inserts or updates the scoped row, so
     /// concurrent saves of the same profile cannot race through a
     /// check-then-act window.
-    fn upsert(
-        &self,
-        profile: AgentConfigurationProfile,
-        scope: &ProfileScope,
-    ) -> KernelResult<()> {
+    fn upsert(&self, profile: AgentConfigurationProfile, scope: &ProfileScope) -> KernelResult<()> {
         let configuration_json = configuration_to_json(&profile).to_string();
         let secret_bindings_json = secret_bindings_to_json(&profile).to_string();
         let now = now_rfc3339();
@@ -567,7 +563,11 @@ impl ScopedInMemoryAgentConfigurationStore {
         }
     }
 
-    fn save_locked(profiles: &mut Vec<(ProfileScope, AgentConfigurationProfile)>, profile: AgentConfigurationProfile, scope: &ProfileScope) {
+    fn save_locked(
+        profiles: &mut Vec<(ProfileScope, AgentConfigurationProfile)>,
+        profile: AgentConfigurationProfile,
+        scope: &ProfileScope,
+    ) {
         profiles.retain(|(stored_scope, existing)| {
             stored_scope != scope || existing.profile_id != profile.profile_id
         });
@@ -644,10 +644,7 @@ impl ScopedAgentConfigurationStore for ScopedInMemoryAgentConfigurationStore {
         profile: AgentConfigurationProfile,
         scope: &ProfileScope,
     ) -> KernelResult<AgentConfigurationStoreRecord> {
-        let mut profiles = self
-            .profiles
-            .lock()
-            .map_err(|_| scoped_access_required())?;
+        let mut profiles = self.profiles.lock().map_err(|_| scoped_access_required())?;
         Self::save_locked(&mut profiles, profile.clone(), scope);
         drop(profiles);
         let record = AgentConfigurationStoreRecord::created(profile);
@@ -661,10 +658,7 @@ impl ScopedAgentConfigurationStore for ScopedInMemoryAgentConfigurationStore {
         profile_id: &str,
         scope: &ProfileScope,
     ) -> KernelResult<Option<AgentConfigurationProfile>> {
-        let profiles = self
-            .profiles
-            .lock()
-            .map_err(|_| scoped_access_required())?;
+        let profiles = self.profiles.lock().map_err(|_| scoped_access_required())?;
         Ok(Self::find_locked(&profiles, agent_id, profile_id, scope))
     }
 
@@ -673,15 +667,10 @@ impl ScopedAgentConfigurationStore for ScopedInMemoryAgentConfigurationStore {
         agent_id: &str,
         scope: &ProfileScope,
     ) -> KernelResult<Vec<AgentConfigurationProfile>> {
-        let profiles = self
-            .profiles
-            .lock()
-            .map_err(|_| scoped_access_required())?;
+        let profiles = self.profiles.lock().map_err(|_| scoped_access_required())?;
         let mut found = profiles
             .iter()
-            .filter(|(stored_scope, profile)| {
-                stored_scope == scope && profile.agent_id == agent_id
-            })
+            .filter(|(stored_scope, profile)| stored_scope == scope && profile.agent_id == agent_id)
             .map(|(_, profile)| profile.clone())
             .collect::<Vec<_>>();
         found.sort_by(|left, right| left.profile_id.cmp(&right.profile_id));
@@ -694,10 +683,7 @@ impl ScopedAgentConfigurationStore for ScopedInMemoryAgentConfigurationStore {
         current_profile: AgentConfigurationProfile,
         scope: &ProfileScope,
     ) -> KernelResult<AgentConfigurationStoreRecord> {
-        let mut profiles = self
-            .profiles
-            .lock()
-            .map_err(|_| scoped_access_required())?;
+        let mut profiles = self.profiles.lock().map_err(|_| scoped_access_required())?;
         Self::save_locked(&mut profiles, current_profile.clone(), scope);
         drop(profiles);
         let record = AgentConfigurationStoreRecord::migrated(current_profile, &plan.plan_id);
@@ -710,10 +696,7 @@ impl ScopedAgentConfigurationStore for ScopedInMemoryAgentConfigurationStore {
         request: &AgentProfileArchiveRequest,
         scope: &ProfileScope,
     ) -> KernelResult<AgentConfigurationStoreRecord> {
-        let mut profiles = self
-            .profiles
-            .lock()
-            .map_err(|_| scoped_access_required())?;
+        let mut profiles = self.profiles.lock().map_err(|_| scoped_access_required())?;
         let profile = Self::find_locked(&profiles, &request.agent_id, &request.profile_id, scope)
             .ok_or_else(|| {
                 KernelError::validation(format!(
@@ -805,10 +788,7 @@ mod tests {
         let agent_id = "agent.codex";
 
         store
-            .save_profile_in_scope(
-                sample_profile(agent_id, "profile.shared-name"),
-                &tenant_a,
-            )
+            .save_profile_in_scope(sample_profile(agent_id, "profile.shared-name"), &tenant_a)
             .expect("tenant A save");
 
         // Tenant B lists nothing even though the agent id matches.
@@ -831,11 +811,7 @@ mod tests {
         assert!(
             store
                 .archive_profile_in_scope(
-                    &AgentProfileArchiveRequest::new(
-                        "request.1",
-                        agent_id,
-                        "profile.shared-name",
-                    ),
+                    &AgentProfileArchiveRequest::new("request.1", agent_id, "profile.shared-name",),
                     &tenant_b,
                 )
                 .is_err(),
@@ -874,16 +850,10 @@ mod tests {
         let agent_id = "agent.codex";
 
         store
-            .save_profile_in_scope(
-                sample_profile(agent_id, "profile.1"),
-                &tenant_a,
-            )
+            .save_profile_in_scope(sample_profile(agent_id, "profile.1"), &tenant_a)
             .expect("tenant A save");
         store
-            .save_profile_in_scope(
-                sample_profile(agent_id, "profile.1"),
-                &tenant_b,
-            )
+            .save_profile_in_scope(sample_profile(agent_id, "profile.1"), &tenant_b)
             .expect("tenant B save");
 
         assert_eq!(

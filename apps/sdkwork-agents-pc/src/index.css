@@ -11,8 +11,14 @@
 @source "../packages/sdkwork-agents-pc-membership/src";
 @source "../packages/sdkwork-agents-pc-presentation/src";
 @source "../src";
-@custom-variant dark (&:where(.dark, .dark *));
-@custom-variant sdk-dark (&:where([data-sdk-color-mode="dark"], [data-sdk-color-mode="dark"] *));
+/* `:is` (not `:where`) gives variant utilities the selector's own specificity
+   so they beat plain light utilities from ANY sheet that loads later — the
+   embedded BirdCoder document carries several sibling tailwind sheets whose
+   `.bg-zinc-100`-class rules would otherwise outrank this sheet's dark
+   variants on cascade order alone. Matching is identical in the standalone
+   app. */
+@custom-variant dark (&:is(.dark, .dark *));
+@custom-variant sdk-dark (&:is([data-sdk-color-mode="dark"], [data-sdk-color-mode="dark"] *));
 
 :root {
   color-scheme: light dark;
@@ -130,7 +136,8 @@
 }
 
 @layer utilities {
-  .markdown-body img {
+  .markdown-body img,
+  .chat-markdown .chat-md-image {
     @apply rounded-md border border-gray-200 dark:border-gray-800 max-w-full;
   }
   .markdown-body video {
@@ -138,5 +145,128 @@
   }
   .markdown-body audio {
     @apply w-full mt-2;
+  }
+
+  .chat-markdown {
+    @apply min-w-0 text-[15px] leading-7;
+    overflow-wrap: anywhere;
+  }
+
+  .chat-markdown-streaming .chat-md-stream-cursor {
+    @apply inline-block h-[1.1em] w-[2px] translate-y-[2px] animate-pulse rounded-sm bg-[#1890ff] dark:bg-cyan-400;
+    margin-left: 2px;
+  }
+
+  .chat-markdown .chat-md-paragraph {
+    @apply my-3 min-w-0 first:mt-0 last:mb-0;
+  }
+
+  .chat-markdown .chat-md-heading {
+    @apply mb-2 mt-5 font-semibold tracking-normal first:mt-0;
+  }
+
+  .chat-markdown .chat-md-h1 {
+    @apply text-[20px] leading-8;
+  }
+
+  .chat-markdown .chat-md-h2 {
+    @apply text-[18px] leading-7;
+  }
+
+  .chat-markdown .chat-md-h3 {
+    @apply text-[16px] leading-7;
+  }
+
+  .chat-markdown .chat-md-h4 {
+    @apply text-[15px] leading-6;
+  }
+
+  .chat-markdown .chat-md-list {
+    @apply my-3 space-y-1.5 first:mt-0 last:mb-0;
+  }
+
+  .chat-markdown .chat-md-list-disc {
+    @apply list-disc pl-5;
+  }
+
+  .chat-markdown .chat-md-list-decimal {
+    @apply list-decimal pl-6;
+  }
+
+  .chat-markdown .chat-md-list-item {
+    @apply min-w-0 pl-1 marker:text-gray-400 dark:marker:text-gray-500;
+  }
+
+  .chat-markdown .chat-md-list-item > .chat-md-paragraph {
+    @apply my-1.5 first:mt-0 last:mb-0;
+  }
+
+  .chat-markdown .chat-md-task-item {
+    @apply list-none pl-0;
+  }
+
+  .chat-markdown .chat-md-checkbox {
+    @apply mr-2 h-3.5 w-3.5 translate-y-0.5 rounded border-gray-300 accent-[#1890ff] dark:border-gray-600;
+  }
+
+  .chat-markdown .chat-md-inline-code {
+    @apply rounded-md border border-[#e5e5e5] bg-[#f4f4f4] px-1.5 py-0.5 font-mono text-[0.88em] text-[#c41d7f] dark:border-[#333] dark:bg-[#2a2a2a] dark:text-[#ff85c0];
+  }
+
+  .chat-markdown .chat-md-link {
+    @apply font-medium text-[#1890ff] underline decoration-[#1890ff]/35 underline-offset-4 transition-colors hover:decoration-[#1890ff] dark:text-cyan-400 dark:decoration-cyan-400/35 dark:hover:decoration-cyan-400;
+  }
+
+  .chat-markdown .chat-md-link-fallback {
+    @apply text-inherit;
+  }
+
+  .chat-markdown .chat-md-blockquote {
+    @apply my-4 border-l-4 border-[#d9d9d9] pl-4 text-gray-600 first:mt-0 last:mb-0 dark:border-[#444] dark:text-gray-400;
+  }
+
+  .chat-markdown .chat-md-divider {
+    @apply my-6 border-0 border-t border-[#e5e5e5] dark:border-[#333];
+  }
+
+  .chat-markdown .chat-md-strong {
+    @apply font-semibold text-gray-900 dark:text-gray-100;
+  }
+
+  .chat-markdown .chat-md-emphasis {
+    @apply italic text-gray-700 dark:text-gray-300;
+  }
+
+  .chat-markdown .chat-md-deleted {
+    @apply text-gray-500 line-through decoration-gray-400 dark:text-gray-500;
+  }
+
+  .chat-markdown .chat-md-table-wrap {
+    @apply my-4 max-w-full overflow-x-auto rounded-xl border border-[#e5e5e5] first:mt-0 last:mb-0 dark:border-[#333];
+  }
+
+  .chat-markdown .chat-md-table {
+    @apply min-w-full border-collapse text-left text-[13px] leading-5;
+  }
+
+  .chat-markdown .chat-md-table-head {
+    @apply bg-[#fafafa] dark:bg-[#1f1f1f];
+  }
+
+  .chat-markdown .chat-md-table-header {
+    @apply min-w-[9rem] max-w-[28rem] whitespace-normal border-b border-r border-[#e5e5e5] px-3 py-2 font-semibold last:border-r-0 dark:border-[#333];
+  }
+
+  .chat-markdown .chat-md-table-cell {
+    @apply min-w-[9rem] max-w-[28rem] whitespace-normal border-b border-r border-[#e5e5e5] px-3 py-2 align-top last:border-r-0 dark:border-[#333];
+  }
+
+  .chat-markdown .chat-md-table-row:last-child .chat-md-table-cell {
+    @apply border-b-0;
+  }
+
+  .chat-markdown-user .chat-md-code-block,
+  .chat-markdown-user .chat-md-table-wrap {
+    @apply hidden;
   }
 }

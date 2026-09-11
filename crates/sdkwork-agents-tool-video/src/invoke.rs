@@ -69,6 +69,7 @@ fn invoke_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create(&request))
     })?;
@@ -88,6 +89,7 @@ fn invoke_retrieve(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().retrieve(&video_id))
     })?;
@@ -118,6 +120,7 @@ fn invoke_list(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let videos = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().list(limit, None, None, None))
     })?;
@@ -159,6 +162,7 @@ fn invoke_edits_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create_edit(&request))
     })?;
@@ -188,6 +192,7 @@ fn invoke_extensions_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create_extension(&request))
     })?;
@@ -218,6 +223,7 @@ fn invoke_remix_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create_remix(&video_id, &request))
     })?;
@@ -242,6 +248,7 @@ fn invoke_characters_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let character = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create_character(&request))
     })?;
@@ -263,6 +270,7 @@ fn invoke_characters_list(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let character = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().list_characters(&character_id))
     })?;
@@ -308,6 +316,7 @@ fn invoke_kling_generations_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_kling().create_v1_videos_generation(&request))
     })?;
@@ -331,6 +340,7 @@ fn invoke_kling_generations_retrieve(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_kling().list_v1_videos_generations(&task_id))
     })?;
@@ -365,6 +375,7 @@ fn invoke_vidu_text2video(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_vidu().create_ent_v2_text2video(&request))
     })?;
@@ -404,6 +415,7 @@ fn invoke_vidu_img2video(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_vidu().create_ent_v2_img2video(&request))
     })?;
@@ -443,6 +455,7 @@ fn invoke_vidu_reference2video(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_vidu().create_ent_v2_reference2video(&request))
     })?;
@@ -482,6 +495,7 @@ fn invoke_vidu_start_end2video(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_vidu().create_ent_v2_start_end2video(&request))
     })?;
@@ -504,6 +518,7 @@ fn invoke_vidu_tasks_creations(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.videos_vidu().list_ent_v2_tasks_creations(&task_id))
     })?;
@@ -558,6 +573,7 @@ fn invoke_volcengine_generations_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let response = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(
             sdk.videos_volcengine()
@@ -584,6 +600,7 @@ fn invoke_volcengine_generations_retrieve(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(
             sdk.videos_volcengine()
@@ -622,6 +639,7 @@ mod tests {
             tool_id: "video.not.a.tool".to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_video_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -634,6 +652,7 @@ mod tests {
             tool_id: tool_ids::CREATE.to_string(),
             arguments: serde_json::json!({ "prompt": "a robot walking" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_video_tool(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -646,6 +665,7 @@ mod tests {
             tool_id: tool_ids::RETRIEVE.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_video_tool(&call, Some("token")).expect_err("videoId required");
         assert_eq!(error.code(), "invalid_input");
@@ -658,6 +678,7 @@ mod tests {
             tool_id: tool_ids::REMIX_CREATE.to_string(),
             arguments: serde_json::json!({ "prompt": "new style" }),
             session_id: None,
+            trace_id: None,
         };
         assert!(invoke_video_tool(&missing_id, Some("token")).is_err());
     }

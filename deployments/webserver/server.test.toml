@@ -2,59 +2,8 @@ environment = "test"
 
 [http]
 
-[http.certificates]
-
-[http.certificates."sdkwork.com"]
-certFile = "/opt/certs/letsencrypt/live/sdkwork.com/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/sdkwork.com/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/sdkwork.com/chain.pem"
-ocspStapling = true
-
-[http.certificates."birdcoder.com"]
-certFile = "/opt/certs/letsencrypt/live/birdcoder.com/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/birdcoder.com/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/birdcoder.com/chain.pem"
-ocspStapling = true
-
-[http.certificates."dtupay.com"]
-certFile = "/opt/certs/letsencrypt/live/dtupay.com/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/dtupay.com/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/dtupay.com/chain.pem"
-ocspStapling = true
-
-[http.certificates."sdkwork.cn"]
-certFile = "/opt/certs/letsencrypt/live/sdkwork.cn/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/sdkwork.cn/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/sdkwork.cn/chain.pem"
-ocspStapling = true
-
-[http.certificates."birdcoder.cn"]
-certFile = "/opt/certs/letsencrypt/live/birdcoder.cn/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/birdcoder.cn/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/birdcoder.cn/chain.pem"
-ocspStapling = true
-
-[http.certificates."dtupay.cn"]
-certFile = "/opt/certs/letsencrypt/live/dtupay.cn/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/dtupay.cn/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/dtupay.cn/chain.pem"
-ocspStapling = true
-
 [[http.server]]
 listen = ["80"]
-serverName = ["agents-test.sdkwork.com", "agents-test.birdcoder.com", "agents-test.dtupay.com", "agents-test.sdkwork.cn", "agents-test.birdcoder.cn", "agents-test.dtupay.cn", "agents-app-test.sdkwork.com", "agents-app-test.birdcoder.com", "agents-app-test.dtupay.com", "agents-app-test.sdkwork.cn", "agents-app-test.birdcoder.cn", "agents-app-test.dtupay.cn", "agents-admin-test.sdkwork.com", "agents-admin-test.birdcoder.com", "agents-admin-test.dtupay.com", "agents-admin-test.sdkwork.cn", "agents-admin-test.birdcoder.cn", "agents-admin-test.dtupay.cn", "agents-open-test.sdkwork.com", "agents-open-test.birdcoder.com", "agents-open-test.dtupay.com", "agents-open-test.sdkwork.cn", "agents-open-test.birdcoder.cn", "agents-open-test.dtupay.cn"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-
-[[http.server.location]]
-match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "300s"
+serverName = ["agents-test.sdkwork.com", "agents-test.birdcoder.com", "agents-test.dtupay.com", "agents-test.noaper.com", "agents-test.sdkwork.cn", "agents-test.birdcoder.cn", "agents-test.dtupay.cn", "agents-test.noaper.cn", "agents-test.skubc.com", "agents-test.skubc.cn", "agents-test.zowalk.com", "agents-test.zowalk.cn", "agents-test.offer86.com", "agents-test.offer86.cn", "agents-test.86offer.com", "agents-test.86offer.cn", "agents-app-test.sdkwork.com", "agents-app-test.birdcoder.com", "agents-app-test.dtupay.com", "agents-app-test.noaper.com", "agents-app-test.sdkwork.cn", "agents-app-test.birdcoder.cn", "agents-app-test.dtupay.cn", "agents-app-test.noaper.cn", "agents-app-test.skubc.com", "agents-app-test.skubc.cn", "agents-app-test.zowalk.com", "agents-app-test.zowalk.cn", "agents-app-test.offer86.com", "agents-app-test.offer86.cn", "agents-app-test.86offer.com", "agents-app-test.86offer.cn", "agents-admin-test.sdkwork.com", "agents-admin-test.birdcoder.com", "agents-admin-test.dtupay.com", "agents-admin-test.noaper.com", "agents-admin-test.sdkwork.cn", "agents-admin-test.birdcoder.cn", "agents-admin-test.dtupay.cn", "agents-admin-test.noaper.cn", "agents-admin-test.skubc.com", "agents-admin-test.skubc.cn", "agents-admin-test.zowalk.com", "agents-admin-test.zowalk.cn", "agents-admin-test.offer86.com", "agents-admin-test.offer86.cn", "agents-admin-test.86offer.com", "agents-admin-test.86offer.cn", "agents-open-test.sdkwork.com", "agents-open-test.birdcoder.com", "agents-open-test.dtupay.com", "agents-open-test.noaper.com", "agents-open-test.sdkwork.cn", "agents-open-test.birdcoder.cn", "agents-open-test.dtupay.cn", "agents-open-test.noaper.cn", "agents-open-test.skubc.com", "agents-open-test.skubc.cn", "agents-open-test.zowalk.com", "agents-open-test.zowalk.cn", "agents-open-test.offer86.com", "agents-open-test.offer86.cn", "agents-open-test.86offer.com", "agents-open-test.86offer.cn"]
+include = ["snippets/gateway-locations.nonproduction.conf"]
 

@@ -190,6 +190,30 @@ pub struct AgentPromptOptimizationCommand {
     pub requested_at: String,
 }
 
+/// One structured agent call (`agents.calls.create`).
+///
+/// Typed fieldwise (mode/params/output contract) so the service can validate
+/// the call before any model invocation; the raw payloads are persisted as
+/// JSON through the runtime-execution record for audit.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentStructuredCallCommand {
+    pub tenant_id: u64,
+    pub agent_id: String,
+    pub execution_id: String,
+    pub mode: String,
+    pub prompt: Option<String>,
+    pub params: Option<serde_json::Value>,
+    pub param_schema: Option<serde_json::Value>,
+    pub output_format: String,
+    pub output_schema: Option<serde_json::Value>,
+    pub output_root_element: Option<String>,
+    pub strict: bool,
+    pub timeout_ms: u64,
+    pub execution_mode: crate::domain::AgentCallExecutionMode,
+    pub requested_by: PolicySubject,
+    pub requested_at: String,
+}
+
 // ---------------------------------------------------------------------------
 // Composition slot commands
 // ---------------------------------------------------------------------------
@@ -935,6 +959,10 @@ pub struct CreateTurnCommand {
     /// never persisted). Paired with `auth_token` for dual-token access to
     /// the cloudrouter gateway (`Authorization: Bearer` + `Access-Token`).
     pub access_token: Option<String>,
+    /// Optional LLM wire protocol override for the cloudrouter gateway
+    /// invocation (`chat_completions` default, `anthropic_messages`,
+    /// `google_content`, `openai_responses`). Transient — never persisted.
+    pub wire_protocol: Option<String>,
 }
 
 /// Result of one completed Turn with its complete authoritative item set.

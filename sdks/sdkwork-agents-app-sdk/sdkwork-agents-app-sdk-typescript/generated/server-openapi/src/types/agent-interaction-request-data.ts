@@ -10,7 +10,7 @@ export interface AgentInteractionRequestData {
   proposedExecPolicyAmendment?: Record<string, unknown>;
   proposedNetworkPolicyAmendment?: Record<string, unknown>;
   questions?: AgentInteractionQuestion[];
-  autoResolutionMs?: string | null;
+  autoResolutionMs?: string;
   isBlocking?: boolean;
   question?: string;
   options?: AgentInteractionQuestionOption[];

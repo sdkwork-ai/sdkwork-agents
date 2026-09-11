@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 
+import { useCreativeModelCatalog } from '../creative-model-catalog';
+
 export interface CreativeInputSettings {
   model?: string;
   ratio?: string;
@@ -32,12 +34,26 @@ export function useCreativeInputBox(
     }
   }, [input]);
   const [creationType, setCreationType] = useState(initialMode || 'video'); // Default to video based on prompt
-  const [selectedImageModel, setSelectedImageModel] = useState(initialSettings?.model || '5.0-lite');
-  const [selectedVideoModel, setSelectedVideoModel] = useState(initialSettings?.model || '2.0-mini');
-  const [selectedMusicModel, setSelectedMusicModel] = useState(initialSettings?.model || 'music_pro');
-  const [selectedVoiceModel, setSelectedVoiceModel] = useState(initialSettings?.model || 'voice_pro');
-  const [selectedAvatarModel, setSelectedAvatarModel] = useState(initialSettings?.model || 'fast_mode');
-  const [selectedActionModel, setSelectedActionModel] = useState(initialSettings?.model || 'vivid');
+  // Unified model catalog: every modality resolves its selection through the
+  // shared service (static sdkwork-models baseline + remote sync layer).
+  const imageCatalog = useCreativeModelCatalog('image', { initialModelId: initialSettings?.model });
+  const videoCatalog = useCreativeModelCatalog('video', { initialModelId: initialSettings?.model });
+  const musicCatalog = useCreativeModelCatalog('music', { initialModelId: initialSettings?.model });
+  const voiceCatalog = useCreativeModelCatalog('voice', { initialModelId: initialSettings?.model });
+  const digitalHumanCatalog = useCreativeModelCatalog('digital_human', { initialModelId: initialSettings?.model });
+  const actionCatalog = useCreativeModelCatalog('action', { initialModelId: initialSettings?.model });
+  const selectedImageModel = imageCatalog.selectedModelId;
+  const setSelectedImageModel = imageCatalog.selectModel;
+  const selectedVideoModel = videoCatalog.selectedModelId;
+  const setSelectedVideoModel = videoCatalog.selectModel;
+  const selectedMusicModel = musicCatalog.selectedModelId;
+  const setSelectedMusicModel = musicCatalog.selectModel;
+  const selectedVoiceModel = voiceCatalog.selectedModelId;
+  const setSelectedVoiceModel = voiceCatalog.selectModel;
+  const selectedAvatarModel = digitalHumanCatalog.selectedModelId;
+  const setSelectedAvatarModel = digitalHumanCatalog.selectModel;
+  const selectedActionModel = actionCatalog.selectedModelId;
+  const setSelectedActionModel = actionCatalog.selectModel;
   
   const [isCreationMenuOpen, setIsCreationMenuOpen] = useState(false);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
@@ -293,6 +309,13 @@ export function useCreativeInputBox(
   return {
     input, setInput,
     creationType, setCreationType,
+    // Unified model catalog lists (static baseline + remote sync layer)
+    imageModels: imageCatalog.models,
+    videoModels: videoCatalog.models,
+    musicModels: musicCatalog.models,
+    voiceModels: voiceCatalog.models,
+    avatarModels: digitalHumanCatalog.models,
+    actionModels: actionCatalog.models,
     selectedImageModel, setSelectedImageModel,
     selectedVideoModel, setSelectedVideoModel,
     selectedMusicModel, setSelectedMusicModel,

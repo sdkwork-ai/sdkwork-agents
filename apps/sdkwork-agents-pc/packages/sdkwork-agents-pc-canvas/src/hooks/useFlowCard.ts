@@ -103,13 +103,13 @@ export function useFlowCard(
     } else if (node.type === 'image-gen') {
       CanvasService.generateImage(node.prompt || '', node.ratio || '1:1', (p, msg) => {
         onUpdate(node.id, { progress: p, content: msg });
-      }).then((url) => {
+      }, node.model).then((url) => {
         onUpdate(node.id, { status: 'completed', progress: 100, mediaUrl: url });
       });
     } else if (node.type === 'video-gen') {
       CanvasService.generateVideo(node.prompt || '', (p, msg) => {
         onUpdate(node.id, { progress: p, content: msg });
-      }).then((url) => {
+      }, node.model).then((url) => {
         onUpdate(node.id, { status: 'completed', progress: 100, mediaUrl: url });
       });
     }

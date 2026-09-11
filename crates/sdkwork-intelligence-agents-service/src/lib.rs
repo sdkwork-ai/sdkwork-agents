@@ -26,6 +26,7 @@ mod provider_session_sync;
 mod provider_stream_items;
 #[cfg(feature = "http-axum")]
 pub mod response;
+mod runtime_execution_cursor;
 mod runtime_facade_bridge;
 mod session_activity;
 mod session_id_scheme;
@@ -35,7 +36,9 @@ mod task_scheduler;
 mod task_scheduling;
 mod tool_invocation;
 mod turn_runtime;
+mod usage;
 mod validation;
+pub mod webhook;
 mod workspace;
 
 pub use agent_turn::{AgentTurnMode, AgentTurnRecord, AgentTurnStatus};
@@ -106,12 +109,13 @@ pub use turn_runtime::{
     RUNTIME_MODE_FACADE, RUNTIME_MODE_INFERENCE_ERROR, TURN_EXECUTION_TIMEOUT,
 };
 
+pub use domain::AgentVersionRecord;
 pub use domain::{
-    AgentAuditAction, AgentBusinessRecord, AgentBusinessStatus, AgentCompositionSlotKind,
-    AgentCompositionSlotRecord, AgentCompositionTargetModule, AgentImplementationKind,
-    AgentImplementationType, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus,
-    AgentItemDriveRefRecord, AgentItemFeedbackRating, AgentItemFeedbackRecord,
-    AgentItemResourceRole, AgentProviderBindingRecord, AgentResourceType,
+    AgentAuditAction, AgentBusinessRecord, AgentBusinessStatus, AgentCallExecutionMode,
+    AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentCompositionTargetModule,
+    AgentImplementationKind, AgentImplementationType, AgentInteractionKind, AgentInteractionRecord,
+    AgentInteractionStatus, AgentItemDriveRefRecord, AgentItemFeedbackRating,
+    AgentItemFeedbackRecord, AgentItemResourceRole, AgentProviderBindingRecord, AgentResourceType,
     AgentResourceUserStateRecord, AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord,
     AgentRuntimeExecutionStatus, AgentSessionCheckpointRecord, AgentSessionCheckpointStatus,
     AgentSessionEntrySurface, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus,
@@ -194,14 +198,15 @@ pub use persistence::{
     SQL_UPDATE_AGENT_WORKSPACE, SQL_UPSERT_AGENT_ITEM_FEEDBACK,
     SQL_UPSERT_AGENT_RESOURCE_USER_STATE, TASK_SCHEDULER_METRICS_COUNT_CAP,
 };
+pub use ports::AgentVersionListQuery;
 pub use ports::WorkspaceListQuery;
 pub use ports::{
     offset_paginated_result, AgentAuditSink, AgentListQuery, AgentRepository, AuditEventListQuery,
     CompositionSlotListQuery, InteractionListQuery, ItemFeedbackListQuery, McpMarketplaceListQuery,
     PaginatedResult, PaginationParams, ProjectCompositionSlotListQuery, ProjectListQuery,
-    ProviderBindingListQuery, ResourceUserStateListQuery, SessionActivitySummaryListQuery,
-    SessionItemListQuery, SessionItemListSort, SessionListQuery, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE,
-    MAX_TURN_INPUT_CONTENT_BYTES, TURN_CONTEXT_ITEM_LIMIT,
+    ProviderBindingListQuery, ResourceUserStateListQuery, RuntimeExecutionListQuery,
+    SessionActivitySummaryListQuery, SessionItemListQuery, SessionItemListSort, SessionListQuery,
+    DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_TURN_INPUT_CONTENT_BYTES, TURN_CONTEXT_ITEM_LIMIT,
 };
 pub use ports::{SessionCheckpointListQuery, SessionRuntimeBindingListQuery, TurnListQuery};
 pub use postgres_model_configuration_store::{
@@ -232,5 +237,9 @@ pub use task_scheduling::{
     AgentTaskMisfirePolicy, AgentTaskOverlapPolicy, AgentTaskRecord, AgentTaskRunAttemptRecord,
     AgentTaskRunAttemptStatus, AgentTaskRunRecord, AgentTaskRunStatus, AgentTaskScheduleKind,
     AgentTaskStatus, AgentTaskTriggerKind, TaskSchedule,
+};
+pub use usage::{AgentUsageRecord, AgentUsageSummary, UsageRecordListQuery, UsageSummaryQuery};
+pub use webhook::{
+    AgentWebhookDeliveryRecord, AgentWebhookEventType, AgentWebhookRecord, AgentWebhookTestOutcome,
 };
 pub use workspace::{default_workspace_id, AgentWorkspaceRecord, AgentWorkspaceStatus};

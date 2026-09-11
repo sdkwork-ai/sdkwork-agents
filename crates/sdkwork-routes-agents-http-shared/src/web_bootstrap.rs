@@ -27,6 +27,11 @@ fn parse_agents_web_environment(value: Option<String>) -> WebEnvironment {
     match canonical_agents_lifecycle_environment(value.as_deref().unwrap_or("")).as_str() {
         "development" => WebEnvironment::Dev,
         "test" => WebEnvironment::Test,
+        // Demo is an isolated showcase tier, not production-like: it gets the
+        // relaxed showcase posture instead of production assembly validation.
+        "demo" => WebEnvironment::Test,
+        // Staging/prod keep the strict fail-closed production posture.
+        "staging" | "production" => WebEnvironment::Prod,
         _ => WebEnvironment::Prod,
     }
 }
@@ -83,23 +88,34 @@ fn is_exact_http_origin(origin: &str) -> bool {
 
 fn ensure_production_cors_configuration(
     requires_exact_origins: bool,
+    has_configured_origins: bool,
     security_policy: &SecurityPolicy,
 ) {
     if !requires_exact_origins {
         return;
     }
 
-    if security_policy.cors.allowed_origins.is_empty() {
+    // Registered SDKWork client origins are always merged into the policy, so
+    // emptiness must be judged against the explicitly configured allowlist:
+    // production-like runtimes still demand SDKWORK_CORS_ALLOWED_ORIGINS.
+    if !has_configured_origins {
         panic!(
             "production-like Agents HTTP runtime requires SDKWORK_CORS_ALLOWED_ORIGINS"
         );
     }
 
+    // Registered SDKWork desktop WebView and mini program custom-scheme origins
+    // (app://dsh, app://birdcoder, tauri://localhost, https://servicewechat.com,
+    // ...) are canonical allowlist entries merged by the shared web bootstrap;
+    // they are exempt from the exact HTTP(S) origin shape check.
     if let Some(origin) = security_policy
         .cors
         .allowed_origins
         .iter()
-        .find(|origin| !is_exact_http_origin(origin))
+        .find(|origin| {
+            !is_exact_http_origin(origin)
+                && !sdkwork_web_core::is_registered_sdkwork_client_origin(origin)
+        })
     {
         panic!("invalid exact HTTP(S) origin in production-like Agents HTTP CORS configuration: {origin}");
     }
@@ -140,7 +156,11 @@ fn agents_service_security_policy(environment: &WebEnvironment) -> SecurityPolic
             .reject_untrusted_state_changing_origins = false;
         security_policy.cross_site.reject_cookie_auth_without_origin = false;
     }
-    ensure_production_cors_configuration(requires_exact_origins, &security_policy);
+    ensure_production_cors_configuration(
+        requires_exact_origins,
+        has_configured_origins,
+        &security_policy,
+    );
     security_policy
 }
 
@@ -274,6 +294,29 @@ mod tests {
             .cors
             .validate_origin_value("https://evil.example")
             .expect_err("unknown production origin");
+    }
+
+    #[test]
+    fn production_security_policy_allows_registered_client_origins() {
+        let _guard = env_test_lock();
+        std::env::set_var("SDKWORK_CORS_ALLOWED_ORIGINS", "https://agents.sdkwork.com");
+        let policy = agents_service_security_policy(&WebEnvironment::Prod);
+        std::env::remove_var("SDKWORK_CORS_ALLOWED_ORIGINS");
+        for origin in [
+            "app://dsh",
+            "app://birdcoder",
+            "app://sdkwork",
+            "https://servicewechat.com",
+        ] {
+            policy
+                .cors
+                .validate_origin_value(origin)
+                .expect("registered SDKWork client origin");
+        }
+        policy
+            .cors
+            .validate_origin_value("app://unregistered")
+            .expect_err("unregistered custom scheme must stay rejected");
     }
 
     #[test]

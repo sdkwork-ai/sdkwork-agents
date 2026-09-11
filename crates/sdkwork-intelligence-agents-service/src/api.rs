@@ -417,6 +417,90 @@ pub const AGENT_APP_API_OPERATIONS: &[ApiOperation] = &[
         operation_id: "agents.promptOptimizations.create",
     },
     ApiOperation {
+        method: "POST",
+        path: "/app/v3/api/ai/agents/{agentId}/calls",
+        tag: "ai",
+        operation_id: "agents.calls.create",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/agents/{agentId}/calls",
+        tag: "ai",
+        operation_id: "agents.calls.list",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/agents/{agentId}/calls/{executionId}",
+        tag: "ai",
+        operation_id: "agents.calls.retrieve",
+    },
+    ApiOperation {
+        method: "POST",
+        path: "/app/v3/api/ai/agents/{agentId}/versions",
+        tag: "ai",
+        operation_id: "agents.versions.create",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/agents/{agentId}/versions",
+        tag: "ai",
+        operation_id: "agents.versions.list",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/agents/{agentId}/versions/{versionId}",
+        tag: "ai",
+        operation_id: "agents.versions.retrieve",
+    },
+    ApiOperation {
+        method: "POST",
+        path: "/app/v3/api/ai/agents/{agentId}/versions/{versionId}/activate",
+        tag: "ai",
+        operation_id: "agents.versions.activate",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/usage/summary",
+        tag: "ai",
+        operation_id: "agents.usage.summary.retrieve",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/usage/records",
+        tag: "ai",
+        operation_id: "agents.usage.records.list",
+    },
+    ApiOperation {
+        method: "POST",
+        path: "/app/v3/api/ai/webhooks",
+        tag: "ai",
+        operation_id: "agents.webhooks.create",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/webhooks",
+        tag: "ai",
+        operation_id: "agents.webhooks.list",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/webhooks/{webhookId}",
+        tag: "ai",
+        operation_id: "agents.webhooks.retrieve",
+    },
+    ApiOperation {
+        method: "DELETE",
+        path: "/app/v3/api/ai/webhooks/{webhookId}",
+        tag: "ai",
+        operation_id: "agents.webhooks.delete",
+    },
+    ApiOperation {
+        method: "POST",
+        path: "/app/v3/api/ai/webhooks/{webhookId}/test",
+        tag: "ai",
+        operation_id: "agents.webhooks.test",
+    },
+    ApiOperation {
         method: "GET",
         path: "/app/v3/api/ai/workspaces",
         tag: "ai",
@@ -1808,7 +1892,7 @@ mod tests {
         let backend_openapi = include_str!("../specs/openapi/agents-backend-api.openapi.yaml");
 
         assert_eq!(AGENT_OPEN_API_OPERATIONS.len(), 56);
-        assert_eq!(AGENT_APP_API_OPERATIONS.len(), 112);
+        assert_eq!(AGENT_APP_API_OPERATIONS.len(), 126);
         assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 60);
 
         assert_eq!(

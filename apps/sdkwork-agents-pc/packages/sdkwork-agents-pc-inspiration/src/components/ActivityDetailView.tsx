@@ -60,7 +60,7 @@ export const ActivityDetailView: React.FC<ActivityDetailViewProps> = ({ activity
           <button className="px-5 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500 text-cyan-400 hover:bg-cyan-500/20 text-[13px] font-semibold transition-colors">
             去创作
           </button>
-          <button className="px-5 py-2 rounded-xl bg-white text-black hover:bg-zinc-200 text-[13px] font-semibold transition-all">
+          <button className="px-5 py-2 rounded-xl bg-white text-black hover:bg-zinc-200 dark:bg-zinc-50 dark:text-black dark:hover:bg-zinc-300 text-[13px] font-semibold transition-all">
             立即投稿
           </button>
         </div>
@@ -127,7 +127,7 @@ export const ActivityDetailView: React.FC<ActivityDetailViewProps> = ({ activity
                   >
                     按时间
                   </button>
-                  <span className="text-zinc-700">|</span>
+                  <span className="text-zinc-400 dark:text-zinc-700">|</span>
                   <button 
                     onClick={() => setSortBy('likes')}
                     className={cn("hover:text-white transition-colors", sortBy === 'likes' ? "text-cyan-400 font-semibold" : "")}

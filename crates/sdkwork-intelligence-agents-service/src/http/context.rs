@@ -95,4 +95,10 @@ impl RequestScope {
     pub(crate) fn tenant_id_u64(&self) -> Result<u64, ApiProblem> {
         parse_tenant_id(self.tenant_id.as_str()).map_err(ApiProblem::from_kernel_error)
     }
+
+    /// Parsed organization scope; contexts without an explicit organization
+    /// resolve to the platform sentinel `0`.
+    pub(crate) fn organization_id_u64(&self) -> Result<u64, ApiProblem> {
+        parse_tenant_id(self.organization_id.as_str()).map_err(ApiProblem::from_kernel_error)
+    }
 }

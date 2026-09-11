@@ -40,6 +40,7 @@ fn invoke_generations_create(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let response = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio_suno().create_v1_music_generation(&request))
     })?;
@@ -65,6 +66,7 @@ fn invoke_generations_list(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio_suno().list_v1_music_generations(&task_id))
     })?;
@@ -135,6 +137,7 @@ mod tests {
             tool_id: "music.not.a.tool".to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_music_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -147,6 +150,7 @@ mod tests {
             tool_id: tool_ids::GENERATIONS_CREATE.to_string(),
             arguments: serde_json::json!({ "prompt": "lofi beats" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_music_tool(&no_token, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -156,6 +160,7 @@ mod tests {
             tool_id: tool_ids::GENERATIONS_CREATE.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_music_tool(&no_prompt, Some("token")).expect_err("prompt required");
         assert_eq!(error.code(), "invalid_input");

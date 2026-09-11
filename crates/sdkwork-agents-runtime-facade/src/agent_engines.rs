@@ -34,7 +34,7 @@ use sdkwork_agent_provider_rig::{
     ids, RigBackendConfig, RigBackendMode, RigConfigurationProvider, RigModelProvider,
     RigSdkIntegration,
 };
-use sdkwork_agents_tool_cloudrouter::RigCloudRouterExecutor;
+use sdkwork_agents_tool_cloudrouter::RigCloudRouterModelProvider;
 use sdkwork_agent_provider_spi::{
     SdkRuntimeInteractionResolution, SdkRuntimeMessageRecord, SdkRuntimeSessionRecord,
     SdkRuntimeStreamCompletion, CLAUDE_CODE_BINDING_ID, CODEX_BINDING_ID, GEMINI_CLI_BINDING_ID,
@@ -1211,10 +1211,7 @@ pub fn bootstrap_rig_agent_engine(
     let model: Arc<dyn ModelProvider + Send + Sync> = if routes_through_cloud_router {
         // Cloud router account-pool executor: caller dual tokens by default,
         // gateway API-key mode when the configuration binds `llm.rig.api_key`.
-        Arc::new(RigModelProvider::with_executor(
-            backend_config.clone(),
-            Arc::new(RigCloudRouterExecutor::new(backend_config, host)),
-        ))
+        Arc::new(RigCloudRouterModelProvider::new(backend_config.clone(), host))
     } else {
         // Custom OpenAI-compatible provider (rig-core direct): vendor id,
         // api key secret, optional custom base url and default model.

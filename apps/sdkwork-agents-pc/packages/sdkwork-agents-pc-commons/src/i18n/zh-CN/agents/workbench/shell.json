@@ -20,6 +20,10 @@
   "artifactPreview": "组件预览",
   "closeSidebar": "关闭侧边栏",
   "openSidebar": "打开侧边栏",
+  "thinking": "深度思考",
+  "thinkingRunning": "深度思考中…",
   "settings": "设置",
-  "customProvider": "自定义 LLM Provider"
+  "customProvider": "自定义 LLM Provider",
+  "tokenPlan": "Token Plan 购买",
+  "close": "关闭"
 }

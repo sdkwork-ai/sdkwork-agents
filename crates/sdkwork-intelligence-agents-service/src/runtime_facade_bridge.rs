@@ -12,8 +12,9 @@ use sdkwork_agent_kernel::{
     ProviderManifest, ProviderSecretValue, SecretRef,
 };
 use sdkwork_agents_runtime_facade::{
-    bootstrap_agent_engine, bootstrappable_engine_keys, agent_engine_binding_id,
-    execute_agent_engine_turn, AgentsAgentEngineHost, AgentEngineTurnInput, LiveInteractionRegistry,
+    agent_engine_binding_id, bootstrap_agent_engine, bootstrappable_engine_keys,
+    execute_agent_engine_turn, AgentEngineSlot, AgentEngineTurnInput, AgentsAgentEngineHost,
+    LiveInteractionRegistry,
 };
 use sdkwork_utils_rust::string::is_blank;
 
@@ -161,6 +162,144 @@ Return only the optimized prompt text with no preamble.\n\n{prompt}"
     }
 }
 
+// ---------------------------------------------------------------------------
+// Structured agent calls (specs/AGENTS_STRUCTURED_CALL_SPEC.md)
+// ---------------------------------------------------------------------------
+
+/// One completed structured-call engine execution with wall-clock usage.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AgentCallExecution {
+    pub call: sdkwork_agents_runtime_facade::AgentStructuredCallOutput,
+    pub duration_ms: u64,
+    pub runtime_mode: &'static str,
+}
+
+/// [`StructuredTurnExecutor`] backed by one bootstrapped agent-engine slot.
+struct AgentCallEngineExecutor {
+    slot: AgentEngineSlot,
+    engine_key: String,
+    model_id: String,
+    timeout_ms: u64,
+}
+
+impl sdkwork_agents_runtime_facade::StructuredTurnExecutor for AgentCallEngineExecutor {
+    fn execute_turn(
+        &self,
+        prompt: &str,
+    ) -> sdkwork_agents_runtime_facade::RuntimeFacadeResult<String> {
+        let output = execute_agent_engine_turn(
+            &self.slot,
+            &AgentEngineTurnInput {
+                engine_key: self.engine_key.clone(),
+                model_id: self.model_id.clone(),
+                prompt: prompt.to_string(),
+                timeout_ms: Some(self.timeout_ms),
+                ..Default::default()
+            },
+        )?;
+        Ok(output.assistant_content)
+    }
+}
+
+/// Builds the facade input for one structured call from its service command.
+///
+/// Malformed enum fields and cross-field violations surface here as plain
+/// strings so the application layer maps them to kernel validation errors
+/// before any model invocation.
+pub fn build_agent_call_input(
+    command: &crate::application::AgentStructuredCallCommand,
+) -> Result<sdkwork_agents_runtime_facade::AgentStructuredCallInput, String> {
+    use sdkwork_agents_runtime_facade::{
+        AgentCallMode, AgentCallOutputFormat, AgentStructuredCallInput,
+    };
+
+    let mode = AgentCallMode::parse(command.mode.as_str()).map_err(|error| error.to_string())?;
+    let output_format = AgentCallOutputFormat::parse(command.output_format.as_str())
+        .map_err(|error| error.to_string())?;
+    if is_blank(Some(command.execution_id.as_str())) {
+        return Err("executionId must not be blank".to_string());
+    }
+    Ok(AgentStructuredCallInput {
+        mode,
+        prompt: command.prompt.clone().unwrap_or_default(),
+        params: command.params.clone().unwrap_or(serde_json::Value::Null),
+        param_schema: command.param_schema.clone(),
+        output_format,
+        output_schema: command.output_schema.clone(),
+        output_root_element: command.output_root_element.clone(),
+        strict: command.strict,
+        timeout_ms: command.timeout_ms,
+    })
+}
+
+/// Executes one structured call against the agent-engine runtime.
+///
+/// Fail-closed: without an active agent-engine binding (or with an engine
+/// that fails to bootstrap) the call returns an `agent_failed` result — a
+/// deterministic contract fallback cannot guarantee schema conformance.
+pub fn execute_agent_call_engine(
+    active_binding: Option<&AgentProviderBindingRecord>,
+    input: &sdkwork_agents_runtime_facade::AgentStructuredCallInput,
+) -> AgentCallExecution {
+    use sdkwork_agents_runtime_facade::{
+        execute_agent_structured_call, validate_structured_call_input, AgentCallStatus,
+        AgentStructuredCallOutput,
+    };
+
+    if let Err(error) = validate_structured_call_input(input) {
+        return AgentCallExecution {
+            call: AgentStructuredCallOutput {
+                status: AgentCallStatus::ValidationFailed,
+                output: serde_json::Value::Null,
+                raw_text: None,
+                validation_errors: vec![error.to_string()],
+                agent_error: None,
+                attempts: 0,
+            },
+            duration_ms: 0,
+            runtime_mode: RUNTIME_MODE_FACADE,
+        };
+    }
+
+    let started = std::time::Instant::now();
+    let engine_failure = |error: String| AgentCallExecution {
+        call: AgentStructuredCallOutput {
+            status: AgentCallStatus::AgentFailed,
+            output: serde_json::Value::Null,
+            raw_text: None,
+            validation_errors: Vec::new(),
+            agent_error: Some(error),
+            attempts: 0,
+        },
+        duration_ms: started.elapsed().as_millis() as u64,
+        runtime_mode: RUNTIME_MODE_FACADE,
+    };
+
+    let Some((engine_key, model_id)) = resolve_engine_and_model(active_binding, None) else {
+        return engine_failure(
+            "agent call requires an active agent-engine provider binding".to_string(),
+        );
+    };
+    let Ok(slot) = bootstrap_agent_engine(engine_key.as_str()) else {
+        return engine_failure(format!("agent engine \"{engine_key}\" is unavailable"));
+    };
+
+    let executor = AgentCallEngineExecutor {
+        slot,
+        engine_key,
+        model_id,
+        timeout_ms: input.timeout_ms,
+    };
+    match execute_agent_structured_call(&executor, input) {
+        Ok(call) => AgentCallExecution {
+            call,
+            duration_ms: started.elapsed().as_millis() as u64,
+            runtime_mode: RUNTIME_MODE_FACADE,
+        },
+        Err(error) => engine_failure(error.to_string()),
+    }
+}
+
 static AGENT_ENGINE_HOSTS: std::sync::LazyLock<Mutex<HashMap<String, Arc<AgentsAgentEngineHost>>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -189,7 +328,7 @@ pub fn shared_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
     // A failed bootstrap must not be cached: engine availability can recover
     // (e.g. the provider directory becomes readable again) and a permanently
     // cached None would force a process restart to ever synchronize again.
-    let mut guard = AGENT_ENGINE_HOSTS
+    let guard = AGENT_ENGINE_HOSTS
         .lock()
         .expect("provider engine host mutex poisoned");
     if let Some(host) = guard.get(DEFAULT_AGENT_ENGINE_HOST_KEY) {
@@ -213,12 +352,9 @@ pub fn shared_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
 /// otherwise the shared default host (cloudrouter dual-token rig backend) is
 /// lazily cached under this scope so every scope keeps a stable `Arc` across
 /// turns.
-pub fn agent_engine_host_for(
-    tenant_id: u64,
-    agent_id: &str,
-) -> Option<Arc<AgentsAgentEngineHost>> {
+pub fn agent_engine_host_for(tenant_id: u64, agent_id: &str) -> Option<Arc<AgentsAgentEngineHost>> {
     let key = agent_engine_host_key(tenant_id, agent_id);
-    let mut guard = AGENT_ENGINE_HOSTS
+    let guard = AGENT_ENGINE_HOSTS
         .lock()
         .expect("provider engine host mutex poisoned");
     if let Some(host) = guard.get(&key) {
@@ -441,7 +577,9 @@ mod tests {
 
     #[test]
     fn refresh_rig_agent_engine_rebuilds_shared_host_with_live_backend() {
-        use sdkwork_agent_kernel::{AgentConfigValue, AgentConfiguration, EnvFileSecretHostProvider};
+        use sdkwork_agent_kernel::{
+            AgentConfigValue, AgentConfiguration, EnvFileSecretHostProvider,
+        };
 
         let configuration = AgentConfiguration::new("agent.rig-general", "profile.rig.live")
             .set("llm.rig.provider_id", AgentConfigValue::string("openai"))
@@ -454,8 +592,7 @@ mod tests {
                 AgentConfigValue::string("example-chat"),
             )
             .set("runtime.rig.backend_mode", AgentConfigValue::string("live"));
-        let host: Arc<dyn HostProvider + Send + Sync> =
-            Arc::new(EnvFileSecretHostProvider::new());
+        let host: Arc<dyn HostProvider + Send + Sync> = Arc::new(EnvFileSecretHostProvider::new());
         refresh_rig_agent_engine(&configuration, host).expect("rig refresh");
 
         let shared = shared_agent_engine_host().expect("shared agent engine host");
@@ -473,7 +610,9 @@ mod tests {
 
     #[test]
     fn per_agent_engine_hosts_are_isolated_by_tenant_and_agent_scope() {
-        use sdkwork_agent_kernel::{AgentConfigValue, AgentConfiguration, EnvFileSecretHostProvider};
+        use sdkwork_agent_kernel::{
+            AgentConfigValue, AgentConfiguration, EnvFileSecretHostProvider,
+        };
 
         // Agent A (tenant 1) gets a custom provider configuration; agent B
         // (tenant 1, different agent) and tenant 2 keep the shared default.
@@ -488,20 +627,18 @@ mod tests {
                 AgentConfigValue::string("custom-chat"),
             )
             .set("runtime.rig.backend_mode", AgentConfigValue::string("live"));
-        let host: Arc<dyn HostProvider + Send + Sync> =
-            Arc::new(EnvFileSecretHostProvider::new());
+        let host: Arc<dyn HostProvider + Send + Sync> = Arc::new(EnvFileSecretHostProvider::new());
         refresh_rig_agent_engine_for(1, "agent.chat.default", &configuration, host)
             .expect("per-agent rig refresh");
 
         // The configured scope resolves to its own host.
-        let configured = agent_engine_host_for(1, "agent.chat.default")
-            .expect("configured agent host");
+        let configured =
+            agent_engine_host_for(1, "agent.chat.default").expect("configured agent host");
         // A different agent in the same tenant falls back to the shared host
         // (lazily cached under its own scope key).
-        let other_agent = agent_engine_host_for(1, "agent.other")
-            .expect("other agent host");
-        let other_tenant = agent_engine_host_for(2, "agent.chat.default")
-            .expect("other tenant host");
+        let other_agent = agent_engine_host_for(1, "agent.other").expect("other agent host");
+        let other_tenant =
+            agent_engine_host_for(2, "agent.chat.default").expect("other tenant host");
         let shared = shared_agent_engine_host().expect("shared agent engine host");
 
         // Per-agent scopes are distinct instances; the fallback scopes share

@@ -54,6 +54,7 @@
   "cancel": "取消",
   "close": "关闭",
   "loading": "正在加载",
+  "loadingSessions": "正在加载对话…",
   "playground": {
     "modelPicker": {
       "vendorSection": "厂商",
@@ -63,6 +64,12 @@
   },
   "retryHint": "，请稍后重试",
   "sendErrorFallback": "生成失败",
+  "balance": {
+    "insufficient": "当前账户余额不足，继续对话可能无法得到回复。",
+    "insufficientWithAmount": "当前账户余额不足（剩余 {{amount}}），继续对话可能无法得到回复。",
+    "buyCredits": "购买 Token Plan",
+    "dismiss": "关闭提示"
+  },
   "customProvider": {
     "title": "自定义 LLM Provider",
     "vendorCode": "供应商代码",

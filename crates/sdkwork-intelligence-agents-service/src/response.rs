@@ -46,6 +46,17 @@ pub fn created_json<T: Serialize>(
     success_response(ctx, StatusCode::CREATED, data)
 }
 
+/// 构造 202 + `SdkWorkApiResponse` 信封 + `x-sdkwork-trace-id` 响应头。
+///
+/// Used by async creation endpoints that return a queued resource
+/// (`agents.calls.create` with `executionMode: "async"`).
+pub fn accepted_json<T: Serialize>(
+    ctx: &WebRequestContext,
+    data: T,
+) -> Result<Response, ApiProblem> {
+    success_response(ctx, StatusCode::ACCEPTED, data)
+}
+
 /// 构造 204 无 body + `x-sdkwork-trace-id` 响应头。
 pub fn no_content(ctx: &WebRequestContext) -> Result<Response, ApiProblem> {
     Ok(finalize_response(

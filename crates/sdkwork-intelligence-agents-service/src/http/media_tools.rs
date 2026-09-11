@@ -231,6 +231,7 @@ pub async fn app_invoke_media_tool(
                 user_id: user_id.to_string(),
             },
             app_resource_id: format!("tool-call-direct-{user_id}"),
+            trace_id: context.trace_id.clone(),
         };
 
         // Run the synchronous pipeline on the blocking pool with a hard
@@ -242,9 +243,7 @@ pub async fn app_invoke_media_tool(
             tokio::task::spawn_blocking(move || invocation.invoke(&request)),
         )
         .await
-        .map_err(|_| {
-            ApiProblem::gateway_timeout("media tool invocation timed out")
-        })?
+        .map_err(|_| ApiProblem::gateway_timeout("media tool invocation timed out"))?
         .map_err(|error| ApiProblem::internal(format!("media tool worker failed: {error}")))?
         .map_err(map_tool_error)?;
         Ok(to_invoke_response(outcome))

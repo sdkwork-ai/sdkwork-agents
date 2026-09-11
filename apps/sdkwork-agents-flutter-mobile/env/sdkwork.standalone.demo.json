@@ -1,0 +1,12 @@
+{
+  "SDKWORK_AGENTS_APP_API_BASE_URL": "http://127.0.0.1:8095/app/v3/api",
+  "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL": "http://127.0.0.1:8095",
+  "SDKWORK_AGENTS_DEPLOYMENT_PROFILE": "standalone",
+  "SDKWORK_AGENTS_ENVIRONMENT": "demo",
+  "SDKWORK_AGENTS_PROFILE_ID": "standalone.demo",
+  "SDKWORK_AGENTS_RUNTIME_TARGET": "flutter-android",
+  "SDKWORK_DEPLOYMENT_PROFILE": "standalone",
+  "SDKWORK_ENVIRONMENT": "demo",
+  "SDKWORK_PROFILE_ID": "standalone.demo",
+  "SDKWORK_RUNTIME_TARGET": "flutter-android"
+}

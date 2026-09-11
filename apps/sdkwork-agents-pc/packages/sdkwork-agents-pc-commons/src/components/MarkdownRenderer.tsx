@@ -1,40 +1,27 @@
-import { Component, lazy, Suspense, type FC, type ReactNode } from 'react';
+import { Component, type FC, type ReactNode } from 'react';
 
 import { cn } from './classNames';
+import { MarkdownRenderer as MarkdownRendererCore } from './MarkdownRendererImpl';
+import type { MarkdownRendererProps } from './MarkdownRenderer.types';
+import './chat-markdown.css';
 
 export { cn };
-
-export interface MarkdownRendererProps {
-  content: string;
-  onOpenArtifact?: (language: string, code: string, mode?: 'preview' | 'code') => void;
-}
+export type { MarkdownRendererProps } from './MarkdownRenderer.types';
 
 function plainTextMarkdown(props: MarkdownRendererProps): ReactNode {
   return (
-    <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-200">{props.content}</div>
+    <div
+      className={cn(
+        'whitespace-pre-wrap',
+        props.muted
+          ? 'text-xs text-gray-500 dark:text-gray-400'
+          : 'text-gray-800 dark:text-gray-200',
+      )}
+    >
+      {props.content}
+    </div>
   );
 }
-
-const MarkdownRendererFallback: FC<MarkdownRendererProps> = (props) => (
-  <>{plainTextMarkdown(props)}</>
-);
-
-/**
- * Loads the markdown renderer lazily. Chunk-load failures (broken or
- * unavailable markdown dependencies in dev) resolve to the plain-text
- * fallback at the promise level, so React never sees an error: the message
- * still renders as raw text without crashing the chat or spamming the
- * console with error boundary reports.
- */
-const MarkdownRendererImpl = lazy(() =>
-  import('./MarkdownRendererImpl')
-    .then((module) => ({
-      default: module.MarkdownRenderer,
-    }))
-    .catch(() => ({
-      default: MarkdownRendererFallback,
-    })),
-);
 
 /**
  * Contains render-time failures inside the markdown renderer so a single
@@ -51,6 +38,10 @@ class MarkdownRendererErrorBoundary extends Component<
     return { failed: true };
   }
 
+  componentDidCatch(error: unknown): void {
+    console.error('[MarkdownRenderer] render failed, falling back to plain text', error);
+  }
+
   render(): ReactNode {
     if (this.state.failed) {
       return this.props.fallback;
@@ -59,10 +50,9 @@ class MarkdownRendererErrorBoundary extends Component<
   }
 }
 
+/** Eager markdown renderer — lazy loading previously hid chunk failures as plain text. */
 export const MarkdownRenderer: FC<MarkdownRendererProps> = (props) => (
-  <Suspense fallback={plainTextMarkdown(props)}>
-    <MarkdownRendererErrorBoundary fallback={plainTextMarkdown(props)}>
-      <MarkdownRendererImpl {...props} />
-    </MarkdownRendererErrorBoundary>
-  </Suspense>
+  <MarkdownRendererErrorBoundary fallback={plainTextMarkdown(props)}>
+    <MarkdownRendererCore {...props} />
+  </MarkdownRendererErrorBoundary>
 );

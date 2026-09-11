@@ -59,6 +59,7 @@ fn invoke_image_text_to_image(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let images = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images().create_generation(&request))
     })?;
@@ -85,6 +86,7 @@ fn invoke_image_edit(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let images = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images().create_edit(&request))
     })?;
@@ -113,6 +115,7 @@ fn invoke_video_text_to_video(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create(&request))
     })?;
@@ -141,6 +144,7 @@ fn invoke_video_image_to_video(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create(&request))
     })?;
@@ -169,6 +173,7 @@ fn invoke_video_extend(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let video = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.video().create_extension(&request))
     })?;
@@ -201,6 +206,7 @@ fn invoke_music_text_to_music(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let response = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio_suno().create_v1_music_generation(&request))
     })?;
@@ -232,6 +238,7 @@ fn invoke_music_lyrics_to_music(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let response = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio_suno().create_v1_music_generation(&request))
     })?;
@@ -282,6 +289,7 @@ fn invoke_voice_speech(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let audio_bytes = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_speech(&request))
     })?;
@@ -314,6 +322,7 @@ fn invoke_voice_transcription(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let transcription = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_transcription(&request))
     })?;
@@ -339,6 +348,7 @@ fn invoke_voice_translation(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
+    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let translation = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_translation(&request))
     })?;
@@ -452,6 +462,7 @@ mod tests {
             tool_id: "generations.not.a.tool".to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -464,6 +475,7 @@ mod tests {
             tool_id: tool_ids::IMAGE_TEXT_TO_IMAGE.to_string(),
             arguments: serde_json::json!({ "prompt": "a red fox" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -476,6 +488,7 @@ mod tests {
             tool_id: tool_ids::IMAGE_TEXT_TO_IMAGE.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("prompt required");
         assert_eq!(error.code(), "invalid_input");
@@ -488,6 +501,7 @@ mod tests {
             tool_id: tool_ids::IMAGE_EDIT.to_string(),
             arguments: serde_json::json!({ "prompt": "add snow" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("image required");
         assert_eq!(error.code(), "invalid_input");
@@ -500,6 +514,7 @@ mod tests {
             tool_id: tool_ids::VIDEO_TEXT_TO_VIDEO.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("prompt required");
         assert_eq!(error.code(), "invalid_input");
@@ -512,6 +527,7 @@ mod tests {
             tool_id: tool_ids::VIDEO_IMAGE_TO_VIDEO.to_string(),
             arguments: serde_json::json!({ "prompt": "make it move" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("image required");
         assert_eq!(error.code(), "invalid_input");
@@ -524,6 +540,7 @@ mod tests {
             tool_id: tool_ids::MUSIC_TEXT_TO_MUSIC.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("prompt required");
         assert_eq!(error.code(), "invalid_input");
@@ -536,6 +553,7 @@ mod tests {
             tool_id: tool_ids::MUSIC_LYRICS_TO_MUSIC.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("lyrics required");
         assert_eq!(error.code(), "invalid_input");
@@ -548,6 +566,7 @@ mod tests {
             tool_id: tool_ids::SFX_CREATE.to_string(),
             arguments: serde_json::json!({ "prompt": "thunder crack" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("sfx pending");
         assert_eq!(error.code(), "capability_missing");
@@ -560,6 +579,7 @@ mod tests {
             tool_id: tool_ids::VOICE_SPEECH.to_string(),
             arguments: serde_json::json!({ "input": "hello" }),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("voice required");
         assert_eq!(error.code(), "invalid_input");
@@ -572,6 +592,7 @@ mod tests {
             tool_id: tool_ids::VOICE_TRANSCRIPTION.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("file required");
         assert_eq!(error.code(), "invalid_input");
@@ -584,6 +605,7 @@ mod tests {
             tool_id: tool_ids::VOICE_TRANSLATION.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = invoke_generations_tool(&call, Some("token")).expect_err("file required");
         assert_eq!(error.code(), "invalid_input");

@@ -187,6 +187,13 @@ lease token and fencing token, and the Run reserves or reuses one Turn in the
 Task's persisted Session. Provider calls remain outside database transactions.
 Infrastructure retries reuse the Run and Turn; unknown outcomes reconcile.
 
+Structured agent calls (`agents.calls.create`, `AGENTS_STRUCTURED_CALL_SPEC.md`)
+reuse the same runtime bridge with a schema-conformance pipeline owned by
+`sdkwork-agents-runtime-facade::structured_call`: input validation before any
+model invocation, JSON/XML/text output parsing with one repair retry, and
+fail-closed execution (no contract fallback). Results persist as
+`AgentRuntimeExecutionRecord` rows with operation `agent_call`.
+
 Timeout reconciliation reads persisted state using the fully scoped identity
 and never assumes failure from a network timeout.
 
@@ -241,6 +248,7 @@ correctness.
 
 - [ADR-20260722-agent-session-domain-unification.md](../decisions/ADR-20260722-agent-session-domain-unification.md)
 - [ADR-20260731-agent-task-scheduling.md](../decisions/ADR-20260731-agent-task-scheduling.md)
+- [ADR-20260906-agent-structured-call.md](../decisions/ADR-20260906-agent-structured-call.md)
 - [AGENTS_KERNEL_BOUNDARY_SPEC.md](../../../specs/AGENTS_KERNEL_BOUNDARY_SPEC.md)
 - [AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md](../../../specs/AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md)
 

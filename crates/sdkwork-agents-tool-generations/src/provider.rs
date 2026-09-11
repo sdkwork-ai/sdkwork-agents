@@ -103,6 +103,7 @@ mod tests {
             tool_id: tool_ids::IMAGE_TEXT_TO_IMAGE.to_string(),
             arguments: serde_json::json!({ "prompt": "a red fox" }),
             session_id: None,
+            trace_id: None,
         };
         // Without an auth token the call fails closed before any network access.
         let error = provider.invoke(&call, None).expect_err("auth required");
@@ -117,6 +118,7 @@ mod tests {
             tool_id: "generations.unknown".to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
+            trace_id: None,
         };
         let error = provider.invoke(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -130,6 +132,7 @@ mod tests {
             tool_id: tool_ids::SFX_CREATE.to_string(),
             arguments: serde_json::json!({ "prompt": "thunder" }),
             session_id: None,
+            trace_id: None,
         };
         let error = provider.invoke(&call, Some("token")).expect_err("sfx pending");
         assert_eq!(error.code(), "capability_missing");

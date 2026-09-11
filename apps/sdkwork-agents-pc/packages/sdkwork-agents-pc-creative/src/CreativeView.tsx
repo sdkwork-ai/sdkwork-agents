@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreativeInputBox } from '@sdkwork/agents-pc-commons';
+import { CreativeInputBox, creativeModelCatalogService } from '@sdkwork/agents-pc-commons';
 import { ImageDetailModal } from '@sdkwork/agents-pc-inspiration';
 import { VideoDetailModal } from '@sdkwork/agents-pc-inspiration';
 import { useTranslation } from 'react-i18next';
@@ -291,7 +291,7 @@ export const CreativeView = ({ defaultCreationMode = 'agent' }: CreativeViewProp
           }
           return s;
         }));
-      });
+      }, mode === 'agent' ? undefined : settings?.model);
     } catch (error) {
       if (assistantMessageId) {
         setSessions(prev => prev.map(s => s.id === activeSessionId

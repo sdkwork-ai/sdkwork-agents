@@ -237,6 +237,7 @@ CREATE TABLE IF NOT EXISTS ai_agent_audit_event (
         action IN (
             'created', 'updated', 'deleted', 'restored', 'status_changed',
             'started', 'completed', 'failed', 'cancelled', 'runtime_executed',
+            'runtime_queued', 'runtime_failed',
             'provider_binding_changed', 'composition_slot_created',
             'composition_slot_updated', 'composition_slot_deleted',
             'workspace_created', 'workspace_updated', 'workspace_archived', 'workspace_deleted',
@@ -283,6 +284,124 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_audit_retention
 -- every page would trigger a scan plus sort.
 CREATE INDEX IF NOT EXISTS idx_ai_agent_audit_agent_created
     ON ai_agent_audit_event (tenant_id, agent_id, created_at DESC, uuid DESC);
+
+-- Durable operational state store for managed-agent runtime executions
+-- (structured agent calls). Backs `agents.calls.create` (executionMode
+-- async), `agents.calls.list`, and `agents.calls.retrieve`. Distinct from
+-- `ai_agent_audit_event` (append-only audit feed): runtime executions are
+-- mutable operational records that transition queued -> running ->
+-- completed/failed.
+CREATE TABLE IF NOT EXISTS ai_agent_runtime_execution (
+    id BIGINT NOT NULL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    agent_id VARCHAR(128) NOT NULL,
+    execution_id VARCHAR(128) NOT NULL,
+    operation VARCHAR(32) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    input_payload_json JSONB NOT NULL,
+    output_payload_json JSONB NOT NULL,
+    requested_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_ai_agent_runtime_execution UNIQUE (tenant_id, agent_id, execution_id),
+    CONSTRAINT ck_ai_agent_runtime_execution_operation CHECK (
+        operation IN ('preview_response', 'prompt_optimization', 'agent_call')
+    ),
+    CONSTRAINT ck_ai_agent_runtime_execution_status CHECK (
+        status IN ('queued', 'running', 'completed', 'failed')
+    )
+);
+
+-- Keyset coverage for the tenant+agent execution list: the list query orders
+-- on (requested_at DESC, execution_id DESC) with row-value predicates and an
+-- optional status filter; without this index every page would trigger a scan
+-- plus sort.
+CREATE INDEX IF NOT EXISTS idx_ai_agent_runtime_execution_list
+    ON ai_agent_runtime_execution (tenant_id, agent_id, status, requested_at DESC, execution_id DESC);
+
+-- Crash-recovery sweep: locates executions stuck in queued/running whose
+-- owning process died before reaching a terminal state.
+CREATE INDEX IF NOT EXISTS idx_ai_agent_runtime_execution_stale
+    ON ai_agent_runtime_execution (tenant_id, status, completed_at);
+
+-- Immutable published snapshots of agent definitions (`agents.versions.*`).
+-- Version rows are write-once: manifest and metadata never change after
+-- creation. Activation (publish/rollback) is the single `activated_at`
+-- marker per agent; re-activating an older version is the rollback path.
+CREATE TABLE IF NOT EXISTS ai_agent_version (
+    id BIGINT NOT NULL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    agent_id VARCHAR(128) NOT NULL,
+    version_id VARCHAR(128) NOT NULL,
+    version_number BIGINT NOT NULL,
+    manifest_json JSONB NOT NULL,
+    default_code_task_intent_json JSONB,
+    implementation_provider_id VARCHAR(128),
+    implementation_kind VARCHAR(32),
+    implementation_type VARCHAR(32),
+    description VARCHAR(512),
+    created_by BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    activated_at TIMESTAMPTZ,
+    CONSTRAINT uk_ai_agent_version_id UNIQUE (tenant_id, organization_id, agent_id, version_id),
+    CONSTRAINT uk_ai_agent_version_number UNIQUE (tenant_id, organization_id, agent_id, version_number),
+    CONSTRAINT ck_ai_agent_version_number CHECK (version_number >= 1)
+);
+
+-- Version history feed: newest first with keyset predicates.
+CREATE INDEX IF NOT EXISTS idx_ai_agent_version_list
+    ON ai_agent_version (tenant_id, organization_id, agent_id, version_number DESC);
+
+-- Outbound webhook subscription (`agents.webhooks.*`). A subscription binds
+-- an HTTPS endpoint to a set of agent event types and carries the signing
+-- secret used for HMAC payload signatures. The secret is write-once from the
+-- API surface: it is returned exactly once at creation time and never echoed
+-- by read/list operations.
+CREATE TABLE IF NOT EXISTS ai_agent_webhook_subscription (
+    id BIGINT NOT NULL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    webhook_id VARCHAR(128) NOT NULL,
+    url VARCHAR(2048) NOT NULL,
+    event_types_json JSONB NOT NULL,
+    status SMALLINT NOT NULL,
+    secret VARCHAR(128) NOT NULL,
+    description VARCHAR(512),
+    created_by BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    CONSTRAINT uk_ai_agent_webhook_subscription UNIQUE (tenant_id, organization_id, webhook_id),
+    CONSTRAINT ck_ai_agent_webhook_subscription_status CHECK (status IN (0, 1))
+);
+
+-- Delivery ledger for webhook attempts (`agents.webhooks.test` and future
+-- event dispatches). A row is created in `queued` state before the outbound
+-- HTTP attempt and completed with the response code / error detail once the
+-- attempt reaches a terminal state.
+CREATE TABLE IF NOT EXISTS ai_agent_webhook_delivery (
+    id BIGINT NOT NULL PRIMARY KEY,
+    tenant_id BIGINT NOT NULL,
+    organization_id BIGINT NOT NULL DEFAULT 0,
+    webhook_id VARCHAR(128) NOT NULL,
+    delivery_id VARCHAR(128) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    payload_json JSONB NOT NULL,
+    signature VARCHAR(256) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    response_code INTEGER,
+    error_detail VARCHAR(512),
+    created_at TIMESTAMPTZ NOT NULL,
+    completed_at TIMESTAMPTZ,
+    CONSTRAINT uk_ai_agent_webhook_delivery UNIQUE (tenant_id, organization_id, webhook_id, delivery_id),
+    CONSTRAINT ck_ai_agent_webhook_delivery_status CHECK (
+        status IN ('queued', 'succeeded', 'failed')
+    )
+);
+
+-- Delivery history feed per subscription: newest first.
+CREATE INDEX IF NOT EXISTS idx_ai_agent_webhook_delivery_list
+    ON ai_agent_webhook_delivery (tenant_id, organization_id, webhook_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS ai_agent_workspace (
     id BIGINT NOT NULL PRIMARY KEY,
@@ -775,6 +894,13 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_turn_trace
 CREATE INDEX IF NOT EXISTS idx_ai_agent_turn_retention
     ON ai_agent_turn (tenant_id, organization_id, retention_until, id)
     WHERE retention_until IS NOT NULL;
+
+-- Usage metering feeds (`agents.usage.summary` / `agents.usage.records`):
+-- tenant-wide and per-agent keyset/aggregation scans over the token facts.
+CREATE INDEX IF NOT EXISTS idx_ai_agent_turn_usage_timeline
+    ON ai_agent_turn (tenant_id, organization_id, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_agent_turn_usage_agent_timeline
+    ON ai_agent_turn (tenant_id, organization_id, agent_id, created_at DESC, id DESC);
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_ai_agent_turn_active_session
     ON ai_agent_turn (tenant_id, organization_id, session_id)

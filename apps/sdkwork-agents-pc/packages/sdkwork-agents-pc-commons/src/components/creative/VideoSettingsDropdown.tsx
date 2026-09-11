@@ -63,19 +63,19 @@ export const VideoSettingsDropdown: React.FC<VideoSettingsDropdownProps> = ({
       <div className="flex bg-zinc-100 rounded-xl p-1 dark:bg-[#2a2a2a]">
         <button 
           onClick={() => setVideoSettingsMode('all_around')}
-          className={cn("flex-1 py-2 text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5", videoSettingsMode === 'all_around' ? "bg-white text-zinc-900 shadow-sm dark:bg-white/10 dark:text-white" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200")}
+          className={cn("flex-1 py-2 text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5", videoSettingsMode === 'all_around' ? "bg-white text-zinc-900 shadow-sm dark:bg-[#333333] dark:text-white" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200")}
         >
           <PenTool size={14} /> 全能参考
         </button>
         <button 
           onClick={() => setVideoSettingsMode('first_last')}
-          className={cn("flex-1 py-2 text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5", videoSettingsMode === 'first_last' ? "bg-white text-zinc-900 shadow-sm dark:bg-white/10 dark:text-white" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200")}
+          className={cn("flex-1 py-2 text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5", videoSettingsMode === 'first_last' ? "bg-white text-zinc-900 shadow-sm dark:bg-[#333333] dark:text-white" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200")}
         >
           <LayoutTemplate size={14} /> 首尾帧
         </button>
         <button 
           onClick={() => setVideoSettingsMode('smart_multi')}
-          className={cn("flex-1 py-2 text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5", videoSettingsMode === 'smart_multi' ? "bg-white text-zinc-900 shadow-sm dark:bg-white/10 dark:text-white" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200")}
+          className={cn("flex-1 py-2 text-[13px] font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5", videoSettingsMode === 'smart_multi' ? "bg-white text-zinc-900 shadow-sm dark:bg-[#333333] dark:text-white" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200")}
         >
           <Scan size={14} /> 智能多帧
         </button>
@@ -88,7 +88,7 @@ export const VideoSettingsDropdown: React.FC<VideoSettingsDropdownProps> = ({
             <button 
               key={ratio}
               onClick={() => setVideoRatio(ratio)}
-              className={cn("flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-colors border", videoRatio === ratio ? "bg-white/10 border-transparent text-white" : "border-transparent text-zinc-400 hover:bg-white/5")}
+              className={cn("flex-1 flex flex-col items-center justify-center py-2.5 rounded-xl transition-colors border", videoRatio === ratio ? "bg-black/10 border-transparent text-zinc-900 dark:bg-[#333333] dark:text-white" : "border-transparent text-zinc-500 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-[#2a2a2a]")}
             >
               <RatioIcon ratio={ratio} active={videoRatio === ratio} />
               <span className="text-[11px] font-medium">{ratio}</span>
@@ -102,13 +102,13 @@ export const VideoSettingsDropdown: React.FC<VideoSettingsDropdownProps> = ({
         <div className="flex gap-2.5">
           <button 
             onClick={() => setVideoResolution('720P')}
-            className={cn("flex-1 py-2.5 rounded-xl transition-colors text-[13px] font-medium border", videoResolution === '720P' ? "bg-white/10 border-transparent text-white" : "border-transparent bg-white/5 text-zinc-400 hover:bg-white/10")}
+            className={cn("flex-1 py-2.5 rounded-xl transition-colors text-[13px] font-medium border", videoResolution === '720P' ? "bg-black/10 border-transparent text-zinc-900 dark:bg-[#333333] dark:text-white" : "border-transparent bg-black/5 text-zinc-500 dark:bg-[#2f2f2f] dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-[#333333]")}
           >
             720P
           </button>
           <button 
             onClick={() => setVideoResolution('1080P')}
-            className={cn("flex-1 py-2.5 rounded-xl transition-colors text-[13px] font-medium border", videoResolution === '1080P' ? "bg-white/10 border-transparent text-white" : "border-transparent bg-white/5 text-zinc-400 hover:bg-white/10")}
+            className={cn("flex-1 py-2.5 rounded-xl transition-colors text-[13px] font-medium border", videoResolution === '1080P' ? "bg-black/10 border-transparent text-zinc-900 dark:bg-[#333333] dark:text-white" : "border-transparent bg-black/5 text-zinc-500 dark:bg-[#2f2f2f] dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-[#333333]")}
           >
             1080P <Sparkles size={10} className="inline text-cyan-400 fill-cyan-400 -mt-0.5" />
           </button>
@@ -122,7 +122,7 @@ export const VideoSettingsDropdown: React.FC<VideoSettingsDropdownProps> = ({
             <button 
               key={count}
               onClick={() => setVideoCount(count)}
-              className={cn("flex-1 py-2.5 rounded-xl transition-colors text-[13px] font-medium border", videoCount === count ? "bg-white/10 border-transparent text-white" : "border-transparent bg-white/5 text-zinc-400 hover:bg-white/10")}
+              className={cn("flex-1 py-2.5 rounded-xl transition-colors text-[13px] font-medium border", videoCount === count ? "bg-black/10 border-transparent text-zinc-900 dark:bg-[#333333] dark:text-white" : "border-transparent bg-black/5 text-zinc-500 dark:bg-[#2f2f2f] dark:text-zinc-400 hover:bg-black/10 dark:hover:bg-[#333333]")}
             >
               {count}
             </button>
@@ -139,15 +139,15 @@ export const VideoSettingsDropdown: React.FC<VideoSettingsDropdownProps> = ({
             max="10" 
             value={videoDuration}
             onChange={(e) => setVideoDuration(Number(e.target.value))}
-            className="flex-1 h-[3px] bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 transition-all focus:outline-none"
+            className="flex-1 h-[3px] bg-black/10 dark:bg-[#333333] rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110 transition-all focus:outline-none"
             style={{ 
               backgroundImage: 'linear-gradient(white, white)', 
               backgroundRepeat: 'no-repeat',
               backgroundSize: `${((videoDuration - 1) / 9) * 100}% 100%`
             }}
           />
-          <div className="w-16 h-8 bg-white/5 rounded-lg flex items-center justify-center text-sm shrink-0">
-            <span className="font-medium text-white">{videoDuration}</span>
+          <div className="w-16 h-8 bg-black/5 dark:bg-[#2f2f2f] rounded-lg flex items-center justify-center text-sm shrink-0">
+            <span className="font-medium text-zinc-900 dark:text-white">{videoDuration}</span>
             <span className="text-zinc-500 ml-1">s</span>
           </div>
         </div>

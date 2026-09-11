@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.agents.structured-call",
+  "contractVersion": "1.0.0",
+  "status": "active",
+  "authority": "agents-platform",
+  "spec": "specs/AGENTS_STRUCTURED_CALL_SPEC.md",
+  "wireAuthority": "crates/sdkwork-intelligence-agents-service/specs/openapi/agents-app-api.openapi.yaml",
+  "operations": {
+    "appCreate": {
+      "method": "post",
+      "path": "/app/v3/api/ai/agents/{agentId}/calls",
+      "operationId": "agents.calls.create",
+      "permission": "ai.agents.use",
+      "tenantScope": "tenant",
+      "auditEvent": "agent.business.runtime.executed",
+      "successStatus": 201,
+      "requestSchema": "CreateAgentCallRequest",
+      "responseSchema": "AgentCallResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "appList": {
+      "method": "get",
+      "path": "/app/v3/api/ai/agents/{agentId}/calls",
+      "operationId": "agents.calls.list",
+      "permission": "ai.agents.use",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentCallListResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkPageData",
+      "sort": [
+        "-requestedAt",
+        "-executionId"
+      ],
+      "statusFilter": [
+        "queued",
+        "running",
+        "completed",
+        "failed"
+      ]
+    },
+    "appRetrieve": {
+      "method": "get",
+      "path": "/app/v3/api/ai/agents/{agentId}/calls/{executionId}",
+      "operationId": "agents.calls.retrieve",
+      "permission": "ai.agents.use",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentCallResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "usageSummary": {
+      "method": "get",
+      "path": "/app/v3/api/ai/usage/summary",
+      "operationId": "agents.usage.summary.retrieve",
+      "permission": "ai.agents.read",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentUsageSummaryResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "usageRecords": {
+      "method": "get",
+      "path": "/app/v3/api/ai/usage/records",
+      "operationId": "agents.usage.records.list",
+      "permission": "ai.agents.read",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentUsageRecordListResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkPageData",
+      "sort": [
+        "-createdAt",
+        "-id"
+      ],
+      "cursor": "CreatedAtListCursor:usage"
+    },
+    "versionCreate": {
+      "method": "post",
+      "path": "/app/v3/api/ai/agents/{agentId}/versions",
+      "operationId": "agents.versions.create",
+      "permission": "ai.agents.write",
+      "tenantScope": "tenant",
+      "successStatus": 201,
+      "requestSchema": "CreateAgentVersionRequest",
+      "responseSchema": "AgentVersionResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "versionList": {
+      "method": "get",
+      "path": "/app/v3/api/ai/agents/{agentId}/versions",
+      "operationId": "agents.versions.list",
+      "permission": "ai.agents.read",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentVersionListResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkPageData",
+      "sort": [
+        "-versionNumber",
+        "-id"
+      ]
+    },
+    "versionRetrieve": {
+      "method": "get",
+      "path": "/app/v3/api/ai/agents/{agentId}/versions/{versionId}",
+      "operationId": "agents.versions.retrieve",
+      "permission": "ai.agents.read",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentVersionResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "versionActivate": {
+      "method": "post",
+      "path": "/app/v3/api/ai/agents/{agentId}/versions/{versionId}/activate",
+      "operationId": "agents.versions.activate",
+      "permission": "ai.agents.write",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentVersionResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "webhookCreate": {
+      "method": "post",
+      "path": "/app/v3/api/ai/webhooks",
+      "operationId": "agents.webhooks.create",
+      "permission": "ai.agents.write",
+      "tenantScope": "tenant",
+      "successStatus": 201,
+      "requestSchema": "CreateWebhookSubscriptionRequest",
+      "responseSchema": "AgentWebhookSubscriptionCreatedResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "webhookList": {
+      "method": "get",
+      "path": "/app/v3/api/ai/webhooks",
+      "operationId": "agents.webhooks.list",
+      "permission": "ai.agents.read",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentWebhookSubscriptionListResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkPageData",
+      "pagination": "offset"
+    },
+    "webhookRetrieve": {
+      "method": "get",
+      "path": "/app/v3/api/ai/webhooks/{webhookId}",
+      "operationId": "agents.webhooks.retrieve",
+      "permission": "ai.agents.read",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentWebhookSubscriptionResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    },
+    "webhookDelete": {
+      "method": "delete",
+      "path": "/app/v3/api/ai/webhooks/{webhookId}",
+      "operationId": "agents.webhooks.delete",
+      "permission": "ai.agents.write",
+      "tenantScope": "tenant",
+      "successStatus": 204,
+      "envelope": "none"
+    },
+    "webhookTest": {
+      "method": "post",
+      "path": "/app/v3/api/ai/webhooks/{webhookId}/test",
+      "operationId": "agents.webhooks.test",
+      "permission": "ai.agents.write",
+      "tenantScope": "tenant",
+      "successStatus": 200,
+      "responseSchema": "AgentWebhookDeliveryResponse",
+      "envelope": "SdkWorkApiResponse",
+      "dataWrapper": "SdkWorkResourceData"
+    }
+  },
+  "request": {
+    "naming": "camelCase",
+    "unknownFields": "deny",
+    "idempotency": {
+      "field": "executionId",
+      "prefixPattern": "^execution\\.[a-z0-9_-]+(\\.[a-z0-9_-]+)*$"
+    },
+    "modes": [
+      "prompt",
+      "params"
+    ],
+    "modeRequirements": {
+      "prompt": [
+        "prompt"
+      ],
+      "params": [
+        "params",
+        "paramSchema"
+      ]
+    },
+    "outputFormats": [
+      "json",
+      "xml",
+      "text"
+    ],
+    "outputDefaults": {
+      "format": "json",
+      "strict": true
+    },
+    "schemaDraft": "https://json-schema.org/draft/2020-12/schema",
+    "policy": {
+      "timeoutMsDefault": 60000,
+      "timeoutMsMaximum": 300000,
+      "maxTurnsDefault": 1,
+      "toolsExposed": false
+    },
+    "executionModes": [
+      "sync",
+      "async"
+    ]
+  },
+  "response": {
+    "naming": "camelCase",
+    "int64AsString": true,
+    "statuses": [
+      "queued",
+      "succeeded",
+      "validation_failed",
+      "agent_failed",
+      "timeout",
+      "failed"
+    ],
+    "transportFailurePolicy": "business-failure-in-item-status",
+    "fields": [
+      "executionId",
+      "status",
+      "output",
+      "validation",
+      "usage",
+      "correlation",
+      "agentError"
+    ],
+    "rawTextVisibility": "failure-or-debug",
+    "agentErrorVisibility": "failure-only",
+    "asyncAcceptedStatus": 202
+  },
+  "pipeline": {
+    "inputValidationBeforeModel": true,
+    "bindingResolution": "fail-closed-no-contract-fallback",
+    "parse": {
+      "json": [
+        "strip-code-fences",
+        "serde-json-parse",
+        "jsonschema-crate-validation"
+      ],
+      "xml": [
+        "roxmltree-wellformed",
+        "root-element-check"
+      ],
+      "text": [
+        "verbatim"
+      ]
+    },
+    "repairRetry": {
+      "maxRepairAttempts": 1,
+      "attemptsReported": true
+    },
+    "persistence": {
+      "record": "AgentRuntimeExecutionRecord",
+      "operation": "agent_call"
+    },
+    "durableStore": "ai_agent_runtime_execution",
+    "async": {
+      "inputValidationBeforeQueue": true,
+      "acceptedStatus": 202,
+      "executor": "in-process queued worker",
+      "crashRecovery": "recover_stale_agent_calls marks non-terminal records failed"
+    }
+  },
+  "agentAsTool": {
+    "toolId": "agent_call",
+    "definitionConvention": "MediaToolDefinition",
+    "nestingDepthMaximum": 1,
+    "recursion": "forbidden-fail-closed",
+    "timeoutSource": "host-turn-budget-suballocation"
+  },
+  "boundaries": {
+    "kernelSpiTouched": false,
+    "consumerSdk": "@sdkwork/agents-app-sdk",
+    "generatedArtifacts": "regenerated-from-openapi-authority"
+  },
+  "verification": {
+    "checker": "node scripts/check-agent-call-contract.mjs",
+    "facadeTests": "cargo test -p sdkwork-agents-runtime-facade structured_call",
+    "serviceTests": "cargo test -p sdkwork-intelligence-agents-service agent_call"
+  },
+  "review": {
+    "requirement": "specs/AGENTS_STRUCTURED_CALL_SPEC.md",
+    "status": "approved-agent-confirmed"
+  },
+  "metering": {
+    "factSource": "ai_agent_turn.input_tokens/output_tokens/cached_tokens",
+    "summaryFeed": "agents.usage.summary",
+    "recordsFeed": "agents.usage.records",
+    "billingBoundary": "billing, orders and quotas are owned by the platform gateway; agents exposes metering facts only"
+  },
+  "versioning": {
+    "immutableSnapshots": "version rows are write-once; only activated_at transitions",
+    "activationIsRollback": "activating an older version writes its immutable manifest back onto the live agent definition",
+    "idScheme": "version_id pattern ^version\\.[a-z0-9_-]+(\\.[a-z0-9_-]+)*$"
+  },
+  "webhooks": {
+    "eventVocabulary": [
+      "agent_call.completed",
+      "agent_call.failed",
+      "task_run.completed",
+      "task_run.failed",
+      "interaction.requested"
+    ],
+    "signatureScheme": "Sdkwork-Signature: t=<unix-seconds>,v1=<hmac-sha256(secret, \"<ts>.<payload>\")>",
+    "secretScheme": "whsec_ + 32 random bytes hex; echoed exactly once at creation",
+    "transport": "https-only endpoints, 10s bounded timeout, delivery ledger queued->succeeded/failed",
+    "idScheme": "webhook_id ^webhook\\.[a-z0-9_-]+(\\.[a-z0-9_-]+)*$; delivery_id ^delivery\\.[a-z0-9_-]+(\\.[a-z0-9_-]+)*$"
+  }
+}

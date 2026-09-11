@@ -269,8 +269,8 @@ export const VideoDetailModal: React.FC<VideoDetailModalProps> = ({ isOpen, onCl
           </div>
 
           {/* Action Footer */}
-          <div className="p-6 pt-4 border-t border-white/5 flex items-center gap-3 bg-[#141414]">
-            <button className="flex-1 bg-white/10 hover:bg-white/15 text-zinc-200 py-2.5 rounded-xl text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5">
+          <div className="p-6 pt-4 border-t border-black/5 dark:border-white/5 flex items-center gap-3 bg-zinc-100 dark:bg-[#141414]">
+            <button className="flex-1 bg-black/10 hover:bg-black/15 text-zinc-800 dark:bg-[#333333] dark:hover:bg-[#3a3a3a] dark:text-zinc-200 py-2.5 rounded-xl text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5">
               <Play size={14} />
               做同款视频
             </button>

@@ -66,6 +66,27 @@ impl CloudRouterMediaClient {
         Ok(client)
     }
 
+    /// Attaches the inbound request trace context to the generated SDK client
+    /// so the cloudrouter gateway sees the same trace id as the agents turn:
+    /// `x-trace-id` carries the id, and a W3C `traceparent` is synthesized for
+    /// gateway-side span correlation.
+    pub fn with_trace_id(&self, sdk: &SdkworkAiClient, trace_id: Option<&str>) -> &Self {
+        let Some(trace_id) = trace_id
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        else {
+            return self;
+        };
+        sdk.set_header("x-trace-id", trace_id);
+        if trace_id.len() == 32 {
+            sdk.set_header(
+                "traceparent",
+                format!("00-{trace_id}-0000000000000000-01"),
+            );
+        }
+        self
+    }
+
     /// Requires a non-empty auth token, mapping absence to an actionable error.
     pub fn require_auth_token<'a>(
         auth_token: Option<&'a str>,
@@ -80,6 +101,29 @@ impl CloudRouterMediaClient {
                 ))
             })
     }
+}
+
+/// Maps a cloudrouter HTTP error body (SDKWork problem JSON whose `detail`
+/// the gateway preserves from `x-sdkwork-route-reason`) to an actionable
+/// operator hint. Kept in one place so tool, rig, and turn-executor wrappers
+/// surface the same message for the same root cause.
+pub fn cloudrouter_http_error_hint(status: u16, body: &str) -> &'static str {
+    if status >= 500 {
+        if body.contains("upstream")
+            || body.contains("credential")
+            || body.contains("api key")
+            || body.contains("401")
+        {
+            return "; 上游账号凭证被拒绝（401）：请在 Cloud Router 后台检查 DeepSeek 账号的 API Key 是否有效";
+        }
+        if body.contains("circuit") || body.contains("breaker") {
+            return "; 账号池路由熔断保护已触发，请稍后重试";
+        }
+        if body.contains("pricing") || body.contains("balance") {
+            return "; 账号池余额或定价不足：请检查账号池余额与上游成本价配置";
+        }
+    }
+    "; Cloud Router 账号池网关暂不可用，请稍后重试"
 }
 
 /// Runs a cloudrouter SDK async call on a dedicated blocking runtime,
@@ -171,8 +215,8 @@ pub fn map_cloudrouter_error(
             message.push_str("; Cloud Router 配额或限流触发，请稍后重试");
             MediaToolError::RateLimited(message)
         }
-        SdkworkError::HttpStatus { status, .. } if *status >= 500 => {
-            message.push_str("; Cloud Router 账号池网关暂不可用，请稍后重试");
+        SdkworkError::HttpStatus { status, body } if *status >= 500 => {
+            message.push_str(cloudrouter_http_error_hint(*status, body));
             MediaToolError::ProviderUnavailable(message)
         }
         _ => MediaToolError::ProviderError(message),

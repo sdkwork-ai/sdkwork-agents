@@ -119,20 +119,32 @@
           "inheritRoles": true
         },
         {
-          "moduleId": "drive",
-          "manifestRef": "../../../../../sdkwork-iam/iam/modules/drive/iam.module.manifest.json",
-          "inheritPermissions": true,
-          "inheritRoles": true
-        },
-        {
           "moduleId": "community",
           "manifestRef": "../../../../../sdkwork-community/specs/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         },
         {
+          "moduleId": "drive",
+          "manifestRef": "../../../../../sdkwork-iam/iam/modules/drive/iam.module.manifest.json",
+          "inheritPermissions": true,
+          "inheritRoles": true
+        },
+        {
+          "moduleId": "feeds",
+          "manifestRef": "../../../../../sdkwork-feeds/specs/iam.module.manifest.json",
+          "inheritPermissions": true,
+          "inheritRoles": true
+        },
+        {
           "moduleId": "generations",
           "manifestRef": "../../../../../sdkwork-generations/specs/iam.module.manifest.json",
+          "inheritPermissions": true,
+          "inheritRoles": true
+        },
+        {
+          "moduleId": "knowledge",
+          "manifestRef": "../../../../../sdkwork-knowledgebase/specs/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         },
@@ -149,20 +161,8 @@
           "inheritRoles": true
         },
         {
-          "moduleId": "knowledge",
-          "manifestRef": "../../../../../sdkwork-knowledgebase/specs/iam.module.manifest.json",
-          "inheritPermissions": true,
-          "inheritRoles": true
-        },
-        {
-          "moduleId": "knowledgebase",
-          "manifestRef": "../../../../../sdkwork-knowledgebase/specs/iam.module.manifest.json",
-          "inheritPermissions": true,
-          "inheritRoles": true
-        },
-        {
           "moduleId": "skills",
-          "manifestRef": "../../../../../sdkwork-skills/specs/iam.module.manifest.json",
+          "manifestRef": "../../../../../sdkwork-iam/iam/modules/skills/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
         },
@@ -171,11 +171,6 @@
           "manifestRef": "../../../../../sdkwork-voice/specs/iam.module.manifest.json",
           "inheritPermissions": true,
           "inheritRoles": true
-        },
-        {
-          "moduleId": "feeds",
-          "manifestRef": "../../../../../sdkwork-feeds/specs/iam.module.manifest.json",
-          "inheritPermissions": true
         }
       ],
       "bootstrapAccessTokenScope": {

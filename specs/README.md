@@ -10,10 +10,13 @@ remain authoritative under `../sdkwork-kernel/specs/`.
 | [AGENTS_DOMAIN_SPEC.md](./AGENTS_DOMAIN_SPEC.md) | Canonical Agents bounded context and Project/Session/Turn/Item/Interaction vocabulary |
 | [AGENTS_SESSION_MODEL_SPEC.md](./AGENTS_SESSION_MODEL_SPEC.md) | Durable session aggregate, runtime binding, item, interaction, and checkpoint contract |
 | [AGENTS_TASK_SCHEDULING_SPEC.md](./AGENTS_TASK_SCHEDULING_SPEC.md) | Durable Task, Run, Attempt, cron, lease, fencing, retry, and reconciliation contract |
+| [AGENTS_STRUCTURED_CALL_SPEC.md](./AGENTS_STRUCTURED_CALL_SPEC.md) | Structured agent call contract: prompt/params in, validated JSON/XML/text out, agent-as-tool projection |
+| [agent-structured-call.contract.json](./agent-structured-call.contract.json) | Machine-readable structured-call invariants and wire-authority alignment (`node scripts/check-agent-call-contract.mjs`) |
 | [AGENTS_KERNEL_BOUNDARY_SPEC.md](./AGENTS_KERNEL_BOUNDARY_SPEC.md) | Kernel vs agents vs product boundary (frozen) |
 | [AGENTS_PROVIDER_TAXONOMY_SPEC.md](./AGENTS_PROVIDER_TAXONOMY_SPEC.md) | Code / autonomous / framework agent taxonomy |
 | [AGENTS_KERNEL_SPI_GAP_ANALYSIS.md](./AGENTS_KERNEL_SPI_GAP_ANALYSIS.md) | Kernel capability closure and commercial readiness gates |
 | [AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md](./AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md) | Mandatory `sdkwork-im -> sdkwork-agents` dependency direction and database ownership boundary |
+| [AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md](./AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md) | Mandatory `sdkwork-appstore -> sdkwork-agents` consumer direction, SDK consumption surface, and storefront/runtime ownership boundary |
 | [AGENTS_AI_COMPOSITION_DATABASE_SPEC.md](../crates/sdkwork-intelligence-agents-service/specs/AGENTS_AI_COMPOSITION_DATABASE_SPEC.md) | Canonical 23-table Agents PostgreSQL contract |
 | [agent-task-scheduling.contract.json](./agent-task-scheduling.contract.json) | Machine-readable Task scheduling invariants and review authority |
 | [agent-interaction-envelope.contract.json](./agent-interaction-envelope.contract.json) | Machine-readable typed Interaction request, resolution, compatibility, and review authority |
@@ -78,6 +81,12 @@ Products (including `sdkwork-birdcoder`) MUST consume agent runtime through
 `sdkwork-im -> sdkwork-agents -> sdkwork-kernel`; Agents MUST NOT import IM SDKs,
 read or write `im_*` tables, or persist IM communication ownership.
 See `AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md`.
+
+`sdkwork-appstore` is an Agents consumer through `@sdkwork/agents-app-sdk` only
+(bound in the appstore `*-core` SDK client inventory). Agents MUST NOT depend on
+the appstore, and Agents runtime state never lives in appstore stores. Storefront
+catalog pages such as the appstore expert page are appstore presentation surfaces,
+not Agents contracts. See `AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md`.
 
 Client composition authority: `APP_COMPOSITION_SPEC.md` via `pnpm check:app-composition` (`verify-repo.mjs`). Do not add `dependency.composition.json`.
 

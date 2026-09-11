@@ -1,9 +1,9 @@
 use anyhow::Context;
+use sdkwork_web_bootstrap::{ApiModuleRegistry, infra_public_path_prefixes};
 use axum::Router;
 use sdkwork_iam_web_adapter::{
     build_web_framework_builder, iam_web_request_context_resolver_from_env,
 };
-use sdkwork_web_bootstrap::{infra_public_path_prefixes, ComposedApiAssembly};
 
 pub async fn build_router() -> anyhow::Result<Router> {
     let assembly = sdkwork_api_agents_assembly::assemble_api_router()
@@ -14,8 +14,11 @@ pub async fn build_router() -> anyhow::Result<Router> {
         assembly.route_manifest.clone(),
         infra_public_path_prefixes(),
     );
+    let mut module_registry = ApiModuleRegistry::new();
+    module_registry.add_modules(vec![assembly]);
     Ok(
-        ComposedApiAssembly::try_compose("SDKWork Agents API", vec![assembly])
+        module_registry
+    .try_compose("SDKWork Agents API")
             .map_err(anyhow::Error::msg)?
             .into_hosted(framework)
             .router,

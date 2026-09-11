@@ -26,6 +26,9 @@ pub(crate) const ID_PREFIX_SESSION: &str = "session.";
 pub(crate) const ID_PREFIX_SLOT: &str = "slot.";
 pub(crate) const ID_PREFIX_TASK: &str = "task.";
 pub(crate) const ID_PREFIX_TURN: &str = "turn.";
+pub(crate) const ID_PREFIX_VERSION: &str = "version.";
+pub(crate) const ID_PREFIX_WEBHOOK: &str = "webhook.";
+pub(crate) const ID_PREFIX_DELIVERY: &str = "delivery.";
 pub(crate) const ID_PREFIX_WORKSPACE: &str = "workspace.";
 
 pub(crate) fn require_non_blank(value: &str, field_name: &str) -> KernelResult<()> {

@@ -17,8 +17,15 @@ use std::sync::Arc;
 
 use cloudrouter_open_sdk::models::{OpenAiChatCompletionRequest, OpenAiChatMessage};
 use cloudrouter_open_sdk::{SdkworkAiClient, SdkworkConfig};
-use sdkwork_agent_kernel::{HostProvider, KernelError, KernelResult, ModelRequest, ModelResponse, SecretRef};
-use sdkwork_agent_provider_rig::{ids, RigBackendConfig, RigBackendExecutor};
+use serde_json::Value;
+use sdkwork_agent_kernel::{
+    HostProvider, KernelError, KernelResult, ModelDescriptor, ModelProvider, ModelRequest,
+    ModelResponse, ModelStreamChunk, ModelStreamSink, ProviderHealth, ProviderManifest, SecretRef,
+};
+use sdkwork_agent_provider_rig::{ids, RigBackendConfig, RigBackendExecutor, RigModelProvider};
+
+use crate::chat_stream::stream_chat_completion_blocking;
+use crate::chat_stream::CloudRouterStreamDelta;
 
 /// Fallback model key sent when the turn carries no model id; the gateway
 /// account-pool router resolves it to the tenant's default account.
@@ -28,9 +35,11 @@ const DEFAULT_MODEL_KEY: &str = "default";
 /// abort the call before the HTTP exchange begins.
 const MIN_REQUEST_TIMEOUT_MS: u64 = 1_000;
 
-/// Maximum gateway request timeout (5min) — a hard ceiling above the turn
-/// execution budget, not a user-facing setting.
-const MAX_REQUEST_TIMEOUT_MS: u64 = 300_000;
+/// Maximum gateway request timeout (30min) — a hard ceiling aligned with the
+/// turn execution budget for long coding completions, not a user-facing
+/// setting. Stalled upstreams fail fast via read/idle timeouts long before
+/// this ceiling.
+const MAX_REQUEST_TIMEOUT_MS: u64 = 1_800_000;
 
 /// Cloud Router account-pool executor for the RIG agent engine.
 ///
@@ -78,7 +87,7 @@ impl RigCloudRouterExecutor {
         config.timeout_ms = request
             .timeout_ms
             .map(|timeout_ms| timeout_ms.clamp(MIN_REQUEST_TIMEOUT_MS, MAX_REQUEST_TIMEOUT_MS))
-            .unwrap_or(120_000);
+            .unwrap_or(MAX_REQUEST_TIMEOUT_MS);
         SdkworkAiClient::new(config).map_err(|error| {
             KernelError::provider_error(
                 "rig_cloudrouter_client_unavailable",
@@ -87,8 +96,6 @@ impl RigCloudRouterExecutor {
         })
     }
 
-    /// Applies credentials with the documented precedence: caller dual tokens
-    /// first (default), then the configured API key secret, then fail-closed.
     fn apply_credentials(
         &self,
         client: &SdkworkAiClient,
@@ -129,6 +136,50 @@ impl RigCloudRouterExecutor {
              llm.rig.api_key secret; neither was supplied",
         ))
     }
+
+    /// Resolves bearer credentials for the blocking stream client.
+    fn resolve_stream_credentials(
+        &self,
+        request: &ModelRequest,
+    ) -> KernelResult<(String, Option<String>)> {
+        if let Some(auth_token) = request
+            .auth_token
+            .as_deref()
+            .filter(|token| !token.trim().is_empty())
+        {
+            let access_token = request
+                .access_token
+                .as_deref()
+                .filter(|token| !token.trim().is_empty())
+                .map(str::to_string);
+            return Ok((auth_token.to_string(), access_token));
+        }
+        if let Some(secret_ref) = self
+            .config
+            .api_key_secret_ref
+            .as_deref()
+            .filter(|secret_ref| !secret_ref.trim().is_empty())
+        {
+            let secret = self
+                .host
+                .resolve_secret(SecretRef::new(secret_ref, "Rig cloud router API key"))?;
+            return Ok((secret.expose_value().to_string(), None));
+        }
+        Err(KernelError::provider_error(
+            "rig_cloudrouter_credentials_unavailable",
+            "RIG cloud router executor requires the caller auth token or a configured \
+             llm.rig.api_key secret; neither was supplied",
+        ))
+    }
+
+    fn stream_completion_request(
+        &self,
+        request: &ModelRequest,
+    ) -> OpenAiChatCompletionRequest {
+        let mut completion_request = build_chat_completion_request(request);
+        completion_request.stream = Some(true);
+        completion_request
+    }
 }
 
 impl RigBackendExecutor for RigCloudRouterExecutor {
@@ -167,6 +218,156 @@ impl RigBackendExecutor for RigCloudRouterExecutor {
         Ok(ModelResponse::text(request_id, ids::MODEL_PROVIDER_ID, content)
             .with_model_id(completion.model.clone())
             .with_finish_reason(finish_reason))
+    }
+}
+
+/// RIG model provider that adds live Cloud Router streaming on top of the
+/// standard invoke-only [`RigModelProvider`].
+#[derive(Clone)]
+pub struct RigCloudRouterModelProvider {
+    inner: RigModelProvider,
+    executor: Arc<RigCloudRouterExecutor>,
+}
+
+impl RigCloudRouterModelProvider {
+    pub fn new(
+        config: RigBackendConfig,
+        host: Arc<dyn HostProvider + Send + Sync>,
+    ) -> Self {
+        let executor = Arc::new(RigCloudRouterExecutor::new(config.clone(), host));
+        Self {
+            inner: RigModelProvider::with_executor(config, executor.clone()),
+            executor,
+        }
+    }
+
+    pub fn with_base_url(
+        config: RigBackendConfig,
+        host: Arc<dyn HostProvider + Send + Sync>,
+        base_url: impl Into<String>,
+    ) -> Self {
+        let executor = Arc::new(RigCloudRouterExecutor::with_base_url(
+            config.clone(),
+            host,
+            base_url,
+        ));
+        Self {
+            inner: RigModelProvider::with_executor(config, executor.clone()),
+            executor,
+        }
+    }
+}
+
+impl ModelProvider for RigCloudRouterModelProvider {
+    fn provider_manifest(&self) -> ProviderManifest {
+        self.inner.provider_manifest()
+    }
+
+    fn health(&self) -> ProviderHealth {
+        self.inner.health()
+    }
+
+    fn list_models(&self) -> Vec<ModelDescriptor> {
+        self.inner.list_models()
+    }
+
+    fn invoke(&self, request: ModelRequest) -> KernelResult<ModelResponse> {
+        self.inner.invoke(request)
+    }
+
+    fn stream(&self, request: ModelRequest) -> KernelResult<Vec<ModelStreamChunk>> {
+        let mut chunks = Vec::new();
+        self.stream_into(
+            request,
+            &mut CollectingModelStreamSink {
+                chunks: &mut chunks,
+            },
+        )?;
+        Ok(chunks)
+    }
+
+    fn stream_into(
+        &self,
+        request: ModelRequest,
+        sink: &mut dyn ModelStreamSink,
+    ) -> KernelResult<()> {
+        let model_request_id = request.model_request_id.clone();
+        let (auth_token, access_token) = self.executor.resolve_stream_credentials(&request)?;
+        let completion_request = self.executor.stream_completion_request(&request);
+        let mut sequence = 0u64;
+        let mut sink_error: Option<KernelError> = None;
+        let mut emit_delta = |delta: CloudRouterStreamDelta| -> KernelResult<()> {
+            if !delta.reasoning_content.is_empty() {
+                sequence += 1;
+                let chunk = ModelStreamChunk::reasoning(
+                    &model_request_id,
+                    sequence,
+                    &delta.reasoning_content,
+                );
+                sink.push_chunk(chunk)?;
+            }
+            if !delta.content.is_empty() {
+                sequence += 1;
+                let chunk = ModelStreamChunk::output(&model_request_id, sequence, &delta.content);
+                sink.push_chunk(chunk)?;
+            }
+            if !delta.tool_calls.is_empty() {
+                for (tool_call_id, arguments) in
+                    extract_tool_call_argument_fragments(&delta.tool_calls)
+                {
+                    sequence += 1;
+                    let chunk = ModelStreamChunk::tool_arguments(
+                        &model_request_id,
+                        sequence,
+                        tool_call_id,
+                        arguments,
+                    );
+                    sink.push_chunk(chunk)?;
+                }
+            }
+            Ok(())
+        };
+        stream_chat_completion_blocking(
+            self.executor.base_url(),
+            &auth_token,
+            access_token.as_deref(),
+            completion_request,
+            &mut |delta: CloudRouterStreamDelta| {
+                if sink_error.is_some() {
+                    return;
+                }
+                if let Err(error) = emit_delta(delta) {
+                    sink_error = Some(error);
+                }
+            },
+        )
+        .map_err(map_cloudrouter_kernel_error)?;
+        if let Some(error) = sink_error {
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    fn cancel(&self, model_request_id: &str) -> KernelResult<ModelResponse> {
+        self.inner.cancel(model_request_id)
+    }
+}
+
+struct CollectingModelStreamSink<'a> {
+    chunks: &'a mut Vec<ModelStreamChunk>,
+}
+
+impl ModelStreamSink for CollectingModelStreamSink<'_> {
+    fn push_chunk(&mut self, chunk: ModelStreamChunk) -> KernelResult<()> {
+        self.chunks.push(chunk);
+        Ok(())
+    }
+
+    fn push_event(
+        &mut self,
+        _event: sdkwork_agent_kernel::KernelEvent,
+    ) -> KernelResult<()> {
+        Ok(())
     }
 }
 
@@ -255,8 +456,8 @@ pub fn map_cloudrouter_kernel_error(error: cloudrouter_open_sdk::SdkworkError) -
         {
             "; 当前租户在账号池中未配置默认分组（Default）或分组下无可用账号"
         }
-        SdkworkError::HttpStatus { status, .. } if *status >= 500 => {
-            "; Cloud Router 账号池网关暂不可用，请稍后重试"
+        SdkworkError::HttpStatus { status, body } if *status >= 500 => {
+            crate::cloudrouter_http_error_hint(*status, body)
         }
         _ => "",
     };
@@ -264,6 +465,37 @@ pub fn map_cloudrouter_kernel_error(error: cloudrouter_open_sdk::SdkworkError) -
         "rig_cloudrouter_chat_completion_failed",
         format!("cloud router chat completion failed: {error}{hint}"),
     )
+}
+
+/// Parses a serialized OpenAI `tool_calls` array fragment into per-call
+/// argument deltas, deriving a stable `tool_call_id` from the provider `id`
+/// when present (falling back to `tool_call_{index}` for later deltas that
+/// omit the transient id). Emits only non-empty argument fragments so the
+/// kernel stream carries actual JSON argument deltas, not name-only notices.
+fn extract_tool_call_argument_fragments(serialized: &str) -> Vec<(String, String)> {
+    let Ok(Value::Array(items)) = serde_json::from_str::<Value>(serialized) else {
+        return Vec::new();
+    };
+    let mut fragments = Vec::new();
+    for item in items {
+        let index = item.get("index").and_then(Value::as_u64).unwrap_or(0);
+        let id = item
+            .get("id")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+            .map(str::to_string)
+            .unwrap_or_else(|| format!("tool_call_{index}"));
+        let arguments = item
+            .get("function")
+            .and_then(|function| function.get("arguments"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        if !arguments.is_empty() {
+            fragments.push((id, arguments));
+        }
+    }
+    fragments
 }
 
 #[cfg(test)]

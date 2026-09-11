@@ -11,6 +11,7 @@ mod live_interaction;
 mod provider_sessions;
 mod runtime_host;
 mod sessions;
+mod structured_call;
 mod turn;
 
 pub use agent_engine_config::{read_agent_engine_config_file, AgentEngineConfigFile};
@@ -80,6 +81,14 @@ pub use sdkwork_agents_tool_video::{
     video_tool_definitions, VideoMediaToolProvider, VIDEO_PROVIDER_ID,
 };
 pub use sessions::*;
+pub use structured_call::{
+    agent_call_tool_input_schema, agent_call_tool_output_schema, compose_structured_call_prompt,
+    execute_agent_structured_call, parse_structured_output, validate_structured_call_input,
+    AgentCallMode, AgentCallOutputFormat, AgentCallStatus, AgentStructuredCallInput,
+    AgentStructuredCallOutput, StructuredTurnExecutor, AGENT_CALL_NESTING_DEPTH_MAXIMUM,
+    AGENT_CALL_TOOL_ID, DEFAULT_STRUCTURED_CALL_TIMEOUT_MS, MAX_STRUCTURED_CALL_PROMPT_BYTES,
+    MAX_STRUCTURED_CALL_REPAIR_ATTEMPTS, MAX_STRUCTURED_CALL_TIMEOUT_MS,
+};
 pub use turn::{
     agent_engine_model_request_id, cancel_agent_engine_turn, execute_agent_engine_turn,
     execute_agent_engine_turn_with_stream, execute_agent_engine_turn_with_stream_sink,

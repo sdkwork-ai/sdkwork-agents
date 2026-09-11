@@ -97,6 +97,60 @@ pub const SQL_LIST_AUDIT_EVENTS_BY_TENANT_AND_AGENT_ID: &str =
     "SELECT id, uuid, tenant_id, organization_id, aggregate_type, aggregate_id, agent_internal_id, agent_id, action, actor_type, actor_id, request_id, trace_id, payload_json::text AS payload_json, created_at::text AS created_at FROM ai_agent_audit_event WHERE tenant_id = $1 AND agent_id = $2 AND ($3::text IS NULL OR action = $3) AND ($4::text IS NULL OR created_at >= $4::timestamptz) AND ($5::text IS NULL OR created_at <= $5::timestamptz) AND ($6::timestamptz IS NULL OR (created_at, uuid) < ($6::timestamptz, $7::text)) ORDER BY created_at DESC, uuid DESC LIMIT $8";
 pub const SQL_COUNT_AUDIT_EVENTS_BY_TENANT_AND_AGENT_ID: &str =
     "SELECT COUNT(*)::bigint AS total_count FROM ai_agent_audit_event WHERE tenant_id = $1 AND agent_id = $2 AND ($3::text IS NULL OR action = $3) AND ($4::text IS NULL OR created_at >= $4::timestamptz) AND ($5::text IS NULL OR created_at <= $5::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_INSERT_RUNTIME_EXECUTION: &str =
+    "INSERT INTO ai_agent_runtime_execution (id, tenant_id, agent_id, execution_id, operation, status, input_payload_json, output_payload_json, requested_at, completed_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9::timestamptz, $10::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_UPDATE_RUNTIME_EXECUTION: &str =
+    "UPDATE ai_agent_runtime_execution SET status = $1, output_payload_json = $2::jsonb, completed_at = $3::timestamptz WHERE tenant_id = $4 AND agent_id = $5 AND execution_id = $6";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_RUNTIME_EXECUTION: &str =
+    "SELECT id, tenant_id, agent_id, execution_id, operation, status, input_payload_json::text AS input_payload_json, output_payload_json::text AS output_payload_json, requested_at::text AS requested_at, completed_at::text AS completed_at FROM ai_agent_runtime_execution WHERE tenant_id = $1 AND agent_id = $2 AND execution_id = $3 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_RUNTIME_EXECUTIONS: &str =
+    "SELECT id, tenant_id, agent_id, execution_id, operation, status, input_payload_json::text AS input_payload_json, output_payload_json::text AS output_payload_json, requested_at::text AS requested_at, completed_at::text AS completed_at FROM ai_agent_runtime_execution WHERE tenant_id = $1 AND agent_id = $2 AND ($3::text IS NULL OR status = $3) AND ($4::timestamptz IS NULL OR (requested_at, execution_id) < ($4::timestamptz, $5)) ORDER BY requested_at DESC, execution_id DESC LIMIT $6";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_STALE_RUNTIME_EXECUTIONS: &str =
+    "SELECT id, tenant_id, agent_id, execution_id, operation, status, input_payload_json::text AS input_payload_json, output_payload_json::text AS output_payload_json, requested_at::text AS requested_at, completed_at::text AS completed_at FROM ai_agent_runtime_execution WHERE tenant_id = $1 AND status IN ('queued', 'running') AND completed_at < $2::timestamptz ORDER BY completed_at ASC LIMIT $3";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_INSERT_AGENT_VERSION: &str =
+    "INSERT INTO ai_agent_version (id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json, default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type, description, created_by, created_at, activated_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, $11, $12, $13, $14::timestamptz, $15::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_AGENT_VERSION: &str =
+    "SELECT id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json::text AS manifest_json, default_code_task_intent_json::text AS default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type, description, created_by, created_at::text AS created_at, activated_at::text AS activated_at FROM ai_agent_version WHERE tenant_id = $1 AND organization_id = $2 AND agent_id = $3 AND version_id = $4 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_AGENT_VERSIONS: &str =
+    "SELECT id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json::text AS manifest_json, default_code_task_intent_json::text AS default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type, description, created_by, created_at::text AS created_at, activated_at::text AS activated_at FROM ai_agent_version WHERE tenant_id = $1 AND organization_id = $2 AND agent_id = $3 AND ($4::bigint IS NULL OR version_number < $4::bigint) ORDER BY version_number DESC LIMIT $5";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_ACTIVATE_AGENT_VERSION: &str =
+    "UPDATE ai_agent_version SET activated_at = CASE WHEN version_id = $3 THEN $4::timestamptz ELSE NULL END WHERE tenant_id = $1 AND organization_id = $2 AND agent_id = $5 AND (activated_at IS NOT NULL OR version_id = $3)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SUMMARIZE_AGENT_USAGE: &str =
+    "SELECT COUNT(*)::bigint AS turn_count, COUNT(DISTINCT session_id)::bigint AS session_count, COALESCE(SUM(input_tokens), 0)::bigint AS input_tokens, COALESCE(SUM(output_tokens), 0)::bigint AS output_tokens, COALESCE(SUM(cached_tokens), 0)::bigint AS cached_tokens FROM ai_agent_turn WHERE tenant_id = $1 AND organization_id = $2 AND ($3::text IS NULL OR agent_id = $3) AND ($4::text IS NULL OR session_id = $4) AND ($5::text IS NULL OR model_id = $5) AND ($6::timestamptz IS NULL OR created_at >= $6::timestamptz) AND ($7::timestamptz IS NULL OR created_at < $7::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_AGENT_USAGE_RECORDS: &str =
+    "SELECT id, turn_id, session_id, agent_id, owner_user_id, status, model_id, provider_id, input_tokens, output_tokens, cached_tokens, created_at::text AS created_at, completed_at::text AS completed_at FROM ai_agent_turn WHERE tenant_id = $1 AND organization_id = $2 AND ($3::text IS NULL OR agent_id = $3) AND ($4::text IS NULL OR session_id = $4) AND ($5::text IS NULL OR model_id = $5) AND ($6::timestamptz IS NULL OR created_at >= $6::timestamptz) AND ($7::timestamptz IS NULL OR created_at < $7::timestamptz) AND ($8::timestamptz IS NULL OR (created_at, id) < ($8::timestamptz, $9::bigint)) ORDER BY created_at DESC, id DESC LIMIT $10";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_INSERT_WEBHOOK_SUBSCRIPTION: &str =
+    "INSERT INTO ai_agent_webhook_subscription (id, tenant_id, organization_id, webhook_id, url, event_types_json, status, secret, description, created_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11::timestamptz, $12::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_WEBHOOK_SUBSCRIPTION: &str =
+    "SELECT id, tenant_id, organization_id, webhook_id, url, event_types_json::text AS event_types_json, status, secret, description, created_by, created_at::text AS created_at, updated_at::text AS updated_at FROM ai_agent_webhook_subscription WHERE tenant_id = $1 AND organization_id = $2 AND webhook_id = $3 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_WEBHOOK_SUBSCRIPTIONS: &str =
+    "SELECT id, tenant_id, organization_id, webhook_id, url, event_types_json::text AS event_types_json, status, secret, description, created_by, created_at::text AS created_at, updated_at::text AS updated_at FROM ai_agent_webhook_subscription WHERE tenant_id = $1 AND organization_id = $2 ORDER BY created_at DESC, webhook_id ASC LIMIT $3 OFFSET $4";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_DELETE_WEBHOOK_SUBSCRIPTION: &str =
+    "DELETE FROM ai_agent_webhook_subscription WHERE tenant_id = $1 AND organization_id = $2 AND webhook_id = $3";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_INSERT_WEBHOOK_DELIVERY: &str =
+    "INSERT INTO ai_agent_webhook_delivery (id, tenant_id, organization_id, webhook_id, delivery_id, event_type, payload_json, signature, status, response_code, error_detail, created_at, completed_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12::timestamptz, $13::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_COMPLETE_WEBHOOK_DELIVERY: &str =
+    "UPDATE ai_agent_webhook_delivery SET status = $4, response_code = $5, error_detail = $6, completed_at = $7::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND webhook_id = $3 AND delivery_id = $8";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_WEBHOOK_DELIVERY: &str =
+    "SELECT id, tenant_id, organization_id, webhook_id, delivery_id, event_type, payload_json::text AS payload_json, signature, status, response_code, error_detail, created_at::text AS created_at, completed_at::text AS completed_at FROM ai_agent_webhook_delivery WHERE tenant_id = $1 AND organization_id = $2 AND webhook_id = $3 AND delivery_id = $4 LIMIT 1";
 pub const SQL_INSERT_AGENT_COMPOSITION_SLOT: &str =
     "INSERT INTO ai_agent_composition_slot (id, uuid, tenant_id, organization_id, agent_id, slot_id, slot_kind, target_module, target_ref, target_version_ref, priority, enabled, policy_json, status, version, created_at, updated_at, deleted_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14, $15, $16::timestamptz, $17::timestamptz, $18::timestamptz)";
 pub const SQL_UPDATE_AGENT_COMPOSITION_SLOT: &str =
@@ -394,6 +448,15 @@ pub const SQL_APPEND_TURN_STREAMING_CONTENT: &str =
 #[cfg(feature = "postgres-sync")]
 pub const SQL_CLEAR_TURN_STREAMING_CONTENT: &str =
     "UPDATE ai_agent_turn SET streaming_content = NULL WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_TURN_STREAMING_CONTENT: &str =
+    "SELECT streaming_content FROM ai_agent_turn WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_AGENT_TURN_FOR_UPDATE: &str =
+    "SELECT id, uuid, tenant_id, organization_id, turn_id, session_id, agent_id, owner_user_id, runtime_binding_id, client_request_id, idempotency_key, payload_hash, request_item_id, response_item_id, turn_mode, status, requested_model_id, provider_binding_id, model_id, provider_id, input_tokens, output_tokens, cached_tokens, finish_reason, error_code, error_detail, trace_id, attempt_count, max_attempts, next_retry_at::text AS next_retry_at, available_at::text AS available_at, lease_owner, lease_token, lease_expires_at::text AS lease_expires_at, fencing_token, version, created_at::text AS created_at, updated_at::text AS updated_at, started_at::text AS started_at, completed_at::text AS completed_at, cancel_requested_at::text AS cancel_requested_at, cancelled_at::text AS cancelled_at, retention_until::text AS retention_until, streaming_content FROM ai_agent_turn WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 LIMIT 1 FOR UPDATE";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_AGENT_SESSION_ITEM_ID_BY_TURN_AND_KIND: &str =
+    "SELECT item_id FROM ai_agent_session_item WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND turn_id = $4 AND kind = $5 LIMIT 1";
 #[cfg(feature = "postgres-sync")]
 pub const SQL_UPDATE_AGENT_TURN_STATE: &str =
     "UPDATE ai_agent_turn SET response_item_id = $1, runtime_binding_id = $2, turn_mode = $3, status = $4, requested_model_id = $5, provider_binding_id = $6, model_id = $7, provider_id = $8, input_tokens = $9, output_tokens = $10, cached_tokens = $11, finish_reason = $12, error_code = $13, error_detail = $14, trace_id = $15, attempt_count = $16, max_attempts = $17, next_retry_at = $18::timestamptz, available_at = $19::timestamptz, lease_owner = $20, lease_token = $21, lease_expires_at = $22::timestamptz, fencing_token = $23, version = $24, updated_at = $25::timestamptz, started_at = $26::timestamptz, completed_at = $27::timestamptz, cancel_requested_at = $28::timestamptz, cancelled_at = $29::timestamptz, retention_until = $30::timestamptz WHERE tenant_id = $31 AND organization_id = $32 AND turn_id = $33 AND version = $34";

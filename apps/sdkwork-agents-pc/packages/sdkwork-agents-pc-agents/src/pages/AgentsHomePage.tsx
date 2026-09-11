@@ -22,8 +22,8 @@ import {
   filterMarketAgents,
   type AgentMarketCategoryId,
 } from './agentCatalog';
-import { HomeAgentConversation } from './HomeAgentConversation';
 import '../home.css';
+import { AgentChatView } from './AgentChatView';
 
 type AgentCatalogScope = 'market' | 'mine';
 
@@ -237,9 +237,10 @@ export function AgentsHomePage() {
 
   if (chatAgent?.id) {
     return (
-      <HomeAgentConversation
-        agent={chatAgent}
+      <AgentChatView
         agentId={chatAgent.id}
+        agentName={chatAgent.name}
+        welcomeMessage={chatAgent.welcomeMessage}
         onBack={() => setChatAgent(undefined)}
       />
     );

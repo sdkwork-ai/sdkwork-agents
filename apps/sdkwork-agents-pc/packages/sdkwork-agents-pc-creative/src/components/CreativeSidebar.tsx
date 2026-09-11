@@ -63,7 +63,7 @@ export const CreativeSidebar: React.FC<CreativeSidebarProps> = ({
         <div className="font-medium text-[15px] text-zinc-800 dark:text-zinc-200">开启创作</div>
         <button 
           onClick={() => setIsSidebarOpen(false)}
-          className="p-1.5 rounded-lg hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-white/10 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-[#333333] dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors cursor-pointer"
         >
           <SidebarClose size={18} />
         </button>
@@ -76,8 +76,8 @@ export const CreativeSidebar: React.FC<CreativeSidebarProps> = ({
           className={cn(
             "flex-1 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer",
             activeTab === 'sessions'
-              ? "bg-zinc-100 border-zinc-200 text-zinc-900 shadow-sm dark:bg-white/10 dark:border-white/10 dark:text-white"
-              : "border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-black/5 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-white/5"
+              ? "bg-zinc-100 border-zinc-200 text-zinc-900 shadow-sm dark:bg-[#333333] dark:border-white/10 dark:text-white"
+              : "border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-black/5 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-[#2a2a2a]"
           )}
         >
           <MessageSquareCode size={13} />
@@ -88,8 +88,8 @@ export const CreativeSidebar: React.FC<CreativeSidebarProps> = ({
           className={cn(
             "flex-1 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all cursor-pointer",
             activeTab === 'history'
-              ? "bg-zinc-100 border-zinc-200 text-zinc-900 shadow-sm dark:bg-white/10 dark:border-white/10 dark:text-white"
-              : "border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-black/5 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-white/5"
+              ? "bg-zinc-100 border-zinc-200 text-zinc-900 shadow-sm dark:bg-[#333333] dark:border-white/10 dark:text-white"
+              : "border-transparent text-zinc-500 hover:text-zinc-800 hover:bg-black/5 dark:text-zinc-400 dark:hover:text-zinc-200 dark:hover:bg-[#2a2a2a]"
           )}
         >
           <History size={13} />
@@ -108,13 +108,13 @@ export const CreativeSidebar: React.FC<CreativeSidebarProps> = ({
           <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
             <button 
               onClick={handleNewChat}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-white/5 dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left hover:bg-black/5 text-zinc-500 hover:text-zinc-800 dark:hover:bg-[#2a2a2a] dark:text-zinc-400 dark:hover:text-zinc-200 cursor-pointer"
             >
               <SquarePen size={18} />
               <span className="text-[14px] font-medium">新对话</span>
             </button>
             
-            <div className="my-2 h-[1px] bg-black/5 dark:bg-white/5 mx-2"></div>
+            <div className="my-2 h-[1px] bg-black/5 dark:bg-[#2f2f2f] mx-2"></div>
             
             {/* Active default creation session */}
             {sessions.filter(s => s.id === 'default').map(session => (

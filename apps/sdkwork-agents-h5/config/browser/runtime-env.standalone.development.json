@@ -1,0 +1,22 @@
+{
+  "environment": "development",
+  "deploymentProfile": "standalone",
+  "profileId": "standalone.development",
+  "runtimeTarget": "browser",
+  "browserOriginMode": "same-origin",
+  "agents": {
+    "apiBaseUrl": "http://127.0.0.1:8095/app/v3/api",
+    "backendApiBaseUrl": "http://127.0.0.1:8095/backend/v3/api"
+  },
+  "appbase": {
+    "appApiBaseUrl": "http://127.0.0.1:8095",
+    "loginUrl": "http://127.0.0.1:8095"
+  },
+  "appApiBaseUrl": "/",
+  "backendApiBaseUrl": "/",
+  "driveAppApiBaseUrl": "/",
+  "appbaseAppApiBaseUrl": "/",
+  "deployAppApiBaseUrl": "/",
+  "openApiBaseUrl": "/",
+  "sdkBaseUrl": "/"
+}

@@ -1,7 +1,7 @@
 import {
   createClient,
+  type SdkworkAppClient as SdkworkPromptsAppClient,
   type SdkworkAppConfig,
-  type SdkworkPromptsAppClient,
 } from "@sdkwork/prompts-app-sdk";
 import type { Interceptors } from "@sdkwork/sdk-common";
 

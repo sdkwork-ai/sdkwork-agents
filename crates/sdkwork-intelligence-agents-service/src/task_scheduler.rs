@@ -491,8 +491,9 @@ pub(crate) fn execute_task_run_claim(
         requested_at: requested_at.clone(),
         prefer_stream: false,
         system_prompt: None,
-            auth_token: None,
-            access_token: None,
+        auth_token: None,
+        access_token: None,
+        wire_protocol: None,
     });
     match result {
         Ok(result) => scheduler_repository.complete_task_run(
@@ -601,7 +602,10 @@ pub(crate) struct TaskMaterializationPlan {
 /// Whether the occurrence is considered missed under a `Skip` policy:
 /// only a delay beyond the grace window counts, so the ordinary polling
 /// latency of a healthy worker never drops a due occurrence.
-fn missed_by_skip_policy(first_at: chrono::DateTime<chrono::Utc>, now_at: chrono::DateTime<chrono::Utc>) -> bool {
+fn missed_by_skip_policy(
+    first_at: chrono::DateTime<chrono::Utc>,
+    now_at: chrono::DateTime<chrono::Utc>,
+) -> bool {
     now_at.signed_duration_since(first_at) > chrono::Duration::seconds(TASK_MISFIRE_GRACE_SECONDS)
 }
 

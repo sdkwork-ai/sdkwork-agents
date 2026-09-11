@@ -216,7 +216,9 @@ pub(crate) fn provider_session_sync_cache_key(project: &AgentProjectRecord) -> S
     )
 }
 
-pub(crate) fn read_completed_provider_session_sync(cache_key: &str) -> Option<CompletedProviderSessionSync> {
+pub(crate) fn read_completed_provider_session_sync(
+    cache_key: &str,
+) -> Option<CompletedProviderSessionSync> {
     completed_provider_session_syncs()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -1335,7 +1337,8 @@ fn reconcile_orphaned_provider_sessions(
 ) -> KernelResult<()> {
     let mut archived_count = 0usize;
     for engine_key in successful_engine_keys {
-        let Some(agent_id) = sdkwork_agents_runtime_facade::agent_engine_agent_id(engine_key) else {
+        let Some(agent_id) = sdkwork_agents_runtime_facade::agent_engine_agent_id(engine_key)
+        else {
             continue;
         };
         let mut cursor: Option<SessionListCursor> = None;
@@ -1473,7 +1476,8 @@ fn reconcile_missing_provider_session_directories(
     result: &mut ProviderSessionSynchronizationResult,
 ) -> KernelResult<()> {
     for engine_key in successful_engine_keys {
-        let Some(agent_id) = sdkwork_agents_runtime_facade::agent_engine_agent_id(engine_key) else {
+        let Some(agent_id) = sdkwork_agents_runtime_facade::agent_engine_agent_id(engine_key)
+        else {
             continue;
         };
         let mut cursor: Option<SessionListCursor> = None;

@@ -44,6 +44,8 @@ pub struct MediaToolInvocationRequest {
     pub actor: UploaderActor,
     /// App resource id recorded on drive uploads (e.g. generation id).
     pub app_resource_id: String,
+    /// Inbound request trace id, propagated to upstream tool providers.
+    pub trace_id: Option<String>,
 }
 
 impl MediaToolInvocationRequest {
@@ -54,6 +56,7 @@ impl MediaToolInvocationRequest {
             tool_id: self.tool_id.clone(),
             arguments: self.arguments.clone(),
             session_id: Some(self.app_resource_id.clone()),
+            trace_id: self.trace_id.clone(),
         }
     }
 }

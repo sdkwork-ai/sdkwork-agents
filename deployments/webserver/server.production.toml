@@ -2,263 +2,195 @@ environment = "production"
 
 [http]
 
-[http.certificates]
-
-[http.certificates."sdkwork.com"]
-certFile = "/opt/certs/letsencrypt/live/sdkwork.com/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/sdkwork.com/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/sdkwork.com/chain.pem"
-ocspStapling = true
-
-[http.certificates."birdcoder.com"]
-certFile = "/opt/certs/letsencrypt/live/birdcoder.com/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/birdcoder.com/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/birdcoder.com/chain.pem"
-ocspStapling = true
-
-[http.certificates."dtupay.com"]
-certFile = "/opt/certs/letsencrypt/live/dtupay.com/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/dtupay.com/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/dtupay.com/chain.pem"
-ocspStapling = true
-
-[http.certificates."sdkwork.cn"]
-certFile = "/opt/certs/letsencrypt/live/sdkwork.cn/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/sdkwork.cn/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/sdkwork.cn/chain.pem"
-ocspStapling = true
-
-[http.certificates."birdcoder.cn"]
-certFile = "/opt/certs/letsencrypt/live/birdcoder.cn/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/birdcoder.cn/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/birdcoder.cn/chain.pem"
-ocspStapling = true
-
-[http.certificates."dtupay.cn"]
-certFile = "/opt/certs/letsencrypt/live/dtupay.cn/fullchain.pem"
-certKeyFile = "/opt/certs/letsencrypt/live/dtupay.cn/privkey.pem"
-chainFile = "/opt/certs/letsencrypt/live/dtupay.cn/chain.pem"
-ocspStapling = true
-
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["agents.sdkwork.com", "agents-app.sdkwork.com", "agents-admin.sdkwork.com", "agents-open.sdkwork.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "sdkwork.com"
-protocols = ["TLSv1.2", "TLSv1.3"]
-preferServerCiphers = true
-sessionCache = "shared:SSL:10m"
-
-[[http.server.location]]
-match = "= /healthz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "= /readyz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
 
 [[http.server.location]]
 match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Real-IP $remote_addr", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "120s"
-proxySendTimeout = "120s"
+include = ["snippets/adaptive-web.dispatch.conf"]
 
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["agents.birdcoder.com", "agents-app.birdcoder.com", "agents-admin.birdcoder.com", "agents-open.birdcoder.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "birdcoder.com"
-protocols = ["TLSv1.2", "TLSv1.3"]
-preferServerCiphers = true
-sessionCache = "shared:SSL:10m"
-
-[[http.server.location]]
-match = "= /healthz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "= /readyz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
 
 [[http.server.location]]
 match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Real-IP $remote_addr", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "120s"
-proxySendTimeout = "120s"
+include = ["snippets/adaptive-web.dispatch.conf"]
 
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["agents.dtupay.com", "agents-app.dtupay.com", "agents-admin.dtupay.com", "agents-open.dtupay.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "dtupay.com"
-protocols = ["TLSv1.2", "TLSv1.3"]
-preferServerCiphers = true
-sessionCache = "shared:SSL:10m"
-
-[[http.server.location]]
-match = "= /healthz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "= /readyz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
 
 [[http.server.location]]
 match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Real-IP $remote_addr", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "120s"
-proxySendTimeout = "120s"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.noaper.com", "agents-app.noaper.com", "agents-admin.noaper.com", "agents-open.noaper.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "noaper.com"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
 
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["agents.sdkwork.cn", "agents-app.sdkwork.cn", "agents-admin.sdkwork.cn", "agents-open.sdkwork.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "sdkwork.cn"
-protocols = ["TLSv1.2", "TLSv1.3"]
-preferServerCiphers = true
-sessionCache = "shared:SSL:10m"
-
-[[http.server.location]]
-match = "= /healthz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "= /readyz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
 
 [[http.server.location]]
 match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Real-IP $remote_addr", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "120s"
-proxySendTimeout = "120s"
+include = ["snippets/adaptive-web.dispatch.conf"]
 
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["agents.birdcoder.cn", "agents-app.birdcoder.cn", "agents-admin.birdcoder.cn", "agents-open.birdcoder.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "birdcoder.cn"
-protocols = ["TLSv1.2", "TLSv1.3"]
-preferServerCiphers = true
-sessionCache = "shared:SSL:10m"
-
-[[http.server.location]]
-match = "= /healthz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "= /readyz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
 
 [[http.server.location]]
 match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Real-IP $remote_addr", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "120s"
-proxySendTimeout = "120s"
+include = ["snippets/adaptive-web.dispatch.conf"]
 
 [[http.server]]
 listen = ["443 ssl", "80"]
 serverName = ["agents.dtupay.cn", "agents-app.dtupay.cn", "agents-admin.dtupay.cn", "agents-open.dtupay.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
 
 [http.server.tls]
 cert = "dtupay.cn"
-protocols = ["TLSv1.2", "TLSv1.3"]
-preferServerCiphers = true
-sessionCache = "shared:SSL:10m"
-
-[[http.server.location]]
-match = "= /healthz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "= /readyz"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host"]
-
-[[http.server.location]]
-match = "/api/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
 
 [[http.server.location]]
 match = "/"
-proxyPass = "http://gateway"
-proxyHttpVersion = "1.1"
-proxySetHeader = ["Host $host", "X-Real-IP $remote_addr", "X-Forwarded-For $proxy_add_x_forwarded_for", "X-Forwarded-Proto $scheme"]
-proxyBuffering = false
-proxyReadTimeout = "120s"
-proxySendTimeout = "120s"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.noaper.cn", "agents-app.noaper.cn", "agents-admin.noaper.cn", "agents-open.noaper.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "noaper.cn"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.skubc.com", "agents-app.skubc.com", "agents-admin.skubc.com", "agents-open.skubc.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "skubc.com"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.skubc.cn", "agents-app.skubc.cn", "agents-admin.skubc.cn", "agents-open.skubc.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "skubc.cn"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.zowalk.com", "agents-app.zowalk.com", "agents-admin.zowalk.com", "agents-open.zowalk.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "zowalk.com"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.zowalk.cn", "agents-app.zowalk.cn", "agents-admin.zowalk.cn", "agents-open.zowalk.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "zowalk.cn"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.offer86.com", "agents-app.offer86.com", "agents-admin.offer86.com", "agents-open.offer86.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "offer86.com"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.offer86.cn", "agents-app.offer86.cn", "agents-admin.offer86.cn", "agents-open.offer86.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "offer86.cn"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.86offer.com", "agents-app.86offer.com", "agents-admin.86offer.com", "agents-open.86offer.com"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "86offer.com"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
+
+[[http.server]]
+listen = ["443 ssl", "80"]
+serverName = ["agents.86offer.cn", "agents-app.86offer.cn", "agents-admin.86offer.cn", "agents-open.86offer.cn"]
+include = ["snippets/adaptive-web.named-locations.conf", "snippets/gateway-api-locations.production.conf"]
+
+[http.server.tls]
+cert = "86offer.cn"
+
+[[http.server.location]]
+match = "/"
+include = ["snippets/adaptive-web.dispatch.conf"]
 

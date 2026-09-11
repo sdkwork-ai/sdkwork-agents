@@ -9,10 +9,7 @@ mod iam;
 use anyhow::Context;
 use sdkwork_agent_server::config::ServerConfig;
 use sdkwork_database_sqlx::DatabasePool;
-use sdkwork_web_bootstrap::{
-    ApiAssemblyContribution, CompositeReadinessCheck, DatabasePoolReadinessCheck, ReadinessCheck,
-    WebModule,
-};
+use sdkwork_web_bootstrap::{ApiAssemblyContribution, CompositeReadinessCheck, DatabasePoolReadinessCheck, ReadinessCheck, WebModule};
 use std::sync::Arc;
 
 use crate::readiness::AgentHttpReadinessCheck;

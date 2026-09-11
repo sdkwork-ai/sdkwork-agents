@@ -36,13 +36,26 @@ export const InspirationView = () => {
   }, []);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
-  // Real-time Search Updates via Service
+  // Tracks the last search query already fetched per tab, so switching back to
+  // a previously loaded tab does not refetch it (lazy, on-demand loading).
+  const [loadedTabQuery, setLoadedTabQuery] = useState<Record<string, string>>({});
+
+  // Load each tab's data on demand: only the currently active tab is fetched,
+  // and only when it has not been loaded for the current search query yet.
+  // Avoids fetching every stream type on page mount regardless of the active
+  // tab, cutting request count while preserving per-tab search.
   useEffect(() => {
-    InspirationService.getShortVideos(searchQuery).then(setFilteredVideos);
-    InspirationService.getSkills(searchQuery).then(setFilteredSkills);
-    InspirationService.getActivities(searchQuery).then(setFilteredActivities);
-  }, [searchQuery]);
+    if (activeTab === '发现') return; // discover is loaded once on mount
+    if (loadedTabQuery[activeTab] === searchQuery) return; // already loaded
+    if (activeTab === '技能') {
+      InspirationService.getSkills(searchQuery).then(setFilteredSkills);
+    } else if (activeTab === '短片') {
+      InspirationService.getShortVideos(searchQuery).then(setFilteredVideos);
+    } else if (activeTab === '活动') {
+      InspirationService.getActivities(searchQuery).then(setFilteredActivities);
+    }
+    setLoadedTabQuery((prev) => ({ ...prev, [activeTab]: searchQuery }));
+  }, [activeTab, searchQuery, loadedTabQuery]);
 
   const handleInputSubmit = (value: string, mode: string) => {
     sessionStorage.setItem('pending_creative_prompt', value);

@@ -58,13 +58,13 @@ export const AssetsHeader: React.FC<AssetsHeaderProps> = ({ activeTab, setActive
 
       {/* Right Actions */}
       <div className="flex items-center space-x-3">
-        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors cursor-pointer">
+        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-black/5 hover:bg-black/10 dark:bg-[#2f2f2f] dark:hover:bg-[#333333] transition-colors cursor-pointer">
           <Search size={16} className="text-zinc-500 dark:text-zinc-400" />
         </div>
-        <button className="h-8 px-3 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors text-xs font-medium flex items-center text-zinc-700 dark:text-zinc-200">
+        <button className="h-8 px-3 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-[#2f2f2f] dark:hover:bg-[#333333] transition-colors text-xs font-medium flex items-center text-zinc-700 dark:text-zinc-200">
           批量操作
         </button>
-        <button className="h-8 px-3 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10 transition-colors text-xs font-medium flex items-center space-x-1.5 text-zinc-700 dark:text-zinc-200">
+        <button className="h-8 px-3 rounded-lg bg-black/5 hover:bg-black/10 dark:bg-[#2f2f2f] dark:hover:bg-[#333333] transition-colors text-xs font-medium flex items-center space-x-1.5 text-zinc-700 dark:text-zinc-200">
           <span>同步到剪映</span>
           <RefreshCw size={12} className="text-zinc-400" />
         </button>

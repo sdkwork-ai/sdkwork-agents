@@ -121,7 +121,7 @@
   "metadata": {
     "managedBy": "sdks/_shared/agent-sdk-ownership.mjs",
     "standardVersion": "2026-06-26",
-    "ownerOnlyOperationCount": 112
+    "ownerOnlyOperationCount": 126
   },
   "schemaVersion": 1,
   "sdkName": "sdkwork-agents-app-sdk",
@@ -145,7 +145,7 @@
     "transportEntry": "sdkwork-agents-app-sdk-flutter/generated/server-openapi/lib/sdkwork_agents_app_sdk.dart",
     "packageName": "sdkwork_agents_app_sdk"
   },
-  "ownerOnlyOperationCount": 112,
+  "ownerOnlyOperationCount": 126,
   "standardVersion": "2026-06-26",
   "managedBy": "sdks/_shared/agent-sdk-ownership.mjs"
 }

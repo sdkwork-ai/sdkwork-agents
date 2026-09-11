@@ -1,0 +1,13 @@
+{
+  "SDKWORK_AGENTS_APP_API_BASE_URL": "https://api-demo.sdkwork.com;https://api-demo.birdcoder.com;https://api-demo.dtupay.com;https://api-demo.sdkwork.cn;https://api-demo.birdcoder.cn;https://api-demo.dtupay.cn;https://api-demo.skubc.com;https://api-demo.skubc.cn;https://api-demo.zowalk.com;https://api-demo.zowalk.cn;https://api-demo.offer86.com;https://api-demo.offer86.cn;https://api-demo.86offer.com;https://api-demo.86offer.cn",
+  "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL": "https://api.sdkwork.com",
+  "SDKWORK_AGENTS_DEPLOYMENT_PROFILE": "cloud",
+  "SDKWORK_AGENTS_ENVIRONMENT": "demo",
+  "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": "https://api-demo.sdkwork.com;https://api-demo.birdcoder.com;https://api-demo.dtupay.com;https://api-demo.sdkwork.cn;https://api-demo.birdcoder.cn;https://api-demo.dtupay.cn;https://api-demo.skubc.com;https://api-demo.skubc.cn;https://api-demo.zowalk.com;https://api-demo.zowalk.cn;https://api-demo.offer86.com;https://api-demo.offer86.cn;https://api-demo.86offer.com;https://api-demo.86offer.cn",
+  "SDKWORK_AGENTS_PROFILE_ID": "cloud.demo",
+  "SDKWORK_AGENTS_RUNTIME_TARGET": "flutter-android",
+  "SDKWORK_DEPLOYMENT_PROFILE": "cloud",
+  "SDKWORK_ENVIRONMENT": "demo",
+  "SDKWORK_PROFILE_ID": "cloud.demo",
+  "SDKWORK_RUNTIME_TARGET": "flutter-android"
+}

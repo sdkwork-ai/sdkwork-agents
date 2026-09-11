@@ -20,6 +20,10 @@
   "artifactPreview": "Artifact Preview",
   "closeSidebar": "Close sidebar",
   "openSidebar": "Open sidebar",
+  "thinking": "Thinking",
+  "thinkingRunning": "Thinking…",
   "settings": "Settings",
-  "customProvider": "Custom LLM Provider"
+  "customProvider": "Custom LLM Provider",
+  "tokenPlan": "Buy Token Plan",
+  "close": "Close"
 }

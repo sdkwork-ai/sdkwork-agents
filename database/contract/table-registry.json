@@ -29,6 +29,10 @@
     { "table_name": "ai_agent_outbox_event", "profile": "outbox_event", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L3", "lifecycle_status": "active" },
     { "table_name": "ai_agent_model_configuration_profile", "profile": "agent_model_configuration", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L3", "lifecycle_status": "active" },
     { "table_name": "ai_agent_tool_configuration", "profile": "tenant_entity", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L2", "lifecycle_status": "active" },
-    { "table_name": "ai_agent_tool_asset", "profile": "user_entity", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L2", "lifecycle_status": "active" }
+    { "table_name": "ai_agent_tool_asset", "profile": "user_entity", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L2", "lifecycle_status": "active" },
+    { "table_name": "ai_agent_runtime_execution", "profile": "operational_state", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L2", "lifecycle_status": "active" },
+    { "table_name": "ai_agent_version", "profile": "operational_state", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L2", "lifecycle_status": "active" },
+    { "table_name": "ai_agent_webhook_subscription", "profile": "tenant_entity", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L3", "lifecycle_status": "active" },
+    { "table_name": "ai_agent_webhook_delivery", "profile": "operational_state", "owner": "agents-platform", "write_owner": "sdkwork-intelligence-agents-service", "system_of_record": true, "compliance_level": "L3", "lifecycle_status": "active" }
   ]
 }

@@ -3,6 +3,7 @@ export {
   configureAgentsWorkbenchRuntime,
   type AgentsWorkbenchRuntime,
 } from './runtime';
+export type { ChatBalancePort } from '@sdkwork/agents-pc-chat';
 export {
   DEFAULT_WORKBENCH_TAB,
   isWorkbenchTab,

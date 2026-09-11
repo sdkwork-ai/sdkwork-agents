@@ -206,7 +206,7 @@ export class AgentsGenerationsService {
       }
       await this.sleep(options.intervalMs ?? DEFAULT_POLL_INTERVAL_MS);
       const client = await this.getClient();
-      record = await client.generations.get(record.id);
+      record = await client.generations.retrieve(record.id);
     }
     throw new Error("Generation did not complete before the polling deadline.");
   }

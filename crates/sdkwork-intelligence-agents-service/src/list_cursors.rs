@@ -13,7 +13,7 @@ use sdkwork_utils_rust::{
 };
 use serde::{Deserialize, Serialize};
 
-const LIST_CURSOR_VERSION: u8 = 1;
+pub(crate) const LIST_CURSOR_VERSION: u8 = 1;
 const MAX_LIST_CURSOR_BYTES: usize = 2048;
 
 /// Keyset position for `ORDER BY updated_at DESC, id DESC` lists (sessions).
@@ -333,8 +333,8 @@ mod tests {
                 None,
             ),
         };
-        let encoded =
-            encode_created_at_cursor("interaction", &interaction).expect("encode interaction cursor");
+        let encoded = encode_created_at_cursor("interaction", &interaction)
+            .expect("encode interaction cursor");
         assert_eq!(
             decode_created_at_cursor(&encoded, "interaction").unwrap(),
             interaction

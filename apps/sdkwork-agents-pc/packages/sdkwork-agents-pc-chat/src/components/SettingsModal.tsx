@@ -3,12 +3,20 @@ import { X, Sun, Moon, Monitor } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '@sdkwork/agents-pc-commons';
 import { useModelSettings, ModelSettings } from '../hooks/useModelSettings';
+import { WIRE_PROTOCOL_OPTIONS, type WireProtocolId } from '../hooks/useWireProtocol';
 
 interface SettingsModalProps {
   onClose: () => void;
+  /** Playground-wide LLM wire protocol owned by ChatView (persisted there). */
+  wireProtocol?: WireProtocolId;
+  onWireProtocolChange?: (protocol: WireProtocolId) => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+  onClose,
+  wireProtocol,
+  onWireProtocolChange,
+}) => {
   const { t, i18n } = useTranslation('settings');
   const { theme, setTheme } = useTheme();
 
@@ -142,7 +150,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{t('language')}</label>
-                  <select 
+                  <select
                     value={i18n.language}
                     onChange={handleLanguageChange}
                     className="w-full bg-white dark:bg-[#333] border border-gray-200 dark:border-[#444] rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:ring-1 focus:ring-[#1890ff] outline-none appearance-none cursor-pointer focus:border-[#1890ff] transition-colors"
@@ -150,6 +158,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     <option value="en-US">English</option>
                     <option value="zh-CN">简体中文</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('wireProtocolLabel')}</label>
+                  <p className="text-xs text-gray-500 mb-3">{t('wireProtocolDescription')}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {WIRE_PROTOCOL_OPTIONS.map((option) => {
+                      const selected = (wireProtocol ?? 'chat_completions') === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => onWireProtocolChange?.(option.id)}
+                          className={`p-3 rounded-xl border-2 text-left transition-all ${
+                            selected
+                              ? 'border-[#1890ff] bg-[#1890ff]/5 text-[#1890ff] dark:bg-[#1890ff]/10 dark:text-[#1890ff] shadow-sm'
+                              : 'border-transparent bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#444]'
+                          }`}
+                        >
+                          <span className="block text-sm font-medium">{t(option.labelKey)}</span>
+                          <span className="block text-xs mt-1 opacity-80">{t(option.descriptionKey)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             )}
