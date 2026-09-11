@@ -529,6 +529,11 @@ export class ChatService {
         || latest.mediaResources?.map((item) => item.fileName ?? item.id).join(', ')
         || 'Attachment';
       const systemPrompt = resolveSystemPrompt(options.model, resolvedScope);
+      // The sink contract is delta-shaped, but the cloudrouter account-pool path
+      // can answer in one terminal frame with zero deltas. Track whether any
+      // delta reached the renderer so the terminal content can be published
+      // instead of leaving the assistant bubble empty until a session reload.
+      let streamedDelta = false;
       const response = port.sendMessageStream
         ? await port.sendMessageStream(
             resolvedScope.agentId,
@@ -536,7 +541,10 @@ export class ChatService {
             content,
             options.model,
             latest.mediaResources,
-            (delta) => options.onMessageUpdate(delta),
+            (delta) => {
+              streamedDelta = true;
+              options.onMessageUpdate(delta);
+            },
             systemPrompt,
             (reasoning) => options.onReasoning?.(reasoning),
             (event) => options.onToolEvent?.(event),
@@ -555,7 +563,9 @@ export class ChatService {
         options.onError?.({ message: 'AbortError' });
         return;
       }
-      if (!port.sendMessageStream) {
+      // Re-emitting after deltas would render the answer twice, so the fallback
+      // only fires when the stream produced nothing.
+      if (!port.sendMessageStream || !streamedDelta) {
         options.onMessageUpdate(response.content);
       }
       options.onComplete?.({ id: response.id });
