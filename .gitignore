@@ -72,3 +72,6 @@ sdks/**/*.js.map
 sdks/**/*.d.ts
 sdks/**/*.d.ts.map
 
+
+# Merge leftover backups (git revert/merge -X conflict artifacts)
+*.revert-merge
