@@ -1,8 +1,4 @@
-import {
-  completeAgentTurn,
-  completeAgentTurnStream,
-  type TurnRichToolEvent,
-} from "@sdkwork/agents-pc-core/sdk/agentsAppSdkClient";
+import { completeAgentTurn, completeAgentTurnStream } from "@sdkwork/agents-pc-core/sdk/agentsAppSdkClient";
 import {
   getAgentsAppSdkClientWithSession,
   type AgentItemFeedbackRecord,
@@ -16,21 +12,11 @@ import type { CreateAgentTurnRequest } from "@sdkwork/agents-pc-core/sdk/agentsA
 import { sha256Hash, uuid } from "@sdkwork/utils";
 
 import { resolveChatRuntimeModel } from "./RuntimeCatalogService";
-import { sortSessionItems } from "./sessionMessageOrdering";
-
-/**
- * LLM wire protocol used for the cloudrouter gateway invocation. Values mirror
- * the backend `wireProtocol` enum on `CreateAgentTurnRequest`; omitting the
- * field keeps the gateway default (`chat_completions`).
- */
-export type AgentTurnWireProtocol = NonNullable<CreateAgentTurnRequest["wireProtocol"]>;
 
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system" | "tool";
   content: string;
-  /** Reasoning/thinking text for this assistant turn (collapsible block). */
-  reasoning?: string;
   createdAt: string;
   mediaResources?: AgentsDriveMediaResource[];
 }
@@ -125,39 +111,12 @@ function findAssistantOutput(
   return undefined;
 }
 
-/**
- * Merges persisted `reasoning` session items into the adjacent assistant
- * message's `reasoning` field so chat UIs render them as a collapsible
- * thinking block instead of a standalone assistant bubble. This keeps the
- * message list aligned with the user/assistant pairs the optimistic
- * transcript produces (index-based server reconciliation depends on it).
- */
-function mergeReasoningIntoAssistantMessages(
-  items: AgentSessionItemRecord[],
-): ChatMessage[] {
-  const messages: ChatMessage[] = [];
-  let pendingReasoning = "";
-  for (const item of items) {
-    if (item.kind === "reasoning") {
-      pendingReasoning += item.content ?? "";
-      continue;
-    }
-    const message = toChatMessage(item);
-    if (message.role === "assistant" && pendingReasoning.length > 0) {
-      message.reasoning = pendingReasoning;
-      pendingReasoning = "";
-    }
-    messages.push(message);
-  }
-  return messages;
-}
-
 export class AgentChatService {
   constructor(
     private readonly getClient: () => SdkworkAgentsAppClient = getAgentsAppSdkClientWithSession,
   ) {}
 
-  async createSessionSummary(agentId: string, title?: string): Promise<ChatSessionSummary> {
+  async createSession(agentId: string, title?: string): Promise<string> {
     const idempotencyKey = uuid();
     const normalizedTitle = title?.trim() || "Agent session";
     const session = await this.getClient().ai.agents.sessions.create(agentId, {
@@ -176,18 +135,7 @@ export class AgentChatService {
     if (!createdSessionId) {
       throw new Error("Chat session create did not return sessionId.");
     }
-    return {
-      id: createdSessionId,
-      title: session.title ?? normalizedTitle,
-      updatedAt: session.updatedAt,
-      version: session.version,
-      projectId: session.projectId ?? undefined,
-    };
-  }
-
-  async createSession(agentId: string, title?: string): Promise<string> {
-    const summary = await this.createSessionSummary(agentId, title);
-    return summary.id;
+    return createdSessionId;
   }
 
   async listSessions(agentId: string, pageSize = 10): Promise<string[]> {
@@ -380,13 +328,12 @@ export class AgentChatService {
     modelId?: string,
     media?: AgentsDriveMediaResource | AgentsDriveMediaResource[],
     systemPrompt?: string,
-    wireProtocol?: AgentTurnWireProtocol,
   ): Promise<ChatMessage> {
     const completion = await completeAgentTurn(
       this.getClient(),
       agentId,
       sessionId,
-      await this.buildTurnBody(content, modelId, media, systemPrompt, wireProtocol),
+      await this.buildTurnBody(content, modelId, media, systemPrompt),
     );
     const assistantRecord = findAssistantOutput(completion.items);
     if (!assistantRecord) {
@@ -407,16 +354,13 @@ export class AgentChatService {
     media: AgentsDriveMediaResource | AgentsDriveMediaResource[] | undefined,
     onDelta: (delta: string) => void,
     systemPrompt?: string,
-    onReasoning?: (reasoning: string) => void,
-    onToolEvent?: (event: TurnRichToolEvent) => void,
-    wireProtocol?: AgentTurnWireProtocol,
   ): Promise<ChatMessage> {
     const completion = await completeAgentTurnStream(
       this.getClient(),
       agentId,
       sessionId,
-      await this.buildTurnBody(content, modelId, media, systemPrompt, wireProtocol),
-      { onDelta, onReasoning, onToolEvent },
+      await this.buildTurnBody(content, modelId, media, systemPrompt),
+      onDelta,
     );
     const assistantRecord = findAssistantOutput(completion.items);
     if (!assistantRecord) {
@@ -430,7 +374,6 @@ export class AgentChatService {
     modelId?: string,
     media?: AgentsDriveMediaResource | AgentsDriveMediaResource[],
     systemPrompt?: string,
-    wireProtocol?: AgentTurnWireProtocol,
   ): Promise<CreateAgentTurnRequest> {
     const mediaResources = media ? (Array.isArray(media) ? media : [media]) : [];
     const requestId = uuid();
@@ -463,7 +406,6 @@ export class AgentChatService {
       contentType,
       turnMode: "interactive" as const,
       ...(systemPrompt ? { systemPrompt: systemPrompt.trim() } : {}),
-      ...(wireProtocol ? { wireProtocol } : {}),
       ...(driveRefs.length > 0 ? { driveRefs } : {}),
       requestedAt: new Date().toISOString(),
       idempotencyKey: requestId,
@@ -474,7 +416,9 @@ export class AgentChatService {
   }
 
   private normalizeMessages(items: AgentSessionItemRecord[]): ChatMessage[] {
-    return mergeReasoningIntoAssistantMessages(sortSessionItems(items));
+    return items
+      .map(toChatMessage)
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
   }
 }
 

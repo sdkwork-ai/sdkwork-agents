@@ -41,7 +41,6 @@ fn invoke_upload(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let file = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().create(&request))
     })?;
@@ -67,7 +66,6 @@ fn invoke_list(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let files = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().list(limit, None, None, None))
     })?;
@@ -101,7 +99,6 @@ fn invoke_retrieve(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let file = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().retrieve(&file_id))
     })?;
@@ -127,7 +124,6 @@ fn invoke_delete(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let result = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().delete(&file_id))
     })?;
@@ -150,7 +146,6 @@ fn invoke_content(
 
     let client = CloudRouterMediaClient::from_env();
     let sdk = client.with_auth_token(auth_token)?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
     let content = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().content(&file_id))
     })?;
@@ -175,7 +170,6 @@ mod tests {
             tool_id: "file.not.a.tool".to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
-            trace_id: None,
         };
         let error = invoke_file_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -188,7 +182,6 @@ mod tests {
             tool_id: tool_ids::UPLOAD.to_string(),
             arguments: serde_json::json!({ "file": "https://cdn.example/a.mp3", "purpose": "audio" }),
             session_id: None,
-            trace_id: None,
         };
         let error = invoke_file_tool(&no_token, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -198,7 +191,6 @@ mod tests {
             tool_id: tool_ids::UPLOAD.to_string(),
             arguments: serde_json::json!({ "purpose": "audio" }),
             session_id: None,
-            trace_id: None,
         };
         let error = invoke_file_tool(&no_file, Some("token")).expect_err("file required");
         assert_eq!(error.code(), "invalid_input");
@@ -212,7 +204,6 @@ mod tests {
                 tool_id: tool_id.to_string(),
                 arguments: serde_json::json!({}),
                 session_id: None,
-                trace_id: None,
             };
             let error = invoke_file_tool(&call, Some("token")).expect_err("fileId required");
             assert_eq!(error.code(), "invalid_input", "{tool_id}");

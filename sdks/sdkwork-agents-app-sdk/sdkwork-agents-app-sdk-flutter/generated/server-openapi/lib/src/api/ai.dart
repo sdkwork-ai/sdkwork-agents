@@ -124,160 +124,6 @@ class AiApi {
     })();
   }
 
-  /// List structured agent calls
-  Future<AgentCallListResponse?> agentsCallsList(String agentId, [String? status, String? cursor, int? pageSize]) async {
-    final query = buildQueryString([
-      QueryParameterSpec('status', status, 'form', true, false, null),
-      QueryParameterSpec('cursor', cursor, 'form', true, false, null),
-      QueryParameterSpec('page_size', pageSize, 'form', true, false, null)
-    ]);
-    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/calls'), query));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentCallListResponse.fromJson(map);
-    })();
-  }
-
-  /// Execute one structured agent call
-  Future<AgentCallResponse?> agentsCallsCreate(String agentId, CreateAgentCallRequest body) async {
-    final payload = body.toJson();
-    final response = await _client.post(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/calls'), body: payload, contentType: 'application/json');
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentCallResponse.fromJson(map);
-    })();
-  }
-
-  /// Retrieve one structured agent call
-  Future<AgentCallResponse?> agentsCallsRetrieve(String agentId, String executionId) async {
-    final response = await _client.get(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/calls/${serializePathParameter(executionId, const PathParameterSpec('executionId', 'simple', false))}'));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentCallResponse.fromJson(map);
-    })();
-  }
-
-  /// List agent versions
-  Future<AgentVersionListResponse?> agentsVersionsList(String agentId, [String? cursor, int? pageSize]) async {
-    final query = buildQueryString([
-      QueryParameterSpec('cursor', cursor, 'form', true, false, null),
-      QueryParameterSpec('page_size', pageSize, 'form', true, false, null)
-    ]);
-    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/versions'), query));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentVersionListResponse.fromJson(map);
-    })();
-  }
-
-  /// Snapshot the current agent definition as a version
-  Future<AgentVersionResponse?> agentsVersionsCreate(String agentId, CreateAgentVersionRequest body) async {
-    final payload = body.toJson();
-    final response = await _client.post(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/versions'), body: payload, contentType: 'application/json');
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentVersionResponse.fromJson(map);
-    })();
-  }
-
-  /// Retrieve one agent version
-  Future<AgentVersionResponse?> agentsVersionsRetrieve(String agentId, String versionId) async {
-    final response = await _client.get(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/versions/${serializePathParameter(versionId, const PathParameterSpec('versionId', 'simple', false))}'));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentVersionResponse.fromJson(map);
-    })();
-  }
-
-  /// Activate an agent version
-  Future<AgentVersionResponse?> agentsVersionsActivate(String agentId, String versionId) async {
-    final response = await _client.post(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/versions/${serializePathParameter(versionId, const PathParameterSpec('versionId', 'simple', false))}/activate'));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentVersionResponse.fromJson(map);
-    })();
-  }
-
-  /// Aggregate usage totals
-  Future<AgentUsageSummaryResponse?> agentsUsageSummaryRetrieve([AgentId? agentId, String? sessionId, String? modelId, String? from, String? to]) async {
-    final query = buildQueryString([
-      QueryParameterSpec('agentId', agentId, 'form', true, false, null),
-      QueryParameterSpec('sessionId', sessionId, 'form', true, false, null),
-      QueryParameterSpec('modelId', modelId, 'form', true, false, null),
-      QueryParameterSpec('from', from, 'form', true, false, null),
-      QueryParameterSpec('to', to, 'form', true, false, null)
-    ]);
-    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/usage/summary'), query));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentUsageSummaryResponse.fromJson(map);
-    })();
-  }
-
-  /// List usage records
-  Future<AgentUsageRecordListResponse?> agentsUsageRecordsList([AgentId? agentId, String? sessionId, String? modelId, String? from, String? to, String? cursor, int? pageSize]) async {
-    final query = buildQueryString([
-      QueryParameterSpec('agentId', agentId, 'form', true, false, null),
-      QueryParameterSpec('sessionId', sessionId, 'form', true, false, null),
-      QueryParameterSpec('modelId', modelId, 'form', true, false, null),
-      QueryParameterSpec('from', from, 'form', true, false, null),
-      QueryParameterSpec('to', to, 'form', true, false, null),
-      QueryParameterSpec('cursor', cursor, 'form', true, false, null),
-      QueryParameterSpec('page_size', pageSize, 'form', true, false, null)
-    ]);
-    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/usage/records'), query));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentUsageRecordListResponse.fromJson(map);
-    })();
-  }
-
-  /// Register a webhook subscription
-  Future<AgentWebhookSubscriptionCreatedResponse?> agentsWebhooksCreate(CreateWebhookSubscriptionRequest body) async {
-    final payload = body.toJson();
-    final response = await _client.post(ApiPaths.appPath('/ai/webhooks'), body: payload, contentType: 'application/json');
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentWebhookSubscriptionCreatedResponse.fromJson(map);
-    })();
-  }
-
-  /// List webhook subscriptions
-  Future<AgentWebhookSubscriptionListResponse?> agentsWebhooksList([int? page, int? pageSize]) async {
-    final query = buildQueryString([
-      QueryParameterSpec('page', page, 'form', true, false, null),
-      QueryParameterSpec('page_size', pageSize, 'form', true, false, null)
-    ]);
-    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/webhooks'), query));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentWebhookSubscriptionListResponse.fromJson(map);
-    })();
-  }
-
-  /// Retrieve one webhook subscription
-  Future<AgentWebhookSubscriptionResponse?> agentsWebhooksRetrieve(String webhookId) async {
-    final response = await _client.get(ApiPaths.appPath('/ai/webhooks/${serializePathParameter(webhookId, const PathParameterSpec('webhookId', 'simple', false))}'));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentWebhookSubscriptionResponse.fromJson(map);
-    })();
-  }
-
-  /// Delete a webhook subscription
-  Future<void> agentsWebhooksDelete(String webhookId) async {
-    await _client.delete(ApiPaths.appPath('/ai/webhooks/${serializePathParameter(webhookId, const PathParameterSpec('webhookId', 'simple', false))}'));
-  }
-
-  /// Send a signed test delivery
-  Future<AgentWebhookDeliveryResponse?> agentsWebhooksTest(String webhookId) async {
-    final response = await _client.post(ApiPaths.appPath('/ai/webhooks/${serializePathParameter(webhookId, const PathParameterSpec('webhookId', 'simple', false))}/test'));
-    return (() {
-      final map = sdkworkResponseAsMap(response);
-      return map == null ? null : AgentWebhookDeliveryResponse.fromJson(map);
-    })();
-  }
-
   /// List Workspaces for the current user
   Future<AgentWorkspaceListResponse?> agentsWorkspacesList([int? page, int? pageSize, String? status, bool? includeDeleted]) async {
     final query = buildQueryString([
@@ -1238,7 +1084,7 @@ class AiApi {
   }
 
   /// List applied model configuration profiles
-  Future<ModelConfigurationSummaryListResponse?> getAgentsModelConfigurationsList([String? engineId]) async {
+  Future<ModelConfigurationSummaryListResponse?> agentsModelConfigurationsList([String? engineId]) async {
     final query = buildQueryString([
       QueryParameterSpec('engineId', engineId, 'form', true, false, null)
     ]);
@@ -1250,7 +1096,7 @@ class AiApi {
   }
 
   /// Get one applied model configuration profile
-  Future<ModelConfigurationSummaryResponse?> getAgentsModelConfigurationsRetrieve(String engineId, String profileId) async {
+  Future<ModelConfigurationSummaryResponse?> agentsModelConfigurationsGet(String engineId, String profileId) async {
     final response = await _client.get(ApiPaths.appPath('/ai/model_configurations/${serializePathParameter(engineId, const PathParameterSpec('engineId', 'simple', false))}/${serializePathParameter(profileId, const PathParameterSpec('profileId', 'simple', false))}'));
     return (() {
       final map = sdkworkResponseAsMap(response);
@@ -1259,7 +1105,7 @@ class AiApi {
   }
 
   /// Read the provider-native configuration file with credentials masked
-  Future<AgentEngineConfigFileResponse?> getAgentsModelConfigurationsListConfigFile(String engineId) async {
+  Future<AgentEngineConfigFileResponse?> agentsModelConfigurationsConfigFile(String engineId) async {
     final response = await _client.get(ApiPaths.appPath('/ai/model_configurations/${serializePathParameter(engineId, const PathParameterSpec('engineId', 'simple', false))}/config_file'));
     return (() {
       final map = sdkworkResponseAsMap(response);
@@ -1268,7 +1114,7 @@ class AiApi {
   }
 
   /// Read back the provider-native config state and detect drift
-  Future<ModelConfigurationStatusResponse?> getAgentsModelConfigurationsRetrieveStatus(String engineId, String profileId) async {
+  Future<ModelConfigurationStatusResponse?> agentsModelConfigurationsStatus(String engineId, String profileId) async {
     final response = await _client.get(ApiPaths.appPath('/ai/model_configurations/${serializePathParameter(engineId, const PathParameterSpec('engineId', 'simple', false))}/${serializePathParameter(profileId, const PathParameterSpec('profileId', 'simple', false))}/status'));
     return (() {
       final map = sdkworkResponseAsMap(response);

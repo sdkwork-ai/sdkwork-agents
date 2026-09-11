@@ -196,7 +196,6 @@ mod tests {
             tool_id: "audio.speech.create".to_string(),
             arguments: serde_json::json!({ "input": "hello" }),
             session_id: None,
-            trace_id: None,
         };
         let error = registry.invoke(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -207,7 +206,6 @@ mod tests {
             tool_id: "unknown.tool".to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
-            trace_id: None,
         };
         let error = registry
             .invoke(&unknown, Some("token"))

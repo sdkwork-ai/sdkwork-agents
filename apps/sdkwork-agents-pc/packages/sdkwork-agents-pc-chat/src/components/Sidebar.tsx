@@ -45,7 +45,6 @@ export interface SidebarProps {
   sessions: ChatSession[];
   currentSessionId: string;
   onNewChat: () => void;
-  isNewChatDisabled?: boolean;
   onSelectSession: (id: string) => void;
   onDeleteSession: (e: React.MouseEvent, id: string) => void;
   onRenameSession: (id: string, newTitle: string) => void;
@@ -77,7 +76,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sessions,
   currentSessionId,
   onNewChat,
-  isNewChatDisabled = false,
   onSelectSession,
   onDeleteSession,
   onRenameSession,
@@ -249,11 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <button
               onClick={onNewChat}
-              disabled={isNewChatDisabled}
-              className={cn(
-                "flex items-center gap-3 text-zinc-100 font-medium rounded-lg transition-all w-full py-2 px-3 hover:bg-white/5 active:scale-[0.98]",
-                isNewChatDisabled && "cursor-not-allowed opacity-50 hover:bg-transparent active:scale-100",
-              )}
+              className="flex items-center gap-3 text-zinc-100 font-medium rounded-lg transition-all w-full py-2 px-3 hover:bg-white/5 active:scale-[0.98]"
             >
               <SquarePen size={18} className="text-zinc-200" />
               <span className="text-[14px]">{t("newChat")}</span>

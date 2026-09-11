@@ -12,7 +12,7 @@
   "mode": "apply",
   "hasChanges": true,
   "hasDestructiveChanges": false,
-  "changeFingerprint": "5a0e73c93fb527427ca8bf43f4f569e9d49d720e98445cf6d828f71e356c2ebc",
+  "changeFingerprint": "ee4dacc40f57bf406e2a8da0ade7ee9fb5faf3ff0f15da8bd9dd60e69b32f113",
   "changeImpact": {
     "schemaVersion": 1,
     "areas": [
@@ -20,6 +20,7 @@
       "models",
       "runtime",
       "build-metadata",
+      "publish-workflow",
       "documentation"
     ],
     "details": [
@@ -27,42 +28,21 @@
         "area": "api-surface",
         "paths": [
           "src/api/ai.ts",
+          "src/api/base.ts",
           "src/http/client.ts"
         ]
       },
       {
         "area": "models",
         "paths": [
-          "src/types/agent-call-correlation.ts",
-          "src/types/agent-call-list-response.ts",
-          "src/types/agent-call-output-spec.ts",
-          "src/types/agent-call-policy-spec.ts",
-          "src/types/agent-call-record.ts",
-          "src/types/agent-call-response.ts",
-          "src/types/agent-call-usage.ts",
-          "src/types/agent-call-validation.ts",
-          "src/types/agent-interaction-request-data.ts",
-          "src/types/agent-usage-record-list-response.ts",
-          "src/types/agent-usage-record.ts",
-          "src/types/agent-usage-summary-response.ts",
-          "src/types/agent-usage-summary.ts",
-          "src/types/agent-version-list-response.ts",
-          "src/types/agent-version-record.ts",
-          "src/types/agent-version-response.ts",
-          "src/types/agent-webhook-delivery-response.ts",
-          "src/types/agent-webhook-delivery.ts",
-          "src/types/agent-webhook-event-type.ts",
-          "src/types/agent-webhook-subscription-created-response.ts",
-          "src/types/agent-webhook-subscription-created.ts",
-          "src/types/agent-webhook-subscription-list-response.ts",
-          "src/types/agent-webhook-subscription-response.ts",
-          "src/types/agent-webhook-subscription.ts",
-          "src/types/applied-agent-model-configuration-record.ts",
-          "src/types/create-agent-call-request.ts",
+          "src/types/agent-model-provider-id.ts",
+          "src/types/agent-turn-input-queue-entry.ts",
+          "src/types/apply-agent-model-configuration-request.ts",
+          "src/types/apply-agent-model-selection-request.ts",
+          "src/types/create-agent-session-request.ts",
+          "src/types/create-agent-turn-input-queue-entry-request.ts",
           "src/types/create-agent-turn-request.ts",
-          "src/types/create-agent-version-request.ts",
-          "src/types/create-webhook-subscription-request.ts",
-          "src/types/index.ts"
+          "src/types/update-agent-turn-input-queue-entry-request.ts"
         ]
       },
       {
@@ -74,18 +54,26 @@
       {
         "area": "build-metadata",
         "paths": [
-          "tsconfig.json"
+          "package.json",
+          "sdkwork-sdk.json"
+        ]
+      },
+      {
+        "area": "publish-workflow",
+        "paths": [
+          "bin/publish-core.mjs"
         ]
       },
       {
         "area": "documentation",
         "paths": [
+          "CHANGELOG.md",
           "README.md"
         ]
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, documentation. Verification is required."
+    "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, publish-workflow, documentation. Verification is required."
   },
   "executionDecision": {
     "schemaVersion": 1,
@@ -108,7 +96,7 @@
         "id": "verify-check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, documentation.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation.",
         "workingDirectory": "E:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -126,7 +114,7 @@
         "id": "verify-build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, runtime, build-metadata, documentation.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation.",
         "workingDirectory": "E:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -145,13 +133,13 @@
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, publish-workflow, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, documentation.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation.",
         "workingDirectory": "E:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -169,7 +157,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, runtime, build-metadata, documentation.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation.",
         "workingDirectory": "E:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -199,70 +187,47 @@
     "localVersions": []
   },
   "stats": {
-    "totalFiles": 252,
-    "models": 228,
+    "totalFiles": 226,
+    "models": 202,
     "apis": 1,
-    "types": 230
+    "types": 204
   },
   "warnings": [],
   "syncSummary": {
     "dryRun": false,
     "controlPlaneEnabled": true,
-    "writtenFiles": 34,
+    "writtenFiles": 16,
     "skippedScaffoldFiles": 2,
-    "skippedUnchangedGeneratedFiles": 216,
+    "skippedUnchangedGeneratedFiles": 208,
     "deletedGeneratedFiles": 0,
     "changeSummaryPath": ".sdkwork/sdkwork-generator-changes.json",
-    "changeFingerprint": "5a0e73c93fb527427ca8bf43f4f569e9d49d720e98445cf6d828f71e356c2ebc",
+    "changeFingerprint": "ee4dacc40f57bf406e2a8da0ade7ee9fb5faf3ff0f15da8bd9dd60e69b32f113",
     "changes": {
       "createdGeneratedFiles": [],
       "updatedGeneratedFiles": [
+        "bin/publish-core.mjs",
+        "CHANGELOG.md",
+        "package.json",
         "README.md",
+        "sdkwork-sdk.json",
         "src/api/ai.ts",
+        "src/api/base.ts",
         "src/http/client.ts",
-        "src/types/agent-call-correlation.ts",
-        "src/types/agent-call-list-response.ts",
-        "src/types/agent-call-output-spec.ts",
-        "src/types/agent-call-policy-spec.ts",
-        "src/types/agent-call-record.ts",
-        "src/types/agent-call-response.ts",
-        "src/types/agent-call-usage.ts",
-        "src/types/agent-call-validation.ts",
-        "src/types/agent-interaction-request-data.ts",
-        "src/types/agent-usage-record-list-response.ts",
-        "src/types/agent-usage-record.ts",
-        "src/types/agent-usage-summary-response.ts",
-        "src/types/agent-usage-summary.ts",
-        "src/types/agent-version-list-response.ts",
-        "src/types/agent-version-record.ts",
-        "src/types/agent-version-response.ts",
-        "src/types/agent-webhook-delivery-response.ts",
-        "src/types/agent-webhook-delivery.ts",
-        "src/types/agent-webhook-event-type.ts",
-        "src/types/agent-webhook-subscription-created-response.ts",
-        "src/types/agent-webhook-subscription-created.ts",
-        "src/types/agent-webhook-subscription-list-response.ts",
-        "src/types/agent-webhook-subscription-response.ts",
-        "src/types/agent-webhook-subscription.ts",
-        "src/types/applied-agent-model-configuration-record.ts",
-        "src/types/create-agent-call-request.ts",
+        "src/types/agent-model-provider-id.ts",
+        "src/types/agent-turn-input-queue-entry.ts",
+        "src/types/apply-agent-model-configuration-request.ts",
+        "src/types/apply-agent-model-selection-request.ts",
+        "src/types/create-agent-session-request.ts",
+        "src/types/create-agent-turn-input-queue-entry-request.ts",
         "src/types/create-agent-turn-request.ts",
-        "src/types/create-agent-version-request.ts",
-        "src/types/create-webhook-subscription-request.ts",
-        "src/types/index.ts",
-        "tsconfig.json"
+        "src/types/update-agent-turn-input-queue-entry-request.ts"
       ],
       "unchangedGeneratedFiles": [
-        "bin/publish-core.mjs",
         "bin/publish.ps1",
         "bin/publish.sh",
         "bin/sdk-gen.bat",
         "bin/sdk-gen.sh",
-        "CHANGELOG.md",
         "LICENSE",
-        "package.json",
-        "sdkwork-sdk.json",
-        "src/api/base.ts",
         "src/api/index.ts",
         "src/api/paths.ts",
         "src/auth/index.ts",
@@ -294,6 +259,7 @@
         "src/types/agent-interaction-question.ts",
         "src/types/agent-interaction-record.ts",
         "src/types/agent-interaction-request-category.ts",
+        "src/types/agent-interaction-request-data.ts",
         "src/types/agent-interaction-request-kind.ts",
         "src/types/agent-interaction-request.ts",
         "src/types/agent-interaction-resolution.ts",
@@ -305,7 +271,6 @@
         "src/types/agent-item-feedback-response.ts",
         "src/types/agent-list-response.ts",
         "src/types/agent-management-profile.ts",
-        "src/types/agent-model-provider-id.ts",
         "src/types/agent-project-composition-slot-list-response.ts",
         "src/types/agent-project-composition-slot-record.ts",
         "src/types/agent-project-composition-slot-response.ts",
@@ -362,7 +327,6 @@
         "src/types/agent-turn-input-queue-drive-ref.ts",
         "src/types/agent-turn-input-queue-entry-list-response.ts",
         "src/types/agent-turn-input-queue-entry-response.ts",
-        "src/types/agent-turn-input-queue-entry.ts",
         "src/types/agent-turn-input-queue-reorder-entry.ts",
         "src/types/agent-turn-input-queue-status.ts",
         "src/types/agent-turn-list-response.ts",
@@ -380,11 +344,10 @@
         "src/types/agent-workspace-status.ts",
         "src/types/answer-agent-interaction-request.ts",
         "src/types/app-update-agent-session-request.ts",
+        "src/types/applied-agent-model-configuration-record.ts",
         "src/types/applied-agent-model-configuration-response.ts",
         "src/types/applied-agent-model-selection-record.ts",
         "src/types/applied-agent-model-selection-response.ts",
-        "src/types/apply-agent-model-configuration-request.ts",
-        "src/types/apply-agent-model-selection-request.ts",
         "src/types/approve-agent-interaction-request.ts",
         "src/types/cancel-agent-task-request.ts",
         "src/types/cancel-agent-task-run-request.ts",
@@ -406,10 +369,8 @@
         "src/types/create-agent-provider-binding-request.ts",
         "src/types/create-agent-request.ts",
         "src/types/create-agent-session-checkpoint-request.ts",
-        "src/types/create-agent-session-request.ts",
         "src/types/create-agent-session-runtime-binding-request.ts",
         "src/types/create-agent-task-request.ts",
-        "src/types/create-agent-turn-input-queue-entry-request.ts",
         "src/types/create-agent-workspace-request.ts",
         "src/types/drive-asset-view.ts",
         "src/types/ensure-default-agent-workspace-request.ts",
@@ -417,6 +378,7 @@
         "src/types/fail-agent-turn-input-queue-entry-request.ts",
         "src/types/field-error.ts",
         "src/types/import-agent-project-request.ts",
+        "src/types/index.ts",
         "src/types/int64-string.ts",
         "src/types/invalidate-agent-session-checkpoint-request.ts",
         "src/types/legacy-agent-interaction-resolution.ts",
@@ -467,8 +429,8 @@
         "src/types/update-agent-request.ts",
         "src/types/update-agent-session-runtime-binding-request.ts",
         "src/types/update-agent-session-user-state-request.ts",
-        "src/types/update-agent-turn-input-queue-entry-request.ts",
-        "src/types/update-agent-workspace-request.ts"
+        "src/types/update-agent-workspace-request.ts",
+        "tsconfig.json"
       ],
       "deletedGeneratedFiles": [],
       "scaffoldedFiles": [],
@@ -477,40 +439,19 @@
         "custom/README.md"
       ],
       "backedUpFiles": [
+        "CHANGELOG.md",
+        "package.json",
         "README.md",
-        "src/api/ai.ts",
+        "sdkwork-sdk.json",
         "src/http/client.ts",
-        "src/types/agent-call-correlation.ts",
-        "src/types/agent-call-list-response.ts",
-        "src/types/agent-call-output-spec.ts",
-        "src/types/agent-call-policy-spec.ts",
-        "src/types/agent-call-record.ts",
-        "src/types/agent-call-response.ts",
-        "src/types/agent-call-usage.ts",
-        "src/types/agent-call-validation.ts",
-        "src/types/agent-interaction-request-data.ts",
-        "src/types/agent-usage-record-list-response.ts",
-        "src/types/agent-usage-record.ts",
-        "src/types/agent-usage-summary-response.ts",
-        "src/types/agent-usage-summary.ts",
-        "src/types/agent-version-list-response.ts",
-        "src/types/agent-version-record.ts",
-        "src/types/agent-version-response.ts",
-        "src/types/agent-webhook-delivery-response.ts",
-        "src/types/agent-webhook-delivery.ts",
-        "src/types/agent-webhook-event-type.ts",
-        "src/types/agent-webhook-subscription-created-response.ts",
-        "src/types/agent-webhook-subscription-created.ts",
-        "src/types/agent-webhook-subscription-list-response.ts",
-        "src/types/agent-webhook-subscription-response.ts",
-        "src/types/agent-webhook-subscription.ts",
-        "src/types/applied-agent-model-configuration-record.ts",
-        "src/types/create-agent-call-request.ts",
+        "src/types/agent-model-provider-id.ts",
+        "src/types/agent-turn-input-queue-entry.ts",
+        "src/types/apply-agent-model-configuration-request.ts",
+        "src/types/apply-agent-model-selection-request.ts",
+        "src/types/create-agent-session-request.ts",
+        "src/types/create-agent-turn-input-queue-entry-request.ts",
         "src/types/create-agent-turn-request.ts",
-        "src/types/create-agent-version-request.ts",
-        "src/types/create-webhook-subscription-request.ts",
-        "src/types/index.ts",
-        "tsconfig.json"
+        "src/types/update-agent-turn-input-queue-entry-request.ts"
       ]
     },
     "impact": {
@@ -520,6 +461,7 @@
         "models",
         "runtime",
         "build-metadata",
+        "publish-workflow",
         "documentation"
       ],
       "details": [
@@ -527,42 +469,21 @@
           "area": "api-surface",
           "paths": [
             "src/api/ai.ts",
+            "src/api/base.ts",
             "src/http/client.ts"
           ]
         },
         {
           "area": "models",
           "paths": [
-            "src/types/agent-call-correlation.ts",
-            "src/types/agent-call-list-response.ts",
-            "src/types/agent-call-output-spec.ts",
-            "src/types/agent-call-policy-spec.ts",
-            "src/types/agent-call-record.ts",
-            "src/types/agent-call-response.ts",
-            "src/types/agent-call-usage.ts",
-            "src/types/agent-call-validation.ts",
-            "src/types/agent-interaction-request-data.ts",
-            "src/types/agent-usage-record-list-response.ts",
-            "src/types/agent-usage-record.ts",
-            "src/types/agent-usage-summary-response.ts",
-            "src/types/agent-usage-summary.ts",
-            "src/types/agent-version-list-response.ts",
-            "src/types/agent-version-record.ts",
-            "src/types/agent-version-response.ts",
-            "src/types/agent-webhook-delivery-response.ts",
-            "src/types/agent-webhook-delivery.ts",
-            "src/types/agent-webhook-event-type.ts",
-            "src/types/agent-webhook-subscription-created-response.ts",
-            "src/types/agent-webhook-subscription-created.ts",
-            "src/types/agent-webhook-subscription-list-response.ts",
-            "src/types/agent-webhook-subscription-response.ts",
-            "src/types/agent-webhook-subscription.ts",
-            "src/types/applied-agent-model-configuration-record.ts",
-            "src/types/create-agent-call-request.ts",
+            "src/types/agent-model-provider-id.ts",
+            "src/types/agent-turn-input-queue-entry.ts",
+            "src/types/apply-agent-model-configuration-request.ts",
+            "src/types/apply-agent-model-selection-request.ts",
+            "src/types/create-agent-session-request.ts",
+            "src/types/create-agent-turn-input-queue-entry-request.ts",
             "src/types/create-agent-turn-request.ts",
-            "src/types/create-agent-version-request.ts",
-            "src/types/create-webhook-subscription-request.ts",
-            "src/types/index.ts"
+            "src/types/update-agent-turn-input-queue-entry-request.ts"
           ]
         },
         {
@@ -574,29 +495,37 @@
         {
           "area": "build-metadata",
           "paths": [
-            "tsconfig.json"
+            "package.json",
+            "sdkwork-sdk.json"
+          ]
+        },
+        {
+          "area": "publish-workflow",
+          "paths": [
+            "bin/publish-core.mjs"
           ]
         },
         {
           "area": "documentation",
           "paths": [
+            "CHANGELOG.md",
             "README.md"
           ]
         }
       ],
       "requiresVerification": true,
-      "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, documentation. Verification is required."
+      "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, publish-workflow, documentation. Verification is required."
     },
     "verificationPlan": {
       "shouldRun": true,
       "runPhase": "now",
-      "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
+      "summary": "Detected impact areas: api-surface, models, runtime, build-metadata, publish-workflow, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
       "steps": [
         {
           "id": "check",
           "title": "Unified package check",
           "required": true,
-          "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, documentation.",
+          "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation.",
           "workingDirectory": "E:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
           "command": "node",
           "args": [
@@ -614,7 +543,7 @@
           "id": "build",
           "title": "Unified package build",
           "required": true,
-          "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, runtime, build-metadata, documentation.",
+          "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, runtime, build-metadata, publish-workflow, documentation.",
           "workingDirectory": "E:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
           "command": "node",
           "args": [
@@ -644,40 +573,19 @@
       ]
     },
     "backedUpFiles": [
+      "CHANGELOG.md",
+      "package.json",
       "README.md",
-      "src/api/ai.ts",
+      "sdkwork-sdk.json",
       "src/http/client.ts",
-      "src/types/agent-call-correlation.ts",
-      "src/types/agent-call-list-response.ts",
-      "src/types/agent-call-output-spec.ts",
-      "src/types/agent-call-policy-spec.ts",
-      "src/types/agent-call-record.ts",
-      "src/types/agent-call-response.ts",
-      "src/types/agent-call-usage.ts",
-      "src/types/agent-call-validation.ts",
-      "src/types/agent-interaction-request-data.ts",
-      "src/types/agent-usage-record-list-response.ts",
-      "src/types/agent-usage-record.ts",
-      "src/types/agent-usage-summary-response.ts",
-      "src/types/agent-usage-summary.ts",
-      "src/types/agent-version-list-response.ts",
-      "src/types/agent-version-record.ts",
-      "src/types/agent-version-response.ts",
-      "src/types/agent-webhook-delivery-response.ts",
-      "src/types/agent-webhook-delivery.ts",
-      "src/types/agent-webhook-event-type.ts",
-      "src/types/agent-webhook-subscription-created-response.ts",
-      "src/types/agent-webhook-subscription-created.ts",
-      "src/types/agent-webhook-subscription-list-response.ts",
-      "src/types/agent-webhook-subscription-response.ts",
-      "src/types/agent-webhook-subscription.ts",
-      "src/types/applied-agent-model-configuration-record.ts",
-      "src/types/create-agent-call-request.ts",
+      "src/types/agent-model-provider-id.ts",
+      "src/types/agent-turn-input-queue-entry.ts",
+      "src/types/apply-agent-model-configuration-request.ts",
+      "src/types/apply-agent-model-selection-request.ts",
+      "src/types/create-agent-session-request.ts",
+      "src/types/create-agent-turn-input-queue-entry-request.ts",
       "src/types/create-agent-turn-request.ts",
-      "src/types/create-agent-version-request.ts",
-      "src/types/create-webhook-subscription-request.ts",
-      "src/types/index.ts",
-      "tsconfig.json"
+      "src/types/update-agent-turn-input-queue-entry-request.ts"
     ],
     "preservedLegacyFiles": false
   }

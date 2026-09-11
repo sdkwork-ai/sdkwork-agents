@@ -3,7 +3,6 @@ export * from "./assetsAppSdkClient";
 export * from "./driveAppSdkClient";
 export * from "./driveUploadService";
 export * from "./memoryAppSdkClient";
-export * from "./modelsAppSdkClient";
 export * from "./promptsAppSdkClient";
 export * from "./runtimeEnv";
 export * from "./voiceAppSdkClient";

@@ -23,7 +23,6 @@
     "./sdk/generationsService": "./src/sdk/generationsService.ts",
     "./sdk/knowledgebaseAppSdkClient": "./src/sdk/knowledgebaseAppSdkClient.ts",
     "./sdk/memoryAppSdkClient": "./src/sdk/memoryAppSdkClient.ts",
-    "./sdk/modelsAppSdkClient": "./src/sdk/modelsAppSdkClient.ts",
     "./sdk/promptsAppSdkClient": "./src/sdk/promptsAppSdkClient.ts",
     "./sdk/skillsAppSdkClient": "./src/sdk/skillsAppSdkClient.ts",
     "./sdk/voiceAppSdkClient": "./src/sdk/voiceAppSdkClient.ts",
@@ -32,7 +31,8 @@
     "./host": "./src/host/index.ts",
     "./session": "./src/session/index.ts",
     "./composition": "./src/composition/index.ts",
-    "./sdk/feedsOpenSdkClient": "./src/sdk/feedsOpenSdkClient.ts"
+    "./sdk/feedsOpenSdkClient": "./src/sdk/feedsOpenSdkClient.ts",
+    "./sdk/modelsAppSdkClient": "./src/sdk/modelsAppSdkClient.ts"
   },
   "dependencies": {
     "@sdkwork/agents-app-sdk": "workspace:*",

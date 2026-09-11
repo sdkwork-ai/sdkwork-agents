@@ -34,8 +34,6 @@ sdkwork-agents-tool-file = { workspace = true }
 sdkwork-agents-tool-intelligence = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-jsonschema = { workspace = true }
-roxmltree = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = "0.3"

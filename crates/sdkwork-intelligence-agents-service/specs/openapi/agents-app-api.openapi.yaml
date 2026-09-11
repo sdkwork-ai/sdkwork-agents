@@ -50,14 +50,9 @@ paths:
       tags:
       - ai
       summary: Create a managed agent
-      description: 'Any authenticated user can create a managed agent. The agent is
-        created
-
-        in `draft` status and must be activated (draft to active) by a user with
-
-        `ai.agents.manage` permission, providing the review workflow.
-
-        '
+      description: "Any authenticated user can create a managed agent. The agent is\
+        \ created\nin `draft` status and must be activated (draft to active) by a user\
+        \ with\n`ai.agents.manage` permission, providing the review workflow.\n"
       operationId: agents.create
       security:
       - AuthToken: []
@@ -118,7 +113,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/agents/{agentId}:
     get:
       tags:
@@ -672,567 +666,9 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/agents/{agentId}/calls:
-    get:
-      tags:
-      - ai
-      summary: List structured agent calls
-      description: >-
-        Keyset-paginated list of durable structured agent call records for
-        one managed agent, ordered by (requestedAt, executionId) descending.
-      operationId: agents.calls.list
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.calls
-      x-sdkwork-permission: ai.agents.use
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      - name: status
-        in: query
-        required: false
-        schema:
-          type: string
-          enum:
-          - queued
-          - running
-          - completed
-          - failed
-      - $ref: '#/components/parameters/Cursor'
-      - $ref: '#/components/parameters/PageSize'
-      responses:
-        '200':
-          description: Structured agent call list response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentCallListResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-    post:
-      tags:
-      - ai
-      summary: Execute one structured agent call
-      description: |-
-        Invokes the managed agent as a programmable data processor: the caller
-        submits a prompt or typed parameters and the agent returns validated
-        structured output (JSON, XML, or plain text). Business outcomes are
-        carried in data.item.status; transport failures use ProblemDetail.
-      operationId: agents.calls.create
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.calls
-      x-sdkwork-permission: ai.agents.use
-      x-sdkwork-tenant-scope: tenant
-      x-sdkwork-audit-event: agent.business.runtime.executed
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateAgentCallRequest'
-      responses:
-        '201':
-          description: Structured agent call executed synchronously
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentCallResponse'
-        '202':
-          description: >-
-            Structured agent call accepted for asynchronous execution
-            (executionMode "async"); data.item.status is "queued" and the
-            terminal state is observable via agents.calls.retrieve.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentCallResponse'
-        '400':
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        '403':
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        '404':
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/agents/{agentId}/calls/{executionId}:
-    get:
-      tags:
-      - ai
-      summary: Retrieve one structured agent call
-      description: >-
-        Returns the durable structured agent call record, including its
-        lifecycle status (queued, running, completed, failed) and, once
-        terminal, the validated structured output.
-      operationId: agents.calls.retrieve
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.calls
-      x-sdkwork-permission: ai.agents.use
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      - $ref: '#/components/parameters/ExecutionIdPath'
-      responses:
-        '200':
-          description: Structured agent call record response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentCallResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/agents/{agentId}/versions:
-    get:
-      tags:
-      - ai
-      summary: List agent versions
-      description: >-
-        Keyset-paginated version history for one managed agent, ordered by
-        (versionNumber, id) descending. Versions are immutable snapshots of
-        the agent definition; the currently active version carries
-        activatedAt.
-      operationId: agents.versions.list
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.versions
-      x-sdkwork-permission: ai.agents.read
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      - $ref: '#/components/parameters/Cursor'
-      - $ref: '#/components/parameters/PageSize'
-      responses:
-        '200':
-          description: Agent version list response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentVersionListResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-    post:
-      tags:
-      - ai
-      summary: Snapshot the current agent definition as a version
-      description: >-
-        Captures the live agent definition (manifest and implementation
-        metadata) as a new immutable version. The version number increases
-        monotonically; replaying a versionId is a conflict.
-      operationId: agents.versions.create
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.versions
-      x-sdkwork-permission: ai.agents.write
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateAgentVersionRequest'
-      responses:
-        '201':
-          description: Agent version snapshot created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentVersionResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/agents/{agentId}/versions/{versionId}:
-    get:
-      tags:
-      - ai
-      summary: Retrieve one agent version
-      description: Returns one immutable version snapshot of the agent definition.
-      operationId: agents.versions.retrieve
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.versions
-      x-sdkwork-permission: ai.agents.read
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      - $ref: '#/components/parameters/VersionIdPath'
-      responses:
-        '200':
-          description: Agent version response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentVersionResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/agents/{agentId}/versions/{versionId}/activate:
-    post:
-      tags:
-      - ai
-      summary: Activate an agent version
-      description: >-
-        Marks one version active and writes its immutable manifest back onto
-        the live agent definition. Activation is the publish and rollback
-        path; the previously active version keeps its snapshot untouched.
-      operationId: agents.versions.activate
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.versions
-      x-sdkwork-permission: ai.agents.write
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/AgentIdPath'
-      - $ref: '#/components/parameters/VersionIdPath'
-      responses:
-        '200':
-          description: Agent version activated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentVersionResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/usage/summary:
-    get:
-      tags:
-      - ai
-      summary: Aggregate usage totals
-      description: >-
-        Aggregated token and turn totals for the current tenant scope,
-        computed from the durable turn facts. Supports optional agent,
-        session, and model filters plus an inclusive-from / exclusive-to
-        RFC 3339 time window. Billing and quota enforcement stay owned by
-        the platform gateway; this surface exposes metering facts only.
-      operationId: agents.usage.summary.retrieve
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.usage
-      x-sdkwork-permission: ai.agents.read
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - name: agentId
-        in: query
-        required: false
-        schema:
-          $ref: '#/components/schemas/AgentId'
-      - name: sessionId
-        in: query
-        required: false
-        schema:
-          type: string
-          minLength: 1
-      - name: modelId
-        in: query
-        required: false
-        schema:
-          type: string
-          minLength: 1
-      - name: from
-        in: query
-        required: false
-        schema:
-          type: string
-          format: date-time
-      - name: to
-        in: query
-        required: false
-        schema:
-          type: string
-          format: date-time
-      responses:
-        '200':
-          description: Usage summary response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentUsageSummaryResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/usage/records:
-    get:
-      tags:
-      - ai
-      summary: List usage records
-      description: >-
-        Turn-level usage feed ordered by (createdAt, id) descending with an
-        opaque scope-bound cursor. Supports the same filters as the summary
-        aggregation.
-      operationId: agents.usage.records.list
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.usage
-      x-sdkwork-permission: ai.agents.read
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - name: agentId
-        in: query
-        required: false
-        schema:
-          $ref: '#/components/schemas/AgentId'
-      - name: sessionId
-        in: query
-        required: false
-        schema:
-          type: string
-          minLength: 1
-      - name: modelId
-        in: query
-        required: false
-        schema:
-          type: string
-          minLength: 1
-      - name: from
-        in: query
-        required: false
-        schema:
-          type: string
-          format: date-time
-      - name: to
-        in: query
-        required: false
-        schema:
-          type: string
-          format: date-time
-      - $ref: '#/components/parameters/Cursor'
-      - $ref: '#/components/parameters/PageSize'
-      responses:
-        '200':
-          description: Usage record list response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentUsageRecordListResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/webhooks:
-    post:
-      tags:
-      - ai
-      summary: Register a webhook subscription
-      description: >-
-        Registers an HTTPS endpoint bound to a closed vocabulary of agent
-        event types. An HMAC signing secret is generated server-side and
-        echoed exactly once in this response; it is never returned again.
-      operationId: agents.webhooks.create
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.webhooks
-      x-sdkwork-permission: ai.agents.write
-      x-sdkwork-tenant-scope: tenant
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateWebhookSubscriptionRequest'
-      responses:
-        '201':
-          description: Webhook subscription created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentWebhookSubscriptionCreatedResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-    get:
-      tags:
-      - ai
-      summary: List webhook subscriptions
-      description: >-
-        Offset-paginated list of the tenant's webhook subscriptions (a
-        low-volume configuration set). Signing secrets are never included.
-      operationId: agents.webhooks.list
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.webhooks
-      x-sdkwork-permission: ai.agents.read
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/PageSize'
-      responses:
-        '200':
-          description: Paginated webhook subscription list
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentWebhookSubscriptionListResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/webhooks/{webhookId}:
-    get:
-      tags:
-      - ai
-      summary: Retrieve one webhook subscription
-      description: >-
-        Returns one webhook subscription without its signing secret.
-      operationId: agents.webhooks.retrieve
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.webhooks
-      x-sdkwork-permission: ai.agents.read
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/WebhookIdPath'
-      responses:
-        '200':
-          description: Webhook subscription response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentWebhookSubscriptionResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-    delete:
-      tags:
-      - ai
-      summary: Delete a webhook subscription
-      description: >-
-        Removes the subscription. Past deliveries are retained for audit
-        purposes.
-      operationId: agents.webhooks.delete
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.webhooks
-      x-sdkwork-permission: ai.agents.write
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/WebhookIdPath'
-      responses:
-        '204':
-          description: Webhook subscription deleted
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
-  /app/v3/api/ai/webhooks/{webhookId}/test:
-    post:
-      tags:
-      - ai
-      summary: Send a signed test delivery
-      description: >-
-        Builds a signed `agent_call.completed` test payload for the
-        subscription, POSTs it to the endpoint with a bounded timeout, and
-        records the delivery outcome (queued -> succeeded/failed) in the
-        delivery ledger.
-      operationId: agents.webhooks.test
-      security:
-      - AuthToken: []
-        AccessToken: []
-      x-sdkwork-domain: ai
-      x-sdkwork-resource: agents.webhooks
-      x-sdkwork-permission: ai.agents.write
-      x-sdkwork-tenant-scope: tenant
-      parameters:
-      - $ref: '#/components/parameters/WebhookIdPath'
-      responses:
-        '200':
-          description: Test delivery outcome
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentWebhookDeliveryResponse'
-        default:
-          description: Problem detail response
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/workspaces:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List Workspaces for the current user
       operationId: agents.workspaces.list
       security:
@@ -1264,8 +700,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Create a Workspace for the current user
       operationId: agents.workspaces.create
       security:
@@ -1295,11 +730,9 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/workspaces/default:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Ensure the current user has a default Workspace
       operationId: agents.workspaces.default.create
       security:
@@ -1328,11 +761,9 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/workspaces/{workspaceId}:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: Retrieve a Workspace owned by the current user
       operationId: agents.workspaces.retrieve
       security:
@@ -1358,8 +789,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     patch:
-      tags:
-      - ai
+      tags: [ai]
       summary: Update a Workspace owned by the current user
       operationId: agents.workspaces.update
       security:
@@ -1392,8 +822,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     delete:
-      tags:
-      - ai
+      tags: [ai]
       summary: Soft-delete an empty, non-default Workspace
       operationId: agents.workspaces.delete
       security:
@@ -1422,8 +851,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/workspaces/{workspaceId}/archive:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Archive an empty, non-default Workspace
       operationId: agents.workspaces.archive
       security:
@@ -1457,8 +885,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List agent projects for the current user
       operationId: agents.projects.list
       security:
@@ -1485,8 +912,7 @@ paths:
           maxLength: 255
       - name: name_exact
         in: query
-        description: Case-insensitive exact project name lookup within the requested
-          Workspace.
+        description: Case-insensitive exact project name lookup within the requested Workspace.
         schema:
           type: string
           minLength: 1
@@ -1510,8 +936,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Create an agent project
       operationId: agents.projects.create
       security:
@@ -1541,11 +966,9 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/projects/import:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Import or reopen a Workspace-scoped Drive sandbox project
       operationId: agents.projects.import
       security:
@@ -1575,11 +998,9 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/projects/{projectId}:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: Retrieve an agent project
       operationId: agents.projects.retrieve
       security:
@@ -1605,8 +1026,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     patch:
-      tags:
-      - ai
+      tags: [ai]
       summary: Update an agent project
       operationId: agents.projects.update
       security:
@@ -1639,8 +1059,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     delete:
-      tags:
-      - ai
+      tags: [ai]
       summary: Soft-delete an agent project
       operationId: agents.projects.delete
       security:
@@ -1664,8 +1083,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects/{projectId}/archive:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Archive an agent project
       operationId: agents.projects.archive
       security:
@@ -1699,8 +1117,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects/{projectId}/composition_slots:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List composition slots for an agent project
       operationId: agents.projectCompositionSlots.list
       security:
@@ -1736,8 +1153,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Add a composition slot to an agent project
       operationId: agents.projectCompositionSlots.create
       security:
@@ -1771,8 +1187,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects/{projectId}/composition_slots/{slotId}:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: Retrieve a project composition slot
       operationId: agents.projectCompositionSlots.retrieve
       security:
@@ -1799,8 +1214,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     patch:
-      tags:
-      - ai
+      tags: [ai]
       summary: Update a project composition slot
       operationId: agents.projectCompositionSlots.update
       security:
@@ -1834,8 +1248,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     delete:
-      tags:
-      - ai
+      tags: [ai]
       summary: Soft-delete a project composition slot
       operationId: agents.projectCompositionSlots.delete
       security:
@@ -1865,8 +1278,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/workspaces/{workspaceId}/sessions:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List agent sessions for one workspace
       operationId: agents.workspaceSessions.list
       security:
@@ -1906,8 +1318,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects/{projectId}/sessions:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List agent sessions for one project
       operationId: agents.projectSessions.list
       security:
@@ -1946,8 +1357,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Create an agent session in one project
       operationId: agents.projectSessions.create
       security:
@@ -1981,18 +1391,19 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects/{projectId}/sessions/synchronize:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Synchronize provider Session inventory for one project
-      description: 'Explicitly reconciles the project runtime''s provider Session
-        inventory. The reconciliation runs on a bounded background worker: a request
-        inside the 60-second refresh window returns the cached outcome (`status=completed`),
-        a cold request enqueues the run and returns `202` (`status=accepted`), and
-        a request racing an in-flight run returns `202` (`status=pending`). This command
-        never accepts device paths, directory names, or local filesystem fingerprints
-        from a client. Individual invalid provider records are isolated and reported
-        as bounded aggregate issues, so one malformed record does not discard valid
-        reconciliation work.'
+      description: >-
+        Explicitly reconciles the project runtime's provider Session inventory.
+        The reconciliation runs on a bounded background worker: a request
+        inside the 60-second refresh window returns the cached outcome
+        (`status=completed`), a cold request enqueues the run and returns
+        `202` (`status=accepted`), and a request racing an in-flight run
+        returns `202` (`status=pending`). This command never accepts device
+        paths, directory names, or local filesystem fingerprints from a
+        client. Individual invalid provider records are isolated and reported
+        as bounded aggregate issues, so one malformed record does not discard
+        valid reconciliation work.
       operationId: agents.projectSessions.synchronize
       security:
       - AuthToken: []
@@ -2006,15 +1417,13 @@ paths:
       - $ref: '#/components/parameters/ProjectIdPath'
       responses:
         '200':
-          description: Provider Session inventory synchronization result (refresh-cache
-            hit)
+          description: Provider Session inventory synchronization result (refresh-cache hit)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProjectSessionSynchronizationResponse'
         '202':
-          description: Synchronization accepted for background execution (accepted
-            or pending)
+          description: Synchronization accepted for background execution (accepted or pending)
           content:
             application/json:
               schema:
@@ -2027,12 +1436,11 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/projects/{projectId}/sessions/{sessionId}:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: Retrieve one project-scoped agent Session
-      description: Retrieves one non-deleted Session by its canonical project and
-        Session identities without requiring a client to discover or guess the Agent
-        identity.
+      description: >-
+        Retrieves one non-deleted Session by its canonical project and Session
+        identities without requiring a client to discover or guess the Agent identity.
       operationId: agents.projectSessions.retrieve
       security:
       - AuthToken: []
@@ -2062,12 +1470,13 @@ paths:
       tags:
       - ai
       summary: List the authenticated owner's current Session activity snapshot
-      description: Returns a bounded, newest-first current-state projection. A null
-        cursor starts a fresh head snapshot; nextCursor is only continuation within
-        that traversal and is not a durable change-feed watermark. Native runtime
-        activity is opportunistically enriched for returned rows and remains authoritative
-        only until providerActivity.freshUntil. The authenticated owner's Session
-        user-state is included and participates in activityAt.
+      description: >-
+        Returns a bounded, newest-first current-state projection. A null cursor
+        starts a fresh head snapshot; nextCursor is only continuation within that
+        traversal and is not a durable change-feed watermark. Native runtime
+        activity is opportunistically enriched for returned rows and remains
+        authoritative only until providerActivity.freshUntil. The authenticated
+        owner's Session user-state is included and participates in activityAt.
       operationId: agents.sessionActivitySummaries.list
       security:
       - AuthToken: []
@@ -2082,8 +1491,7 @@ paths:
       - name: cursor
         in: query
         required: false
-        description: Opaque continuation token bound to the authenticated owner and
-          all filters.
+        description: Opaque continuation token bound to the authenticated owner and all filters.
         schema:
           type: string
           minLength: 1
@@ -2212,8 +1620,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/user_states:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List per-user state for agent sessions owned by the authenticated user
       operationId: agents.sessionUserStates.list
       security:
@@ -2242,8 +1649,7 @@ paths:
       - name: session_ids
         in: query
         required: false
-        description: Comma-separated Session ids to resolve in one bounded request.
-          Maximum 100 ids.
+        description: Comma-separated Session ids to resolve in one bounded request. Maximum 100 ids.
         schema:
           type: string
           minLength: 1
@@ -2388,8 +1794,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/user_state:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: Retrieve the authenticated user's state for one agent session
       operationId: agents.sessionUserStates.retrieve
       security:
@@ -2416,8 +1821,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     patch:
-      tags:
-      - ai
+      tags: [ai]
       summary: Update the authenticated user's state for one agent session
       operationId: agents.sessionUserStates.update
       security:
@@ -2487,9 +1891,10 @@ paths:
       tags:
       - ai
       summary: List ordered items for one agent session
-      description: P1 interactive keyset cursor list. Supports kind and status filters.
-        The default sort is sequence ascending; use -sequence to fetch the newest
-        items first. Cursor tokens are opaque and bound to the authenticated scope,
+      description: >-
+        P1 interactive keyset cursor list. Supports kind and status filters. The
+        default sort is sequence ascending; use -sequence to fetch the newest items
+        first. Cursor tokens are opaque and bound to the authenticated scope,
         Session, filters, and sort order.
       operationId: agents.sessionItems.list
       security:
@@ -2529,9 +1934,7 @@ paths:
         description: Stable item sequence order.
         schema:
           type: string
-          enum:
-          - sequence
-          - -sequence
+          enum: [sequence, '-sequence']
           default: sequence
       responses:
         '200':
@@ -2551,11 +1954,13 @@ paths:
       tags:
       - ai
       summary: Synchronize provider Session history for one Session
-      description: Explicitly imports bounded provider Session history into the Agents
-        authority and reports the best-effort outcome. The command never returns an
-        item window; read the persisted window through agents.sessionItems.list and
-        its opaque cursor. The operation rejects provider histories that exceed runtime
-        record or byte budgets instead of returning a silently truncated transcript.
+      description: >-
+        Explicitly imports bounded provider Session history into the Agents
+        authority and reports the best-effort outcome. The command never
+        returns an item window; read the persisted window through
+        agents.sessionItems.list and its opaque cursor. The operation rejects
+        provider histories that exceed runtime record or byte budgets instead
+        of returning a silently truncated transcript.
       operationId: agents.sessionItems.synchronize
       security:
       - AuthToken: []
@@ -2790,8 +2195,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue:
     get:
-      tags:
-      - ai
+      tags: [ai]
       summary: List durable queued Turn inputs for one Session
       operationId: agents.turnInputQueueEntries.list
       security:
@@ -2820,8 +2224,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Persist one user input in the Session Turn queue
       operationId: agents.turnInputQueueEntries.create
       security:
@@ -2850,11 +2253,9 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue/clear:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Remove all non-executing inputs from the Session Turn queue
       operationId: agents.turnInputQueueEntries.clear
       security:
@@ -2882,8 +2283,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue/reorder:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Atomically reorder all non-executing inputs in the Session Turn queue
       operationId: agents.turnInputQueueEntries.reorder
       security:
@@ -2917,8 +2317,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue/claim_next:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Reconcile and lease the FIFO head when the Session has no active Turn
       operationId: agents.turnInputQueueEntries.claimNext
       security:
@@ -2952,8 +2351,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue/{queueEntryId}:
     patch:
-      tags:
-      - ai
+      tags: [ai]
       summary: Update one non-executing queued Turn input
       operationId: agents.turnInputQueueEntries.update
       security:
@@ -2987,8 +2385,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
     delete:
-      tags:
-      - ai
+      tags: [ai]
       summary: Delete one non-executing queued Turn input
       operationId: agents.turnInputQueueEntries.delete
       security:
@@ -3018,8 +2415,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue/{queueEntryId}/fail:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Mark one claimed queue entry failed and pause automatic execution
       operationId: agents.turnInputQueueEntries.fail
       security:
@@ -3054,8 +2450,7 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/sessions/{sessionId}/turn_input_queue/{queueEntryId}/retry:
     post:
-      tags:
-      - ai
+      tags: [ai]
       summary: Reset one failed queued Turn input for an explicit retry
       operationId: agents.turnInputQueueEntries.retry
       security:
@@ -3093,8 +2488,9 @@ paths:
       tags:
       - ai
       summary: List durable interactions for one agent session
-      description: P1 interactive offset list. Supports kind and status filters and
-        uses createdAt descending with the interaction id as a stable tie-breaker.
+      description: >-
+        P1 interactive offset list. Supports kind and status filters and uses
+        createdAt descending with the interaction id as a stable tie-breaker.
       operationId: agents.interactions.list
       security:
       - AuthToken: []
@@ -3738,11 +3134,7 @@ paths:
         required: false
         schema:
           type: string
-          enum:
-          - active
-          - paused
-          - completed
-          - cancelled
+          enum: [active, paused, completed, cancelled]
       - $ref: '#/components/parameters/Cursor'
       - $ref: '#/components/parameters/PageSize'
       responses:
@@ -4021,24 +3413,13 @@ paths:
         required: false
         schema:
           type: string
-          enum:
-          - pending
-          - claimed
-          - running
-          - succeeded
-          - failed
-          - cancelled
-          - reconciling
-          - dead_letter
+          enum: [pending, claimed, running, succeeded, failed, cancelled, reconciling, dead_letter]
       - name: trigger_kind
         in: query
         required: false
         schema:
           type: string
-          enum:
-          - scheduled
-          - manual
-          - business_retry
+          enum: [scheduled, manual, business_retry]
       - $ref: '#/components/parameters/Cursor'
       - $ref: '#/components/parameters/PageSize'
       responses:
@@ -4125,8 +3506,7 @@ paths:
     post:
       tags:
       - ai
-      summary: Cancel a pending Run or request cancellation and reconciliation for
-        an active Run
+      summary: Cancel a pending Run or request cancellation and reconciliation for an active Run
       operationId: agents.taskRuns.cancel
       security:
       - AuthToken: []
@@ -4501,7 +3881,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/model_selections/apply:
     post:
       tags:
@@ -4536,7 +3915,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/model_configurations:
     get:
       tags:
@@ -4558,8 +3936,7 @@ paths:
         required: false
         schema:
           type: string
-        description: Filter profiles by agent engine id (codex, claude-code, gemini,
-          opencode, openclaw, hermes). Defaults to all agent engines.
+        description: Filter profiles by agent engine id (codex, claude-code, gemini, opencode, openclaw, hermes). Defaults to all agent engines.
       responses:
         '200':
           description: Applied model configuration profiles for the scoped engines
@@ -4578,7 +3955,7 @@ paths:
       tags:
       - ai
       summary: Get one applied model configuration profile
-      operationId: agents.modelConfigurations.retrieve
+      operationId: agents.modelConfigurations.get
       security:
       - AuthToken: []
         AccessToken: []
@@ -4601,8 +3978,7 @@ paths:
           type: string
       responses:
         '200':
-          description: The applied model configuration profile (credentials always
-            redacted)
+          description: The applied model configuration profile (credentials always redacted)
           content:
             application/json:
               schema:
@@ -4618,7 +3994,7 @@ paths:
       tags:
       - ai
       summary: Read the provider-native configuration file with credentials masked
-      operationId: agents.modelConfigurations.list
+      operationId: agents.modelConfigurations.configFile
       security:
       - AuthToken: []
         AccessToken: []
@@ -4636,8 +4012,7 @@ paths:
           type: string
       responses:
         '200':
-          description: Provider configuration file content with credential values
-            masked
+          description: Provider configuration file content with credential values masked
           content:
             application/json:
               schema:
@@ -4653,7 +4028,7 @@ paths:
       tags:
       - ai
       summary: Read back the provider-native config state and detect drift
-      operationId: agents.modelConfigurations.retrieve
+      operationId: agents.modelConfigurations.status
       security:
       - AuthToken: []
         AccessToken: []
@@ -4676,8 +4051,7 @@ paths:
           type: string
       responses:
         '200':
-          description: Stored profile plus the provider-native config surface read-back
-            with derived drift state
+          description: Stored profile plus the provider-native config surface read-back with derived drift state
           content:
             application/json:
               schema:
@@ -4692,8 +4066,7 @@ paths:
     post:
       tags:
       - ai
-      summary: Archive a model configuration profile and dematerialize the provider
-        config
+      summary: Archive a model configuration profile and dematerialize the provider config
       operationId: agents.modelConfigurations.archive
       security:
       - AuthToken: []
@@ -4762,7 +4135,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/mcp_servers:
     get:
       tags:
@@ -4820,7 +4192,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/tools/{toolId}/invoke:
     post:
       tags:
@@ -4885,7 +4256,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
 components:
   securitySchemes:
     AuthToken:
@@ -4967,8 +4337,7 @@ components:
         stream.
       schema:
         type: string
-        enum:
-        - kernel-v1
+        enum: [kernel-v1]
     SearchQ:
       name: q
       in: query
@@ -5000,31 +4369,6 @@ components:
         minLength: 1
         maxLength: 128
         pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
-    VersionIdPath:
-      name: versionId
-      in: path
-      required: true
-      schema:
-        type: string
-        minLength: 1
-        pattern: '^version\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-    WebhookIdPath:
-      name: webhookId
-      in: path
-      required: true
-      schema:
-        type: string
-        minLength: 1
-        pattern: '^webhook\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-    ExecutionIdPath:
-      name: executionId
-      in: path
-      required: true
-      schema:
-        type: string
-        minLength: 1
-        maxLength: 128
-        pattern: ^execution\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
     SlotIdPath:
       name: slotId
       in: path
@@ -5060,7 +4404,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     ItemIdPath:
       name: itemId
       in: path
@@ -5069,7 +4413,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     TurnIdPath:
       name: turnId
       in: path
@@ -5078,7 +4422,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     QueueEntryIdPath:
       name: queueEntryId
       in: path
@@ -5087,7 +4431,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     InteractionIdPath:
       name: interactionId
       in: path
@@ -5096,7 +4440,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^interaction\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^interaction\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     CheckpointIdPath:
       name: checkpointId
       in: path
@@ -5105,7 +4449,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^checkpoint\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^checkpoint\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     SessionRuntimeBindingIdPath:
       name: runtimeBindingId
       in: path
@@ -5114,7 +4458,7 @@ components:
         type: string
         minLength: 1
         maxLength: 128
-        pattern: ^runtime_binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        pattern: '^runtime_binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
     BindingIdPath:
       name: bindingId
       in: path
@@ -5126,8 +4470,8 @@ components:
         pattern: ^binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
   schemas:
     MediaToolDirectoryResponse:
-      description: Media tool directory following SdkWorkApiResponse envelope; the
-        directory is returned as a bare array under data.
+      description: Media tool directory following SdkWorkApiResponse envelope;
+        the directory is returned as a bare array under data.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
@@ -5139,7 +4483,8 @@ components:
             items:
               $ref: '#/components/schemas/MediaToolDirectoryEntry'
     MediaToolInvokeApiResponse:
-      description: Media tool invocation result following SdkWorkApiResponse envelope.
+      description: Media tool invocation result following SdkWorkApiResponse
+        envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
@@ -5149,8 +4494,8 @@ components:
           data:
             $ref: '#/components/schemas/MediaToolInvokeResponse'
     ToolAssetListResponse:
-      description: Generated media asset list following SdkWorkApiResponse envelope;
-        the list is returned as a bare array under data.
+      description: Generated media asset list following SdkWorkApiResponse
+        envelope; the list is returned as a bare array under data.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
@@ -5694,28 +5039,28 @@ components:
       type: object
       additionalProperties: false
       required:
-      - id
-      - tenantId
-      - organizationId
-      - agentId
-      - slotId
-      - slotKind
-      - targetModule
-      - targetRef
-      - priority
-      - enabled
-      - policyJson
-      - status
-      - version
-      - createdAt
-      - updatedAt
+        - id
+        - tenantId
+        - organizationId
+        - agentId
+        - slotId
+        - slotKind
+        - targetModule
+        - targetRef
+        - priority
+        - enabled
+        - policyJson
+        - status
+        - version
+        - createdAt
+        - updatedAt
       properties:
         id:
-          $ref: '#/components/schemas/Int64String'
+          $ref: "#/components/schemas/Int64String"
         tenantId:
-          $ref: '#/components/schemas/Int64String'
+          $ref: "#/components/schemas/Int64String"
         organizationId:
-          $ref: '#/components/schemas/Int64String'
+          $ref: "#/components/schemas/Int64String"
         agentId:
           type: string
           minLength: 1
@@ -5727,17 +5072,17 @@ components:
           maxLength: 128
           pattern: ^slot\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
         slotKind:
-          $ref: '#/components/schemas/AgentCompositionSlotKind'
+          $ref: "#/components/schemas/AgentCompositionSlotKind"
         targetModule:
-          $ref: '#/components/schemas/AgentCompositionTargetModule'
+          $ref: "#/components/schemas/AgentCompositionTargetModule"
         targetRef:
           type: string
           minLength: 1
           maxLength: 256
         targetVersionRef:
           type:
-          - string
-          - 'null'
+            - string
+            - "null"
           maxLength: 128
         priority:
           type: integer
@@ -5748,9 +5093,9 @@ components:
         policyJson:
           type: string
         status:
-          $ref: '#/components/schemas/AgentStatus'
+          $ref: "#/components/schemas/AgentStatus"
         version:
-          $ref: '#/components/schemas/Int64String'
+          $ref: "#/components/schemas/Int64String"
         createdAt:
           type: string
           format: date-time
@@ -5759,8 +5104,8 @@ components:
           format: date-time
         deletedAt:
           type:
-          - string
-          - 'null'
+            - string
+            - "null"
           format: date-time
     AgentCompositionSlotResponse:
       description: Single agent composition slot response following SdkWorkApiResponse
@@ -5804,11 +5149,11 @@ components:
       type: object
       additionalProperties: false
       required:
-      - slotId
-      - slotKind
-      - targetModule
-      - targetRef
-      - requestedAt
+        - slotId
+        - slotKind
+        - targetModule
+        - targetRef
+        - requestedAt
       properties:
         slotId:
           type: string
@@ -5816,17 +5161,17 @@ components:
           maxLength: 128
           pattern: ^slot\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
         slotKind:
-          $ref: '#/components/schemas/AgentCompositionSlotKind'
+          $ref: "#/components/schemas/AgentCompositionSlotKind"
         targetModule:
-          $ref: '#/components/schemas/AgentCompositionTargetModule'
+          $ref: "#/components/schemas/AgentCompositionTargetModule"
         targetRef:
           type: string
           minLength: 1
           maxLength: 256
         targetVersionRef:
           type:
-          - string
-          - 'null'
+            - string
+            - "null"
           maxLength: 128
         priority:
           type: integer
@@ -5837,7 +5182,7 @@ components:
           default: true
         policyJson:
           type: string
-          default: '{}'
+          default: "{}"
         requestedAt:
           type: string
           format: date-time
@@ -5845,22 +5190,22 @@ components:
       type: object
       additionalProperties: false
       required:
-      - requestedAt
+        - requestedAt
       properties:
         expectedVersion:
-          $ref: '#/components/schemas/Int64String'
+          $ref: "#/components/schemas/Int64String"
         slotKind:
-          $ref: '#/components/schemas/AgentCompositionSlotKind'
+          $ref: "#/components/schemas/AgentCompositionSlotKind"
         targetModule:
-          $ref: '#/components/schemas/AgentCompositionTargetModule'
+          $ref: "#/components/schemas/AgentCompositionTargetModule"
         targetRef:
           type: string
           minLength: 1
           maxLength: 256
         targetVersionRef:
           type:
-          - string
-          - 'null'
+            - string
+            - "null"
           maxLength: 128
         priority:
           type: integer
@@ -6027,670 +5372,6 @@ components:
         requestedAt:
           type: string
           format: date-time
-    CreateAgentCallRequest:
-      type: object
-      additionalProperties: false
-      required:
-      - executionId
-      - mode
-      - requestedAt
-      properties:
-        executionId:
-          type: string
-          minLength: 1
-          maxLength: 128
-          pattern: ^execution\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
-        mode:
-          type: string
-          enum:
-          - prompt
-          - params
-        prompt:
-          type: string
-          minLength: 1
-          maxLength: 1048576
-        params:
-          type: object
-          additionalProperties: true
-        paramSchema:
-          type: object
-          additionalProperties: true
-        output:
-          $ref: '#/components/schemas/AgentCallOutputSpec'
-        policy:
-          $ref: '#/components/schemas/AgentCallPolicySpec'
-        executionMode:
-          type: string
-          enum:
-          - sync
-          - async
-          default: sync
-          description: >-
-            "sync" executes inside the request and returns the terminal
-            record (201). "async" persists a queued record and returns 202.
-        requestedAt:
-          type: string
-          format: date-time
-    AgentCallOutputSpec:
-      type: object
-      additionalProperties: false
-      properties:
-        format:
-          type: string
-          enum:
-          - json
-          - xml
-          - text
-          default: json
-        schema:
-          type: object
-          additionalProperties: true
-        rootElement:
-          type: string
-          minLength: 1
-          maxLength: 128
-        strict:
-          type: boolean
-          default: true
-    AgentCallPolicySpec:
-      type: object
-      additionalProperties: false
-      properties:
-        timeoutMs:
-          type: integer
-          format: int64
-          minimum: 1
-          maximum: 300000
-          default: 60000
-    AgentCallResponse:
-      description: Structured agent call response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkResourceData'
-            - type: object
-              required:
-              - item
-              properties:
-                item:
-                  $ref: '#/components/schemas/AgentCallRecord'
-    AgentVersionResponse:
-      description: Agent version response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkResourceData'
-            - type: object
-              required:
-              - item
-              properties:
-                item:
-                  $ref: '#/components/schemas/AgentVersionRecord'
-    AgentVersionListResponse:
-      description: Agent version list response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkPageData'
-            - type: object
-              required:
-              - items
-              properties:
-                items:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentVersionRecord'
-    AgentVersionRecord:
-      type: object
-      additionalProperties: false
-      required:
-      - versionId
-      - agentId
-      - versionNumber
-      - manifest
-      - implementationType
-      - createdBy
-      - createdAt
-      properties:
-        versionId:
-          type: string
-          minLength: 1
-        agentId:
-          type: string
-          minLength: 1
-        versionNumber:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        manifest:
-          type: object
-        defaultCodeTaskIntent:
-          type: object
-        implementationProviderId:
-          type: string
-        implementationKind:
-          type: string
-        implementationType:
-          type: string
-        description:
-          type: string
-        createdBy:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        createdAt:
-          type: string
-          format: date-time
-        activatedAt:
-          type: string
-          format: date-time
-    CreateAgentVersionRequest:
-      type: object
-      required:
-      - versionId
-      properties:
-        versionId:
-          type: string
-          minLength: 1
-          pattern: '^version\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-        description:
-          type: string
-          minLength: 1
-    AgentWebhookSubscriptionResponse:
-      description: Webhook subscription response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkResourceData'
-            - type: object
-              required:
-              - item
-              properties:
-                item:
-                  $ref: '#/components/schemas/AgentWebhookSubscription'
-    AgentWebhookSubscriptionListResponse:
-      description: Webhook subscription list response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkPageData'
-            - type: object
-              required:
-              - items
-              properties:
-                items:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentWebhookSubscription'
-    AgentWebhookSubscriptionCreatedResponse:
-      description: Webhook subscription creation response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkResourceData'
-            - type: object
-              required:
-              - item
-              properties:
-                item:
-                  $ref: '#/components/schemas/AgentWebhookSubscriptionCreated'
-    AgentWebhookDeliveryResponse:
-      description: Webhook delivery response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkResourceData'
-            - type: object
-              required:
-              - item
-              properties:
-                item:
-                  $ref: '#/components/schemas/AgentWebhookDelivery'
-    AgentWebhookSubscription:
-      type: object
-      additionalProperties: false
-      required:
-      - webhookId
-      - url
-      - eventTypes
-      - status
-      - createdBy
-      - createdAt
-      - updatedAt
-      properties:
-        webhookId:
-          type: string
-          minLength: 1
-          pattern: '^webhook\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-        url:
-          type: string
-          minLength: 1
-          maxLength: 2048
-          format: uri
-        eventTypes:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/AgentWebhookEventType'
-        status:
-          type: string
-          enum:
-          - active
-          - disabled
-        description:
-          type: string
-          minLength: 1
-        createdBy:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    AgentWebhookSubscriptionCreated:
-      type: object
-      additionalProperties: false
-      required:
-      - webhookId
-      - url
-      - eventTypes
-      - status
-      - secret
-      - createdBy
-      - createdAt
-      - updatedAt
-      properties:
-        webhookId:
-          type: string
-          minLength: 1
-          pattern: '^webhook\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-        url:
-          type: string
-          minLength: 1
-          maxLength: 2048
-          format: uri
-        eventTypes:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/AgentWebhookEventType'
-        status:
-          type: string
-          enum:
-          - active
-          - disabled
-        secret:
-          type: string
-          minLength: 1
-          description: One-time echo of the HMAC signing secret.
-        description:
-          type: string
-          minLength: 1
-        createdBy:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    AgentWebhookDelivery:
-      type: object
-      additionalProperties: false
-      required:
-      - deliveryId
-      - webhookId
-      - eventType
-      - payload
-      - signature
-      - status
-      - createdAt
-      properties:
-        deliveryId:
-          type: string
-          minLength: 1
-          pattern: '^delivery\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-        webhookId:
-          type: string
-          minLength: 1
-          pattern: '^webhook\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-        eventType:
-          $ref: '#/components/schemas/AgentWebhookEventType'
-        payload:
-          type: object
-        signature:
-          type: string
-          minLength: 1
-        status:
-          type: string
-          enum:
-          - queued
-          - succeeded
-          - failed
-        responseCode:
-          type: integer
-          format: int32
-        errorDetail:
-          type: string
-          minLength: 1
-        createdAt:
-          type: string
-          format: date-time
-        completedAt:
-          type: string
-          format: date-time
-    AgentWebhookEventType:
-      type: string
-      enum:
-      - agent_call.completed
-      - agent_call.failed
-      - task_run.completed
-      - task_run.failed
-      - interaction.requested
-    CreateWebhookSubscriptionRequest:
-      type: object
-      additionalProperties: false
-      required:
-      - webhookId
-      - url
-      - eventTypes
-      properties:
-        webhookId:
-          type: string
-          minLength: 1
-          pattern: '^webhook\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
-        url:
-          type: string
-          minLength: 1
-          maxLength: 2048
-          format: uri
-        eventTypes:
-          type: array
-          minItems: 1
-          items:
-            $ref: '#/components/schemas/AgentWebhookEventType'
-        description:
-          type: string
-          minLength: 1
-    AgentUsageSummaryResponse:
-      description: Usage aggregation response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkResourceData'
-            - type: object
-              required:
-              - item
-              properties:
-                item:
-                  $ref: '#/components/schemas/AgentUsageSummary'
-    AgentUsageSummary:
-      type: object
-      additionalProperties: false
-      required:
-      - turnCount
-      - sessionCount
-      - inputTokens
-      - outputTokens
-      - cachedTokens
-      properties:
-        turnCount:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        sessionCount:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        inputTokens:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        outputTokens:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        cachedTokens:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-    AgentUsageRecordListResponse:
-      description: Usage record list response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkPageData'
-            - type: object
-              required:
-              - items
-              properties:
-                items:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentUsageRecord'
-    AgentUsageRecord:
-      type: object
-      additionalProperties: false
-      required:
-      - turnId
-      - sessionId
-      - agentId
-      - ownerUserId
-      - status
-      - inputTokens
-      - outputTokens
-      - cachedTokens
-      - createdAt
-      properties:
-        turnId:
-          type: string
-          minLength: 1
-        sessionId:
-          type: string
-          minLength: 1
-        agentId:
-          type: string
-          minLength: 1
-        ownerUserId:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        status:
-          type: string
-          enum:
-          - requested
-          - running
-          - completed
-          - failed
-          - cancelled
-        modelId:
-          type: string
-        providerId:
-          type: string
-        inputTokens:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        outputTokens:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        cachedTokens:
-          type: string
-          format: int64
-          pattern: '^-?[0-9]+$'
-          x-sdkwork-int64-string: true
-        createdAt:
-          type: string
-          format: date-time
-        completedAt:
-          type: string
-          format: date-time
-    AgentCallListResponse:
-      description: Structured agent call list response following SdkWorkApiResponse envelope.
-      allOf:
-      - $ref: '#/components/schemas/SdkWorkApiResponse'
-      - type: object
-        required:
-        - data
-        properties:
-          data:
-            allOf:
-            - $ref: '#/components/schemas/SdkWorkPageData'
-            - type: object
-              required:
-              - items
-              properties:
-                items:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/AgentCallRecord'
-    AgentCallRecord:
-      type: object
-      additionalProperties: false
-      required:
-      - executionId
-      - agentId
-      - tenantId
-      - status
-      - output
-      - validation
-      - usage
-      - correlation
-      properties:
-        executionId:
-          type: string
-          minLength: 1
-        agentId:
-          type: string
-          minLength: 1
-        tenantId:
-          type: string
-        status:
-          type: string
-          enum:
-          - queued
-          - succeeded
-          - validation_failed
-          - agent_failed
-          - timeout
-          - failed
-        output: {}
-        rawText:
-          type: string
-        agentError:
-          type: string
-        validation:
-          $ref: '#/components/schemas/AgentCallValidation'
-        usage:
-          $ref: '#/components/schemas/AgentCallUsage'
-        correlation:
-          $ref: '#/components/schemas/AgentCallCorrelation'
-    AgentCallValidation:
-      type: object
-      additionalProperties: false
-      required:
-      - valid
-      - errors
-      properties:
-        valid:
-          type: boolean
-        errors:
-          type: array
-          items:
-            type: string
-    AgentCallUsage:
-      type: object
-      additionalProperties: false
-      required:
-      - durationMs
-      - attempts
-      - runtimeMode
-      properties:
-        durationMs:
-          type: integer
-          format: int64
-        attempts:
-          type: integer
-          format: int32
-        runtimeMode:
-          type: string
-    AgentCallCorrelation:
-      type: object
-      additionalProperties: false
-      required:
-      - executionId
-      - agentId
-      - tenantId
-      properties:
-        executionId:
-          type: string
-        agentId:
-          type: string
-        tenantId:
-          type: string
     CreateAgentPromptOptimizationRequest:
       type: object
       additionalProperties: false
@@ -6781,16 +5462,10 @@ components:
           format: date-time
     AgentProjectVisibility:
       type: string
-      enum:
-      - private
-      - organization
-      - shared
+      enum: [private, organization, shared]
     AgentWorkspaceStatus:
       type: string
-      enum:
-      - active
-      - archived
-      - deleted
+      enum: [active, archived, deleted]
     AgentWorkspaceRecord:
       type: object
       additionalProperties: false
@@ -6823,9 +5498,7 @@ components:
           minLength: 1
           maxLength: 255
         description:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         isDefault:
           type: boolean
         status:
@@ -6839,24 +5512,20 @@ components:
           type: string
           format: date-time
         archivedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentWorkspaceResponse:
       description: Single Workspace response following SdkWorkApiResponse envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentWorkspaceRecord'
@@ -6865,15 +5534,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -6890,22 +5557,18 @@ components:
     CreateAgentWorkspaceRequest:
       type: object
       additionalProperties: false
-      required:
-      - name
+      required: [name]
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 255
         description:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
     UpdateAgentWorkspaceRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
+      required: [expectedVersion]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -6914,29 +5577,20 @@ components:
           minLength: 1
           maxLength: 255
         description:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
     AgentWorkspaceMutationRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
+      required: [expectedVersion]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
     AgentProjectStatus:
       type: string
-      enum:
-      - active
-      - archived
-      - deleted
+      enum: [active, archived, deleted]
     AgentProjectDriveAccessMode:
       type: string
-      enum:
-      - disabled
-      - owner_library
-      - explicit_resources
+      enum: [disabled, owner_library, explicit_resources]
     AgentProjectRecord:
       type: object
       additionalProperties: false
@@ -6974,9 +5628,7 @@ components:
           minLength: 1
           maxLength: 255
         description:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         visibility:
           $ref: '#/components/schemas/AgentProjectVisibility'
         status:
@@ -6984,37 +5636,23 @@ components:
         driveAccessMode:
           $ref: '#/components/schemas/AgentProjectDriveAccessMode'
         defaultAgentId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         defaultModelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         importSourceKind:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         importSourceRef:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 512
         driveSpaceId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         driveRootEntryId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         driveLogicalPath:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 1024
         version:
           $ref: '#/components/schemas/Int64String'
@@ -7025,24 +5663,20 @@ components:
           type: string
           format: date-time
         archivedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentProjectResponse:
       description: Single project response following SdkWorkApiResponse envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentProjectRecord'
@@ -7051,15 +5685,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -7068,8 +5700,7 @@ components:
     CreateAgentProjectRequest:
       type: object
       additionalProperties: false
-      required:
-      - name
+      required: [name]
       properties:
         projectId:
           type: string
@@ -7144,21 +5775,15 @@ components:
           minLength: 1
           maxLength: 255
         description:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         visibility:
           $ref: '#/components/schemas/AgentProjectVisibility'
         driveAccessMode:
           $ref: '#/components/schemas/AgentProjectDriveAccessMode'
         defaultAgentId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         defaultModelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
     AgentProjectMutationRequest:
       type: object
       additionalProperties: false
@@ -7207,9 +5832,7 @@ components:
           minLength: 1
           maxLength: 256
         targetVersionRef:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 1
           maxLength: 128
         priority:
@@ -7238,15 +5861,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentProjectCompositionSlotRecord'
@@ -7255,15 +5876,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -7272,11 +5891,7 @@ components:
     CreateAgentProjectCompositionSlotRequest:
       type: object
       additionalProperties: false
-      required:
-      - slotId
-      - slotKind
-      - targetModule
-      - targetRef
+      required: [slotId, slotKind, targetModule, targetRef]
       properties:
         slotId:
           type: string
@@ -7308,8 +5923,7 @@ components:
     UpdateAgentProjectCompositionSlotRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
+      required: [expectedVersion]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -7361,9 +5975,7 @@ components:
           $ref: '#/components/schemas/Int64String'
         resourceType:
           type: string
-          enum:
-          - session
-          - project
+          enum: [session, project]
         resourceId:
           type: string
         pinnedAt:
@@ -7394,33 +6006,28 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentResourceUserStateRecord'
     AgentResourceUserStateListResponse:
-      description: Paginated per-user resource state following SdkWorkApiResponse
-        envelope.
+      description: Paginated per-user resource state following SdkWorkApiResponse envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -7429,8 +6036,7 @@ components:
     UpdateAgentSessionUserStateRequest:
       type: object
       additionalProperties: false
-      description: At least one state mutation field other than expectedVersion is
-        required.
+      description: At least one state mutation field other than expectedVersion is required.
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -7477,9 +6083,7 @@ components:
           $ref: '#/components/schemas/Int64String'
         rating:
           type: string
-          enum:
-          - up
-          - down
+          enum: [up, down]
         reasonCode:
           type: string
           minLength: 1
@@ -7500,38 +6104,32 @@ components:
           type: string
           format: date-time
     AgentItemFeedbackResponse:
-      description: Single assistant-output item feedback following SdkWorkApiResponse
-        envelope.
+      description: Single assistant-output item feedback following SdkWorkApiResponse envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentItemFeedbackRecord'
     AgentItemFeedbackListResponse:
-      description: Paginated assistant-output item feedback following SdkWorkApiResponse
-        envelope.
+      description: Paginated assistant-output item feedback following SdkWorkApiResponse envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -7540,16 +6138,13 @@ components:
     UpdateAgentItemFeedbackRequest:
       type: object
       additionalProperties: false
-      description: Supply rating to create or update feedback, or clearFeedback to
-        remove it.
+      description: Supply rating to create or update feedback, or clearFeedback to remove it.
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
         rating:
           type: string
-          enum:
-          - up
-          - down
+          enum: [up, down]
         clearFeedback:
           type: boolean
           default: false
@@ -7602,10 +6197,10 @@ components:
       properties:
         taskId:
           type: string
-          pattern: ^task\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^task\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         agentId:
           type: string
-          pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         tenantId:
           $ref: '#/components/schemas/Int64String'
         organizationId:
@@ -7614,11 +6209,9 @@ components:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         title:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 512
         prompt:
           type: string
@@ -7626,13 +6219,9 @@ components:
           maxLength: 262144
         scheduleKind:
           type: string
-          enum:
-          - one_time
-          - cron
+          enum: [one_time, cron]
         cronExpression:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 9
           maxLength: 256
         timezone:
@@ -7641,36 +6230,23 @@ components:
           maxLength: 128
           description: IANA time zone identifier used for cron evaluation.
         scheduledAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         startsAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         endsAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         nextFireAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         misfirePolicy:
           type: string
-          enum:
-          - skip
-          - fire_once
-          - catch_up
+          enum: [skip, fire_once, catch_up]
         overlapPolicy:
           type: string
-          enum:
-          - skip
-          - queue
+          enum: [skip, queue]
         maxConcurrentRuns:
           type: integer
           minimum: 1
@@ -7701,17 +6277,11 @@ components:
           maximum: 100
         status:
           type: string
-          enum:
-          - active
-          - paused
-          - completed
-          - cancelled
+          enum: [active, paused, completed, cancelled]
         generation:
           $ref: '#/components/schemas/Int64String'
         externalRef:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         metadataJson:
           type: string
@@ -7725,19 +6295,13 @@ components:
           type: string
           format: date-time
         completedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         pausedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         cancelledAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentTaskResponse:
       allOf:
@@ -7785,13 +6349,11 @@ components:
       - requestedAt
       properties:
         taskId:
-          type:
-          - string
-          - 'null'
-          pattern: ^task\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^task\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         title:
           type: string
           minLength: 1
@@ -7802,13 +6364,9 @@ components:
           maxLength: 262144
         scheduleKind:
           type: string
-          enum:
-          - one_time
-          - cron
+          enum: [one_time, cron]
         cronExpression:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 9
           maxLength: 256
         timezone:
@@ -7816,32 +6374,21 @@ components:
           minLength: 1
           maxLength: 128
         scheduledAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         startsAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         endsAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         misfirePolicy:
           type: string
-          enum:
-          - skip
-          - fire_once
-          - catch_up
+          enum: [skip, fire_once, catch_up]
           default: fire_once
         overlapPolicy:
           type: string
-          enum:
-          - skip
-          - queue
+          enum: [skip, queue]
           default: skip
         maxConcurrentRuns:
           type: integer
@@ -7879,14 +6426,10 @@ components:
           maximum: 100
           default: 0
         externalRef:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         metadataJson:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 65536
         requestedAt:
           type: string
@@ -7912,13 +6455,9 @@ components:
           maxLength: 262144
         scheduleKind:
           type: string
-          enum:
-          - one_time
-          - cron
+          enum: [one_time, cron]
         cronExpression:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 9
           maxLength: 256
         timezone:
@@ -7926,32 +6465,21 @@ components:
           minLength: 1
           maxLength: 128
         scheduledAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         startsAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         endsAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         misfirePolicy:
           type: string
-          enum:
-          - skip
-          - fire_once
-          - catch_up
+          enum: [skip, fire_once, catch_up]
           default: fire_once
         overlapPolicy:
           type: string
-          enum:
-          - skip
-          - queue
+          enum: [skip, queue]
           default: skip
         maxConcurrentRuns:
           type: integer
@@ -7989,14 +6517,10 @@ components:
           maximum: 100
           default: 0
         externalRef:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         metadataJson:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 65536
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -8006,9 +6530,7 @@ components:
     AgentTaskStateChangeRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -8043,15 +6565,7 @@ components:
           type: boolean
     AgentModelProviderId:
       type: string
-      enum:
-      - codex
-      - claude-code
-      - gemini
-      - opencode
-      - openclaw
-      - hermes
-      - mimo-code
-      - rig
+      enum: [codex, claude-code, gemini, opencode, openclaw, hermes, mimo-code, rig]
     ApplyAgentModelConfigurationRequest:
       type: object
       additionalProperties: false
@@ -8067,15 +6581,14 @@ components:
           type: string
           minLength: 1
           maxLength: 160
-          pattern: ^[A-Za-z0-9._-]+$
+          pattern: '^[A-Za-z0-9._-]+$'
         engineId:
           $ref: '#/components/schemas/AgentModelProviderId'
         agentId:
           type: string
           minLength: 1
           maxLength: 128
-          description: Optional configuration subject (user-created agent id). Defaults
-            to the canonical engine agent.
+          description: Optional configuration subject (user-created agent id). Defaults to the canonical engine agent.
         vendorCode:
           type: string
           minLength: 1
@@ -8089,8 +6602,7 @@ components:
           minLength: 1
           maxLength: 16384
           writeOnly: true
-          description: Plaintext credential accepted only for immediate Secret Provider
-            storage.
+          description: Plaintext credential accepted only for immediate Secret Provider storage.
         defaultModelId:
           type: string
           minLength: 1
@@ -8108,25 +6620,21 @@ components:
           type: array
           maxItems: 6
           uniqueItems: true
-          description: Defaults to every supported Agent provider when omitted or
-            empty.
+          description: Defaults to every supported Agent provider when omitted or empty.
           items:
             $ref: '#/components/schemas/AgentModelProviderId'
         inputContextTokens:
-          type: string
+          type: integer
           format: int64
           minimum: 1
-          x-sdkwork-int64-string: true
         outputContextTokens:
-          type: string
+          type: integer
           format: int64
           minimum: 1
-          x-sdkwork-int64-string: true
         toolCallRounds:
-          type: string
+          type: integer
           format: int64
           minimum: 1
-          x-sdkwork-int64-string: true
         supportsMultimodal:
           type: boolean
           default: false
@@ -8173,17 +6681,14 @@ components:
           items:
             $ref: '#/components/schemas/AgentModelProviderId'
         inputContextTokens:
-          type: string
+          type: [integer, 'null']
           format: int64
-          x-sdkwork-int64-string: true
         outputContextTokens:
-          type: string
+          type: [integer, 'null']
           format: int64
-          x-sdkwork-int64-string: true
         toolCallRounds:
-          type: string
+          type: [integer, 'null']
           format: int64
-          x-sdkwork-int64-string: true
         supportsMultimodal:
           type: boolean
         apiKeyConfigured:
@@ -8193,15 +6698,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AppliedAgentModelConfigurationRecord'
@@ -8232,11 +6735,7 @@ components:
           type: string
         status:
           type: string
-          enum:
-          - draft
-          - active
-          - deprecated
-          - archived
+          enum: [draft, active, deprecated, archived]
         baseUrl:
           type: string
           format: uri
@@ -8253,15 +6752,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/ModelConfigurationSummaryRecord'
@@ -8270,16 +6767,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
-              - pageInfo
+              required: [items, pageInfo]
               properties:
                 items:
                   type: array
@@ -8311,46 +6805,25 @@ components:
           type: string
         status:
           type: string
-          enum:
-          - draft
-          - active
-          - deprecated
-          - archived
+          enum: [draft, active, deprecated, archived]
         materialization:
           type: string
-          enum:
-          - unsupported
-          - not_materialized
-          - materialized
-          - diverged
+          enum: [unsupported, not_materialized, materialized, diverged]
           description: Provider-level read-back state of the native config surface.
         derivedState:
           type: string
-          enum:
-          - materialized
-          - diverged
-          - not_materialized
-          - unsupported
-          description: Drift state derived by comparing the native config surface
-            with the stored profile.
+          enum: [materialized, diverged, not_materialized, unsupported]
+          description: Drift state derived by comparing the native config surface with the stored profile.
         expectedBaseUrl:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: uri
         expectedDefaultModel:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         effectiveBaseUrl:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: uri
         effectiveDefaultModel:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         credentialConfigured:
           type: boolean
         issues:
@@ -8362,15 +6835,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/ModelConfigurationStatusRecord'
@@ -8396,15 +6867,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   type: object
@@ -8427,11 +6896,7 @@ components:
                       type: string
                     status:
                       type: string
-                      enum:
-                      - draft
-                      - active
-                      - deprecated
-                      - archived
+                      enum: [draft, active, deprecated, archived]
                     migrationPlanId:
                       type: string
     ApplyAgentModelSelectionRequest:
@@ -8445,7 +6910,7 @@ components:
           type: string
           minLength: 1
           maxLength: 160
-          pattern: ^[A-Za-z0-9._-]+$
+          pattern: '^[A-Za-z0-9._-]+$'
           description: Saved custom configuration identity. Omit for catalog models.
         engineId:
           $ref: '#/components/schemas/AgentModelProviderId'
@@ -8453,8 +6918,7 @@ components:
           type: string
           minLength: 1
           maxLength: 128
-          description: Optional configuration subject (user-created agent id). Defaults
-            to the canonical engine agent.
+          description: Optional configuration subject (user-created agent id). Defaults to the canonical engine agent.
         modelId:
           type: string
           minLength: 1
@@ -8483,8 +6947,7 @@ components:
         modelId:
           type: string
     AgentEngineConfigFileResponse:
-      description: Provider-native configuration file content following the SdkWorkApiResponse
-        envelope.
+      description: Provider-native configuration file content following the SdkWorkApiResponse envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
@@ -8495,8 +6958,7 @@ components:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentEngineConfigFileView'
@@ -8516,11 +6978,7 @@ components:
           type: string
         format:
           type: string
-          enum:
-          - toml
-          - json
-          - env
-          - text
+          enum: [toml, json, env, text]
         content:
           type: string
         exists:
@@ -8530,15 +6988,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AppliedAgentModelSelectionRecord'
@@ -8588,11 +7044,7 @@ components:
           type: string
         engineKind:
           type: string
-          enum:
-          - code
-          - work
-          - simple
-          - unknown
+          enum: [code, work, simple, unknown]
         tier:
           type: string
         agentId:
@@ -8634,30 +7086,16 @@ components:
           type: string
         approvalBehavior:
           type: string
-          enum:
-          - user_review
-          - automatic_review
-          - never
-          - provider_default
+          enum: [user_review, automatic_review, never, provider_default]
         workspaceAccess:
           type: string
-          enum:
-          - read_only
-          - workspace_write
-          - full_access
-          - provider_default
+          enum: [read_only, workspace_write, full_access, provider_default]
         networkAccess:
           type: string
-          enum:
-          - restricted
-          - enabled
-          - provider_default
+          enum: [restricted, enabled, provider_default]
         riskLevel:
           type: string
-          enum:
-          - scoped
-          - elevated
-          - unrestricted
+          enum: [scoped, elevated, unrestricted]
         enabled:
           type: boolean
         disabledReason:
@@ -8687,6 +7125,7 @@ components:
         bindingId:
           type: string
         defaultForEngine:
+          type: boolean
     McpServerMarketplaceListResponse:
       description: MCP server marketplace list response following SdkWorkApiResponse
         envelope.
@@ -8738,34 +7177,16 @@ components:
           format: int32
     AgentSessionKind:
       type: string
-      enum:
-      - assistant
-      - coding
-      - automation
-      - im_dispatch
+      enum: [assistant, coding, automation, im_dispatch]
     AgentSessionEntrySurface:
       type: string
-      enum:
-      - pc
-      - h5
-      - flutter
-      - mini_program
-      - api
-      - im_dispatch
-      - automation
+      enum: [pc, h5, flutter, mini_program, api, im_dispatch, automation]
     AgentSessionStatus:
       type: string
-      enum:
-      - active
-      - idle
-      - closed
-      - archived
+      enum: [active, idle, closed, archived]
     AgentSessionTitleSource:
       type: string
-      enum:
-      - provider
-      - user
-      - system
+      enum: [provider, user, system]
     AgentSessionRecord:
       type: object
       additionalProperties: false
@@ -8794,59 +7215,45 @@ components:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         tenantId:
           $ref: '#/components/schemas/Int64String'
         organizationId:
           $ref: '#/components/schemas/Int64String'
         agentId:
           type: string
-          pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         ownerUserId:
           $ref: '#/components/schemas/Int64String'
         projectId:
-          type:
-          - string
-          - 'null'
-          pattern: ^project\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^project\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         sessionKind:
           $ref: '#/components/schemas/AgentSessionKind'
         entrySurface:
           $ref: '#/components/schemas/AgentSessionEntrySurface'
         sourceModule:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 1
           maxLength: 64
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         sourceContextKind:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 1
           maxLength: 64
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         sourceContextId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 1
           maxLength: 256
         parentSessionId:
-          type:
-          - string
-          - 'null'
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         forkedFromTurnId:
-          type:
-          - string
-          - 'null'
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         title:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 512
         titleSource:
           $ref: '#/components/schemas/AgentSessionTitleSource'
@@ -8861,15 +7268,11 @@ components:
         totalOutputTokens:
           $ref: '#/components/schemas/Int64String'
         idempotencyKey:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 1
           maxLength: 256
         payloadHash:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 1
           maxLength: 128
         createdBy:
@@ -8885,37 +7288,27 @@ components:
           type: string
           format: date-time
         lastItemAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         closedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         archivedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         archivedBy:
           oneOf:
           - $ref: '#/components/schemas/Int64String'
           - type: 'null'
         deletedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         deletedBy:
           oneOf:
           - $ref: '#/components/schemas/Int64String'
           - type: 'null'
         retentionUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     SessionProviderIdentity:
       type: object
@@ -8931,37 +7324,21 @@ components:
       - providerForkedFromSessionId
       properties:
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         providerBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         providerId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         modelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         providerSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         providerSessionTreeId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         providerParentSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         providerForkedFromSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
     SessionActivityFreshness:
       type: object
       additionalProperties: false
@@ -8985,24 +7362,14 @@ components:
           format: date-time
         source:
           type: string
-          enum:
-          - session
-          - turn
-          - interaction
-          - runtime_binding
-          - user_state
+          enum: [session, turn, interaction, runtime_binding, user_state]
         observedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         freshUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
-          description: Expiry of the effective non-terminal evidence when an authoritative
-            lease exists.
+          description: Expiry of the effective non-terminal evidence when an authoritative lease exists.
         sessionVersion:
           $ref: '#/components/schemas/Int64String'
         latestTurnVersion:
@@ -9010,25 +7377,19 @@ components:
           - $ref: '#/components/schemas/Int64String'
           - type: 'null'
         latestInteractionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         latestInteractionVersion:
           oneOf:
           - $ref: '#/components/schemas/Int64String'
           - type: 'null'
-          description: Per-identity version of the latest Interaction, including resolved-state
-            tombstones.
+          description: Per-identity version of the latest Interaction, including resolved-state tombstones.
         latestRuntimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         latestRuntimeBindingVersion:
           oneOf:
           - $ref: '#/components/schemas/Int64String'
           - type: 'null'
-          description: Per-identity version of the latest RuntimeBinding, including
-            deactivation tombstones.
+          description: Per-identity version of the latest RuntimeBinding, including deactivation tombstones.
         pendingInteractionVersion:
           oneOf:
           - $ref: '#/components/schemas/Int64String'
@@ -9056,49 +7417,22 @@ components:
         providerSessionId:
           type: string
         state:
-          type:
-          - string
-          - 'null'
-          enum:
-          - idle
-          - working
-          - waiting
-          - failed
-          - null
+          type: [string, 'null']
+          enum: [idle, working, waiting, failed, null]
         freshness:
           type: string
-          enum:
-          - fresh
-          - stale
-          - unsupported
-          - unavailable
+          enum: [fresh, stale, unsupported, unavailable]
         evidenceKind:
-          type:
-          - string
-          - 'null'
-          enum:
-          - provider_status
-          - provider_event
-          - provider_lock
-          - provider_process
-          - null
+          type: [string, 'null']
+          enum: [provider_status, provider_event, provider_lock, provider_process, null]
         interactionHint:
-          type:
-          - string
-          - 'null'
-          enum:
-          - approval_required
-          - user_input_required
-          - null
+          type: [string, 'null']
+          enum: [approval_required, user_input_required, null]
         observedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         freshUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     SessionPresentationPhase:
       type: string
@@ -9149,8 +7483,7 @@ components:
           oneOf:
           - $ref: '#/components/schemas/AgentSessionRuntimeBindingRecord'
           - type: 'null'
-          description: Latest RuntimeBinding by activity time, including failed or
-            deactivated tombstone state.
+          description: Latest RuntimeBinding by activity time, including failed or deactivated tombstone state.
         userState:
           oneOf:
           - $ref: '#/components/schemas/AgentResourceUserStateRecord'
@@ -9170,16 +7503,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
-              - pageInfo
+              required: [items, pageInfo]
               properties:
                 items:
                   type: array
@@ -9189,10 +7519,7 @@ components:
                   allOf:
                   - $ref: '#/components/schemas/PageInfo'
                   - type: object
-                    required:
-                    - mode
-                    - pageSize
-                    - hasMore
+                    required: [mode, pageSize, hasMore]
                     properties:
                       mode:
                         type: string
@@ -9202,15 +7529,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentSessionRecord'
@@ -9219,15 +7544,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -9236,10 +7559,7 @@ components:
     ProjectSessionSynchronizationIssue:
       type: object
       additionalProperties: false
-      required:
-      - code
-      - count
-      - disposition
+      required: [code, count, disposition]
       properties:
         code:
           type: string
@@ -9257,9 +7577,7 @@ components:
           $ref: '#/components/schemas/Int64String'
         disposition:
           type: string
-          enum:
-          - skipped
-          - failed
+          enum: [skipped, failed]
     ProjectSessionSynchronizationResult:
       type: object
       additionalProperties: false
@@ -9273,16 +7591,14 @@ components:
       properties:
         status:
           type: string
-          enum:
-          - completed
-          - accepted
-          - pending
-          description: completed when the result was served from the refresh cache,
-            accepted when a cold synchronization was enqueued on a background worker,
-            pending when a synchronization is already running.
+          enum: [completed, accepted, pending]
+          description: >-
+            completed when the result was served from the refresh cache,
+            accepted when a cold synchronization was enqueued on a background
+            worker, pending when a synchronization is already running.
         projectId:
           type: string
-          pattern: ^project\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^project\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         synchronizedSessionCount:
           $ref: '#/components/schemas/Int64String'
         skippedSessionCount:
@@ -9299,15 +7615,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/ProjectSessionSynchronizationResult'
@@ -9315,25 +7629,25 @@ components:
       type: object
       additionalProperties: false
       required:
-      - sessionKind
-      - entrySurface
-      - idempotencyKey
-      - payloadHash
-      - requestedAt
+        - sessionKind
+        - entrySurface
+        - idempotencyKey
+        - payloadHash
+        - requestedAt
       dependentRequired:
         sourceModule:
-        - sourceContextKind
-        - sourceContextId
+          - sourceContextKind
+          - sourceContextId
         sourceContextKind:
-        - sourceModule
-        - sourceContextId
+          - sourceModule
+          - sourceContextId
         sourceContextId:
-        - sourceModule
-        - sourceContextKind
+          - sourceModule
+          - sourceContextKind
         parentSessionId:
-        - forkedFromTurnId
+          - forkedFromTurnId
         forkedFromTurnId:
-        - parentSessionId
+          - parentSessionId
       properties:
         agentId:
           type: string
@@ -9342,9 +7656,9 @@ components:
           type: string
           pattern: ^project\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
         sessionKind:
-          $ref: '#/components/schemas/AgentSessionKind'
+          $ref: "#/components/schemas/AgentSessionKind"
         entrySurface:
-          $ref: '#/components/schemas/AgentSessionEntrySurface'
+          $ref: "#/components/schemas/AgentSessionEntrySurface"
         sourceModule:
           type: string
           minLength: 1
@@ -9383,9 +7697,7 @@ components:
     ExecuteAgentTaskRequest:
       type: object
       additionalProperties: false
-      required:
-      - idempotencyKey
-      - requestedAt
+      required: [idempotencyKey, requestedAt]
       properties:
         idempotencyKey:
           type: string
@@ -9399,9 +7711,7 @@ components:
     RetryAgentTaskRunRequest:
       type: object
       additionalProperties: false
-      required:
-      - idempotencyKey
-      - requestedAt
+      required: [idempotencyKey, requestedAt]
       properties:
         idempotencyKey:
           type: string
@@ -9413,8 +7723,7 @@ components:
     CancelAgentTaskRunRequest:
       type: object
       additionalProperties: false
-      required:
-      - requestedAt
+      required: [requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -9453,54 +7762,39 @@ components:
       properties:
         runId:
           type: string
-          pattern: ^run\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^run\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         taskId:
           type: string
-          pattern: ^task\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^task\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         agentId:
           type: string
-          pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         ownerUserId:
           $ref: '#/components/schemas/Int64String'
         triggerKind:
           type: string
-          enum:
-          - scheduled
-          - manual
-          - business_retry
+          enum: [scheduled, manual, business_retry]
         scheduleGeneration:
           $ref: '#/components/schemas/Int64String'
         scheduledFor:
           type: string
           format: date-time
         retryOfRunId:
-          type:
-          - string
-          - 'null'
-          pattern: ^run\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^run\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         priority:
           type: integer
           minimum: -100
           maximum: 100
         status:
           type: string
-          enum:
-          - pending
-          - claimed
-          - running
-          - succeeded
-          - failed
-          - cancelled
-          - reconciling
-          - dead_letter
+          enum: [pending, claimed, running, succeeded, failed, cancelled, reconciling, dead_letter]
         turnId:
-          type:
-          - string
-          - 'null'
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         attemptCount:
           type: integer
           minimum: 0
@@ -9513,19 +7807,13 @@ components:
           type: string
           format: date-time
         timeoutAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         failureClass:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         errorCode:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         version:
           $ref: '#/components/schemas/Int64String'
@@ -9536,24 +7824,16 @@ components:
           type: string
           format: date-time
         claimedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         startedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         finishedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         cancelledAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentTaskRunAttemptRecord:
       type: object
@@ -9573,32 +7853,22 @@ components:
       properties:
         attemptId:
           type: string
-          pattern: ^attempt\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^attempt\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runId:
           type: string
-          pattern: ^run\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^run\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         attemptNo:
           type: integer
           minimum: 1
           maximum: 20
         status:
           type: string
-          enum:
-          - claimed
-          - running
-          - succeeded
-          - failed
-          - lease_expired
-          - cancelled
+          enum: [claimed, running, succeeded, failed, lease_expired, cancelled]
         failureClass:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         errorCode:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         createdAt:
           type: string
@@ -9607,33 +7877,25 @@ components:
           type: string
           format: date-time
         startedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         heartbeatAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         finishedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentTaskRunResponse:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentTaskRunRecord'
@@ -9641,15 +7903,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -9659,15 +7919,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -9676,9 +7934,7 @@ components:
     CloseAgentSessionRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -9700,12 +7956,7 @@ components:
       properties:
         resourceRole:
           type: string
-          enum:
-          - attachment
-          - image
-          - audio
-          - generated_output
-          - artifact
+          enum: [attachment, image, audio, generated_output, artifact]
         driveSpaceId:
           type: string
           minLength: 1
@@ -9715,34 +7966,23 @@ components:
           minLength: 1
           maxLength: 128
         mediaResourceId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         objectBlobId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         resourceHash:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         altText:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 512
         sortOrder:
           type: integer
           minimum: 0
         status:
           type: string
-          enum:
-          - active
-          - unavailable
-          - deleted
+          enum: [active, unavailable, deleted]
         createdBy:
           $ref: '#/components/schemas/Int64String'
         createdAt:
@@ -9752,14 +7992,10 @@ components:
           type: string
           format: date-time
         deletedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         retentionUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentSessionItemKind:
       type: string
@@ -9775,12 +8011,7 @@ components:
       - error_notice
     AgentSessionItemStatus:
       type: string
-      enum:
-      - pending
-      - completed
-      - failed
-      - cancelled
-      - redacted
+      enum: [pending, completed, failed, cancelled, redacted]
     AgentSessionItemRecord:
       type: object
       additionalProperties: false
@@ -9806,16 +8037,14 @@ components:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         itemId:
           type: string
-          pattern: ^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         kind:
           $ref: '#/components/schemas/AgentSessionItemKind'
         content:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 1048576
         contentType:
           type: string
@@ -9831,52 +8060,33 @@ components:
         outputTokens:
           $ref: '#/components/schemas/Int64String'
         modelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         providerId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         toolName:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         toolCallId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         toolArguments:
-          type:
-          - object
-          - 'null'
+          type: [object, 'null']
           additionalProperties: true
         toolResult:
-          type:
-          - object
-          - 'null'
+          type: [object, 'null']
           additionalProperties: true
         providerPayload:
-          description: Full raw provider protocol payload (provider thread item JSON)
-            preserved without loss.
-          type:
-          - object
-          - 'null'
+          description: Full raw provider protocol payload (provider thread item JSON) preserved without loss.
+          type: [object, 'null']
           additionalProperties: true
         parentItemId:
-          type:
-          - string
-          - 'null'
-          pattern: ^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         turnId:
-          type:
-          - string
-          - 'null'
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         driveRefs:
           type: array
           maxItems: 64
@@ -9893,114 +8103,91 @@ components:
           type: string
           format: date-time
         completedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         redactedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         redactedBy:
           oneOf:
           - $ref: '#/components/schemas/Int64String'
           - type: 'null'
         retentionUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentSessionItemResponse:
-      description: Single agent session item response following the SDKWork resource
-        envelope.
+      description: Single agent session item response following the SDKWork resource envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentSessionItemRecord'
     AgentSessionItemListResponse:
-      description: Paginated agent session item response following the SDKWork page
-        envelope.
+      description: Paginated agent session item response following the SDKWork page envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
                   items:
                     $ref: '#/components/schemas/AgentSessionItemRecord'
     AgentSessionItemSynchronizeResponse:
-      description: Provider Session history synchronization outcome following the
+      description: >-
+        Provider Session history synchronization outcome following the
         SDKWork resource envelope.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentSessionItemSynchronizationResult'
     AgentSessionItemSynchronizationResult:
       type: object
       additionalProperties: false
-      required:
-      - status
-      - importedItemCount
-      description: Outcome of the best-effort provider transcript synchronization.
-        `imported` means the provider transcript was loaded and reconciled; the other
-        statuses describe why the synchronization did not run, in which case the persisted
-        item window read through agents.sessionItems.list is authoritative.
+      required: [status, importedItemCount]
+      description: >-
+        Outcome of the best-effort provider transcript synchronization.
+        `imported` means the provider transcript was loaded and reconciled;
+        the other statuses describe why the synchronization did not run, in
+        which case the persisted item window read through
+        agents.sessionItems.list is authoritative.
       properties:
         status:
           type: string
-          enum:
-          - imported
-          - not-provider-session
-          - no-active-binding
-          - engine-unavailable
+          enum: [imported, not-provider-session, no-active-binding, engine-unavailable]
         importedItemCount:
           $ref: '#/components/schemas/Int64String'
     AgentTurnInputQueueDriveRef:
       type: object
       additionalProperties: false
-      required:
-      - resourceRole
-      - driveSpaceId
-      - driveNodeId
+      required: [resourceRole, driveSpaceId, driveNodeId]
       properties:
         resourceRole:
           type: string
-          enum:
-          - attachment
-          - image
-          - audio
+          enum: [attachment, image, audio]
         driveSpaceId:
           type: string
           minLength: 1
@@ -10011,10 +8198,7 @@ components:
           maxLength: 128
     AgentTurnInputQueueStatus:
       type: string
-      enum:
-      - queued
-      - executing
-      - failed
+      enum: [queued, executing, failed]
     AgentTurnInputQueueEntry:
       type: object
       additionalProperties: false
@@ -10040,13 +8224,13 @@ components:
       properties:
         queueEntryId:
           type: string
-          pattern: ^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         agentId:
           type: string
-          pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         content:
           type: string
           minLength: 1
@@ -10078,19 +8262,13 @@ components:
           maxLength: 32000
           description: Agent system prompt injected ahead of the turn history.
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         requestedModelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         accessModeId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         idempotencyKey:
           type: string
@@ -10109,26 +8287,18 @@ components:
         status:
           $ref: '#/components/schemas/AgentTurnInputQueueStatus'
         claimOwner:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         claimExpiresAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         fencingToken:
           $ref: '#/components/schemas/Int64String'
         errorCode:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         errorDetail:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 1024
           description: Sanitized error detail without credentials or provider secrets.
         version:
@@ -10140,26 +8310,19 @@ components:
           type: string
           format: date-time
         claimedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         failedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     CreateAgentTurnInputQueueEntryRequest:
       type: object
       additionalProperties: false
-      required:
-      - content
-      - turnMode
-      - requestedAt
+      required: [content, turnMode, requestedAt]
       properties:
         queueEntryId:
           type: string
-          pattern: ^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         content:
           type: string
           minLength: 1
@@ -10195,19 +8358,13 @@ components:
           maxLength: 32000
           description: Agent system prompt injected ahead of the turn history.
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         requestedModelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         accessModeId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         requestedAt:
           type: string
@@ -10215,11 +8372,7 @@ components:
     UpdateAgentTurnInputQueueEntryRequest:
       type: object
       additionalProperties: false
-      required:
-      - content
-      - turnMode
-      - expectedVersion
-      - requestedAt
+      required: [content, turnMode, expectedVersion, requestedAt]
       properties:
         content:
           type: string
@@ -10256,19 +8409,13 @@ components:
           maxLength: 32000
           description: Agent system prompt injected ahead of the turn history.
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         requestedModelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         accessModeId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -10278,21 +8425,17 @@ components:
     AgentTurnInputQueueReorderEntry:
       type: object
       additionalProperties: false
-      required:
-      - queueEntryId
-      - expectedVersion
+      required: [queueEntryId, expectedVersion]
       properties:
         queueEntryId:
           type: string
-          pattern: ^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^queue-entry\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
     ReorderAgentTurnInputQueueEntriesRequest:
       type: object
       additionalProperties: false
-      required:
-      - orderedEntries
-      - requestedAt
+      required: [orderedEntries, requestedAt]
       properties:
         orderedEntries:
           type: array
@@ -10305,15 +8448,13 @@ components:
     ClaimNextAgentTurnInputQueueEntryRequest:
       type: object
       additionalProperties: false
-      required:
-      - claimOwner
-      - requestedAt
+      required: [claimOwner, requestedAt]
       properties:
         claimOwner:
           type: string
           minLength: 1
           maxLength: 128
-          pattern: ^[a-z][a-z0-9_-]*$
+          pattern: '^[a-z][a-z0-9_-]*$'
         leaseSeconds:
           type: integer
           minimum: 1
@@ -10325,12 +8466,7 @@ components:
     FailAgentTurnInputQueueEntryRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - fencingToken
-      - claimToken
-      - errorCode
-      - requestedAt
+      required: [expectedVersion, fencingToken, claimToken, errorCode, requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -10346,9 +8482,7 @@ components:
           minLength: 1
           maxLength: 128
         errorDetail:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 1024
         requestedAt:
           type: string
@@ -10356,9 +8490,7 @@ components:
     RetryAgentTurnInputQueueEntryRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -10369,15 +8501,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentTurnInputQueueEntry'
@@ -10385,15 +8515,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -10403,14 +8531,12 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             type: object
             additionalProperties: false
-            required:
-            - items
+            required: [items]
             properties:
               items:
                 type: array
@@ -10419,25 +8545,17 @@ components:
     ClaimNextAgentTurnInputQueueEntryResult:
       type: object
       additionalProperties: false
-      required:
-      - outcome
+      required: [outcome]
       properties:
         outcome:
           type: string
-          enum:
-          - claimed
-          - busy
-          - blocked
-          - active_turn
-          - empty
+          enum: [claimed, busy, blocked, active_turn, empty]
         entry:
           oneOf:
           - $ref: '#/components/schemas/AgentTurnInputQueueEntry'
           - type: 'null'
         claimToken:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           minLength: 32
           maxLength: 256
           readOnly: true
@@ -10445,8 +8563,7 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             $ref: '#/components/schemas/ClaimNextAgentTurnInputQueueEntryResult'
@@ -10454,33 +8571,21 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             type: object
             additionalProperties: false
-            required:
-            - clearedCount
+            required: [clearedCount]
             properties:
               clearedCount:
                 $ref: '#/components/schemas/Int64String'
     AgentTurnMode:
       type: string
-      enum:
-      - interactive
-      - background
-      - automation
-      - resume
-      - retry
+      enum: [interactive, background, automation, resume, retry]
     AgentTurnStatus:
       type: string
-      enum:
-      - requested
-      - running
-      - completed
-      - failed
-      - cancelled
+      enum: [requested, running, completed, failed, cancelled]
     AgentTurnRecord:
       type: object
       additionalProperties: false
@@ -10509,28 +8614,24 @@ components:
       properties:
         turnId:
           type: string
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         tenantId:
           $ref: '#/components/schemas/Int64String'
         organizationId:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         agentId:
           type: string
-          pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         ownerUserId:
           $ref: '#/components/schemas/Int64String'
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         clientRequestId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         idempotencyKey:
           type: string
@@ -10542,35 +8643,25 @@ components:
           maxLength: 128
         requestItemId:
           type: string
-          pattern: ^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         responseItemId:
-          type:
-          - string
-          - 'null'
-          pattern: ^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^item\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         turnMode:
           $ref: '#/components/schemas/AgentTurnMode'
         status:
           $ref: '#/components/schemas/AgentTurnStatus'
         requestedModelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         providerBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         modelId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         providerId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         inputTokens:
           $ref: '#/components/schemas/Int64String'
@@ -10579,26 +8670,17 @@ components:
         cachedTokens:
           $ref: '#/components/schemas/Int64String'
         finishReason:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         errorCode:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         errorDetail:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 2048
-          description: Sanitized error detail that never contains credentials or provider
-            secrets.
+          description: Sanitized error detail that never contains credentials or provider secrets.
         traceId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         attemptCount:
           type: integer
@@ -10607,22 +8689,16 @@ components:
           type: integer
           minimum: 1
         nextRetryAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         availableAt:
           type: string
           format: date-time
         leaseOwner:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         leaseExpiresAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         fencingToken:
           $ref: '#/components/schemas/Int64String'
@@ -10635,44 +8711,32 @@ components:
           type: string
           format: date-time
         startedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         completedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         cancelRequestedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         cancelledAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         retentionUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentTurnResponse:
       description: Single durable agent turn response.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentTurnRecord'
@@ -10681,15 +8745,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -10707,7 +8769,7 @@ components:
       properties:
         turnId:
           type: string
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         content:
           type: string
           minLength: 1
@@ -10733,16 +8795,7 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          pattern: ^[a-z][a-z0-9_-]*$
-        wireProtocol:
-          type: string
-          enum:
-          - chat_completions
-          - anthropic_messages
-          - google_content
-          - openai_responses
-          default: chat_completions
-          description: Optional LLM wire protocol for the cloudrouter gateway invocation (chat completions, Anthropic messages, Google content, or OpenAI responses).
+          pattern: '^[a-z][a-z0-9_-]*$'
         idempotencyKey:
           type: string
           minLength: 1
@@ -10761,18 +8814,11 @@ components:
           items:
             type: object
             additionalProperties: false
-            required:
-            - resourceRole
-            - driveSpaceId
-            - driveNodeId
+            required: [resourceRole, driveSpaceId, driveNodeId]
             properties:
               resourceRole:
                 type: string
-                enum:
-                - attachment
-                - image
-                - audio
-                - artifact
+                enum: [attachment, image, audio, artifact]
               driveSpaceId:
                 type: string
                 minLength: 1
@@ -10789,23 +8835,18 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   type: object
                   additionalProperties: false
-                  required:
-                  - session
-                  - turn
-                  - items
+                  required: [session, turn, items]
                   properties:
                     session:
                       $ref: '#/components/schemas/AgentSessionRecord'
@@ -10818,29 +8859,10 @@ components:
     AgentTurnRuntimeEvent:
       type: object
       additionalProperties: false
-      description: Provider-neutral kernel runtime event emitted during one agent
-        turn.
-      required:
-      - eventId
-      - type
-      - version
-      - sequence
-      - occurredAt
-      - source
-      - severity
-      - sessionId
-      - turnId
-      - providerSessionId
-      - taskId
-      - runId
-      - itemId
-      - traceContext
-      - correlationId
-      - causationId
-      - redactionClassification
-      - payloadSchema
-      - payload
-      - replay
+      description: Provider-neutral kernel runtime event emitted during one agent turn.
+      required: [eventId, type, version, sequence, occurredAt, source, severity, sessionId,
+        turnId, providerSessionId, taskId, runId, itemId, traceContext, correlationId,
+        causationId, redactionClassification, payloadSchema, payload, replay]
       properties:
         eventId:
           type: string
@@ -10853,94 +8875,48 @@ components:
           format: int32
           minimum: 0
         occurredAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         source:
           type: string
-          enum:
-          - runtime
-          - manifest
-          - provider
-          - model
-          - tool
-          - context
-          - memory
-          - policy
-          - host
-          - protocol_adapter
-          - kernel_ui
-          - code_kernel
-          - telemetry
-          - unknown
+          enum: [runtime, manifest, provider, model, tool, context, memory, policy,
+            host, protocol_adapter, kernel_ui, code_kernel, telemetry, unknown]
         severity:
           type: string
-          enum:
-          - debug
-          - info
-          - warn
-          - error
+          enum: [debug, info, warn, error]
         sessionId:
           type: string
         turnId:
           type: string
         providerSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         taskId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         runId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         itemId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         traceContext:
-          type:
-          - object
-          - 'null'
+          type: [object, 'null']
           additionalProperties: false
-          required:
-          - traceId
-          - spanId
-          - parentSpanId
+          required: [traceId, spanId, parentSpanId]
           properties:
             traceId:
               type: string
             spanId:
               type: string
             parentSpanId:
-              type:
-              - string
-              - 'null'
+              type: [string, 'null']
         correlationId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         causationId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         redactionClassification:
           type: string
-          enum:
-          - public
-          - internal
-          - tenant_sensitive
-          - personal_data
-          - secret
-          - regulated
-          - unknown
+          enum: [public, internal, tenant_sensitive, personal_data, secret, regulated,
+            unknown]
         payloadSchema:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
         payload:
           type: object
           additionalProperties: true
@@ -10950,15 +8926,11 @@ components:
       type: object
       additionalProperties: false
       description: Typed server-sent event data for one agent turn execution.
-      required:
-      - eventType
+      required: [eventType]
       properties:
         eventType:
           type: string
-          enum:
-          - event
-          - delta
-          - completion
+          enum: [event, delta, completion]
         event:
           $ref: '#/components/schemas/AgentTurnRuntimeEvent'
         index:
@@ -10972,9 +8944,7 @@ components:
     CancelAgentTurnRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -10983,25 +8953,14 @@ components:
           format: date-time
     AgentInteractionKind:
       type: string
-      enum:
-      - approval
-      - user_question
-      - elicitation
-      - setup
+      enum: [approval, user_question, elicitation, setup]
     AgentInteractionStatus:
       type: string
-      enum:
-      - pending
-      - resolved
-      - rejected
-      - expired
-      - cancelled
+      enum: [pending, resolved, rejected, expired, cancelled]
     AgentInteractionOption:
       type: object
       additionalProperties: false
-      required:
-      - value
-      - label
+      required: [value, label]
       properties:
         value:
           type: string
@@ -11014,17 +8973,11 @@ components:
     LegacyAgentInteractionResolution:
       type: object
       additionalProperties: false
-      required:
-      - outcome
+      required: [outcome]
       properties:
         outcome:
           type: string
-          enum:
-          - approved
-          - rejected
-          - answered
-          - expired
-          - cancelled
+          enum: [approved, rejected, answered, expired, cancelled]
         answer:
           type: string
           maxLength: 65536
@@ -11036,62 +8989,29 @@ components:
           maxLength: 2048
     AgentInteractionRequestCategory:
       type: string
-      enum:
-      - approval
-      - user_input
-      - elicitation
-      - setup
+      enum: [approval, user_input, elicitation, setup]
     AgentInteractionRequestKind:
       type: string
-      enum:
-      - command_execution
-      - file_change
-      - permission_profile
-      - question_set
-      - onboarding_question_set
-      - option_picker
-      - context_source_picker
-      - setup_step
-      - mcp_elicitation
+      enum: [command_execution, file_change, permission_profile, question_set, onboarding_question_set, option_picker, context_source_picker, setup_step, mcp_elicitation]
     AgentInteractionAction:
       type: string
-      enum:
-      - accept
-      - accept_for_session
-      - accept_with_exec_policy_amendment
-      - apply_network_policy_amendment
-      - decline
-      - cancel
-      - grant
-      - submit
-      - skip
-      - dismiss
-      - continue
+      enum: [accept, accept_for_session, accept_with_exec_policy_amendment, apply_network_policy_amendment, decline, cancel, grant, submit, skip, dismiss, continue]
     AgentInteractionQuestionOption:
       type: object
       additionalProperties: false
-      required:
-      - label
+      required: [label]
       properties:
         label:
           type: string
           minLength: 1
           maxLength: 512
         description:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 2048
     AgentInteractionQuestion:
       type: object
       additionalProperties: false
-      required:
-      - id
-      - header
-      - prompt
-      - allowOther
-      - secret
-      - options
+      required: [id, header, prompt, allowOther, secret, options]
       properties:
         id:
           type: string
@@ -11121,24 +9041,16 @@ components:
       additionalProperties: true
       properties:
         itemId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         command:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 65536
         cwd:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 4096
         reason:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 2048
         changes:
           type: object
@@ -11156,10 +9068,9 @@ components:
           items:
             $ref: '#/components/schemas/AgentInteractionQuestion'
         autoResolutionMs:
-          type: string
+          type: [integer, 'null']
           format: int64
           minimum: 0
-          x-sdkwork-int64-string: true
         isBlocking:
           type: boolean
         question:
@@ -11173,27 +9084,17 @@ components:
         allowMultiple:
           type: boolean
         submitLabel:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         skipLabel:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         step:
           type: string
-          enum:
-          - role
-          - task
-          - context
+          enum: [role, task, context]
         mode:
           type: string
-          enum:
-          - form
-          - openai/form
-          - url
+          enum: [form, openai/form, url]
         serverName:
           type: string
           maxLength: 512
@@ -11213,87 +9114,27 @@ components:
     AgentInteractionCorrelation:
       type: object
       additionalProperties: false
-      required:
-      - modelRequestId
-      - providerId
-      - providerInteractionId
-      - providerItemId
-      - providerRequestId
-      - providerRequestIdType
-      - providerSessionId
-      - providerToolCallId
-      - providerToolName
-      - providerToolNamespace
-      - providerTurnId
-      - protocolMethod
+      required: [modelRequestId, providerId, providerInteractionId, providerItemId, providerRequestId, providerRequestIdType, providerSessionId, providerToolCallId, providerToolName, providerToolNamespace, providerTurnId, protocolMethod]
       properties:
-        modelRequestId:
-          type: string
-          minLength: 1
-          maxLength: 256
-        providerId:
-          type: string
-          minLength: 1
-          maxLength: 128
-        providerInteractionId:
-          type:
-          - string
-          - 'null'
-          maxLength: 256
-        providerItemId:
-          type:
-          - string
-          - 'null'
-          maxLength: 256
+        modelRequestId: { type: string, minLength: 1, maxLength: 256 }
+        providerId: { type: string, minLength: 1, maxLength: 128 }
+        providerInteractionId: { type: [string, 'null'], maxLength: 256 }
+        providerItemId: { type: [string, 'null'], maxLength: 256 }
         providerRequestId:
           oneOf:
-          - type: string
-            minLength: 1
-            maxLength: 256
-          - type: integer
-            minimum: -9007199254740991
-            maximum: 9007199254740991
-        providerRequestIdType:
-          type: string
-          enum:
-          - string
-          - number
-        providerSessionId:
-          type: string
-          minLength: 1
-          maxLength: 256
-        providerToolCallId:
-          type:
-          - string
-          - 'null'
-          maxLength: 256
-        providerToolName:
-          type:
-          - string
-          - 'null'
-          maxLength: 256
-        providerToolNamespace:
-          type:
-          - string
-          - 'null'
-          maxLength: 256
-        providerTurnId:
-          type: string
-          minLength: 1
-          maxLength: 256
-        protocolMethod:
-          type: string
-          minLength: 1
-          maxLength: 256
+          - { type: string, minLength: 1, maxLength: 256 }
+          - { type: integer, minimum: -9007199254740991, maximum: 9007199254740991 }
+        providerRequestIdType: { type: string, enum: [string, number] }
+        providerSessionId: { type: string, minLength: 1, maxLength: 256 }
+        providerToolCallId: { type: [string, 'null'], maxLength: 256 }
+        providerToolName: { type: [string, 'null'], maxLength: 256 }
+        providerToolNamespace: { type: [string, 'null'], maxLength: 256 }
+        providerTurnId: { type: string, minLength: 1, maxLength: 256 }
+        protocolMethod: { type: string, minLength: 1, maxLength: 256 }
     AgentInteractionRequest:
       type: object
       additionalProperties: false
-      required:
-      - schemaVersion
-      - category
-      - kind
-      - allowedActions
-      - data
+      required: [schemaVersion, category, kind, allowedActions, data]
       properties:
         schemaVersion:
           type: integer
@@ -11316,8 +9157,7 @@ components:
     TypedAgentInteractionResolution:
       type: object
       additionalProperties: false
-      required:
-      - action
+      required: [action]
       properties:
         action:
           $ref: '#/components/schemas/AgentInteractionAction'
@@ -11332,9 +9172,7 @@ components:
           items:
             type: string
         freeformAnswer:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 65536
         selectedSources:
           type: array
@@ -11355,9 +9193,7 @@ components:
           additionalProperties: true
         scope:
           type: string
-          enum:
-          - turn
-          - session
+          enum: [turn, session]
         strictAutoReview:
           type: boolean
         content: {}
@@ -11387,28 +9223,22 @@ components:
       properties:
         interactionId:
           type: string
-          pattern: ^interaction\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^interaction\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         tenantId:
           $ref: '#/components/schemas/Int64String'
         organizationId:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         turnId:
-          type:
-          - string
-          - 'null'
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         providerInteractionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         kind:
           $ref: '#/components/schemas/AgentInteractionKind'
@@ -11432,14 +9262,10 @@ components:
           - $ref: '#/components/schemas/AgentInteractionResolution'
           - type: 'null'
         claimOwner:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         claimExpiresAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         fencingToken:
           $ref: '#/components/schemas/Int64String'
@@ -11452,29 +9278,23 @@ components:
           type: string
           format: date-time
         resolvedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         retentionUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentInteractionResponse:
       description: Single durable agent interaction response.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentInteractionRecord'
@@ -11483,15 +9303,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -11500,23 +9318,17 @@ components:
     CreateAgentInteractionRequest:
       type: object
       additionalProperties: false
-      required:
-      - kind
-      - prompt
-      - requestedAt
+      required: [kind, prompt, requestedAt]
       dependentRequired:
-        providerInteractionId:
-        - runtimeBindingId
-        request:
-        - runtimeBindingId
-        - providerInteractionId
+        providerInteractionId: [runtimeBindingId]
+        request: [runtimeBindingId, providerInteractionId]
       properties:
         interactionId:
           type: string
-          pattern: ^interaction\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^interaction\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         turnId:
           type: string
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runtimeBindingId:
           type: string
           maxLength: 128
@@ -11545,10 +9357,7 @@ components:
     ClaimAgentInteractionRequest:
       type: object
       additionalProperties: false
-      required:
-      - claimOwner
-      - expectedVersion
-      - requestedAt
+      required: [claimOwner, expectedVersion, requestedAt]
       properties:
         claimOwner:
           type: string
@@ -11565,29 +9374,22 @@ components:
           type: string
           format: date-time
     AgentInteractionClaimResponse:
-      description: Claimed interaction with a short-lived credential that must never
-        be logged.
+      description: Claimed interaction with a short-lived credential that must never be logged.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   type: object
                   additionalProperties: false
-                  required:
-                  - interaction
-                  - claimToken
-                  - claimExpiresAt
-                  - fencingToken
+                  required: [interaction, claimToken, claimExpiresAt, fencingToken]
                   properties:
                     interaction:
                       $ref: '#/components/schemas/AgentInteractionRecord'
@@ -11603,12 +9405,7 @@ components:
     ApproveAgentInteractionRequest:
       type: object
       additionalProperties: false
-      required:
-      - approved
-      - claimToken
-      - fencingToken
-      - expectedVersion
-      - requestedAt
+      required: [approved, claimToken, fencingToken, expectedVersion, requestedAt]
       properties:
         approved:
           type: boolean
@@ -11629,13 +9426,7 @@ components:
     AnswerAgentInteractionRequest:
       type: object
       additionalProperties: false
-      required:
-      - answer
-      - rejected
-      - claimToken
-      - fencingToken
-      - expectedVersion
-      - requestedAt
+      required: [answer, rejected, claimToken, fencingToken, expectedVersion, requestedAt]
       properties:
         answer:
           type: string
@@ -11659,12 +9450,7 @@ components:
     ResolveAgentInteractionRequest:
       type: object
       additionalProperties: false
-      required:
-      - resolution
-      - claimToken
-      - fencingToken
-      - expectedVersion
-      - requestedAt
+      required: [resolution, claimToken, fencingToken, expectedVersion, requestedAt]
       properties:
         resolution:
           $ref: '#/components/schemas/TypedAgentInteractionResolution'
@@ -11681,12 +9467,7 @@ components:
           format: date-time
     AgentSessionCheckpointStatus:
       type: string
-      enum:
-      - active
-      - restored
-      - invalidated
-      - expired
-      - deleted
+      enum: [active, restored, invalidated, expired, deleted]
     AgentSessionCheckpointRecord:
       type: object
       additionalProperties: false
@@ -11705,41 +9486,31 @@ components:
       properties:
         checkpointId:
           type: string
-          pattern: ^checkpoint\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^checkpoint\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         tenantId:
           $ref: '#/components/schemas/Int64String'
         organizationId:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         turnId:
-          type:
-          - string
-          - 'null'
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          type: [string, 'null']
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runtimeBindingId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         checkpointKind:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         providerCheckpointRef:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         driveSpaceId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         driveNodeId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 128
         resumable:
           type: boolean
@@ -11756,34 +9527,26 @@ components:
           type: string
           format: date-time
         restoredAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         invalidatedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         retentionUntil:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentSessionCheckpointResponse:
       description: Single resumable agent session checkpoint response.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentSessionCheckpointRecord'
@@ -11792,15 +9555,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -11809,30 +9570,23 @@ components:
     CreateAgentSessionCheckpointRequest:
       type: object
       additionalProperties: false
-      required:
-      - checkpointKind
-      - resumable
-      - requestedAt
+      required: [checkpointKind, resumable, requestedAt]
       oneOf:
-      - required:
-        - runtimeBindingId
-        - providerCheckpointRef
-      - required:
-        - driveSpaceId
-        - driveNodeId
+      - required: [runtimeBindingId, providerCheckpointRef]
+      - required: [driveSpaceId, driveNodeId]
       properties:
         checkpointId:
           type: string
-          pattern: ^checkpoint\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^checkpoint\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         turnId:
           type: string
-          pattern: ^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^turn\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runtimeBindingId:
           type: string
           maxLength: 128
         checkpointKind:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         providerCheckpointRef:
           type: string
           maxLength: 256
@@ -11853,9 +9607,7 @@ components:
     RestoreAgentSessionCheckpointRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         expectedVersion:
           $ref: '#/components/schemas/Int64String'
@@ -11865,9 +9617,7 @@ components:
     InvalidateAgentSessionCheckpointRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         reason:
           type: string
@@ -11879,11 +9629,7 @@ components:
           format: date-time
     AgentSessionRuntimeBindingStatus:
       type: string
-      enum:
-      - active
-      - deactivated
-      - failed
-      - deleted
+      enum: [active, deactivated, failed, deleted]
     AgentSessionRuntimeBindingRecord:
       type: object
       additionalProperties: false
@@ -11905,25 +9651,23 @@ components:
       properties:
         runtimeBindingId:
           type: string
-          pattern: ^runtime_binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^runtime_binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         tenantId:
           $ref: '#/components/schemas/Int64String'
         organizationId:
           $ref: '#/components/schemas/Int64String'
         sessionId:
           type: string
-          pattern: ^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^session\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runtimeLocationId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         hostMode:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,31}$
+          pattern: '^[a-z][a-z0-9_-]{0,31}$'
         transportKind:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         providerBindingId:
           type: string
           minLength: 1
@@ -11934,56 +9678,36 @@ components:
           maxLength: 128
         providerId:
           type: string
-          pattern: ^provider\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^provider\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         providerSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         providerSessionTreeId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         providerParentSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         providerForkedFromSessionId:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         providerTitle:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 512
         providerTitleSource:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 64
         providerPreview:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 4096
         providerCreatedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         providerUpdatedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         providerRecencyAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         providerPinned:
           type: boolean
@@ -11992,14 +9716,10 @@ components:
         providerVisible:
           type: boolean
         providerSortKey:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 512
         providerSource:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           maxLength: 256
         status:
           $ref: '#/components/schemas/AgentSessionRuntimeBindingStatus'
@@ -12014,29 +9734,23 @@ components:
           type: string
           format: date-time
         activatedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
         deactivatedAt:
-          type:
-          - string
-          - 'null'
+          type: [string, 'null']
           format: date-time
     AgentSessionRuntimeBindingResponse:
       description: Single agent session runtime binding response.
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkResourceData'
             - type: object
-              required:
-              - item
+              required: [item]
               properties:
                 item:
                   $ref: '#/components/schemas/AgentSessionRuntimeBindingRecord'
@@ -12045,15 +9759,13 @@ components:
       allOf:
       - $ref: '#/components/schemas/SdkWorkApiResponse'
       - type: object
-        required:
-        - data
+        required: [data]
         properties:
           data:
             allOf:
             - $ref: '#/components/schemas/SdkWorkPageData'
             - type: object
-              required:
-              - items
+              required: [items]
               properties:
                 items:
                   type: array
@@ -12072,16 +9784,16 @@ components:
       properties:
         runtimeBindingId:
           type: string
-          pattern: ^runtime_binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^runtime_binding\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         runtimeLocationId:
           type: string
           maxLength: 256
         hostMode:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,31}$
+          pattern: '^[a-z][a-z0-9_-]{0,31}$'
         transportKind:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         providerBindingId:
           type: string
           minLength: 1
@@ -12092,7 +9804,7 @@ components:
           maxLength: 128
         providerId:
           type: string
-          pattern: ^provider\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^provider\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         providerSessionId:
           type: string
           maxLength: 256
@@ -12111,9 +9823,7 @@ components:
     UpdateAgentSessionRuntimeBindingRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         runtimeLocationId:
           type: string
@@ -12123,10 +9833,10 @@ components:
           default: false
         hostMode:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,31}$
+          pattern: '^[a-z][a-z0-9_-]{0,31}$'
         transportKind:
           type: string
-          pattern: ^[a-z][a-z0-9_-]{0,63}$
+          pattern: '^[a-z][a-z0-9_-]{0,63}$'
         providerBindingId:
           type: string
           maxLength: 128
@@ -12135,7 +9845,7 @@ components:
           maxLength: 128
         providerId:
           type: string
-          pattern: ^provider\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+          pattern: '^provider\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$'
         providerSessionId:
           type: string
           maxLength: 256
@@ -12156,9 +9866,7 @@ components:
     ChangeAgentSessionRuntimeBindingStatusRequest:
       type: object
       additionalProperties: false
-      required:
-      - expectedVersion
-      - requestedAt
+      required: [expectedVersion, requestedAt]
       properties:
         reason:
           type: string
@@ -12168,6 +9876,7 @@ components:
         requestedAt:
           type: string
           format: date-time
+
     MediaToolDirectoryEntry:
       type: object
       required:
@@ -12200,9 +9909,8 @@ components:
           items:
             type: string
         timeoutMs:
-          type: string
+          type: integer
           format: int64
-          x-sdkwork-int64-string: true
         availability:
           type: string
         enabled:
@@ -12288,9 +9996,9 @@ components:
         defaultArguments:
           type: object
         expectedVersion:
-          type: string
+          type: integer
           format: int64
-          x-sdkwork-int64-string: true
+
     FieldError:
       type: object
       additionalProperties: false

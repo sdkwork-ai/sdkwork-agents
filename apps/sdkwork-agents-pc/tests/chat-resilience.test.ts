@@ -59,12 +59,6 @@ function createChatAgentPort(overrides: Partial<ChatAgentPort>): ChatAgentPort {
     createAgent: async (agent) => agent,
     updateAgent: async () => session,
     resolveOrCreateSession: async (_agentId, sessionId) => sessionId,
-    createSession: async (_agentId, title) => ({
-      id: 'session.new',
-      title,
-      updatedAt: new Date().toISOString(),
-      version: '1',
-    }),
     listSessions: async () => [session],
     updateSession: async (_agentId, sessionId) => ({ ...session, id: sessionId }),
     deleteSession: async () => undefined,

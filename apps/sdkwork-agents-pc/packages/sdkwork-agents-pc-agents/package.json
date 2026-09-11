@@ -25,7 +25,6 @@
     }
   },
   "dependencies": {
-    "@sdkwork/agents-pc-chat": "workspace:*",
     "@sdkwork/agents-pc-commons": "workspace:*",
     "@sdkwork/agents-pc-core": "workspace:*",
     "@sdkwork/utils": "workspace:*",

@@ -10,10 +10,6 @@ sdkwork-agent-kernel.workspace = true
 sdkwork-agent-provider-rig.workspace = true
 sdkwork-agents-tool-contract.workspace = true
 cloudrouter-open-sdk.workspace = true
-# Pinned to 0.13 to match the generated cloudrouter-open-sdk crate: its
-# SdkworkError embeds `#[from] reqwest::Error`, so both crates must resolve
-# the same reqwest major for `?` conversions across the boundary to compile.
-reqwest = { version = "0.13", features = ["json", "stream", "blocking"] }
 tokio.workspace = true
 tracing.workspace = true
 serde_json.workspace = true

@@ -34,7 +34,6 @@ sdkwork-agents-tool-file.workspace = true
 sdkwork-agents-tool-intelligence.workspace = true
 sdkwork-agent-kernel.workspace = true
 sdkwork-code-kernel.workspace = true
-rand.workspace = true
 sdkwork-utils-rust.workspace = true
 sdkwork-database-id.workspace = true
 sdkwork-intelligence-prompts-ai-contract.workspace = true

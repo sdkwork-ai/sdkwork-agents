@@ -1,10 +1,6 @@
 import type {
   GenerationRecord,
 } from '@sdkwork/agents-pc-core/sdk/generationsService';
-import {
-  creativeModelCatalogService,
-  STATIC_DEFAULT_MODEL_IDS,
-} from '@sdkwork/agents-pc-commons';
 
 import type { CanvasGroup, CanvasNode, Connection } from '../types';
 
@@ -179,13 +175,12 @@ export class CanvasService {
     return image.url;
   }
 
-  static async generateVideo(prompt: string, onProgress: (p: number, msg: string) => void, model?: string): Promise<string> {
+  static async generateVideo(prompt: string, onProgress: (p: number, msg: string) => void): Promise<string> {
     const generationsService = await loadGenerationsService();
     const command = await generationsService.create({
       modality: 'video',
       operationType: 'text_to_video',
       prompt,
-      model: model ? creativeModelCatalogService.resolveSelection('video', model) : undefined,
     });
     const record = await generationsService.waitForCompletion(command.generation, {
       onStatus(current) {

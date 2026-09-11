@@ -12,9 +12,8 @@ use sdkwork_agent_kernel::{
     ModelStatus, ModelStreamChunk, ModelStreamSink,
 };
 use sdkwork_agents_runtime_facade::{
-    agent_engine_model_request_id, execute_agent_engine_turn,
-    execute_agent_engine_turn_with_stream, execute_agent_engine_turn_with_stream_sink,
-    AgentEngineTurnInput,
+    agent_engine_model_request_id, execute_agent_engine_turn, execute_agent_engine_turn_with_stream,
+    execute_agent_engine_turn_with_stream_sink, AgentEngineTurnInput,
 };
 use sdkwork_utils_rust::string::is_blank;
 use std::collections::HashMap;
@@ -79,10 +78,6 @@ pub struct TurnExecutionInput {
     pub auth_token: Option<String>,
     /// Transient user access token for dual-token cloudrouter routing.
     pub access_token: Option<String>,
-    /// Optional LLM wire protocol override for the cloudrouter gateway
-    /// invocation (`chat_completions` default, `anthropic_messages`,
-    /// `google_content`, `openai_responses`). Transient — never persisted.
-    pub wire_protocol: Option<String>,
 }
 
 /// Output from one durable turn execution.
@@ -169,14 +164,8 @@ pub trait TurnExecutor: Send + Sync {
 }
 
 /// Default managed-agent contract completer used in tests and local deployments.
-/// Maximum wall-clock time for one managed turn execution (30 minutes).
-///
-/// Coding-style turns legitimately stream for many minutes; the prior
-/// 120-second budget truncated them with "turn inference timed out". Stalled
-/// providers are still cut quickly by the HTTP client's read timeout and the
-/// gateway's per-frame idle timeout, so this ceiling only bounds worker
-/// occupancy for otherwise-healthy long turns.
-pub const TURN_EXECUTION_TIMEOUT: Duration = Duration::from_secs(1800);
+/// Maximum wall-clock time for one managed turn execution.
+pub const TURN_EXECUTION_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// Run turn inference with a hard timeout.
 ///
@@ -533,9 +522,7 @@ fn execute_runtime_facade_turn(
         .filter(|value| !is_blank(Some(*value)))
         .unwrap_or("");
     let Some(engine_key) = engine_key_for_binding_id(binding_id) else {
-        return inference_error(
-            "active provider binding is not mapped to a canonical agent engine",
-        );
+        return inference_error("active provider binding is not mapped to a canonical agent engine");
     };
 
     let Some(host) = agent_engine_host_for(input.session.tenant_id, &input.session.agent_id) else {
@@ -966,7 +953,6 @@ mod tests {
             system_prompt: None,
             auth_token: None,
             access_token: None,
-            wire_protocol: None,
         });
         assert!(output.content.contains("Hello"));
         assert!(output.content.contains("Welcome"));
@@ -993,7 +979,6 @@ mod tests {
             system_prompt: None,
             auth_token: None,
             access_token: None,
-            wire_protocol: None,
         });
         assert_eq!(output.runtime_mode, "managed-agent-provider-bound-v1");
         assert!(output.content.contains("canonical agent-engine"));
@@ -1062,7 +1047,6 @@ mod tests {
             system_prompt: None,
             auth_token: None,
             access_token: None,
-            wire_protocol: None,
         });
         assert_eq!(output.content, "kernel reply");
         assert_eq!(output.runtime_mode, "managed-agent-kernel-model-v1");
@@ -1137,8 +1121,7 @@ mod tests {
             if self.cancel_block_ms > 0 {
                 std::thread::sleep(std::time::Duration::from_millis(self.cancel_block_ms));
             }
-            self.cancels
-                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.cancels.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             Ok(TurnCancellationOutput {
                 model_request_id: input.model_request_id.clone(),
                 finish_reason: "cancelled".to_string(),
@@ -1164,7 +1147,6 @@ mod tests {
             system_prompt: None,
             auth_token: None,
             access_token: None,
-            wire_protocol: None,
         }
     }
 
@@ -1185,12 +1167,7 @@ mod tests {
             let handle = tokio::runtime::Handle::current();
             handle
                 .spawn_blocking(move || {
-                    complete_with_timeout(
-                        completer,
-                        &input,
-                        false,
-                        std::time::Duration::from_millis(150),
-                    )
+                    complete_with_timeout(completer, &input, false, std::time::Duration::from_millis(150))
                 })
                 .await
                 .expect("timeout worker")
@@ -1205,10 +1182,7 @@ mod tests {
             output.content
         );
         assert!(
-            output
-                .finish_reason
-                .as_deref()
-                .is_none_or(|reason| reason != "cancelled"),
+            output.finish_reason.as_deref().is_none_or(|reason| reason != "cancelled"),
             "timed-out turn is not a cancellation acknowledgement"
         );
 
@@ -1216,9 +1190,7 @@ mod tests {
         // instead of leaking a process. Give the bounded cancel worker time to
         // land before asserting.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-        while cancels.load(std::sync::atomic::Ordering::SeqCst) == 0
-            && std::time::Instant::now() < deadline
-        {
+        while cancels.load(std::sync::atomic::Ordering::SeqCst) == 0 && std::time::Instant::now() < deadline {
             std::thread::sleep(std::time::Duration::from_millis(20));
         }
         assert_eq!(
@@ -1248,12 +1220,7 @@ mod tests {
             let handle = tokio::runtime::Handle::current();
             handle
                 .spawn_blocking(move || {
-                    complete_with_timeout(
-                        completer,
-                        &input,
-                        false,
-                        std::time::Duration::from_millis(150),
-                    )
+                    complete_with_timeout(completer, &input, false, std::time::Duration::from_millis(150))
                 })
                 .await
                 .expect("timeout worker")

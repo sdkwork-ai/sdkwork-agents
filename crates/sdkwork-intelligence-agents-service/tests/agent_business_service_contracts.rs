@@ -1228,7 +1228,6 @@ fn execute_turn_persists_user_input_and_assistant_output() {
         requested_at: "2026-06-01T05:01:30Z".to_string(),
         prefer_stream: false,
         auth_token: None,
-        wire_protocol: None,
     };
     let result = service
         .execute_turn(turn_command.clone())

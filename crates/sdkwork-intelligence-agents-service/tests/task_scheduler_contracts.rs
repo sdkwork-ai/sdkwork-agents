@@ -68,12 +68,11 @@ fn skip_misfire_still_fires_within_the_grace_window() {
             10,
         ))
         .expect("materialization");
+    assert_eq!(runs.len(), 1, "grace-window Skip occurrence must still fire");
     assert_eq!(
-        runs.len(),
-        1,
-        "grace-window Skip occurrence must still fire"
+        runs[0].scheduled_for.as_str(),
+        "2026-08-01T00:00:00.000Z"
     );
-    assert_eq!(runs[0].scheduled_for.as_str(), "2026-08-01T00:00:00.000Z");
 }
 
 #[test]
@@ -307,7 +306,11 @@ fn execution_timeout_reclaims_run_even_while_the_lease_is_alive() {
     // the lease is extended to 00:08:00, so lease recovery must NOT touch
     // the Run while timeout recovery must.
     repository
-        .heartbeat_task_run(&first.lease, "2026-08-01T00:03:00.000Z", 300)
+        .heartbeat_task_run(
+            &first.lease,
+            "2026-08-01T00:03:00.000Z",
+            300,
+        )
         .expect("heartbeat keeps the lease alive");
 
     assert_eq!(
@@ -374,7 +377,11 @@ fn execution_timeout_dead_letters_run_when_attempts_are_exhausted() {
         .mark_task_run_running(&first.lease, "2026-08-01T00:00:02.000Z")
         .expect("mark running");
     repository
-        .heartbeat_task_run(&first.lease, "2026-08-01T00:03:00.000Z", 300)
+        .heartbeat_task_run(
+            &first.lease,
+            "2026-08-01T00:03:00.000Z",
+            300,
+        )
         .expect("heartbeat keeps the lease alive");
 
     assert_eq!(
@@ -385,11 +392,7 @@ fn execution_timeout_dead_letters_run_when_attempts_are_exhausted() {
     );
 
     let run = repository
-        .get_task_run(
-            first.lease.tenant_id,
-            first.lease.organization_id,
-            &first.run.run_id,
-        )
+        .get_task_run(first.lease.tenant_id, first.lease.organization_id, &first.run.run_id)
         .expect("get Run")
         .expect("Run exists");
     assert_eq!(run.status, AgentTaskRunStatus::DeadLetter);

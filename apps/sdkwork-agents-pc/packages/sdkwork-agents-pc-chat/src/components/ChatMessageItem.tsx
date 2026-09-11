@@ -13,7 +13,6 @@ interface ChatMessageItemProps {
   handleCopy: (text: string, id: string) => void;
   handleFeedback: (id: string, type: 'up' | 'down') => void;
   onOpenArtifact: (lang: string, code: string, mode?: 'preview' | 'code') => void;
-  isStreaming?: boolean;
 }
 
 export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
@@ -22,8 +21,7 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
   feedback,
   handleCopy,
   handleFeedback,
-  onOpenArtifact,
-  isStreaming = false,
+  onOpenArtifact
 }) => {
   return (
     <div
@@ -88,7 +86,6 @@ export const ChatMessageItem: React.FC<ChatMessageItemProps> = ({
             handleCopy={handleCopy}
             handleFeedback={handleFeedback}
             onOpenArtifact={onOpenArtifact}
-            isStreaming={isStreaming}
           />
         )}
       </div>

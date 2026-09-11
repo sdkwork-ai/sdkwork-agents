@@ -52,9 +52,8 @@ Use dynamic progressive loading:
 2. Read `sdkwork.app.config.json` only when app behavior, runtime config, SDK wiring, release, packaging, or app-owned capabilities are touched.
 3. Read local `specs/README.md` and `specs/component.spec.json` only when the task touches that local contract.
 4. Read `../sdkwork-kernel/specs/README.md` when agent kernel SPI boundaries are touched.
-5. Read `specs/AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md` when appstore consumer integration or the generated `sdkwork-agents-app-sdk` surface is touched.
-6. Read `../sdkwork-specs/README.md`, then only the task-specific root specs.
-7. Inspect implementation files after the dictionary and relevant specs are clear.
+5. Read `../sdkwork-specs/README.md`, then only the task-specific root specs.
+6. Inspect implementation files after the dictionary and relevant specs are clear.
 
 Do not load the whole repository or every root spec before identifying the task surface.
 
@@ -68,7 +67,6 @@ Do not load the whole repository or every root spec before identifying the task 
 - Database changes: `../sdkwork-specs/DATABASE_SPEC.md`, `../sdkwork-specs/DATABASE_FRAMEWORK_SPEC.md`.
 - File upload: `../sdkwork-specs/DRIVE_SPEC.md` — must use sdkwork-drive Drive Uploader.
 - Runtime/deployment/release: `../sdkwork-specs/DEPLOYMENT_SPEC.md`, `../sdkwork-specs/GITHUB_WORKFLOW_SPEC.md`.
-- Appstore consumer integration: `specs/AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md`, `../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md`.
 
 Language-specific specs are on-demand; do not load Rust, Java, TypeScript, and frontend specs for unrelated tasks.
 
@@ -108,221 +106,13 @@ pnpm db:validate
 
 Do not rely on memory when a relevant SDKWork spec exists. Do not replace generated SDK calls with raw HTTP. Stop when kernel ownership, API authority, or SDK family boundaries are ambiguous.
 
-`sdkwork-appstore` consumes Agents only through `@sdkwork/agents-app-sdk`; never add a reverse `sdkwork-agents -> sdkwork-appstore` dependency, never read or write appstore tables, and treat appstore storefront catalog surfaces (including its expert page) as appstore-owned presentation, not Agents contracts. See `specs/AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md`.
-
 ## Task-Specific Standards
 
-SDK consumer work loads `../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md` and runs `check-app-sdk-consumer-imports.mjs`. API work loads `../sdkwork-specs/API_SPEC.md` and its operation/envelope validators. List/search work loads `../sdkwork-specs/PAGINATION_SPEC.md` and runs `check-pagination.mjs`. Source configuration work loads `../sdkwork-specs/SOURCE_CONFIG_SPEC.md` and runs `check-source-config-standard.mjs`. Appstore consumer boundary work loads `specs/AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md` and its cross-repo verification commands. Link these authorities instead of copying their normative bodies into `AGENTS.md`.
+SDK consumer work loads `../sdkwork-specs/APP_SDK_INTEGRATION_SPEC.md` and runs `check-app-sdk-consumer-imports.mjs`. API work loads `../sdkwork-specs/API_SPEC.md` and its operation/envelope validators. List/search work loads `../sdkwork-specs/PAGINATION_SPEC.md` and runs `check-pagination.mjs`. Source configuration work loads `../sdkwork-specs/SOURCE_CONFIG_SPEC.md` and runs `check-source-config-standard.mjs`. Link these authorities instead of copying their normative bodies into `AGENTS.md`.
 
 ## Human Review Rules
 
 Human review is required for breaking public API changes, schema migrations, security exceptions, kernel dependency boundary changes, and generated SDK ownership changes.
-
-<!-- SDKWORK-NAMING-STANDARD: v1 -->
-## Rust Naming And Dependency Declaration
-
-Authority: `../sdkwork-specs/NAMING_SPEC.md` section 3.1 and section 3.2.
-
-Two identifier planes exist in every Rust crate and they MUST NOT be mixed: the package plane
-(Cargo, filesystem, lock file) uses kebab-case, and the crate plane (lib target, modules, source
-imports) uses snake_case.
-
-- `[package].name`, the crate directory, `[features]` keys, and `[[bin]].name` use kebab-case.
-- `[lib].name`, module files, module directories, and Rust imports use snake_case.
-- A crate whose `[package].name` contains a hyphen SHOULD declare `[lib].name` explicitly
-  (default: package name with every `-` replaced by `_`). A shorter lib name is allowed only
-  when declared explicitly and used consistently by every consumer.
-- Cargo dependency keys, `[workspace.dependencies]` keys, and `Cargo.lock` entries use the
-  dependency package name. Use `package = "..."` when an alias is required.
-- Every external crate referenced by `src/` MUST be declared in that crate's `[dependencies]`.
-  Test-only crates belong in `[dev-dependencies]`; `build.rs` crates belong in
-  `[build-dependencies]`.
-- Never delete a dependency line, and never demote one from `[dependencies]` to
-  `[dev-dependencies]`, while `src/` still imports it. Verify manifest cleanups with the
-  command below before committing them.
-- Regenerate and commit `Cargo.lock` in the same change as any dependency table edit.
-
-Verification:
-
-```bash
-node ../sdkwork-specs/tools/check-rust-crate-naming-standard.mjs --root .
-```
-<!-- /SDKWORK-NAMING-STANDARD: v1 -->
-
-<!-- SDKWORK-RUST-CODE-STANDARD: v1 -->
-## Rust Code Standard
-
-Authority: `../sdkwork-specs/RUST_CODE_SPEC.md` (v2, industry-best baseline); package/crate
-naming and dependency declaration are normative in `../sdkwork-specs/NAMING_SPEC.md` section 3.1
-and 3.2.
-
-- Crates are responsibility-shaped: service, repository-sqlx, routes, service-host, native-host,
-  worker, assembly, gateway. No generic `core`/`common`/`backend`/`runtime` suffixes.
-- Errors are typed enums (`thiserror`) implementing `std::error::Error` with a `source` chain.
-  `anyhow` only at binary/CLI/test boundaries, never in lib `[dependencies]`.
-- No `unsafe` without a `// SAFETY:` comment; crates default to `unsafe_code = "forbid"`.
-  No `unwrap`/`expect`/`panic!`/`todo!`/`dbg!` in library code reachable from public API.
-- No lock guard held across `.await`; every external await has a timeout; spawned tasks are
-  awaited/detached with a documented owner; retries are bounded, jittered, and idempotent.
-- Public API is minimal, documented, `#[must_use]` where applicable, and semver-clean. Leaking
-  framework types (`sqlx::Row`, axum extractors) through public signatures is forbidden.
-- Workspace root declares `[workspace.package]` (edition, rust-version) and `[workspace.lints]`
-  (RUST_CODE_SPEC.md section 13 baseline); every member inherits both with
-  `edition.workspace = true` and `[lints] workspace = true`.
-
-Verification:
-
-```bash
-node ../sdkwork-specs/tools/check-rust-crate-naming-standard.mjs --root .
-node ../sdkwork-specs/tools/check-rust-manifest-standard.mjs --root .
-# when service/repository/route/gateway dependencies change:
-node ../sdkwork-specs/tools/check-rust-backend-composition.mjs --root .
-```
-<!-- /SDKWORK-RUST-CODE-STANDARD: v1 -->
-
-<!-- SDKWORK-TYPESCRIPT-CODE-STANDARD: v1 -->
-## TypeScript Code Standard
-
-Authority: `../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md` (v2, industry-best baseline).
-
-- `tsconfig` runs `strict: true` and the strict family; public APIs are typed and `any`-free.
-  `import type` is required for type-only imports (`verbatimModuleSyntax`).
-- Errors are typed at package/service boundaries; no empty catches, no swallowed promise
-  rejections, no bare `throw new Error('...')` for business failures.
-- Async: every promise is settled; external awaits have timeouts; `AbortSignal` accepted for
-  cancellable work; bounded concurrency; no unbounded `Promise.all`.
-- Public API is minimal, JSDoc-documented, `@deprecated` where applicable, and semver-clean.
-- Discriminated unions model closed variant sets; no `as`/`@ts-ignore` bypasses without a guard.
-- Node/build runners verify build-critical sources and self-heal from git (CODE_STYLE_SPEC §7);
-  `pnpm clean` never deletes git-tracked build-critical files.
-
-Verification:
-
-```bash
-pnpm typecheck && pnpm test && pnpm lint
-node ../sdkwork-specs/tools/check-application-layering.mjs --root .
-```
-<!-- /SDKWORK-TYPESCRIPT-CODE-STANDARD: v1 -->
-
-<!-- SDKWORK-DART-CODE-STANDARD: v1 -->
-## Dart Code Standard
-
-Authority: `../sdkwork-specs/DART_CODE_SPEC.md` (v1); Flutter root/UI rules follow
-`../sdkwork-specs/FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md` and `../sdkwork-specs/APP_FLUTTER_UI_SPEC.md`.
-
-- Sound null safety; `lints`/`flutter_lints` baseline; `dart analyze` and `dart format` clean.
-- `lib/<package>.dart` barrel exports only public API; no `src/` imports across packages.
-- Errors are typed exceptions or results; no bare `Exception('...')`, swallowed catches, or
-  unhandled futures (`unawaited` only with a documented reason).
-- `build()` is pure (no IO/network/timers); `const` constructors where possible; stable list
-  keys; controllers/subscriptions disposed.
-- Null safety discipline: no `!` assertions or `as` casts in public API paths; sealed classes
-  for closed variant sets.
-- External awaits have timeouts; blocking work moves to `compute`/isolates; no UI-thread blocking.
-
-Verification:
-
-```bash
-dart analyze && dart format --output=none --set-exit-if-changed
-flutter test   # or: dart test for pure Dart packages
-node ../sdkwork-specs/tools/check-application-layering.mjs --root .
-```
-<!-- /SDKWORK-DART-CODE-STANDARD: v1 -->
-
-<!-- SDKWORK-FRONTEND-CODE-STANDARD: v1 -->
-## Frontend Code Standard
-
-Authority: `../sdkwork-specs/FRONTEND_CODE_SPEC.md` (v2); language rules follow
-`../sdkwork-specs/TYPESCRIPT_CODE_SPEC.md` (React/TS) or `../sdkwork-specs/DART_CODE_SPEC.md` (Flutter).
-
-- UI -> service -> injected SDK flow is preserved; components never construct SDK clients or
-  assemble raw HTTP/auth headers.
-- React: hooks rules clean (`react-hooks`), `useEffect` with full deps and cleanup, stable
-  list keys, error boundaries at route/page level, derived state during render (not in effects).
-- State: server state behind services/query layer; client state local or minimal typed store;
-  no duplication of server state in client stores.
-- Accessibility: accessible names, keyboard behavior, visible focus, color is never the only
-  signal; error states announced.
-- i18n for all user-facing copy in reusable/user-facing packages (I18N_SPEC §6.1).
-- PC/H5 `outDir` uses `dist/{standalone,cloud}/{dev,test,staging,prod}`.
-
-Verification:
-
-```bash
-pnpm typecheck && pnpm test && pnpm lint
-node ../sdkwork-specs/tools/check-application-layering.mjs --root .
-node ../sdkwork-specs/tools/check-browser-dist-layout.mjs --root .   # PC/H5 apps
-```
-<!-- /SDKWORK-FRONTEND-CODE-STANDARD: v1 -->
-
-<!-- SDKWORK-PNPM-WORKSPACE-STANDARD: v1 -->
-## pnpm Workspace Dependency And Package Import
-
-Authority: `../sdkwork-specs/PNPM_WORKSPACE_DEPENDENCY_SPEC.md` (companion to
-`../sdkwork-specs/DEPENDENCY_MANAGEMENT_SPEC.md`).
-
-Sibling SDKWork repositories are consumed through a dual-track model that MUST stay consistent:
-
-- **Local development** (`pnpm dev`, `pnpm build`): pnpm workspace protocol. Each sibling
-  package is declared ONCE in this repository root `pnpm-workspace.yaml` `packages:` as a
-  `../sdkwork-*` relative path, and consumed with `workspace:*` in `package.json`. Never use
-  `file:`/`link:`/git-URL specifiers for SDKWork sibling packages in any environment.
-- **CI / release packaging**: git-repository dependency checkout. Every sibling referenced by the
-  local workspace MUST have a matching `dependencies[]` entry in `sdkwork.workflow.json` so CI
-  clones the sibling into the same `../sdkwork-*` relative layout (`GITHUB_WORKFLOW_SPEC.md`).
-  `package.json` is never rewritten for CI.
-
-Import rules for sibling SDKWork packages:
-
-- Import by package name only: `import { X } from "@sdkwork/package-name"`. The specifier MUST
-  equal the target package's `package.json` `name` exactly - no shortening, renaming, or alias.
-- Forbidden: relative imports that cross a package boundary into another SDKWork repository or
-  another workspace package's `src/` (for example `import ... from "../../sdkwork-appbase/.../src/..."`).
-- Consume only the public `exports` surface of a package; never deep-import sibling `src/` internals.
-- Every non-relative import in a workspace member MUST resolve to that member's own
-  `dependencies`/`devDependencies`/`peerDependencies` (import closure).
-- Vite aliases MUST NOT rename or redirect `@sdkwork/*` packages, MUST NOT be added to make a
-  resolution error pass, and are allowed only for documented bootstrap/SDK-generation entrypoints.
-- Fix a resolution failure by correcting the workspace declaration or the package `exports`,
-  not by adding an alias.
-
-Verification:
-
-```bash
-node ../sdkwork-specs/tools/verify-repo.mjs --root .
-node ../sdkwork-specs/tools/check-workspace-member-protocol.mjs --root .
-node ../sdkwork-specs/tools/check-dependency-list-completeness.mjs --target <repo-name>
-```
-<!-- /SDKWORK-PNPM-WORKSPACE-STANDARD: v1 -->
-
-<!-- SDKWORK-SDK-GENERATION-STANDARD: v1 -->
-## Generated SDK Output Is Generator-Owned
-
-Authority: `../sdkwork-specs/SDK_SPEC.md` and `../sdkwork-specs/SDK_WORKSPACE_GENERATION_SPEC.md`.
-
-Everything generated under `sdks/` — `generated/server-openapi/` trees, generated language
-workspaces, `dist/` build output, generated `sdkwork-sdk.json`, generated
-`.sdkwork/sdkwork-generator-*` reports, and standardizer-synced OpenAPI snapshots — is produced by
-the canonical SDK generator `../sdkwork-sdk-generator/bin/sdkgen.js` (`@sdkwork/sdk-generator`).
-
-- Do not hand-edit generated SDK files, including type definitions, dist bundles, and generated
-  package metadata. Manual edits are overwritten by the next generation run and break
-  reproducibility and contract audits.
-- When generated or compiled SDK output does not meet a contract or standard, fix the upstream
-  source — authored API contract, route manifest, OpenAPI authority, derived `*.sdkgen.*` input,
-  generator profile, or `custom/` runtime build scripts — then regenerate through the standard
-  generation command. Do not patch generated output in place.
-- Remove stale generated files by re-running the family generation command, which owns cleanup of
-  disappeared routes and models; do not hand-prune generated trees.
-- The only approved handwritten surfaces are `custom/` roots inside generated workspaces and
-  authored `composed/` facades outside `generated/server-openapi`.
-
-Verification:
-
-```bash
-node ../sdkwork-specs/tools/sync-agent-sdk-generation-standard.mjs --root . --check
-```
-<!-- /SDKWORK-SDK-GENERATION-STANDARD: v1 -->
 
 
 ## Deployment Standard (bin/)
@@ -340,3 +130,49 @@ canonical repository command fail fast with guidance).
 - Authoritative specs: `MODULE_BIN_SPEC.md`, `DOCKER_SPEC.md`,
   `DEPLOYMENT_SPEC.md`, `OPERATIONS_SPEC.md`.
 <!-- /SDKWORK-DEPLOYMENT-STANDARD: scaffolded -->
+
+<!-- SDKWORK-DESTRUCTIVE-OPERATION-STANDARD: v1 -->
+## Destructive Operation Safety
+
+Authority: `../sdkwork-specs/DESTRUCTIVE_OPERATION_SPEC.md`.
+
+Deletion must be explicit, enumerated, and reviewable. Deleting by pattern instead of by named
+path is forbidden. Wildcards are for read-only commands only.
+
+- `git rm -r`, `git rm` over a directory or pattern, and `git clean -f`/`-fd`/`-fdx` are
+  FORBIDDEN. A recursive `git rm` stages many deletions in one index transaction; if the process
+  is interrupted (SIGTERM, timeout, sandbox kill, crash) entries are already gone from disk while
+  the index is only half-written, which is silent non-atomic mass data loss.
+- Delete tracked files with `rm <exact/path>` on each named path, let `git status --short`
+  record the `D` entries, then stage only the enumerated paths. Commit the deletion separately
+  from functional changes.
+- Shell and script deletion by wildcard is FORBIDDEN: `rm -rf`/`rm -r`/`rm -f` with
+  `*`/`**`/`?`/`[...]`/brace expansion, `find ... -delete`, `find ... -exec rm`,
+  `find ... | xargs rm`, `for f in *; do rm ...`, `del /S /Q`, `rd /S /Q`,
+  `Remove-Item -Recurse -Force` on a glob, `shutil.rmtree`, `fs.rm(dir, { recursive: true })`,
+  and `rimraf` over a glob.
+- A deletion MUST NOT be combined in one shell invocation with a build, install, network, or
+  publish step, and MUST NOT derive its targets from an unvalidated argument, environment
+  variable, or configuration value.
+- Permitted narrow deletion: `rm <exact/path>`; a short literal path list owned by the tool that
+  declares it; the module's own generated artifacts through its owning tool
+  (`pnpm clean`, `cargo clean`) per `CODE_STYLE_SPEC.md` §7; and
+  `git restore --worktree --source=HEAD -- <exact paths>`.
+- Required sequence before any deletion: enumerate exact paths; confirm every path resolves inside
+  the active repository or module root; classify tracked/generated/cached/unknown; prefer `rm`
+  plus tracked `git status`; delete in batches of 20 or fewer with a status check between
+  batches; report the removed paths and the authorizing decision.
+- Request explicit human confirmation before deleting any git-tracked path, any directory tree,
+  any path resolving outside the active repository root, or more than 20 paths.
+- Recovery after an accidental mass deletion: clear a stale `.git/index.lock`, write the path
+  list to a file INSIDE the repository (never `/tmp` on Windows, where the Git Bash path space
+  and the native tool path space disagree), and run a single
+  `git restore --worktree --pathspec-from-file=<repo-relative-list>`. Never loop one
+  version-control call per path; the same termination cause interrupts the loop part-way.
+
+Verification (from the repository root):
+
+```bash
+node ../sdkwork-specs/tools/sync-agent-destructive-operation-standard.mjs --root . --check
+```
+<!-- /SDKWORK-DESTRUCTIVE-OPERATION-STANDARD: v1 -->

@@ -4905,7 +4905,9 @@ async fn app_session_should_support_flat_create_rename_project_move_filter_and_d
 
     let listed = get_json(
         &app,
-        &format!("/app/v3/api/ai/agents/{agent_id}/sessions?project_id={project_id}&page_size=20"),
+        &format!(
+            "/app/v3/api/ai/agents/{agent_id}/sessions?project_id={project_id}&page_size=20"
+        ),
         StatusCode::OK,
     )
     .await;
@@ -5278,7 +5280,7 @@ async fn app_turn_stream_should_return_problem_detail_when_execution_fails_befor
         .as_str()
         .expect("problem detail should be a string");
     assert!(
-        detail.contains("provider unavailable before first stream frame"),
+        detail.contains("temporarily unavailable"),
         "unexpected problem: {problem}"
     );
 }

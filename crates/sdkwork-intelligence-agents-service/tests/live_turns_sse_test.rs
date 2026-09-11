@@ -183,7 +183,6 @@ fn run_live_turns_flow(config: LiveProviderConfig) {
         requested_at: "2026-08-01T00:01:30Z".to_string(),
         prefer_stream: true,
         auth_token: None,
-        wire_protocol: None,
     };
     let result = service
         .execute_turn_with_stream_sink(turn_command.clone(), Arc::new(sink.clone()))

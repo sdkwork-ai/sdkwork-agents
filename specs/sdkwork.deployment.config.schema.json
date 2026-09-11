@@ -11,18 +11,17 @@
     "application": { "const": "sdkwork-agents" },
     "defaultProfile": {
       "type": "string",
-      "pattern": "^(standalone|cloud)\\.(development|test|staging|production|demo)$"
+      "pattern": "^(standalone|cloud)\\.(development|test|staging|production)$"
     },
     "environments": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["development", "test", "staging", "production", "demo"],
+      "required": ["development", "test", "staging", "production"],
       "properties": {
         "development": { "$ref": "#/$defs/environment" },
         "test": { "$ref": "#/$defs/environment" },
         "staging": { "$ref": "#/$defs/environment" },
-        "production": { "$ref": "#/$defs/environment" },
-        "demo": { "$ref": "#/$defs/environment" }
+        "production": { "$ref": "#/$defs/environment" }
       }
     },
     "profiles": {
@@ -36,9 +35,7 @@
         "cloud.development",
         "cloud.test",
         "cloud.staging",
-        "cloud.production",
-        "standalone.demo",
-        "cloud.demo"
+        "cloud.production"
       ],
       "properties": {
         "standalone.development": { "$ref": "#/$defs/profile" },
@@ -48,9 +45,7 @@
         "cloud.development": { "$ref": "#/$defs/profile" },
         "cloud.test": { "$ref": "#/$defs/profile" },
         "cloud.staging": { "$ref": "#/$defs/profile" },
-        "cloud.production": { "$ref": "#/$defs/profile" },
-        "standalone.demo": { "$ref": "#/$defs/profile" },
-        "cloud.demo": { "$ref": "#/$defs/profile" }
+        "cloud.production": { "$ref": "#/$defs/profile" }
       }
     }
   },
@@ -75,7 +70,7 @@
       "properties": {
         "config": {
           "type": "string",
-          "pattern": "^topology/(standalone|cloud)\\.(development|test|staging|production|demo)\\.env$"
+          "pattern": "^topology/(standalone|cloud)\\.(development|test|staging|production)\\.env$"
         }
       }
     }
