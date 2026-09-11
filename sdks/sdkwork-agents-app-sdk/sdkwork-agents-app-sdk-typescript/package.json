@@ -1,6 +1,6 @@
 {
   "name": "@sdkwork/agents-app-sdk",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "SDKWork agent app API TypeScript SDK boundary.",
   "type": "module",
   "private": false,
@@ -98,7 +98,7 @@
     }
   },
   "dependencies": {
-    "@sdkwork/sdk-common": "^1.0.10",
+    "@sdkwork/sdk-common": "^1.0.8",
     "@sdkwork/utils": "^0.11.0"
   },
   "devDependencies": {

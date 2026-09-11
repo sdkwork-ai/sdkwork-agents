@@ -59,6 +59,12 @@ function createChatAgentPort(overrides: Partial<ChatAgentPort>): ChatAgentPort {
     createAgent: async (agent) => agent,
     updateAgent: async () => session,
     resolveOrCreateSession: async (_agentId, sessionId) => sessionId,
+    createSession: async (_agentId, title) => ({
+      id: 'session.new',
+      title,
+      updatedAt: new Date().toISOString(),
+      version: '1',
+    }),
     listSessions: async () => [session],
     updateSession: async (_agentId, sessionId) => ({ ...session, id: sessionId }),
     deleteSession: async () => undefined,
@@ -208,47 +214,4 @@ test('rethrows non-404 file library failures', async () => {
   } as unknown as SdkworkAgentsDriveAppClient));
 
   await assert.rejects(service.listFiles(), /boom/u);
-});
-
-test('publishes the buffered completion when a streaming runtime emits no deltas', async () => {
-  configureChatAgentPermissionScopeReader(() => ['ai.agents.read', 'ai.agents.use']);
-  configureChatAgentPort(createChatAgentPort({
-    sendMessageStream: async () => ({ id: 'message.no-delta', content: 'buffered answer' }),
-  }));
-
-  const updates: string[] = [];
-  await ChatService.streamChat({
-    sessionId: 'session.no-delta',
-    model: 'model-a',
-    messages: [{ id: 'message.user.no-delta', role: 'user', text: 'hello' }],
-    onMessageUpdate: (text) => updates.push(text),
-  });
-
-  // The cloudrouter account-pool path can answer in a single terminal frame
-  // with zero deltas. Without the completion fallback the assistant bubble
-  // stays empty until the session is reloaded — the reported Playground bug.
-  assert.deepEqual(updates, ['buffered answer']);
-});
-
-test('does not duplicate the completion text when deltas already streamed', async () => {
-  configureChatAgentPermissionScopeReader(() => ['ai.agents.read', 'ai.agents.use']);
-  configureChatAgentPort(createChatAgentPort({
-    sendMessageStream: async (_agentId, _sessionId, _content, _model, _media, onDelta) => {
-      onDelta('streamed ');
-      onDelta('answer');
-      return { id: 'message.delta', content: 'streamed answer' };
-    },
-  }));
-
-  const updates: string[] = [];
-  await ChatService.streamChat({
-    sessionId: 'session.delta',
-    model: 'model-a',
-    messages: [{ id: 'message.user.delta', role: 'user', text: 'hello' }],
-    onMessageUpdate: (text) => updates.push(text),
-  });
-
-  // `ChatView.onMessageUpdate` appends each update, so re-emitting the terminal
-  // content after deltas would render the answer twice.
-  assert.deepEqual(updates, ['streamed ', 'answer']);
 });

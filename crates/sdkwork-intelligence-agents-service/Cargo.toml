@@ -1,14 +1,10 @@
 [package]
-rust-version.workspace = true
 name = "sdkwork-intelligence-agents-service"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "SDKWork intelligence agents domain service (managed agents, marketplace, knowledge registry)"
 
-
-[lints]
-workspace = true
 [features]
 default = ["http-axum", "postgres-sync"]
 postgres-sync = ["dep:sdkwork-database-config", "dep:sdkwork-database-sqlx", "dep:sqlx", "dep:tokio"]
@@ -38,6 +34,7 @@ sdkwork-agents-tool-file.workspace = true
 sdkwork-agents-tool-intelligence.workspace = true
 sdkwork-agent-kernel.workspace = true
 sdkwork-code-kernel.workspace = true
+rand.workspace = true
 sdkwork-utils-rust.workspace = true
 sdkwork-database-id.workspace = true
 sdkwork-intelligence-prompts-ai-contract.workspace = true

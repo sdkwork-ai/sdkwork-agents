@@ -182,13 +182,8 @@ fn run_live_turns_flow(config: LiveProviderConfig) {
         requested_by: sample_subject(),
         requested_at: "2026-08-01T00:01:30Z".to_string(),
         prefer_stream: true,
-        // No injected agent system prompt for the live probe; the agent manifest
-        // stands alone.
-        system_prompt: None,
-        // These live probes drive the agent-engine path, so no cloudrouter
-        // account-pool credentials are projected onto the turn.
         auth_token: None,
-        access_token: None,
+        wire_protocol: None,
     };
     let result = service
         .execute_turn_with_stream_sink(turn_command.clone(), Arc::new(sink.clone()))

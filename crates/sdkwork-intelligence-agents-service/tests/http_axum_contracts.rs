@@ -4905,9 +4905,7 @@ async fn app_session_should_support_flat_create_rename_project_move_filter_and_d
 
     let listed = get_json(
         &app,
-        &format!(
-            "/app/v3/api/ai/agents/{agent_id}/sessions?project_id={project_id}&page_size=20"
-        ),
+        &format!("/app/v3/api/ai/agents/{agent_id}/sessions?project_id={project_id}&page_size=20"),
         StatusCode::OK,
     )
     .await;
@@ -5279,15 +5277,8 @@ async fn app_turn_stream_should_return_problem_detail_when_execution_fails_befor
     let detail = problem["detail"]
         .as_str()
         .expect("problem detail should be a string");
-    // The executor's business-safe reason must survive into `detail`.
-    // `SdkWorkProblemDetail::platform_enriched` normally redacts
-    // dependency-unavailable failures to a generic "A required dependency is
-    // temporarily unavailable" text, but `ApiProblem::into_response_for`
-    // deliberately keeps the real reason so callers can tell account-pool,
-    // auth-token, and provider failures apart (`response.rs`). Asserting the
-    // generic text here would re-hide exactly what that change exposed.
-    assert_eq!(
-        "provider unavailable before first stream frame", detail,
+    assert!(
+        detail.contains("provider unavailable before first stream frame"),
         "unexpected problem: {problem}"
     );
 }

@@ -1,14 +1,10 @@
 [package]
-rust-version.workspace = true
 name = "sdkwork-agents-runtime-facade"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Agents application facade for kernel agent-engine provider bootstrap and runtime execution"
 
-
-[lints]
-workspace = true
 [features]
 default = []
 # Codex agent provider carries its own embedded SQLite runtime store
@@ -38,6 +34,8 @@ sdkwork-agents-tool-file = { workspace = true }
 sdkwork-agents-tool-intelligence = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+jsonschema = { workspace = true }
+roxmltree = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = "0.3"

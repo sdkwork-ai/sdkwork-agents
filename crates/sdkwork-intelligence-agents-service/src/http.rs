@@ -41,23 +41,24 @@ use crate::application::{
 use crate::domain::{
     AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentCompositionTargetModule,
     AgentItemFeedbackRating, AgentItemResourceRole, AgentProviderBindingRecord,
-    AgentSessionEntrySurface, AgentSessionKind, AgentSessionRuntimeBindingRecord,
-    AgentSessionRuntimeBindingStatus,
+    AgentRuntimeExecutionRecord, AgentSessionEntrySurface, AgentSessionKind,
+    AgentSessionRuntimeBindingRecord, AgentSessionRuntimeBindingStatus,
 };
 use crate::dto::{
-    ActivateAgentProviderBindingRequestDto, AgentCompositionSlotCreateRequestDto,
-    AgentCompositionSlotRecordDto, AgentCompositionSlotUpdateRequestDto, AgentInteractionRecordDto,
-    AgentItemFeedbackRecordDto, AgentManagementProfileDto, AgentPreviewResponseRequestDto,
-    AgentPromptOptimizationRequestDto, AgentProviderBindingRecordDto,
-    AgentProviderBindingRequestDto, AgentRecordDto, AgentResourceUserStateRecordDto,
-    AgentRuntimeExecutionRecordDto, AgentSessionCheckpointRecordDto, AgentSessionItemRecordDto,
-    AgentSessionRecordDto, AgentSessionRuntimeBindingRecordDto, AgentTaskRecordDto,
-    AgentTaskRunAttemptRecordDto, AgentTaskRunRecordDto, AgentTurnExecutionDto, AgentTurnRecordDto,
-    AnswerInteractionRequestDto, ApproveInteractionRequestDto, ArchiveSessionRequestDto,
-    CancelTaskRequestDto, CancelTaskRunRequestDto, ChangeSessionCheckpointStatusRequestDto,
+    ActivateAgentProviderBindingRequestDto, AgentCallOutputSpecDto, AgentCallPolicyDto,
+    AgentCallRecordDto, AgentCompositionSlotCreateRequestDto, AgentCompositionSlotRecordDto,
+    AgentCompositionSlotUpdateRequestDto, AgentInteractionRecordDto, AgentItemFeedbackRecordDto,
+    AgentManagementProfileDto, AgentPreviewResponseRequestDto, AgentPromptOptimizationRequestDto,
+    AgentProviderBindingRecordDto, AgentProviderBindingRequestDto, AgentRecordDto,
+    AgentResourceUserStateRecordDto, AgentRuntimeExecutionRecordDto,
+    AgentSessionCheckpointRecordDto, AgentSessionItemRecordDto, AgentSessionRecordDto,
+    AgentSessionRuntimeBindingRecordDto, AgentTaskRecordDto, AgentTaskRunAttemptRecordDto,
+    AgentTaskRunRecordDto, AgentTurnExecutionDto, AgentTurnRecordDto, AnswerInteractionRequestDto,
+    ApproveInteractionRequestDto, ArchiveSessionRequestDto, CancelTaskRequestDto,
+    CancelTaskRunRequestDto, ChangeSessionCheckpointStatusRequestDto,
     ChangeSessionRuntimeBindingStatusRequestDto, ClaimInteractionRequestDto,
-    CloseSessionRequestDto, CreateAgentRequestDto, CreateInteractionRequestDto,
-    CreateSessionCheckpointRequestDto, CreateSessionRequestDto,
+    CloseSessionRequestDto, CreateAgentCallRequestDto, CreateAgentRequestDto,
+    CreateInteractionRequestDto, CreateSessionCheckpointRequestDto, CreateSessionRequestDto,
     CreateSessionRuntimeBindingRequestDto, CreateTaskRequestDto, DeleteAgentRequestDto,
     ExecuteTaskRequestDto, GetAgentRequestDto, InteractionClaimResultDto, ListAgentsRequestDto,
     ListInteractionsRequestDto, ListSessionItemsRequestDto, ListSessionsRequestDto,
@@ -78,18 +79,17 @@ use crate::ports::{
     ResourceUserStateListQuery, SessionActivitySummaryListQuery, SessionCheckpointListQuery,
     SessionRuntimeBindingListQuery, TurnListQuery, WorkspaceListQuery,
 };
+use crate::postgres_model_configuration_store::{
+    ProfileScope, ScopedAgentConfigurationStore, ScopedInMemoryAgentConfigurationStore,
+};
 use crate::project::{
     AgentProjectCompositionSlotRecord, AgentProjectDriveAccessMode, AgentProjectRecord,
     AgentProjectStatus, AgentProjectVisibility,
 };
-use crate::postgres_model_configuration_store::{
-    ProfileScope, ScopedAgentConfigurationStore, ScopedInMemoryAgentConfigurationStore,
-};
 use crate::response::{
-    created_json, finish_api_json, finish_created_api_json, no_content, success_json, ApiProblem,
-    ApiResult, PageData, PageInfo, PageMode, ResourceData,
+    accepted_json, created_json, finish_api_json, finish_created_api_json, no_content,
+    success_json, ApiProblem, ApiResult, PageData, PageInfo, PageMode, ResourceData,
 };
-use sdkwork_utils_rust::SdkWorkResultCode;
 use crate::runtime_facade_bridge::{engine_key_for_provider_identity, shared_agent_engine_host};
 use crate::session_activity::{
     decode_session_activity_cursor, SessionActivitySummaryRecord,
@@ -129,6 +129,7 @@ use sdkwork_agent_kernel::{
 };
 use sdkwork_agents_runtime_facade::AgentEngineCatalog;
 use sdkwork_code_kernel::CodeTaskIntent;
+use sdkwork_utils_rust::SdkWorkResultCode;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -1033,6 +1034,23 @@ impl AgentRepository for DynAgentRepository {
             .clear_turn_streaming_content(tenant_id, organization_id, turn_id)
     }
 
+    fn read_turn_streaming_content(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+    ) -> KernelResult<Option<String>> {
+        self.0
+            .read_turn_streaming_content(tenant_id, organization_id, turn_id)
+    }
+
+    fn append_interrupted_turn_output(
+        &self,
+        record: crate::domain::AgentSessionItemRecord,
+    ) -> KernelResult<Option<crate::domain::AgentSessionItemRecord>> {
+        self.0.append_interrupted_turn_output(record)
+    }
+
     fn insert_turn_request(
         &self,
         turn: crate::agent_turn::AgentTurnRecord,
@@ -1713,20 +1731,21 @@ impl HttpAgentsSessionFacade {
                     sdkwork_agents_runtime_facade::RuntimeFacadeError::Handler(error.to_string())
                 })?;
         }
-        let default_descriptor = sdkwork_agents_runtime_facade::AgentsSessionRuntimeBindingDescriptor {
-            runtime_binding_id: format!("runtime_binding.rig.{}", request.session_id),
-            runtime_location_id: None,
-            host_mode: "local".to_string(),
-            transport_kind: "rig".to_string(),
-            provider_binding_id: RIG_BINDING_ID.to_string(),
-            model_id: RIG_MODEL_ID.to_string(),
-            provider_id: RIG_PROVIDER_ID.to_string(),
-            provider_session_id: None,
-            provider_session_tree_id: None,
-            provider_parent_session_id: None,
-            provider_forked_from_session_id: None,
-            provider_directory: None,
-        };
+        let default_descriptor =
+            sdkwork_agents_runtime_facade::AgentsSessionRuntimeBindingDescriptor {
+                runtime_binding_id: format!("runtime_binding.rig.{}", request.session_id),
+                runtime_location_id: None,
+                host_mode: "local".to_string(),
+                transport_kind: "rig".to_string(),
+                provider_binding_id: RIG_BINDING_ID.to_string(),
+                model_id: RIG_MODEL_ID.to_string(),
+                provider_id: RIG_PROVIDER_ID.to_string(),
+                provider_session_id: None,
+                provider_session_tree_id: None,
+                provider_parent_session_id: None,
+                provider_forked_from_session_id: None,
+                provider_directory: None,
+            };
         self.ensure_runtime_binding(EnsureRuntimeBindingRequest {
             tenant_id: request.tenant_id,
             organization_id: request.organization_id,
@@ -2296,8 +2315,9 @@ impl sdkwork_agents_runtime_facade::AgentsSessionFacade for HttpAgentsSessionFac
                 requested_at: request.requested_at,
                 prefer_stream: false,
                 system_prompt: None,
-            auth_token: None,
-            access_token: None,
+                auth_token: None,
+                access_token: None,
+                wire_protocol: None,
             })
             .map_err(|error| {
                 sdkwork_agents_runtime_facade::RuntimeFacadeError::Handler(error.to_string())
@@ -2513,6 +2533,46 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
             post(app_create_prompt_optimization),
         )
         .route(
+            "/app/v3/api/ai/agents/{agentId}/calls",
+            get(app_list_agent_calls).post(app_create_agent_call),
+        )
+        .route(
+            "/app/v3/api/ai/agents/{agentId}/calls/{executionId}",
+            get(app_get_agent_call),
+        )
+        .route(
+            "/app/v3/api/ai/usage/summary",
+            get(app_get_usage_summary),
+        )
+        .route(
+            "/app/v3/api/ai/usage/records",
+            get(app_list_usage_records),
+        )
+        .route(
+            "/app/v3/api/ai/agents/{agentId}/versions",
+            get(app_list_agent_versions).post(app_create_agent_version),
+        )
+        .route(
+            "/app/v3/api/ai/agents/{agentId}/versions/{versionId}",
+            get(app_get_agent_version),
+        )
+        .route(
+            "/app/v3/api/ai/agents/{agentId}/versions/{versionId}/activate",
+            post(app_activate_agent_version),
+        )
+        .route(
+            "/app/v3/api/ai/webhooks",
+            get(app_list_webhooks).post(app_create_webhook),
+        )
+        .route(
+            "/app/v3/api/ai/webhooks/{webhookId}",
+            get(app_get_webhook).delete(app_delete_webhook),
+        )
+        .route(
+            "/app/v3/api/ai/webhooks/{webhookId}/test",
+            post(app_test_webhook),
+        )
+        .route(
             "/app/v3/api/ai/agents/{agentId}/composition_slots",
             get(app_list_composition_slots).post(app_create_composition_slot),
         )
@@ -2709,6 +2769,11 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
             "/app/v3/api/ai/agent_engines",
             get(app_list_agent_engines),
         )
+        // NOTE: `GET /app/v3/api/ai/models` is intentionally NOT registered here.
+        // The sdkwork-models catalog app router (merged by cloudrouter
+        // routes.rs) is the single authoritative provider for this path;
+        // registering the snapshot projection below as well triggers an axum
+        // "Overlapping method route" panic at gateway composition time.
         .route(
             "/app/v3/api/ai/model_configurations/apply",
             post(app_apply_model_configuration),
@@ -3251,12 +3316,8 @@ fn apply_agent_model_configuration(
 
     let supported_provider_ids =
         normalize_supported_model_provider_ids(body.supported_provider_ids, engine_id)?;
-    let profile_id = model_configuration_profile_id(
-        &scope,
-        &agent_id,
-        engine_id,
-        body.configuration_id.trim(),
-    );
+    let profile_id =
+        model_configuration_profile_id(&scope, &agent_id, engine_id, body.configuration_id.trim());
     let profile_scope = profile_scope_from_request(&scope)?;
     let existing_profile = state
         .model_configuration_runtime
@@ -3330,7 +3391,10 @@ fn apply_agent_model_configuration(
             .ok()
             .and_then(|secrets| {
                 secrets
-                    .access_secret(SecretAccessRequest::new(&api_key_secret_ref, agent_id.clone()))
+                    .access_secret(SecretAccessRequest::new(
+                        &api_key_secret_ref,
+                        agent_id.clone(),
+                    ))
                     .ok()
                     .and_then(|result| result.value)
             })
@@ -3580,9 +3644,7 @@ fn resolve_model_configuration_agent_id(
     match agent_id.map(str::trim).filter(|value| !value.is_empty()) {
         Some(agent_id) => {
             if agent_id.len() > 128 {
-                return Err(ApiProblem::validation(
-                    "agentId exceeds the maximum length",
-                ));
+                return Err(ApiProblem::validation("agentId exceeds the maximum length"));
             }
             Ok(agent_id.to_string())
         }
@@ -3746,7 +3808,8 @@ async fn app_get_model_configuration(
 ) -> Response {
     let result: ApiResult<ResourceData<ModelConfigurationSummaryView>> = async {
         let scope = RequestScope::from_context(context);
-        let profile = load_model_configuration_profile(&state, &scope, &path.engine_id, &path.profile_id)?;
+        let profile =
+            load_model_configuration_profile(&state, &scope, &path.engine_id, &path.profile_id)?;
         Ok(ResourceData {
             item: ModelConfigurationSummaryView::from_profile(&profile, &path.engine_id)?,
         })
@@ -3792,7 +3855,8 @@ async fn app_get_model_configuration_status(
 ) -> Response {
     let result: ApiResult<ResourceData<ModelConfigurationStatusView>> = async {
         let scope = RequestScope::from_context(context);
-        let profile = load_model_configuration_profile(&state, &scope, &path.engine_id, &path.profile_id)?;
+        let profile =
+            load_model_configuration_profile(&state, &scope, &path.engine_id, &path.profile_id)?;
         let provider_scope =
             sdkwork_agents_runtime_facade::agent_engine_provider_scope(&path.engine_id)
                 .ok_or_else(|| {
@@ -3909,7 +3973,8 @@ async fn app_archive_model_configuration(
     let result: ApiResult<ResourceData<ModelConfigurationSummaryView>> = async {
         let scope = RequestScope::from_context(context);
         let profile_scope = profile_scope_from_request(&scope)?;
-        let profile = load_model_configuration_profile(&state, &scope, &path.engine_id, &path.profile_id)?;
+        let profile =
+            load_model_configuration_profile(&state, &scope, &path.engine_id, &path.profile_id)?;
 
         // Only revert the CLI-native config when it actually carries the
         // SDKWork-managed materialization; never touch a user-owned surface.
@@ -3987,7 +4052,8 @@ async fn app_migrate_model_configuration(
         let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
         let scope = RequestScope::from_context(context);
         let profile_scope = profile_scope_from_request(&scope)?;
-        let profile = load_model_configuration_profile(&state, &scope, &body.engine_id, &body.profile_id)?;
+        let profile =
+            load_model_configuration_profile(&state, &scope, &body.engine_id, &body.profile_id)?;
         if profile.configuration_version != body.from_configuration_version {
             return Err(ApiProblem::validation(
                 "fromConfigurationVersion does not match the stored profile version",
@@ -4571,6 +4637,14 @@ pub(crate) struct AppListTasksQueryParams {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AppListAgentCallsQueryParams {
+    pub(crate) status: Option<String>,
+    pub(crate) cursor: Option<String>,
+    pub(crate) page_size: Option<usize>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ListTaskRunsQueryParams {
     status: Option<String>,
@@ -4715,6 +4789,35 @@ struct AgentPromptOptimizationBody {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct AgentCallOutputBody {
+    format: Option<String>,
+    schema: Option<Value>,
+    root_element: Option<String>,
+    strict: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCallPolicyBody {
+    timeout_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCallBody {
+    execution_id: String,
+    mode: String,
+    prompt: Option<String>,
+    params: Option<Value>,
+    param_schema: Option<Value>,
+    output: Option<AgentCallOutputBody>,
+    policy: Option<AgentCallPolicyBody>,
+    execution_mode: Option<String>,
+    requested_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct UpdateAgentBody {
     display_name: Option<String>,
     description: Option<String>,
@@ -4773,6 +4876,159 @@ struct AgentRuntimeExecutionRecordResponse {
     output_payload: Value,
     requested_at: String,
     completed_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCallValidationResponse {
+    valid: bool,
+    errors: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCallUsageResponse {
+    duration_ms: u64,
+    attempts: usize,
+    runtime_mode: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCallCorrelationResponse {
+    execution_id: String,
+    agent_id: String,
+    tenant_id: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentCallRecordResponse {
+    execution_id: String,
+    agent_id: String,
+    tenant_id: String,
+    status: String,
+    output: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    raw_text: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_error: Option<String>,
+    validation: AgentCallValidationResponse,
+    usage: AgentCallUsageResponse,
+    correlation: AgentCallCorrelationResponse,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentVersionResponse {
+    version_id: String,
+    agent_id: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    version_number: i64,
+    manifest: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    default_code_task_intent: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    implementation_provider_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    implementation_kind: Option<String>,
+    implementation_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    created_by: i64,
+    created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    activated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentWebhookSubscriptionResponse {
+    webhook_id: String,
+    url: String,
+    event_types: Vec<String>,
+    status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    created_by: i64,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentWebhookSubscriptionCreatedResponse {
+    webhook_id: String,
+    url: String,
+    event_types: Vec<String>,
+    status: String,
+    /// One-time echo of the signing secret; never returned again.
+    secret: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    description: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    created_by: i64,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentWebhookDeliveryResponse {
+    delivery_id: String,
+    webhook_id: String,
+    event_type: String,
+    payload: Value,
+    signature: String,
+    status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_code: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error_detail: Option<String>,
+    created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    completed_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentUsageSummaryResponse {
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    turn_count: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    session_count: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    input_tokens: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    output_tokens: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    cached_tokens: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentUsageRecordResponse {
+    turn_id: String,
+    session_id: String,
+    agent_id: String,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    owner_user_id: i64,
+    status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    model_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provider_id: Option<String>,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    input_tokens: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    output_tokens: i64,
+    #[serde(with = "sdkwork_utils_rust::serde_int64")]
+    cached_tokens: i64,
+    created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    completed_at: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -4907,6 +5163,10 @@ struct AppCreateTurnBody {
     idempotency_key: String,
     payload_hash: String,
     client_request_id: Option<String>,
+    /// Optional LLM wire protocol override (`chat_completions` default,
+    /// `anthropic_messages`, `google_content`, `openai_responses`).
+    #[serde(default)]
+    wire_protocol: Option<String>,
     #[serde(default)]
     drive_refs: Vec<AgentItemDriveRefBody>,
     requested_at: String,
@@ -5887,6 +6147,725 @@ async fn app_create_prompt_optimization(
     }
     .await;
     finish_created_api_json(&web_ctx, result)
+}
+
+async fn app_create_agent_call(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<TenantAgentPathParams>, PathRejection>,
+    body: Result<Json<AgentCallBody>, JsonRejection>,
+) -> Response {
+    let result: ApiResult<(ResourceData<AgentCallRecordResponse>, bool)> = async {
+        let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
+        let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
+        execute_create_agent_call(
+            state,
+            RequestScope::from_context(context),
+            path.agent_id,
+            body,
+        )
+        .await
+    }
+    .await;
+    match result {
+        Ok((data, is_async)) => {
+            // Async creations return 202 Accepted with the queued record;
+            // sync executions keep the canonical 201 with the terminal record.
+            let finish = if is_async {
+                accepted_json
+            } else {
+                created_json
+            };
+            finish(&web_ctx, data).unwrap_or_else(|problem| problem.into_response_for(&web_ctx))
+        }
+        Err(problem) => problem.into_response_for(&web_ctx),
+    }
+}
+
+async fn app_list_agent_calls(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    agent_id: Result<Path<String>, PathRejection>,
+    query: Result<Query<AppListAgentCallsQueryParams>, QueryRejection>,
+) -> Response {
+    let result: ApiResult<PageData<AgentCallRecordResponse>> = async {
+        let Path(agent_id) = agent_id.map_err(ApiProblem::from_path_rejection)?;
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let page_size = normalized_cursor_page_size(query.page_size)?;
+        let cursor = query
+            .cursor
+            .as_deref()
+            .map(crate::runtime_execution_cursor::decode_runtime_execution_cursor)
+            .transpose()
+            .map_err(ApiProblem::from_kernel_error)?;
+        let tenant_id = scope.tenant_id_u64()?;
+        let records = {
+            let cursor_token = query.cursor.clone();
+            let status = query.status.clone();
+            with_service(&state, move |service| {
+                service.list_agent_calls(
+                    tenant_id,
+                    agent_id.as_str(),
+                    status,
+                    crate::ports::PaginationParams {
+                        page_size,
+                        ..crate::ports::PaginationParams::default()
+                    },
+                    cursor_token,
+                    scope.subject,
+                )
+            })
+            .await?
+        };
+        let items = records
+            .items
+            .iter()
+            .map(map_agent_call_record)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(PageData {
+            items,
+            page_info: sdkwork_utils_rust::http_api::cursor_window_page_info(
+                Some(page_size),
+                records.next_page_token,
+                records.has_more,
+            ),
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_get_agent_call(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<(String, String)>, PathRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentCallRecordResponse>> = async {
+        let Path((agent_id, execution_id)) = path.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let record = with_service(&state, move |service| {
+            service.get_agent_call(
+                tenant_id,
+                agent_id.as_str(),
+                execution_id.as_str(),
+                scope.subject,
+            )
+        })
+        .await?;
+        Ok(ResourceData {
+            item: map_agent_call_record(&record)?,
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AppUsageQueryParams {
+    agent_id: Option<String>,
+    session_id: Option<String>,
+    model_id: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AppUsageRecordsQueryParams {
+    agent_id: Option<String>,
+    session_id: Option<String>,
+    model_id: Option<String>,
+    from: Option<String>,
+    to: Option<String>,
+    cursor: Option<String>,
+    page_size: Option<usize>,
+}
+
+async fn app_create_agent_version(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<TenantAgentPathParams>, PathRejection>,
+    Extension(request_context): Extension<AgentRequestContext>,
+    body: Result<Json<CreateAgentVersionBody>, JsonRejection>,
+) -> Response {
+    let _ = request_context;
+    let result: ApiResult<ResourceData<AgentVersionResponse>> = async {
+        let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
+        let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let occurred_at = server_now_rfc3339();
+        let record = with_service(&state, move |service| {
+            service.create_agent_version(
+                tenant_id,
+                organization_id,
+                path.agent_id.as_str(),
+                body.version_id,
+                body.description,
+                scope.subject,
+                occurred_at.as_str(),
+            )
+        })
+        .await?;
+        let item = map_agent_version(&record)?;
+        Ok(ResourceData { item })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_list_agent_versions(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<TenantAgentPathParams>, PathRejection>,
+    query: Result<Query<AppListAgentVersionsQueryParams>, QueryRejection>,
+) -> Response {
+    let result: ApiResult<PageData<AgentVersionResponse>> = async {
+        let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let page_size = normalized_cursor_page_size(query.page_size)?;
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let cursor_token = query.cursor.clone();
+        let items = with_service(&state, move |service| {
+            service.list_agent_versions(
+                tenant_id,
+                organization_id,
+                path.agent_id.as_str(),
+                crate::ports::PaginationParams {
+                    page_size,
+                    ..crate::ports::PaginationParams::default()
+                },
+                cursor_token,
+                scope.subject,
+            )
+        })
+        .await?;
+        let mapped = items
+            .items
+            .iter()
+            .map(map_agent_version)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(PageData {
+            items: mapped,
+            page_info: sdkwork_utils_rust::http_api::cursor_window_page_info(
+                Some(page_size),
+                items.next_page_token,
+                items.has_more,
+            ),
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_get_agent_version(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<(String, String)>, PathRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentVersionResponse>> = async {
+        let Path((agent_id, version_id)) = path.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let record = with_service(&state, move |service| {
+            service.get_agent_version(
+                tenant_id,
+                organization_id,
+                agent_id.as_str(),
+                version_id.as_str(),
+                scope.subject,
+            )
+        })
+        .await?;
+        let item = map_agent_version(&record)?;
+        Ok(ResourceData { item })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_activate_agent_version(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<(String, String)>, PathRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentVersionResponse>> = async {
+        let Path((agent_id, version_id)) = path.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let occurred_at = server_now_rfc3339();
+        let (record, _) = with_service(&state, move |service| {
+            service.activate_agent_version(
+                tenant_id,
+                organization_id,
+                agent_id.as_str(),
+                version_id.as_str(),
+                scope.subject,
+                occurred_at.as_str(),
+            )
+        })
+        .await?;
+        let item = map_agent_version(&record)?;
+        Ok(ResourceData { item })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AppListAgentVersionsQueryParams {
+    pub(crate) cursor: Option<String>,
+    pub(crate) page_size: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateAgentVersionBody {
+    version_id: String,
+    #[serde(default)]
+    description: Option<String>,
+}
+
+fn map_agent_version(
+    record: &crate::domain::AgentVersionRecord,
+) -> Result<AgentVersionResponse, ApiProblem> {
+    let manifest: Value = serde_json::from_str(record.manifest_json.as_str()).map_err(|error| {
+        ApiProblem::internal(format!("version manifest decode failed: {error}"))
+    })?;
+    let default_code_task_intent = record
+        .default_code_task_intent_json
+        .as_deref()
+        .map(|json| serde_json::from_str(json))
+        .transpose()
+        .map_err(|error| ApiProblem::internal(format!("version intent decode failed: {error}")))?;
+    Ok(AgentVersionResponse {
+        version_id: record.version_id.clone(),
+        agent_id: record.agent_id.clone(),
+        version_number: record.version_number.min(i64::MAX as u64) as i64,
+        manifest,
+        default_code_task_intent,
+        implementation_provider_id: record.implementation_provider_id.clone(),
+        implementation_kind: record
+            .implementation_kind
+            .as_ref()
+            .map(|kind| kind.as_str().to_string()),
+        implementation_type: record.implementation_type.as_str().to_string(),
+        description: record.description.clone(),
+        created_by: record.created_by.min(i64::MAX as u64) as i64,
+        created_at: record.created_at.clone(),
+        activated_at: record.activated_at.clone(),
+    })
+}
+
+static WEBHOOK_HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+
+fn webhook_http_client() -> &'static reqwest::Client {
+    WEBHOOK_HTTP_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new())
+    })
+}
+
+fn map_webhook_subscription(
+    record: &crate::webhook::AgentWebhookRecord,
+) -> AgentWebhookSubscriptionResponse {
+    AgentWebhookSubscriptionResponse {
+        webhook_id: record.webhook_id.clone(),
+        url: record.url.clone(),
+        event_types: record
+            .event_types
+            .iter()
+            .map(|event_type| event_type.as_str().to_string())
+            .collect(),
+        status: record.status.as_str().to_string(),
+        description: record.description.clone(),
+        created_by: record.created_by.min(i64::MAX as u64) as i64,
+        created_at: record.created_at.clone(),
+        updated_at: record.updated_at.clone(),
+    }
+}
+
+fn map_webhook_subscription_created(
+    record: &crate::webhook::AgentWebhookRecord,
+) -> AgentWebhookSubscriptionCreatedResponse {
+    AgentWebhookSubscriptionCreatedResponse {
+        webhook_id: record.webhook_id.clone(),
+        url: record.url.clone(),
+        event_types: record
+            .event_types
+            .iter()
+            .map(|event_type| event_type.as_str().to_string())
+            .collect(),
+        status: record.status.as_str().to_string(),
+        secret: record.secret.clone(),
+        description: record.description.clone(),
+        created_by: record.created_by.min(i64::MAX as u64) as i64,
+        created_at: record.created_at.clone(),
+        updated_at: record.updated_at.clone(),
+    }
+}
+
+fn map_webhook_delivery(
+    record: &crate::webhook::AgentWebhookDeliveryRecord,
+) -> Result<AgentWebhookDeliveryResponse, ApiProblem> {
+    let payload: Value = serde_json::from_str(record.payload_json.as_str())
+        .map_err(|error| ApiProblem::internal(format!("webhook payload decode failed: {error}")))?;
+    Ok(AgentWebhookDeliveryResponse {
+        delivery_id: record.delivery_id.clone(),
+        webhook_id: record.webhook_id.clone(),
+        event_type: record.event_type.clone(),
+        payload,
+        signature: record.signature.clone(),
+        status: record.status.clone(),
+        response_code: record.response_code,
+        error_detail: record.error_detail.clone(),
+        created_at: record.created_at.clone(),
+        completed_at: record.completed_at.clone(),
+    })
+}
+
+fn parse_webhook_event_types(
+    codes: &[String],
+) -> Result<Vec<crate::webhook::AgentWebhookEventType>, ApiProblem> {
+    codes
+        .iter()
+        .map(|code| {
+            crate::webhook::AgentWebhookEventType::from_code(code).ok_or_else(|| {
+                ApiProblem::validation(format!("unknown webhook event type: {code}"))
+            })
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AppListWebhooksQueryParams {
+    pub(crate) page: Option<usize>,
+    pub(crate) page_size: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CreateWebhookSubscriptionBody {
+    webhook_id: String,
+    url: String,
+    event_types: Vec<String>,
+    #[serde(default)]
+    description: Option<String>,
+}
+
+async fn app_create_webhook(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    body: Result<Json<CreateWebhookSubscriptionBody>, JsonRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentWebhookSubscriptionCreatedResponse>> = async {
+        let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let created_by = scope.owner_scope()?.unwrap_or(0);
+        let event_types = parse_webhook_event_types(&body.event_types)?;
+        let occurred_at = server_now_rfc3339();
+        let record = with_service(&state, move |service| {
+            service.create_webhook_subscription(
+                tenant_id,
+                organization_id,
+                body.webhook_id,
+                body.url,
+                event_types,
+                body.description,
+                created_by,
+                scope.subject,
+                occurred_at.as_str(),
+            )
+        })
+        .await?;
+        let item = map_webhook_subscription_created(&record);
+        Ok(ResourceData { item })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_list_webhooks(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    query: Result<Query<AppListWebhooksQueryParams>, QueryRejection>,
+) -> Response {
+    let result: ApiResult<PageData<AgentWebhookSubscriptionResponse>> = async {
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let (page, page_size) = normalized_pagination(query.page, query.page_size)?;
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let items = with_service(&state, move |service| {
+            service.list_webhook_subscriptions(
+                tenant_id,
+                organization_id,
+                crate::ports::PaginationParams::default()
+                    .with_page_size(page_size)
+                    .with_page(page),
+                scope.subject,
+            )
+        })
+        .await?;
+        let has_more = items.items.len() == page_size;
+        let mapped = items
+            .items
+            .iter()
+            .map(map_webhook_subscription)
+            .collect::<Vec<_>>();
+        Ok(PageData {
+            items: mapped,
+            page_info: offset_page_info(page, page_size, 0, has_more),
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_get_webhook(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<String>, PathRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentWebhookSubscriptionResponse>> = async {
+        let Path(webhook_id) = path.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let record = with_service(&state, move |service| {
+            service.get_webhook_subscription(
+                tenant_id,
+                organization_id,
+                webhook_id.as_str(),
+                scope.subject,
+            )
+        })
+        .await?;
+        let item = map_webhook_subscription(&record);
+        Ok(ResourceData { item })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_delete_webhook(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<String>, PathRejection>,
+) -> Response {
+    let result: ApiResult<()> = async {
+        let Path(webhook_id) = path.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        with_service(&state, move |service| {
+            service.delete_webhook_subscription(
+                tenant_id,
+                organization_id,
+                webhook_id.as_str(),
+                scope.subject,
+            )
+        })
+        .await?;
+        Ok(())
+    }
+    .await;
+    match result {
+        Ok(()) => {
+            no_content(&web_ctx).unwrap_or_else(|problem| problem.into_response_for(&web_ctx))
+        }
+        Err(problem) => problem.into_response_for(&web_ctx),
+    }
+}
+
+async fn app_test_webhook(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<String>, PathRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentWebhookDeliveryResponse>> = async {
+        let Path(webhook_id) = path.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let occurred_at = server_now_rfc3339();
+        let webhook_id_for_call = webhook_id.clone();
+        let outcome = with_service(&state, move |service| {
+            service.test_webhook(
+                tenant_id,
+                organization_id,
+                webhook_id_for_call.as_str(),
+                scope.subject,
+                occurred_at.as_str(),
+            )
+        })
+        .await?;
+        // Outbound transport: POST the signed test payload to the endpoint
+        // with a bounded timeout, then record the terminal delivery state.
+        let response = webhook_http_client()
+            .post(&outcome.url)
+            .header("Sdkwork-Signature", outcome.delivery.signature.clone())
+            .header("Content-Type", "application/json")
+            .body(outcome.delivery.payload_json.clone())
+            .send()
+            .await;
+        let (status, response_code, error_detail) = match response {
+            Ok(response) => {
+                let response_code = response.status().as_u16() as i32;
+                let status = if response.status().is_success() {
+                    "succeeded"
+                } else {
+                    "failed"
+                };
+                (status, Some(response_code), None)
+            }
+            Err(error) => {
+                let mut detail = error.to_string();
+                detail.truncate(512);
+                ("failed", None, Some(detail))
+            }
+        };
+        let completed_at = server_now_rfc3339();
+        let delivery_id = outcome.delivery.delivery_id.clone();
+        let delivery = with_service(&state, move |service| {
+            service.complete_webhook_delivery(
+                tenant_id,
+                organization_id,
+                webhook_id.as_str(),
+                delivery_id.as_str(),
+                status,
+                response_code,
+                error_detail,
+                completed_at.as_str(),
+            )
+        })
+        .await?;
+        let item = map_webhook_delivery(&delivery)?;
+        Ok(ResourceData { item })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_get_usage_summary(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    query: Result<Query<AppUsageQueryParams>, QueryRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<AgentUsageSummaryResponse>> = async {
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let (agent_id, session_id, model_id, from, to) = (
+            query.agent_id,
+            query.session_id,
+            query.model_id,
+            query.from,
+            query.to,
+        );
+        let summary = with_service(&state, move |service| {
+            service.get_usage_summary(
+                tenant_id,
+                organization_id,
+                agent_id,
+                session_id,
+                model_id,
+                from,
+                to,
+                scope.subject,
+            )
+        })
+        .await?;
+        Ok(ResourceData {
+            item: map_usage_summary(&summary),
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_list_usage_records(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    query: Result<Query<AppUsageRecordsQueryParams>, QueryRejection>,
+) -> Response {
+    let result: ApiResult<PageData<AgentUsageRecordResponse>> = async {
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let page_size = normalized_cursor_page_size(query.page_size)?;
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let (agent_id, session_id, model_id, from, to, cursor_token) = (
+            query.agent_id,
+            query.session_id,
+            query.model_id,
+            query.from,
+            query.to,
+            query.cursor,
+        );
+        let records = with_service(&state, move |service| {
+            service.list_usage_records(
+                tenant_id,
+                organization_id,
+                agent_id,
+                session_id,
+                model_id,
+                from,
+                to,
+                crate::ports::PaginationParams {
+                    page_size,
+                    ..crate::ports::PaginationParams::default()
+                },
+                cursor_token,
+                scope.subject,
+            )
+        })
+        .await?;
+        let items = records
+            .items
+            .iter()
+            .map(map_usage_record)
+            .collect::<Vec<_>>();
+        Ok(PageData {
+            items,
+            page_info: sdkwork_utils_rust::http_api::cursor_window_page_info(
+                Some(page_size),
+                records.next_page_token,
+                records.has_more,
+            ),
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
 }
 
 async fn open_create_preview_response(
@@ -9424,6 +10403,16 @@ async fn app_create_turn(
             // bearer value is never persisted on the turn record.
             auth_token: extract_bearer_auth_token(&headers),
             access_token: extract_access_token(&headers),
+            // Fail closed on unknown protocol identifiers so a typo can never
+            // silently downgrade to a different provider API.
+            wire_protocol: body
+                .wire_protocol
+                .map(|value| {
+                    sdkwork_agents_tool_cloudrouter::WireProtocol::parse(&value)
+                        .map(|protocol| protocol.as_str().to_string())
+                        .ok_or_else(|| ApiProblem::validation("invalid wireProtocol"))
+                })
+                .transpose()?,
         };
         execute_turn_http_response(
             &state,
@@ -9532,12 +10521,11 @@ async fn app_cancel_turn(
             requested_by: scope.subject,
             requested_at: body.requested_at,
         };
-        let record = with_owned_service_timeout(
-            &state,
-            TURN_CANCEL_SERVICE_TIMEOUT,
-            move |service| service.cancel_turn(command),
-        )
-        .await?;
+        let record =
+            with_owned_service_timeout(&state, TURN_CANCEL_SERVICE_TIMEOUT, move |service| {
+                service.cancel_turn(command)
+            })
+            .await?;
         Ok(ResourceData {
             item: AgentTurnRecordDto::from_record(&record),
         })
@@ -10938,6 +11926,7 @@ async fn backend_create_turn(
             // bearer value is never persisted on the turn record.
             auth_token: extract_bearer_auth_token(&headers),
             access_token: extract_access_token(&headers),
+            wire_protocol: None,
         };
         execute_turn_http_response(
             &state,
@@ -12217,6 +13206,160 @@ async fn execute_create_prompt_optimization(
     })
 }
 
+async fn execute_create_agent_call(
+    state: AgentHttpState,
+    scope: RequestScope,
+    agent_id: String,
+    body: AgentCallBody,
+) -> ApiResult<(ResourceData<AgentCallRecordResponse>, bool)> {
+    let execution_mode = body.execution_mode.clone();
+    let caller_tenant_id = scope.tenant_id_u64()?;
+    let command = CreateAgentCallRequestDto {
+        tenant_id: scope.tenant_id,
+        agent_id,
+        execution_id: body.execution_id,
+        mode: body.mode,
+        prompt: body.prompt,
+        params: body.params,
+        param_schema: body.param_schema,
+        output: body.output.map(|output| AgentCallOutputSpecDto {
+            format: output.format,
+            schema: output.schema,
+            root_element: output.root_element,
+            strict: output.strict,
+        }),
+        policy: body.policy.map(|policy| AgentCallPolicyDto {
+            timeout_ms: policy.timeout_ms,
+        }),
+        execution_mode,
+        requested_at: body.requested_at,
+    }
+    .into_command(scope.subject.clone())
+    .map_err(ApiProblem::from_kernel_error)?;
+    let is_async = command.execution_mode == crate::domain::AgentCallExecutionMode::Async;
+
+    let record = with_service(&state, move |service| service.create_agent_call(command)).await?;
+    if is_async {
+        spawn_queued_agent_call_execution(
+            &state,
+            caller_tenant_id,
+            record.agent_id.clone(),
+            record.execution_id.clone(),
+            scope.subject,
+        );
+    }
+    Ok((
+        ResourceData {
+            item: map_agent_call_record(&record)?,
+        },
+        is_async,
+    ))
+}
+
+/// Fires the in-process executor for one queued structured agent call.
+///
+/// The call record is already durable (`queued`); this task only drives it
+/// to its terminal state. Process crashes leave the record in `queued`/
+/// `running`, which `recover_stale_agent_calls` reconciles.
+fn spawn_queued_agent_call_execution(
+    state: &AgentHttpState,
+    tenant_id: u64,
+    agent_id: String,
+    execution_id: String,
+    subject: sdkwork_agent_kernel::PolicySubject,
+) {
+    let service = Arc::clone(&state.service);
+    tokio::spawn(async move {
+        let result = tokio::task::spawn_blocking(move || {
+            service.execute_queued_agent_call(
+                tenant_id,
+                agent_id.as_str(),
+                execution_id.as_str(),
+                subject,
+                server_now_rfc3339(),
+            )
+        })
+        .await;
+        match result {
+            Ok(Ok(_)) => {}
+            Ok(Err(error)) => {
+                tracing::warn!(
+                    execution_id = %error.safe_message(),
+                    "queued agent call execution failed; recover via recover_stale_agent_calls"
+                );
+            }
+            Err(join_error) => {
+                tracing::warn!(error = %join_error, "queued agent call executor join failed");
+            }
+        }
+    });
+}
+
+/// Server-side RFC 3339 instant used for state-transition timestamps so
+/// terminal markers never depend on client-supplied clocks.
+fn server_now_rfc3339() -> String {
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
+}
+
+fn map_agent_call_record(
+    record: &AgentRuntimeExecutionRecord,
+) -> Result<AgentCallRecordResponse, ApiProblem> {
+    let payload: AgentCallRecordDto = serde_json::from_str(record.output_payload_json.as_str())
+        .map_err(|error| {
+            ApiProblem::internal(format!("agent call payload decode failed: {error}"))
+        })?;
+    Ok(AgentCallRecordResponse {
+        execution_id: payload.execution_id,
+        agent_id: payload.agent_id,
+        tenant_id: payload.tenant_id,
+        status: payload.status,
+        output: payload.output,
+        raw_text: payload.raw_text,
+        agent_error: payload.agent_error,
+        validation: AgentCallValidationResponse {
+            valid: payload.validation.valid,
+            errors: payload.validation.errors,
+        },
+        usage: AgentCallUsageResponse {
+            duration_ms: payload.usage.duration_ms,
+            attempts: payload.usage.attempts,
+            runtime_mode: payload.usage.runtime_mode,
+        },
+        correlation: AgentCallCorrelationResponse {
+            execution_id: payload.correlation.execution_id,
+            agent_id: payload.correlation.agent_id,
+            tenant_id: payload.correlation.tenant_id,
+        },
+    })
+}
+
+fn map_usage_summary(summary: &crate::usage::AgentUsageSummary) -> AgentUsageSummaryResponse {
+    AgentUsageSummaryResponse {
+        turn_count: summary.turn_count.min(i64::MAX as u64) as i64,
+        session_count: summary.session_count.min(i64::MAX as u64) as i64,
+        input_tokens: summary.input_tokens.min(i64::MAX as u64) as i64,
+        output_tokens: summary.output_tokens.min(i64::MAX as u64) as i64,
+        cached_tokens: summary.cached_tokens.min(i64::MAX as u64) as i64,
+    }
+}
+
+fn map_usage_record(record: &crate::usage::AgentUsageRecord) -> AgentUsageRecordResponse {
+    AgentUsageRecordResponse {
+        turn_id: record.turn_id.clone(),
+        session_id: record.session_id.clone(),
+        agent_id: record.agent_id.clone(),
+        owner_user_id: record.owner_user_id.min(i64::MAX as u64) as i64,
+        status: record.status.clone(),
+        model_id: record.model_id.clone(),
+        provider_id: record.provider_id.clone(),
+        input_tokens: record.input_tokens.min(i64::MAX as u64) as i64,
+        output_tokens: record.output_tokens.min(i64::MAX as u64) as i64,
+        cached_tokens: record.cached_tokens.min(i64::MAX as u64) as i64,
+        created_at: record.created_at.clone(),
+        completed_at: record.completed_at.clone(),
+    }
+}
+
 fn parse_manifest(value: Value) -> Result<AgentManifest, ApiProblem> {
     let json_string = serde_json::to_string(&value)
         .map_err(|error| ApiProblem::validation(format!("manifest json encode failed: {error}")))?;
@@ -12521,24 +13664,6 @@ const TURN_STREAMING_CHECKPOINT_BYTES: usize = 8 * 1024;
 /// Flush the streaming checkpoint at least this often while deltas arrive.
 const TURN_STREAMING_CHECKPOINT_INTERVAL: std::time::Duration = std::time::Duration::from_secs(2);
 
-/// How long the SSE turn handler waits for the first provider signal before it
-/// opens the response anyway.
-///
-/// The window is deliberately short: a *fast* failure (unmapped model, empty
-/// account group, exhausted capacity) still becomes a canonical Problem+json
-/// response the client can localize, while a slow provider — or one whose first
-/// token arrives seconds later — no longer leaves the request pending with no
-/// response head.
-const TURN_STREAM_FIRST_SIGNAL_GRACE: std::time::Duration =
-    std::time::Duration::from_millis(500);
-
-/// Leading SSE comment frame.
-///
-/// Comment lines are ignored by every event parser, and flushing one
-/// immediately defeats proxy/edge response buffering so `delta` frames reach the
-/// client as they arrive instead of stalling behind a buffer threshold.
-const TURN_STREAM_OPEN_FRAME: &[u8] = b": stream-open\n\n";
-
 impl HttpTurnExecutionStreamSink {
     fn new(
         service: Arc<HttpService>,
@@ -12768,18 +13893,12 @@ async fn streaming_turn_execution_http_response(
         }
     });
 
-    // The response head must never wait for the whole turn. Before this, the
-    // handler blocked on `receiver.recv()` until the first frame existed — and
-    // for a runtime that emits no incremental delta at all, the first frame was
-    // the terminal `completion`, so the browser saw a request pending for the
-    // entire turn (up to TURN_EXECUTION_TIMEOUT) with no response head.
-    //
-    // A fast failure still short-circuits into a problem response; only a slow
-    // producer falls through to an already-open stream.
-    let first = match tokio::time::timeout(TURN_STREAM_FIRST_SIGNAL_GRACE, receiver.recv()).await {
-        Ok(Some(TurnHttpStreamSignal::Failed(problem))) => return Err(problem),
-        Ok(Some(chunk)) => Some(chunk),
-        Ok(None) | Err(_) => None,
+    let first = receiver.recv().await.ok_or_else(|| {
+        ApiProblem::internal("Turn stream closed before the first event or error")
+    })?;
+    let first = match first {
+        TurnHttpStreamSignal::Failed(problem) => return Err(problem),
+        chunk @ TurnHttpStreamSignal::Chunk(_) => chunk,
     };
 
     // Heartbeat: long inference silences must not look like a dead stream to
@@ -12789,21 +13908,11 @@ async fn streaming_turn_execution_http_response(
     // heartbeat must never keep the response open.
     let mut heartbeat = tokio::time::interval(std::time::Duration::from_secs(15));
     heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-    let mut initial: Vec<Result<Bytes, std::io::Error>> = Vec::with_capacity(2);
-    match first {
-        // Regular case: the producer was ready within the grace window, so the
-        // body starts with its real frame and the byte-level contract for
-        // SSE clients is unchanged.
-        Some(TurnHttpStreamSignal::Chunk(chunk)) => initial.push(Ok(Bytes::from(chunk))),
-        Some(TurnHttpStreamSignal::Failed(problem)) => {
-            initial.push(Err(std::io::Error::other(problem.message)))
-        }
-        // Timed out waiting for the provider: open the body with a comment
-        // frame so the client sees a live `text/event-stream` immediately
-        // instead of an idle connection that some edges abort.
-        None => initial.push(Ok(Bytes::from_static(TURN_STREAM_OPEN_FRAME))),
-    }
-    let body_stream = tokio_stream::iter(initial).chain(futures_util::stream::unfold(
+    let first_bytes = match first {
+        TurnHttpStreamSignal::Chunk(chunk) => Ok::<Bytes, std::io::Error>(Bytes::from(chunk)),
+        TurnHttpStreamSignal::Failed(problem) => Err(std::io::Error::other(problem.message)),
+    };
+    let body_stream = tokio_stream::iter([first_bytes]).chain(futures_util::stream::unfold(
         (receiver, heartbeat),
         |(mut receiver, mut heartbeat)| async move {
             tokio::select! {
@@ -12832,11 +13941,6 @@ async fn streaming_turn_execution_http_response(
     let mut response = Response::builder()
         .status(StatusCode::OK)
         .header(CONTENT_TYPE, "text/event-stream")
-        // Reverse proxies and edges must not buffer or transform the stream:
-        // `X-Accel-Buffering` covers nginx-style buffers, and
-        // `no-cache, no-transform` covers generic intermediaries.
-        .header("X-Accel-Buffering", "no")
-        .header("Cache-Control", "no-cache, no-transform")
         .body(Body::from_stream(body_stream))
         .map_err(|error| ApiProblem::internal(format!("failed to build SSE response: {error}")))?;
     if let Ok(value) = HeaderValue::from_str(&trace_id) {
@@ -13555,7 +14659,10 @@ mod tests {
         )
         .expect("list response should be JSON");
         assert_eq!(
-            list_payload["data"]["items"].as_array().expect("items").len(),
+            list_payload["data"]["items"]
+                .as_array()
+                .expect("items")
+                .len(),
             0,
             "tenant B must not observe tenant A model configurations"
         );
@@ -13659,9 +14766,11 @@ mod tests {
         let archive_uri = format!("{detail_uri}/archive");
 
         // List returns the applied profile without exposing credentials.
-        let list =
-            get_model_configuration(&app, &format!("/app/v3/api/ai/model_configurations?engineId={engine_id}"))
-                .await;
+        let list = get_model_configuration(
+            &app,
+            &format!("/app/v3/api/ai/model_configurations?engineId={engine_id}"),
+        )
+        .await;
         assert_eq!(list.status(), StatusCode::OK);
         let list_bytes = to_bytes(list.into_body(), usize::MAX)
             .await
@@ -13679,7 +14788,11 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0]["profileId"], profile_id);
         assert_eq!(items[0]["engineId"], engine_id);
-        assert_eq!(items[0]["providerScope"], sdkwork_agents_runtime_facade::agent_engine_provider_scope(engine_id).expect("engine scope"));
+        assert_eq!(
+            items[0]["providerScope"],
+            sdkwork_agents_runtime_facade::agent_engine_provider_scope(engine_id)
+                .expect("engine scope")
+        );
         assert_eq!(items[0]["baseUrl"], "https://models.example.test/v1");
         assert_eq!(items[0]["defaultModelId"], "example-chat");
         assert_eq!(items[0]["apiKeyConfigured"], true);
@@ -13892,8 +15005,7 @@ mod tests {
     }
 
     fn facade_policy_subject() -> sdkwork_agent_kernel::PolicySubject {
-        sdkwork_agent_kernel::PolicySubject::new("user:100", "100001")
-            .with_role("ai.agents.manage")
+        sdkwork_agent_kernel::PolicySubject::new("user:100", "100001").with_role("ai.agents.manage")
     }
 
     fn facade_actor() -> sdkwork_agents_runtime_facade::AgentsSessionActor {
@@ -14157,7 +15269,11 @@ mod tests {
                 requested_by: facade_policy_subject(),
             })
             .expect("session runtime bindings must list");
-        assert_eq!(bindings.items.len(), 1, "default RIG binding must be created");
+        assert_eq!(
+            bindings.items.len(),
+            1,
+            "default RIG binding must be created"
+        );
         assert_eq!(
             bindings.items[0].provider_binding_id, "binding.rig",
             "default binding must target the RIG simple-agent engine"
@@ -14165,7 +15281,12 @@ mod tests {
         assert_eq!(bindings.items[0].model_id, "rig.default-chat");
         let provider_binding = state
             .service
-            .get_provider_binding(100_001, "agent.facade", "binding.rig", facade_policy_subject())
+            .get_provider_binding(
+                100_001,
+                "agent.facade",
+                "binding.rig",
+                facade_policy_subject(),
+            )
             .expect("RIG provider binding must be bootstrapped");
         assert!(provider_binding.active);
     }

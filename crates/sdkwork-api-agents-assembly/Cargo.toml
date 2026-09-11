@@ -1,14 +1,10 @@
 [package]
-rust-version.workspace = true
 name = "sdkwork-api-agents-assembly"
 edition.workspace = true
 license.workspace = true
 version.workspace = true
 description = "Generated API assembly for sdkwork-agents application HTTP plane."
 
-
-[lints]
-workspace = true
 [lib]
 name = "sdkwork_api_agents_assembly"
 path = "src/lib.rs"
@@ -35,7 +31,7 @@ sdkwork-api-drive-assembly.workspace = true
 sdkwork-routes-drive-app-api.workspace = true
 sdkwork-routes-agents-http-shared.workspace = true
 serde_json.workspace = true
+sdkwork-api-generations-assembly.workspace = true
 sdkwork-routes-agents-app-api.workspace = true
 sdkwork-routes-agents-backend-api.workspace = true
 sdkwork-routes-agents-open-api.workspace = true
-sdkwork-api-generations-assembly.workspace = true

@@ -27,28 +27,13 @@ members = [
 ]
 
 [workspace.package]
-rust-version = "1.85"
 edition = "2021"
 version = "0.1.0"
 license = "AGPL-3.0-or-later"
 
-[workspace.lints.rust]
-# RUST_CODE_SPEC.md section 13 baseline.
-# Deny-tier lints (unsafe_code, panic, unwrap_used, expect_used, pedantic) are
-# promoted per crate together with their cleanup: enabling them fleet-wide
-# today floods or fails builds that have not paid that debt yet.
-unsafe_op_in_unsafe_fn = "warn"
-trivial_casts = "warn"
-trivial_numeric_casts = "warn"
-
-[workspace.lints.clippy]
-dbg_macro = "warn"
-todo = "warn"
-unimplemented = "warn"
-exit = "warn"
-
 [workspace.dependencies]
 axum = "0.8"
+rand = "0.9"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
 tokio-stream = "0.1"
 tracing = "0.1"
@@ -61,6 +46,8 @@ tower = { version = "0.5", features = ["util"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+jsonschema = "0.54"
+roxmltree = "0.21"
 sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres", "time"] }
 time = { version = "0.3", features = ["parsing"] }
 chrono = { version = "0.4", features = ["serde"] }
@@ -101,7 +88,7 @@ sdkwork-drive-uploader-service = { path = "../sdkwork-drive/crates/sdkwork-drive
 sdkwork-drive-object-runtime = { path = "../sdkwork-drive/crates/sdkwork-drive-object-runtime" }
 sdkwork-drive-workspace-service = { path = "../sdkwork-drive/crates/sdkwork-drive-workspace-service" }
 sdkwork-drive-storage-contract = { path = "../sdkwork-drive/crates/sdkwork-drive-storage-contract" }
-reqwest = { version = "0.12", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream", "blocking"] }
 sdkwork-database-config = { path = "../sdkwork-database/crates/sdkwork-database-config" }
 sdkwork-database-sqlx = { path = "../sdkwork-database/crates/sdkwork-database-sqlx" }
 sdkwork-database-lifecycle = { path = "../sdkwork-database/crates/sdkwork-database-lifecycle" }
@@ -115,6 +102,7 @@ sdkwork-intelligence-prompts-ai-contract = { path = "../sdkwork-prompts/crates/s
 # Local intelligence agents service + HTTP routes (application-owned)
 sdkwork-intelligence-agents-service = { path = "crates/sdkwork-intelligence-agents-service", features = ["http-axum", "postgres-sync"] }
 cloudrouter-open-sdk = { path = "../sdkwork-cloudrouter/sdks/cloudrouter-open-sdk/cloudrouter-open-sdk-rust/generated/server-openapi" }
+base64 = "0.22"
 sdkwork-routes-agents-http-shared = { path = "crates/sdkwork-routes-agents-http-shared" }
 sdkwork-routes-agents-open-api = { path = "crates/sdkwork-routes-agents-open-api" }
 sdkwork-routes-agents-app-api = { path = "crates/sdkwork-routes-agents-app-api" }
