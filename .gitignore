@@ -25,7 +25,6 @@ dist/
 coverage/
 artifacts/
 **/artifacts/
-vendor/
 
 # SDKWork local runtime state
 .runtime/
@@ -63,29 +62,13 @@ Thumbs.db
 *.tsbuildinfo
 **/.cache/
 **/build/
-# Runtime-generated environment configuration
-**/public/runtime-env.json
 
-# SDKWork baseline ignore patterns (auto-appended)
-.pnpm-store/
-target/
-etc/**/*.local.*
-/bin/
+# AI agent local workspace state (session plans and tool state)
+.zcode/
 
-# Workspace junk / temp files and directories
-_tmp_*/
-_tmp_*
-.workbuddy/
-
-# Generated SDK build output (rebuilt by regenerating SDK, not hand-edited)
-sdks/**/generated/server-openapi/src/**/*.js
-sdks/**/generated/server-openapi/src/**/*.js.map
-sdks/**/generated/server-openapi/src/**/*.d.ts
-sdks/**/generated/server-openapi/src/**/*.d.ts.map
-
-# SDK composed build output (compiled alongside TypeScript source)
-sdks/**/sdkwork-agents-app-sdk-typescript/src/*.js
-sdks/**/sdkwork-agents-app-sdk-typescript/src/*.js.map
-sdks/**/sdkwork-agents-app-sdk-typescript/src/*.d.ts
-sdks/**/sdkwork-agents-app-sdk-typescript/src/*.d.ts.map
+# TypeScript compiled output — generated SDK packages track .ts sources only
+sdks/**/*.js
+sdks/**/*.js.map
+sdks/**/*.d.ts
+sdks/**/*.d.ts.map
 
