@@ -52,7 +52,7 @@
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "5abc701c501bee0a5d119f900a82b19d2f7d8e09fea4048441d6b08fe7e479f1"
+      "sha256": "de7d2035805adc954f9891c95ab4a6a6f69f0c603357133f2ed6b50b3665d38b"
     },
     {
       "path": "src/api/base.ts",
@@ -72,7 +72,7 @@
     },
     {
       "path": "src/http/client.ts",
-      "sha256": "868b7785497a93658b628de2d9b520d9d2456406bcf2ef717319beaa6913146d"
+      "sha256": "f0e93f51af678aadaf96d3e4b26e2224cb5f551b3f4651980630bbe1c7f1ceac"
     },
     {
       "path": "src/http/index.ts",
@@ -479,6 +479,14 @@
       "sha256": "38c5b471a886d785ad6de23da43cde89bbad6b805482e8b69176639c0a7f74c0"
     },
     {
+      "path": "src/types/agent-toolkit-overview-response.ts",
+      "sha256": "1e75b4bf8a8d5f54194a2241f37bff22db173a2a38d2290dc0b30c309e338b2e"
+    },
+    {
+      "path": "src/types/agent-toolkit-overview.ts",
+      "sha256": "3ae815aeeb8b7e40549deaffe99137323b1b155523631a907ed540cb8416062c"
+    },
+    {
       "path": "src/types/agent-turn-execution-response.ts",
       "sha256": "52f3bbc2793626940daf2ba8fc06f7f071134a06409a817dc2aaf0fb408e3102"
     },
@@ -796,7 +804,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "0c10a62798f016d750e303904e332028cc71b834354166ebb5f0a51b9a447bc5"
+      "sha256": "360e08ab0f832dcebf2c5decee0e1ef540f2d1a8bd2f299145a71f45bfe40fbd"
     },
     {
       "path": "src/types/int64-string.ts",
@@ -907,6 +915,10 @@
       "sha256": "8ca0e8b16e72eb3436c62cf0873b9d8a7656ec45356783396fa4a8c8f6346df3"
     },
     {
+      "path": "src/types/resolved-skill.ts",
+      "sha256": "40e2ea8da44ff4ddf687e8eeb664ca40f0698ed7a6fb11be449e99f2520f6070"
+    },
+    {
       "path": "src/types/restore-agent-request.ts",
       "sha256": "eb2b3273bc50cc8ad3e7608c0024d771d7c0a420c448d4972ea44efc28c56e26"
     },
@@ -965,6 +977,10 @@
     {
       "path": "src/types/tool-asset-view.ts",
       "sha256": "af7e2dfbcf8fec2e20ed5508e21fb32eb19b81e2b2f038e2f26ebb6eafefb875"
+    },
+    {
+      "path": "src/types/turn-tool-descriptor.ts",
+      "sha256": "ed2cd8fc518ab3960e7e00745a81b1bbd267ebc3e3796bf23f876aeaca0aef13"
     },
     {
       "path": "src/types/typed-agent-interaction-resolution.ts",

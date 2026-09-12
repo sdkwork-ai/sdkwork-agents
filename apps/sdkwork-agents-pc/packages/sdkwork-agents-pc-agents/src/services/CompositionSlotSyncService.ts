@@ -6,8 +6,22 @@ import { syncAllOffsetPages } from "@sdkwork/agents-pc-core/sdk/pagination";
 
 import type { AgentConfig } from "./AgentService";
 
-type CompositionSlotKind = "memory" | "knowledge" | "skill" | "prompt" | "drive" | "tool";
-type CompositionTargetModule = "memory" | "knowledgebase" | "skills" | "prompts" | "drive";
+type CompositionSlotKind =
+  | "memory"
+  | "knowledge"
+  | "skill"
+  | "prompt"
+  | "drive"
+  | "tool"
+  | "mcp";
+type CompositionTargetModule =
+  | "memory"
+  | "knowledgebase"
+  | "skills"
+  | "prompts"
+  | "drive"
+  | "tools"
+  | "mcp";
 
 interface DesiredCompositionSlot {
   slotId: string;
@@ -49,7 +63,17 @@ function buildDesiredCompositionSlots(config: AgentConfig): DesiredCompositionSl
     slots.push({
       slotId: slotIdForRef(targetRef),
       slotKind: "tool",
-      targetModule: "drive",
+      targetModule: "tools",
+      targetRef,
+    });
+  }
+
+  for (const serverKey of config.mcpServerKeys ?? []) {
+    const targetRef = serverKey.includes(".") ? serverKey : serverKey;
+    slots.push({
+      slotId: slotIdForRef(`mcp.${targetRef}`),
+      slotKind: "mcp",
+      targetModule: "mcp",
       targetRef,
     });
   }

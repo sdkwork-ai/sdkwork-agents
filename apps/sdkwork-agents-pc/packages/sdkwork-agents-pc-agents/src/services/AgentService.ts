@@ -40,6 +40,8 @@ export interface AgentConfig {
   voiceIds?: string[];
   toolIds?: string[];
   skillIds?: string[];
+  /** Bound external MCP server keys (synced to `slotKind: mcp` composition slots). */
+  mcpServerKeys?: string[];
 }
 
 export interface AgentPreviewResponseRequest {

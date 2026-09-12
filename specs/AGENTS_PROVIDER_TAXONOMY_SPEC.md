@@ -92,7 +92,44 @@ unavailable bindings fail closed.
 5. Skill package identity, installation and content remain owned by
    `sdkwork-skills`; Agents stores stable references only.
 
-## 8. Verification
+## 8. Built-in MCP Toolkit Contract (turn tool-calling loop)
+
+Chat agents execute model-driven tool calls inside the durable Turn loop
+(`sdkwork-intelligence-agents-service`, cloudrouter-account-pool executor):
+
+- **Default toolkit.** Every chat agent receives the built-in generations MCP
+  tools (`mcp__generations__image.create|retrieve`, `video.create|retrieve`,
+  `speech.create`, `music.create|retrieve`) plus the synchronous media family
+  by default; no composition configuration is required.
+- **Model-visible names equal dispatch ids.** Tools are advertised with their
+  namespaced ids (`mcp__<server>__<tool>`, `sound-effect.generate`, ...) so a
+  model echo round-trips without a lookup table. Unknown tools fail closed.
+- **Loop bounds.** At most 8 completion rounds per turn; tool calls execute
+  serially (`parallel_tool_calls: false`); tool results are length-capped
+  (`MAX_TOOL_RESULT_CONTENT_CHARS`) before being fed back.
+- **Tool namespaces.** `mcp__generations__*` executes on the federated
+  generations app API with the caller's dual tokens (tenant scope resolves
+  server-side); the media family executes synchronously through the
+  cloudrouter gateway; `mcp__<server>__<tool>` (user-registered servers)
+  executes over JSON-RPC 2.0 HTTP. Connections resolve per turn from the
+  agent's `slotKind: mcp` composition-slot policy (`endpointUrl`, `authType`,
+  `secretRef`, `timeoutMs`, `tools`, `allowedTools`/`deniedTools`); secret
+  material resolves from `SDKWORK_AGENTS_MCP_SECRET__<REF>` environment
+  variables at call time and unresolved credentials fail the call closed.
+  The authoritative MCP server registry remains `sdkwork-mcp`; agents slots
+  carry the resolved orchestration snapshot only.
+- **Approval.** `requires_approval` tools are never executed inline; the loop
+  reports `approval_required` back to the model so it asks the user in
+  conversation (interaction-object approval is a follow-up surface).
+- **Configuration.** `slotKind: tool` (enabled=false) trims default tools;
+  `slotKind: mcp` (enabled=true) expands a bound server's tools from its
+  policy; `slotKind: skill` contributes an instructions section to the
+  assembled system prompt (the request-level `systemPrompt` still wins).
+  `GET /app/v3/api/ai/agents/{agentId}/toolkit` exposes the effective
+  toolkit. A broken or endpoint-less slot policy is skipped, never failing
+  the turn.
+
+## 9. Verification
 
 ```powershell
 cargo test -p sdkwork-agents-runtime-facade

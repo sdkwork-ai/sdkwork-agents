@@ -12,6 +12,7 @@ import {
   type ChatAgentScope,
 } from "./services/ChatService";
 import { bootstrapChatSessions } from './services/chatBootstrap';
+import { extractToolMedia } from './services/toolMedia';
 import { ProjectService } from "./services/ProjectService";
 import { useTranslation } from "react-i18next";
 import {
@@ -740,8 +741,20 @@ export const ChatView = ({
                       ? toolCalls.find((call) => call.id === event.toolCallId)
                       : toolCalls[toolCalls.length - 1];
                     if (target) {
-                      target.status = 'completed';
+                      target.status = event.isError ? 'error' : 'completed';
                       if (event.toolName) target.name = event.toolName;
+                      // Replace the running placeholder with the generated
+                      // media (image/video/audio/music) when the tool
+                      // produced renderable assets; failures surface the
+                      // error text instead.
+                      const toolName = event.toolName ?? target.name ?? '';
+                      if (event.isError) {
+                        target.media = undefined;
+                        target.error = event.result;
+                      } else {
+                        target.error = undefined;
+                        target.media = extractToolMedia(toolName, event.result);
+                      }
                     }
                   }
                   return { ...m, toolCalls };

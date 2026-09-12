@@ -10,6 +10,8 @@ pub(crate) use media_tools::{
     backend_update_media_tool_configuration,
 };
 
+use crate::toolkit::TurnToolkitConfig;
+
 use crate::agent_turn_input_queue::{
     AgentTurnInputQueueDriveRef, AgentTurnInputQueueEntry, TurnInputQueueFailureRequest,
     TurnInputQueueListQuery, TurnInputQueueReorderEntry,
@@ -28,7 +30,8 @@ use crate::application::{
     GetSessionItemCommand, GetSessionRuntimeBindingCommand, GetSessionUserStateCommand,
     GetTaskCommand, GetTaskRunCommand, GetTurnByIdempotencyCommand, GetTurnCommand,
     GetWorkspaceCommand, ImportProjectCommand, ListAgentAuditEventsCommand,
-    ListItemFeedbackCommand, ListMcpMarketplaceCommand, ListProjectCompositionSlotsCommand,
+    AgentToolkitDescribeCommand, ListItemFeedbackCommand, ListMcpMarketplaceCommand,
+    ListProjectCompositionSlotsCommand,
     ListProjectsCommand, ListSessionActivitySummariesCommand, ListSessionCheckpointsCommand,
     ListSessionRuntimeBindingsCommand, ListSessionUserStatesCommand,
     ListTurnInputQueueEntriesCommand, ListTurnsCommand, ListWorkspacesCommand,
@@ -1485,6 +1488,17 @@ impl AgentHttpState {
         self
     }
 
+    /// Registers the per-turn toolkit configuration source (default MCP tools
+    /// plus external MCP listing). Wired by the gateway bootstrap so chat
+    /// agents get the built-in image/video/audio/music tool set by default.
+    pub fn with_toolkit_config(
+        self,
+        toolkit_config: Option<Arc<dyn TurnToolkitConfig>>,
+    ) -> Self {
+        self.service.set_toolkit_config(toolkit_config);
+        self
+    }
+
     pub fn session_facade(&self) -> Arc<dyn sdkwork_agents_runtime_facade::AgentsSessionFacade> {
         Arc::new(HttpAgentsSessionFacade::new(self.service.clone()))
     }
@@ -2515,6 +2529,10 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
         .route(
             "/app/v3/api/ai/agents/{agentId}/restore",
             post(app_restore_agent),
+        )
+        .route(
+            "/app/v3/api/ai/agents/{agentId}/toolkit",
+            get(app_get_agent_toolkit),
         )
         .route(
             "/app/v3/api/ai/agents/{agentId}/provider_bindings",
@@ -6946,6 +6964,31 @@ async fn app_list_agent_engines(
         let catalog =
             with_service(&state, |service| service.list_agent_engine_catalog(subject)).await?;
         Ok(ResourceData { item: catalog })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn app_get_agent_toolkit(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    agent_id: Result<Path<String>, PathRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<crate::toolkit::AgentToolkitOverview>> = async {
+        let Path(agent_id) = agent_id.map_err(ApiProblem::from_path_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let subject = scope.subject().clone();
+        with_service(&state, move |service| {
+            service.describe_agent_toolkit(AgentToolkitDescribeCommand {
+                tenant_id,
+                agent_id,
+                requested_by: subject,
+            })
+        })
+        .await
+        .map(|toolkit| ResourceData { item: toolkit })
     }
     .await;
     finish_api_json(&web_ctx, result)

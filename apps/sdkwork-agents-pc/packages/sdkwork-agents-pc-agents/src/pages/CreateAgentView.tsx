@@ -205,6 +205,9 @@ export const CreateAgentView: React.FC<CreateAgentViewProps> = ({ onBack, initia
   const [selectedVoiceIds, setSelectedVoiceIds] = useState<string[]>(DEFAULT_AGENT_CONFIG.voiceIds);
   const [selectedKnowledgeIds, setSelectedKnowledgeIds] = useState<string[]>(DEFAULT_AGENT_CONFIG.knowledgeBaseIds);
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>(DEFAULT_AGENT_CONFIG.toolIds);
+  const [selectedMcpServerKeys, setSelectedMcpServerKeys] = useState<string[]>(
+    DEFAULT_AGENT_CONFIG.mcpServerKeys ?? [],
+  );
   const [selectedSkillIds, setSelectedSkillIds] = useState<string[]>(DEFAULT_AGENT_CONFIG.skillIds);
   const [draftId, setDraftId] = useState<string | null>(initialAgentId || null);
   
@@ -277,6 +280,7 @@ export const CreateAgentView: React.FC<CreateAgentViewProps> = ({ onBack, initia
       setSelectedVoiceIds(DEFAULT_AGENT_CONFIG.voiceIds);
       setSelectedKnowledgeIds(DEFAULT_AGENT_CONFIG.knowledgeBaseIds);
       setSelectedToolIds(DEFAULT_AGENT_CONFIG.toolIds);
+      setSelectedMcpServerKeys(DEFAULT_AGENT_CONFIG.mcpServerKeys ?? []);
       setSelectedSkillIds(DEFAULT_AGENT_CONFIG.skillIds);
       setDraftId(null);
       return undefined;
@@ -322,6 +326,7 @@ export const CreateAgentView: React.FC<CreateAgentViewProps> = ({ onBack, initia
         setSelectedVoiceIds(agent.voiceIds ?? DEFAULT_AGENT_CONFIG.voiceIds);
         setSelectedKnowledgeIds(agent.knowledgeBaseIds ?? DEFAULT_AGENT_CONFIG.knowledgeBaseIds);
         setSelectedToolIds(agent.toolIds ?? DEFAULT_AGENT_CONFIG.toolIds);
+    setSelectedMcpServerKeys(agent.mcpServerKeys ?? []);
         setSelectedSkillIds(agent.skillIds ?? DEFAULT_AGENT_CONFIG.skillIds);
         const nextWelcomeMessage = agent.welcomeMessage ?? DEFAULT_AGENT_WELCOME_MESSAGE;
         setWelcomeMessage(nextWelcomeMessage);
@@ -362,6 +367,7 @@ export const CreateAgentView: React.FC<CreateAgentViewProps> = ({ onBack, initia
     voiceIds: selectedVoiceIds,
     toolIds: selectedToolIds,
     skillIds: selectedSkillIds,
+    mcpServerKeys: selectedMcpServerKeys,
   });
 
   const resolveMutableAgentId = (): string | undefined => {
@@ -1138,9 +1144,16 @@ export const CreateAgentView: React.FC<CreateAgentViewProps> = ({ onBack, initia
         onClose={() => setIsToolsModalOpen(false)}
         selectedToolIds={selectedToolIds}
         onSave={(ids, items) => {
-          setSelectedToolIds(ids);
+          // Third-party MCP selections become mcp composition slots (the
+          // runtime expands their bound servers per turn); engine tools stay
+          // tool slots.
+          const categoryById = new Map(items.map((item) => [item.id, item.category]));
+          const mcpKeys = ids.filter((id) => categoryById.get(id) === 'mcp');
+          const engineToolIds = ids.filter((id) => categoryById.get(id) !== 'mcp');
+          setSelectedToolIds(engineToolIds);
+          setSelectedMcpServerKeys(mcpKeys);
           setToolSnapshots((prev) => mergeCapabilitySnapshots(prev, ids, items));
-          toast(`已启用 ${ids.length} 个环境与 MCP 能力`, 'success');
+          toast(`已启用 ${engineToolIds.length} 个环境与 ${mcpKeys.length} 个 MCP 能力`, 'success');
         }}
       />
       <SelectSkillsModal

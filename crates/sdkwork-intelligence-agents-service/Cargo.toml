@@ -24,6 +24,7 @@ path = "src/lib.rs"
 sdkwork-agents-contract.workspace = true
 sdkwork-agents-runtime-facade.workspace = true
 sdkwork-agents-tool-contract.workspace = true
+sdkwork-generations-mcp-service.workspace = true
 sdkwork-agents-tool-cloudrouter.workspace = true
 sdkwork-agents-tool-audio.workspace = true
 sdkwork-agents-tool-video.workspace = true

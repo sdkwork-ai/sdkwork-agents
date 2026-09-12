@@ -85,6 +85,7 @@ const DATABASE_AUTO_MIGRATE_ENV: &str = "SDKWORK_DATABASE_AUTO_MIGRATE";
 impl TurnExecutor for FailingTurnExecutor {
     fn complete(&self, _input: &TurnExecutionInput) -> TurnExecutionOutput {
         TurnExecutionOutput {
+            tool_events: Vec::new(),
             model_request_id: None,
             finish_reason: None,
             content: "provider detail must not be persisted".to_string(),
@@ -114,6 +115,7 @@ impl TurnExecutor for BlockingTurnExecutor {
             .expect("blocking executor release wait should not be poisoned");
         drop(state);
         TurnExecutionOutput {
+            tool_events: Vec::new(),
             model_request_id: Some(input.model_request_id.clone()),
             finish_reason: Some("stop".to_string()),
             content: "completion that must lose the cancellation race".to_string(),

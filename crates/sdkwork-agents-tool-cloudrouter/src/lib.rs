@@ -10,7 +10,7 @@ mod wire_protocol;
 pub use chat_stream::{
     CloudRouterChatStreamResult, CloudRouterCompletionResult, CloudRouterStreamDelta,
     create_llm_completion_blocking, stream_chat_completion_blocking,
-    stream_llm_completion_blocking,
+    stream_chat_completion_with_tools_blocking, stream_llm_completion_blocking, StreamedToolCall,
 };
 pub use client::{cloudrouter_http_error_hint,
     cloudrouter_base_url, map_cloudrouter_error, run_sync, CloudRouterMediaClient,

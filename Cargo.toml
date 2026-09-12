@@ -134,6 +134,7 @@ sdkwork-agents-integration-tests = { path = "crates/sdkwork-agents-integration-t
 
 # Generations dependency (sdkwork-agents composes generations capabilities)
 sdkwork-api-generations-assembly = { path = "../sdkwork-generations/crates/sdkwork-api-generations-assembly" }
+sdkwork-generations-mcp-service = { path = "../sdkwork-generations/crates/sdkwork-generations-mcp-service" }
 
 # Media tool family (application-owned, cloudrouter open-api backed)
 sdkwork-agents-tool-contract = { path = "crates/sdkwork-agents-tool-contract" }

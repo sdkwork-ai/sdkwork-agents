@@ -614,6 +614,230 @@ class AgentManagementProfile {
   }
 }
 
+class AgentToolkitOverview {
+  final String agentId;
+  final List<TurnToolDescriptor> tools;
+  final List<ResolvedSkill> skills;
+  final String? assembledSystemPrompt;
+
+  AgentToolkitOverview({
+    required this.agentId,
+    required this.tools,
+    required this.skills,
+    this.assembledSystemPrompt
+  });
+
+  factory AgentToolkitOverview.fromJson(Map<String, dynamic> json) {
+    return AgentToolkitOverview(
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentToolkitOverview.agentId is required');
+        }
+        return value;
+      })(),
+      tools: (() {
+        final list = _sdkworkAsList(json['tools']);
+        if (list == null) {
+          throw FormatException('AgentToolkitOverview.tools is required');
+        }
+        return list
+            .map((item) => (() {
+        final map = _sdkworkAsMap(item);
+        return map == null ? null : TurnToolDescriptor.fromJson(map);
+      })())
+            .whereType<TurnToolDescriptor>()
+            .toList();
+      })(),
+      skills: (() {
+        final list = _sdkworkAsList(json['skills']);
+        if (list == null) {
+          throw FormatException('AgentToolkitOverview.skills is required');
+        }
+        return list
+            .map((item) => (() {
+        final map = _sdkworkAsMap(item);
+        return map == null ? null : ResolvedSkill.fromJson(map);
+      })())
+            .whereType<ResolvedSkill>()
+            .toList();
+      })(),
+      assembledSystemPrompt: json['assembledSystemPrompt']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'agentId': agentId,
+      'tools': tools.map((item) => item.toJson()).toList(),
+      'skills': skills.map((item) => item.toJson()).toList(),
+      'assembledSystemPrompt': assembledSystemPrompt,
+    };
+  }
+}
+
+class AgentToolkitOverviewResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  AgentToolkitOverviewResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory AgentToolkitOverviewResponse.fromJson(Map<String, dynamic> json) {
+    return AgentToolkitOverviewResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('AgentToolkitOverviewResponse.code is required');
+        }
+        return value;
+      })(),
+      data: json['data'],
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentToolkitOverviewResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class TurnToolDescriptor {
+  final String toolId;
+  final String name;
+  final String description;
+  final Map<String, dynamic>? inputSchema;
+  final bool? requiresApproval;
+  final String? policyCategory;
+  final int timeoutMs;
+  final String origin;
+
+  TurnToolDescriptor({
+    required this.toolId,
+    required this.name,
+    required this.description,
+    this.inputSchema,
+    this.requiresApproval,
+    this.policyCategory,
+    required this.timeoutMs,
+    required this.origin
+  });
+
+  factory TurnToolDescriptor.fromJson(Map<String, dynamic> json) {
+    return TurnToolDescriptor(
+      toolId: (() {
+        final value = json['toolId']?.toString();
+        if (value == null) {
+          throw FormatException('TurnToolDescriptor.toolId is required');
+        }
+        return value;
+      })(),
+      name: (() {
+        final value = json['name']?.toString();
+        if (value == null) {
+          throw FormatException('TurnToolDescriptor.name is required');
+        }
+        return value;
+      })(),
+      description: (() {
+        final value = json['description']?.toString();
+        if (value == null) {
+          throw FormatException('TurnToolDescriptor.description is required');
+        }
+        return value;
+      })(),
+      inputSchema: _sdkworkAsMap(json['inputSchema']),
+      requiresApproval: json['requiresApproval'] is bool ? json['requiresApproval'] : null,
+      policyCategory: json['policyCategory']?.toString(),
+      timeoutMs: (() {
+        final value = json['timeoutMs'];
+        if (value is! int) {
+          throw FormatException('TurnToolDescriptor.timeoutMs is required');
+        }
+        return value;
+      })(),
+      origin: (() {
+        final value = json['origin']?.toString();
+        if (value == null) {
+          throw FormatException('TurnToolDescriptor.origin is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'toolId': toolId,
+      'name': name,
+      'description': description,
+      'inputSchema': inputSchema,
+      'requiresApproval': requiresApproval,
+      'policyCategory': policyCategory,
+      'timeoutMs': timeoutMs,
+      'origin': origin,
+    };
+  }
+}
+
+class ResolvedSkill {
+  final String slotId;
+  final String targetRef;
+  final String? title;
+  final String? instructions;
+
+  ResolvedSkill({
+    required this.slotId,
+    required this.targetRef,
+    this.title,
+    this.instructions
+  });
+
+  factory ResolvedSkill.fromJson(Map<String, dynamic> json) {
+    return ResolvedSkill(
+      slotId: (() {
+        final value = json['slotId']?.toString();
+        if (value == null) {
+          throw FormatException('ResolvedSkill.slotId is required');
+        }
+        return value;
+      })(),
+      targetRef: (() {
+        final value = json['targetRef']?.toString();
+        if (value == null) {
+          throw FormatException('ResolvedSkill.targetRef is required');
+        }
+        return value;
+      })(),
+      title: json['title']?.toString(),
+      instructions: json['instructions']?.toString()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'slotId': slotId,
+      'targetRef': targetRef,
+      'title': title,
+      'instructions': instructions,
+    };
+  }
+}
+
 class AgentResponse {
   final int code;
   final dynamic data;

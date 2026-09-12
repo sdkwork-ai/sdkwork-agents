@@ -1,0 +1,21 @@
+{
+  "name": "@sdkwork/agents-pc-playground",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "sdkwork": {
+    "architecture": "pc-react",
+    "surface": "app"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "dependencies": {
+    "@sdkwork/agents-pc": "workspace:*",
+    "react": "catalog:"
+  }
+}

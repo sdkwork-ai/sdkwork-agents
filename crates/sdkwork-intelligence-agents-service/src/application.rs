@@ -8,6 +8,7 @@ pub use turn_input_queue::*;
 
 use crate::agent_turn::AgentTurnMode;
 use crate::agent_turn::{AgentTurnRecord, AgentTurnStatus};
+use crate::toolkit::{resolve_effective_toolkit, TurnToolkitConfig};
 use crate::domain::{
     AgentAuditAction, AgentAuditPayload, AgentBusinessRecord, AgentBusinessStatus,
     AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentCompositionTargetModule,
@@ -838,6 +839,7 @@ where
     audit_sink: A,
     policy_provider: P,
     turn_executor: Arc<dyn TurnExecutor>,
+    toolkit_config: std::sync::RwLock<Option<Arc<dyn TurnToolkitConfig>>>,
 }
 
 /// Outcome of claiming a provider Session identity for the canonical
@@ -869,6 +871,7 @@ where
             audit_sink,
             policy_provider,
             turn_executor: Arc::new(ContractTurnExecutor),
+            toolkit_config: std::sync::RwLock::new(None),
         }
     }
 
@@ -877,6 +880,63 @@ where
     pub fn with_turn_executor(mut self, turn_executor: Arc<dyn TurnExecutor>) -> Self {
         self.turn_executor = turn_executor;
         self
+    }
+
+    /// Registers the toolkit configuration source (default tools plus external
+    /// MCP tool listing). Without it every turn runs text-only; the gateway
+    /// bootstrap always wires it so chat agents get the default MCP set.
+    pub fn with_toolkit_config(
+        self,
+        toolkit_config: Option<Arc<dyn TurnToolkitConfig>>,
+    ) -> Self {
+        *self.toolkit_config.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
+            toolkit_config;
+        self
+    }
+
+    /// Replaces the toolkit configuration on a shared (Arc) service instance.
+    pub fn set_toolkit_config(&self, toolkit_config: Option<Arc<dyn TurnToolkitConfig>>) {
+        *self.toolkit_config.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
+            toolkit_config;
+    }
+
+    /// Resolves the per-turn toolkit: default MCP set merged with the agent's
+    /// enabled composition slots (tool trims, external MCP servers, skills).
+    /// An agent with no slots keeps the full default set — chat agents get
+    /// image/video/audio/music/sound-effect MCP support out of the box.
+    fn resolve_turn_toolkit(
+        &self,
+        agent: &AgentBusinessRecord,
+    ) -> KernelResult<crate::toolkit::ResolvedToolkit> {
+        let Some(config) = self
+            .toolkit_config
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
+        else {
+            return Ok(crate::toolkit::ResolvedToolkit {
+                tools: Vec::new(),
+                skills: Vec::new(),
+                assembled_system_prompt: None,
+                connections: Vec::new(),
+            });
+        };
+        let query = crate::ports::CompositionSlotListQuery::for_agent(
+            agent.tenant_id,
+            agent.agent_id.clone(),
+        )
+        .with_pagination(crate::ports::PaginationParams {
+            page_size: 200,
+            offset: 0,
+            page_token: None,
+        });
+        let slots = self
+            .repository
+            .list_composition_slots(&query)?
+            .into_iter()
+            .filter(|slot| !slot.is_deleted())
+            .collect::<Vec<_>>();
+        Ok(resolve_effective_toolkit(config.as_ref(), &slots))
     }
 
     /// Verify that the canonical Agents repository can serve requests.
@@ -1532,6 +1592,30 @@ where
             "agent_engine.list",
         )?;
         Ok(crate::agent_engine_catalog::list_agent_engine_catalog())
+    }
+
+    pub fn describe_agent_toolkit(
+        &self,
+        command: AgentToolkitDescribeCommand,
+    ) -> KernelResult<crate::toolkit::AgentToolkitOverview> {
+        self.authorize(
+            "agent.business.toolkit.retrieve",
+            command.requested_by,
+            format!("agent.business.{}", command.agent_id),
+            "toolkit.retrieve",
+        )?;
+        validate_agent_id(command.agent_id.as_str())?;
+        let agent = self
+            .repository
+            .get(command.tenant_id, command.agent_id.as_str())?
+            .ok_or_else(|| KernelError::not_found("agent not found"))?;
+        let toolkit = self.resolve_turn_toolkit(&agent)?;
+        Ok(crate::toolkit::AgentToolkitOverview {
+            agent_id: agent.agent_id,
+            tools: toolkit.tools,
+            skills: toolkit.skills,
+            assembled_system_prompt: toolkit.assembled_system_prompt,
+        })
     }
 
     pub fn list_mcp_marketplace(
@@ -8604,7 +8688,15 @@ where
                 .any(|capability| capability == "model.chat")
         });
 
+        // Effective toolkit: default MCP set merged with the agent's
+        // composition slot overrides (tool disable / external MCP / skills).
+        // Resolved per turn so configuration changes apply on the next turn.
+        let toolkit = self.resolve_turn_toolkit(&agent)?;
+
         let execution_input = TurnExecutionInput {
+            effective_tools: toolkit.tools,
+            assembled_system_prompt: toolkit.assembled_system_prompt,
+            mcp_connections: toolkit.connections,
             turn_id: turn_id.clone(),
             model_request_id: turn_model_request_id(&turn_id),
             agent_display_name: agent.display_name.clone(),
@@ -8902,6 +8994,21 @@ where
             }
         }
         completed_items.push(assistant_output_item.clone());
+        // Persist the tool-calling loop's activity as durable ToolCall /
+        // ToolResult session items (pair-wise by tool_call_id) so the chat
+        // transcript renders tool cards after reload and the approval flow
+        // can re-inspect blocked calls.
+        completed_items.extend(
+            tool_items_from_turn_events(
+                &completion.tool_events,
+                &command.session_id,
+                &turn_id,
+                &user_input_item.item_id,
+                &session,
+                &command,
+                &self.repository,
+            )?,
+        );
 
         turn.response_item_id = Some(assistant_output_item.item_id.clone());
         turn.model_id = assistant_output_item.model_id.clone();
@@ -11275,6 +11382,7 @@ mod task_tests {
             drop(state);
 
             TurnExecutionOutput {
+                tool_events: Vec::new(),
                 model_request_id: Some(input.model_request_id.clone()),
                 finish_reason: Some("stop".to_string()),
                 content: "late provider completion".to_string(),
@@ -13140,4 +13248,74 @@ fn compose_agent_call_record(
         requested_at: command.requested_at.clone(),
         completed_at,
     }
+}
+
+
+/// Projects the turn loop's tool activity onto durable ToolCall/ToolResult
+/// session items (pair-wise by `tool_call_id`), so chat transcripts render
+/// tool cards after reload and blocked approvals stay inspectable.
+fn tool_items_from_turn_events<R: AgentRepository>(
+    events: &[crate::tool_calling::TurnToolEvent],
+    session_id: &str,
+    turn_id: &str,
+    user_input_item_id: &str,
+    session: &AgentSessionRecord,
+    command: &CreateTurnCommand,
+    repository: &R,
+) -> KernelResult<Vec<AgentSessionItemRecord>> {
+    let mut items = Vec::new();
+    for event in events {
+        let is_call = event.kind == crate::tool_calling::TurnToolEventKind::ToolUse;
+        let record = AgentSessionItemRecord {
+            id: repository.next_id()?,
+            item_id: format!("{ID_PREFIX_ITEM}{}", repository.next_id()?),
+            tenant_id: command.tenant_id,
+            organization_id: session.organization_id,
+            session_id: session_id.to_string(),
+            kind: if is_call {
+                AgentSessionItemKind::ToolCall
+            } else {
+                AgentSessionItemKind::ToolResult
+            },
+            content: None,
+            content_type: "application/json".to_string(),
+            status: AgentSessionItemStatus::Completed,
+            sequence: 0,
+            input_tokens: 0,
+            output_tokens: 0,
+            model_id: None,
+            provider_id: Some("agent.tool-loop".to_string()),
+            tool_name: Some(event.tool_id.clone()),
+            tool_call_id: Some(event.tool_call_id.clone()),
+            tool_arguments_json: if is_call {
+                event.arguments_json.clone()
+            } else {
+                None
+            },
+            tool_result_json: if is_call {
+                None
+            } else {
+                Some(
+                    serde_json::to_string(&serde_json::json!({
+                        "status": event.status,
+                        "content": event.content,
+                    }))
+                    .unwrap_or_else(|_| "{}".to_string()),
+                )
+            },
+            provider_payload_json: None,
+            parent_item_id: Some(user_input_item_id.to_string()),
+            turn_id: Some(turn_id.to_string()),
+            created_by: session.owner_user_id,
+            version: 0,
+            created_at: command.requested_at.clone(),
+            updated_at: command.requested_at.clone(),
+            completed_at: Some(command.requested_at.clone()),
+            redacted_at: None,
+            redacted_by: None,
+            retention_until: None,
+        };
+        items.push(record);
+    }
+    Ok(items)
 }

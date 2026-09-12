@@ -8,12 +8,44 @@ use sdkwork_agents_contract::{
     agents_use_dev_inline_auth_resolver, ensure_dev_auth_bypass_allowed,
 };
 use sdkwork_intelligence_agents_service::{
-    AgentHttpState, AllowAllPolicyProvider, CloudRouterFirstTurnExecutor, IamGatedPolicyProvider,
-    InMemoryAgentAuditSink, InMemoryAgentRepository, MediaToolInvocationService, MediaToolRegistry,
+    AgentHttpState, AllowAllPolicyProvider, CloudRouterFirstTurnExecutor, ExternalMcpToolExecutor,
+    GenerationsToolExecutor, HttpGenerationsPort, IamGatedPolicyProvider, InMemoryAgentAuditSink,
+    InMemoryAgentRepository, MediaToolExecutor, MediaToolInvocationService, MediaToolRegistry,
     PostgresAgentConfigurationStore, RuntimeFacadeTurnExecutor, SqlAgentAuditSink,
-    SqlAgentRepository, SyncPostgresAdapter,
+    SqlAgentRepository, SyncPostgresAdapter, TurnToolDispatcher, TurnToolkitConfig,
 };
 use std::sync::Arc;
+
+/// Toolkit configuration source for chat agents: the built-in generations
+/// MCP descriptors plus the synchronous media family form the default set.
+/// External MCP tools expand per turn from the agent's composition-slot
+/// policies (see `toolkit::McpSlotPolicy`).
+struct DefaultTurnToolkitConfig {
+    dispatcher: std::sync::Arc<TurnToolDispatcher>,
+}
+
+impl TurnToolkitConfig for DefaultTurnToolkitConfig {
+    fn default_tools(&self) -> Vec<sdkwork_intelligence_agents_service::TurnToolDescriptor> {
+        self.dispatcher.default_descriptors()
+    }
+}
+
+/// Assembles the production turn-tool dispatcher: generations MCP (HTTP to
+/// the federated generations API) + the synchronous media family + external
+/// MCP (catalog not yet provisioned — fail closed).
+fn build_turn_tool_dispatcher() -> TurnToolDispatcher {
+    let generations = GenerationsToolExecutor::new_http(std::sync::Arc::new(
+        HttpGenerationsPort::new(sdkwork_agents_tool_cloudrouter::cloudrouter_base_url()),
+    ));
+    TurnToolDispatcher::new()
+        .with_executor(Box::new(generations))
+        .with_executor(Box::new(MediaToolExecutor::new(std::sync::Arc::new(
+            MediaToolRegistry::new(),
+        ))))
+        .with_executor(Box::new(ExternalMcpToolExecutor::new(std::sync::Arc::new(
+            sdkwork_intelligence_agents_service::EnvMcpSecretResolver,
+        ))))
+}
 
 /// Build agents managed store HTTP state using postgres in production-like profiles and
 /// in-memory fixtures only when dev inline auth is explicitly enabled.
@@ -43,14 +75,19 @@ pub fn build_agent_http_state() -> Result<AgentHttpState> {
 }
 
 fn dev_agent_http_state() -> Result<AgentHttpState> {
+    let dispatcher = Arc::new(build_turn_tool_dispatcher());
     Ok(AgentHttpState::with_turn_executor(
         InMemoryAgentRepository::try_new().context("build agents dev in-memory repository")?,
         InMemoryAgentAuditSink::default(),
         AllowAllPolicyProvider::try_allow("policy.agents.dev")
             .map_err(anyhow::Error::msg)
             .context("build agents dev-only policy provider")?,
-        Arc::new(CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)),
-    ))
+        Arc::new(
+            CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)
+                .with_tool_dispatcher(Arc::clone(&dispatcher)),
+        ),
+    )
+    .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig { dispatcher }))))
 }
 
 fn production_postgres_agent_http_state() -> Result<AgentHttpState> {
@@ -83,6 +120,7 @@ fn production_postgres_agent_http_state() -> Result<AgentHttpState> {
     let repository = SqlAgentRepository::new(repository_adapter.clone());
     let audit_sink = SqlAgentAuditSink::new_global(audit_adapter);
 
+    let tool_dispatcher = Arc::new(build_turn_tool_dispatcher());
     let state = AgentHttpState::with_turn_executor(
         repository,
         audit_sink,
@@ -90,8 +128,14 @@ fn production_postgres_agent_http_state() -> Result<AgentHttpState> {
         // Chat turns carrying a user auth token route through the cloudrouter
         // account-pool gateway; turns without one (worker/backend flows) keep
         // the local agent-engine facade execution.
-        Arc::new(CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)),
-    );
+        Arc::new(
+            CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)
+                .with_tool_dispatcher(Arc::clone(&tool_dispatcher)),
+        ),
+    )
+    .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig {
+        dispatcher: tool_dispatcher,
+    })));
 
     // Persist applied model configuration profiles in the canonical Agents
     // PostgreSQL database (server-authoritative persistence; SQLite is

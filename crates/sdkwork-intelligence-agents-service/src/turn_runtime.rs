@@ -49,7 +49,7 @@ static PROVIDER_WORKER_LIMIT: LazyLock<Arc<Semaphore>> = LazyLock::new(|| {
 });
 
 /// Input for one durable turn execution.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TurnExecutionInput {
     /// Canonical SDKWork Turn identity established before provider execution.
     pub turn_id: String,
@@ -83,10 +83,22 @@ pub struct TurnExecutionInput {
     /// invocation (`chat_completions` default, `anthropic_messages`,
     /// `google_content`, `openai_responses`). Transient — never persisted.
     pub wire_protocol: Option<String>,
+    /// Effective tool set the model may call this turn (function calling).
+    /// Resolved per turn from the agent's default toolkit plus composition
+    /// slot overrides; empty disables the tool-calling loop.
+    pub effective_tools: Vec<crate::tool_calling::TurnToolDescriptor>,
+    /// Skill/prompt-slot assembled system prompt (agent instructions plus
+    /// enabled skills). The request-level `system_prompt` still wins when
+    /// present; this field feeds the `system` message otherwise.
+    pub assembled_system_prompt: Option<String>,
+    /// Connections for the agent's bound external MCP servers, resolved per
+    /// turn from composition-slot policies. Carried so the external MCP
+    /// executor dispatches without a global lookup.
+    pub mcp_connections: Vec<crate::tool_calling::McpServerConnection>,
 }
 
 /// Output from one durable turn execution.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TurnExecutionOutput {
     pub model_request_id: Option<String>,
     pub finish_reason: Option<String>,
@@ -99,6 +111,9 @@ pub struct TurnExecutionOutput {
     pub runtime_mode: &'static str,
     pub stream_deltas: Vec<String>,
     pub stream_events: Vec<KernelEvent>,
+    /// Tool activity recorded inside the loop (persisted as ToolCall/ToolResult
+    /// session items and replayed for reload). Empty when no tool ran.
+    pub tool_events: Vec<crate::tool_calling::TurnToolEvent>,
 }
 
 /// Provider-neutral input for cancelling one active durable Turn.
@@ -587,6 +602,7 @@ fn execute_runtime_facade_turn(
                 return inference_error("agent engine returned empty assistant content");
             }
             TurnExecutionOutput {
+                tool_events: Vec::new(),
                 model_request_id: Some(output.model_request_id),
                 finish_reason: output.finish_reason,
                 content,
@@ -685,6 +701,7 @@ fn buffered_agent_message_delta(
 
 pub(crate) fn inference_error(message: impl Into<String>) -> TurnExecutionOutput {
     TurnExecutionOutput {
+        tool_events: Vec::new(),
         model_request_id: None,
         finish_reason: None,
         content: message.into(),
@@ -701,6 +718,7 @@ pub(crate) fn inference_error(message: impl Into<String>) -> TurnExecutionOutput
 
 fn capacity_error(input: &TurnExecutionInput) -> TurnExecutionOutput {
     TurnExecutionOutput {
+        tool_events: Vec::new(),
         model_request_id: Some(input.model_request_id.clone()),
         finish_reason: None,
         content: "provider concurrency limit reached".to_string(),
@@ -768,6 +786,7 @@ fn map_model_response(
 ) -> KernelResult<TurnExecutionOutput> {
     if response.status == ModelStatus::Cancelled {
         return Ok(TurnExecutionOutput {
+            tool_events: Vec::new(),
             model_request_id: Some(response.model_request_id),
             finish_reason: response.finish_reason,
             content: String::new(),
@@ -803,6 +822,7 @@ fn map_model_response(
             )
         });
     Ok(TurnExecutionOutput {
+        tool_events: Vec::new(),
         model_request_id: Some(response.model_request_id),
         finish_reason: response.finish_reason,
         content,
@@ -885,6 +905,7 @@ pub fn execute_agent_turn(input: &TurnExecutionInput) -> TurnExecutionOutput {
 
     let output_tokens = estimate_tokens(content.as_str());
     TurnExecutionOutput {
+        tool_events: Vec::new(),
         model_request_id: Some(input.model_request_id.clone()),
         finish_reason: Some("stop".to_string()),
         content,
@@ -950,6 +971,9 @@ mod tests {
     #[test]
     fn execute_agent_turn_returns_assistant_content() {
         let output = execute_agent_turn(&TurnExecutionInput {
+            effective_tools: Vec::new(),
+            assembled_system_prompt: None,
+        mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
             agent_display_name: "Demo Agent".to_string(),
@@ -977,6 +1001,9 @@ mod tests {
     #[test]
     fn execute_agent_turn_marks_provider_bound_runtime_mode() {
         let output = execute_agent_turn(&TurnExecutionInput {
+            effective_tools: Vec::new(),
+            assembled_system_prompt: None,
+        mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
             agent_display_name: "Demo Agent".to_string(),
@@ -1046,6 +1073,9 @@ mod tests {
     fn kernel_model_turn_executor_preserves_session_identities() {
         let completer = KernelModelTurnExecutor::new(Arc::new(FakeKernelModelProvider::default()));
         let output = completer.complete(&TurnExecutionInput {
+            effective_tools: Vec::new(),
+            assembled_system_prompt: None,
+        mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
             agent_display_name: "Demo Agent".to_string(),
@@ -1148,6 +1178,9 @@ mod tests {
 
     fn sample_turn_execution_input() -> TurnExecutionInput {
         TurnExecutionInput {
+            effective_tools: Vec::new(),
+            assembled_system_prompt: None,
+        mcp_connections: Vec::new(),
             turn_id: "turn.timeout-test".to_string(),
             model_request_id: turn_model_request_id("turn.timeout-test"),
             agent_display_name: "Timeout Test".to_string(),

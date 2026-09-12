@@ -2169,7 +2169,7 @@ dependencies = [
  "codex-utils-absolute-path",
  "codex-utils-path-uri",
  "inventory",
- "rmcp",
+ "rmcp 3.0.0",
  "serde",
  "serde_json",
  "serde_with",
@@ -2552,7 +2552,7 @@ dependencies = [
  "openssl-sys",
  "rand 0.9.5",
  "regex-lite",
- "rmcp",
+ "rmcp 3.0.0",
  "serde",
  "serde_json",
  "sha1 0.10.7",
@@ -3076,7 +3076,7 @@ dependencies = [
  "futures",
  "lru 0.16.4",
  "regex-lite",
- "rmcp",
+ "rmcp 3.0.0",
  "serde",
  "serde_json",
  "sha1 0.10.7",
@@ -3387,7 +3387,7 @@ dependencies = [
  "keyring",
  "memchr",
  "oauth2",
- "rmcp",
+ "rmcp 3.0.0",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3618,7 +3618,7 @@ dependencies = [
  "codex-utils-pty",
  "codex-utils-string",
  "jsonptr",
- "rmcp",
+ "rmcp 3.0.0",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -10605,6 +10605,36 @@ dependencies = [
 
 [[package]]
 name = "rmcp"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14db48ee17a9ba61810ab1a9c1beb7d06d8136ae39ac25a1137f10d357af01af"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "chrono",
+ "futures",
+ "http 1.5.0",
+ "http-body 1.1.0",
+ "http-body-util",
+ "pastey",
+ "pin-project-lite",
+ "rand 0.10.2",
+ "rmcp-macros 2.2.0",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "sse-stream",
+ "thiserror 2.0.20",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower-service",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "rmcp"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcd2b6dd3b18129368955f32661a7718969e8c152c7d8866434c09cf15a512e0"
@@ -10623,7 +10653,7 @@ dependencies = [
  "process-wrap",
  "rand 0.10.2",
  "reqwest 0.13.4",
- "rmcp-macros",
+ "rmcp-macros 3.1.4",
  "schemars 1.2.2",
  "serde",
  "serde_json",
@@ -10636,6 +10666,19 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "rmcp-macros"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "783d787bf21813b285f13019adc49e11af501c658890c1e519f31f937c68b7e3"
+dependencies = [
+ "darling 0.23.0",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn 2.0.119",
 ]
 
 [[package]]
@@ -11427,6 +11470,7 @@ dependencies = [
  "sdkwork-agent-server",
  "sdkwork-agents-contract",
  "sdkwork-agents-database-host",
+ "sdkwork-agents-tool-cloudrouter",
  "sdkwork-database-sqlx",
  "sdkwork-intelligence-agents-service",
  "sdkwork-routes-agents-http-shared",
@@ -12008,6 +12052,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdkwork-generations-mcp-service"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "rmcp 2.2.0",
+ "schemars 1.2.2",
+ "sdkwork-agent-kernel",
+ "sdkwork-generations-provider-adapter",
+ "sdkwork-intelligence-generations-service",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "sdkwork-generations-provider-adapter"
 version = "0.1.0"
 dependencies = [
@@ -12167,6 +12229,7 @@ dependencies = [
  "sdkwork-drive-storage-contract",
  "sdkwork-drive-uploader-service",
  "sdkwork-drive-workspace-service",
+ "sdkwork-generations-mcp-service",
  "sdkwork-intelligence-prompts-ai-contract",
  "sdkwork-utils-rust",
  "sdkwork-web-core",

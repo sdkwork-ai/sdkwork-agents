@@ -16,6 +16,14 @@ export type {
   ChatServiceOptions,
 } from './services/ChatService';
 export { ProjectService, configureProjectPort } from './services/ProjectService';
+export {
+  extractToolMedia,
+  toolMediaKind,
+  toolProgressKey,
+  TOOL_DONE_DEFAULTS,
+  TOOL_PROGRESS_DEFAULTS,
+} from './services/toolMedia';
+export type { ToolMedia, ToolMediaKind } from './services/toolMedia';
 export type {
   ChatMemorySpaceOption,
   ChatProject,

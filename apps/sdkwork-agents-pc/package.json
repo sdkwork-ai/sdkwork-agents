@@ -10,7 +10,7 @@
     "clean": "node scripts/clean.mjs",
     "lint": "tsc --noEmit",
     "typecheck": "pnpm run lint",
-    "test:agent-contract": "tsx --test tests/agent-catalog.test.ts tests/package-alignment.contract.test.mjs tests/sdk-services.contract.test.ts tests/workbench-modules.test.ts tests/chat-resilience.test.ts tests/chat-selected-model-memory.test.ts tests/chat-markdown.test.ts tests/chat-markdown-render.test.ts tests/chat-markdown-renderer-impl.test.ts tests/chat-message-order.test.ts",
+    "test:agent-contract": "tsx --test tests/agent-catalog.test.ts tests/package-alignment.contract.test.mjs tests/sdk-services.contract.test.ts tests/workbench-modules.test.ts tests/chat-resilience.test.ts tests/chat-selected-model-memory.test.ts tests/chat-markdown.test.ts tests/chat-markdown-render.test.ts tests/chat-markdown-renderer-impl.test.ts tests/chat-message-order.test.ts tests/chat-tool-media.test.ts",
     "test:iam-contract": "node --test tests/iam-integration.contract.test.mjs && tsx --test tests/auth-routing.test.ts tests/runtime-config.test.ts",
     "test:drive-contract": "tsx --test tests/drive-upload.contract.test.ts",
     "check:bundle-budget": "node scripts/check-bundle-budget.mjs",

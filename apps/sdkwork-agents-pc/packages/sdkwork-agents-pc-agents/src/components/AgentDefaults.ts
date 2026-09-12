@@ -10,6 +10,7 @@ export const DEFAULT_AGENT_CONFIG = {
   suggestedPrompts: ['你能帮我做什么？', '给我讲个笑话'],
   temperature: 0.7,
   toolIds: [],
+  mcpServerKeys: [],
   voiceIds: ['voice-1'],
   welcomeMessage: '你好！我是你的智能体，我们可以开始测试了。',
 } satisfies Pick<
@@ -23,6 +24,7 @@ export const DEFAULT_AGENT_CONFIG = {
   | 'suggestedPrompts'
   | 'temperature'
   | 'toolIds'
+  | 'mcpServerKeys'
   | 'voiceIds'
   | 'welcomeMessage'
 >;

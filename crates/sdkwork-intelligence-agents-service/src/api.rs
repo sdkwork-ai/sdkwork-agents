@@ -388,6 +388,12 @@ pub const AGENT_APP_API_OPERATIONS: &[ApiOperation] = &[
     },
     ApiOperation {
         method: "GET",
+        path: "/app/v3/api/ai/agents/{agentId}/toolkit",
+        tag: "ai",
+        operation_id: "agents.toolkit.retrieve",
+    },
+    ApiOperation {
+        method: "GET",
         path: "/app/v3/api/ai/agents/{agentId}/provider_bindings",
         tag: "ai",
         operation_id: "agents.providerBindings.list",
@@ -1892,7 +1898,7 @@ mod tests {
         let backend_openapi = include_str!("../specs/openapi/agents-backend-api.openapi.yaml");
 
         assert_eq!(AGENT_OPEN_API_OPERATIONS.len(), 56);
-        assert_eq!(AGENT_APP_API_OPERATIONS.len(), 126);
+        assert_eq!(AGENT_APP_API_OPERATIONS.len(), 127);
         assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 60);
 
         assert_eq!(

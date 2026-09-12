@@ -13,12 +13,12 @@ export class AiAgentsToolsApi {
 
 
 /** List media tool directory with tenant configuration (admin) */
-  async adminList(requestOptions?: ApiRequestOptions): Promise<MediaToolDirectoryEntry[]> {
+  async list(requestOptions?: ApiRequestOptions): Promise<MediaToolDirectoryEntry[]> {
     return this.client.request<MediaToolDirectoryEntry[]>(backendApiPath(`/ai/tools`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'data' });
   }
 
 /** Update one media tool tenant configuration (admin) */
-  async updateConfiguration(toolId: string, body: MediaToolConfigurationBody, requestOptions?: ApiRequestOptions): Promise<MediaToolDirectoryEntry> {
+  async update(toolId: string, body: MediaToolConfigurationBody, requestOptions?: ApiRequestOptions): Promise<MediaToolDirectoryEntry> {
     return this.client.request<MediaToolDirectoryEntry>(backendApiPath(`/ai/tools/${serializePathParameter(toolId, { name: 'toolId', style: 'simple', explode: false })}/configuration`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'PUT' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'data' });
   }
 }

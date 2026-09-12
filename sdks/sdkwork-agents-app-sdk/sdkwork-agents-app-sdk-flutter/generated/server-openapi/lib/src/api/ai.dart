@@ -71,6 +71,15 @@ class AiApi {
     })();
   }
 
+  /// Retrieve the effective MCP toolkit of one managed agent
+  Future<AgentToolkitOverviewResponse?> agentsToolkitRetrieve(String agentId) async {
+    final response = await _client.get(ApiPaths.appPath('/ai/agents/${serializePathParameter(agentId, const PathParameterSpec('agentId', 'simple', false))}/toolkit'));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : AgentToolkitOverviewResponse.fromJson(map);
+    })();
+  }
+
   /// List provider bindings for one managed agent
   Future<AgentProviderBindingListResponse?> agentsProviderBindingsList(String agentId, [int? page, int? pageSize]) async {
     final query = buildQueryString([

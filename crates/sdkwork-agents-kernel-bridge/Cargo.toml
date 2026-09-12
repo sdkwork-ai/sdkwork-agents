@@ -13,6 +13,7 @@ workspace = true
 sdkwork-agent-server = { workspace = true }
 sdkwork-agent-kernel = { workspace = true }
 sdkwork-intelligence-agents-service = { workspace = true, features = ["http-axum", "postgres-sync"] }
+sdkwork-agents-tool-cloudrouter.workspace = true
 sdkwork-agents-contract.workspace = true
 sdkwork-agents-database-host.workspace = true
 sdkwork-routes-agents-http-shared.workspace = true

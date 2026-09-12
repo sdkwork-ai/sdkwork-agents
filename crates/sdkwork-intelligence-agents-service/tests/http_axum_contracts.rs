@@ -52,6 +52,7 @@ impl TurnExecutor for RichTurnExecutor {
             })
         };
         TurnExecutionOutput {
+            tool_events: Vec::new(),
             model_request_id: Some(input.model_request_id.clone()),
             finish_reason: Some("stop".to_string()),
             content: "Hello world".to_string(),
@@ -149,6 +150,7 @@ impl GatedStreamingTurnExecutor {
 
     fn output(&self, input: &TurnExecutionInput) -> TurnExecutionOutput {
         TurnExecutionOutput {
+            tool_events: Vec::new(),
             model_request_id: Some(input.model_request_id.clone()),
             finish_reason: Some("stop".to_string()),
             content: "first second".to_string(),
@@ -198,6 +200,7 @@ struct FailingTurnExecutor;
 impl TurnExecutor for FailingTurnExecutor {
     fn complete(&self, input: &TurnExecutionInput) -> TurnExecutionOutput {
         TurnExecutionOutput {
+            tool_events: Vec::new(),
             model_request_id: None,
             finish_reason: None,
             content: "provider unavailable before first stream frame".to_string(),

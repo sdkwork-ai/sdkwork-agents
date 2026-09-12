@@ -1,5 +1,7 @@
 export type MessageRole = 'user' | 'model';
 
+import type { ToolMedia } from './services/toolMedia';
+
 /** Structured tool/skill/MCP invocation attached to an assistant message. */
 export interface ChatToolCall {
   id: string;
@@ -8,6 +10,10 @@ export interface ChatToolCall {
   /** Accumulated JSON arguments for the invocation. */
   arguments?: string;
   durationMs?: number;
+  /** Renderable media extracted from the tool result (image/video/audio). */
+  media?: ToolMedia[];
+  /** Error text when the tool failed. */
+  error?: string;
 }
 
 /** Wire form of a streamed tool-call lifecycle event delivered to the chat UI. */
@@ -16,6 +22,10 @@ export interface ChatToolStreamEvent {
   toolCallId?: string;
   toolName?: string;
   delta?: string;
+  /** Raw tool-result payload (JSON) carried by the terminal event. */
+  result?: string;
+  /** True when the tool reported a failure. */
+  isError?: boolean;
 }
 
 export interface ChatMessage {

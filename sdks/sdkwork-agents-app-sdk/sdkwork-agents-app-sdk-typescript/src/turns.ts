@@ -68,6 +68,10 @@ export interface TurnRichToolEvent {
   toolCallId?: string;
   toolName?: string;
   delta?: string;
+  /** Raw tool-result payload (JSON) carried by `agent.stream.tool.result`. */
+  result?: string;
+  /** True when the tool reported a failure (`agent.stream.tool.result`). */
+  isError?: boolean;
 }
 
 /** Streaming delivery handlers for `completeAgentTurnStream`. */
@@ -89,8 +93,11 @@ export interface TurnStreamRichEvent {
       message_id?: string;
       kind?: string;
       delta?: string;
+      content?: string;
       tool_call_id?: string;
       tool_name?: string;
+      is_error?: boolean;
+      status?: string;
     };
   };
 }
@@ -136,6 +143,20 @@ function dispatchRichEvent(raw: TurnStreamRichEvent, handlers: TurnStreamHandler
       phase: 'stop',
       toolCallId: payload.tool_call_id,
       toolName: payload.tool_name,
+    });
+    return;
+  }
+  if (type === 'agent.stream.tool.result') {
+    // The tool result terminal event closes the card lifecycle for executors
+    // that skip the call.stop frame (e.g. the built-in MCP tool loop, which
+    // emits call.start then tool.result). The result payload rides through so
+    // the UI can render generated media in place of the running placeholder.
+    handlers.onToolEvent?.({
+      phase: 'stop',
+      toolCallId: payload.tool_call_id,
+      toolName: payload.tool_name,
+      result: payload.content,
+      isError: payload.is_error === true,
     });
   }
 }

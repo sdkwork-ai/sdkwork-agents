@@ -80,8 +80,9 @@
 
 #### GAP-06 MCP Server 管理面
 - 对标：MCP registry、Claude Desktop connector 管理
-- 现状：`mcpServers.list` 只读
+- 现状：`mcpServers.list` 只读（server 定义与调用审计的权威面在 `sdkwork-mcp`）
 - 接口：`mcpServers.{create,retrieve,update,delete,healthCheck}`；`tools.list` 增加 server 维度过滤
+- 更新（2026-09-12）：turn 工具调用循环落地 —— 默认 generations MCP（图片/视频/语音/音乐）+ 媒体工具族 + 外部 MCP（JSON-RPC 2.0 HTTP）已接入自由对话；新增 `GET /app/v3/api/ai/agents/{agentId}/toolkit` 暴露 effective 工具集；agent 侧 MCP 装配以 composition slots（`slotKind: mcp`）为权威，管理面 CRUD 仍以 `sdkwork-mcp` 为准。
 - 量级：M
 
 #### GAP-07 会话搜索

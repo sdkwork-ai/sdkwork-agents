@@ -281,6 +281,13 @@ pub struct ListMcpMarketplaceCommand {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentToolkitDescribeCommand {
+    pub tenant_id: u64,
+    pub agent_id: String,
+    pub requested_by: PolicySubject,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentCompositionSlotListCommand {
     pub query: CompositionSlotListQuery,
     pub requested_by: PolicySubject,

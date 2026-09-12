@@ -419,6 +419,50 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/agents/{agentId}/toolkit:
+    get:
+      x-sdkwork-owner: sdkwork-agents
+      x-sdkwork-api-authority: sdkwork-agents-app-api
+      tags:
+      - ai
+      summary: Retrieve the effective MCP toolkit of one managed agent
+      operationId: agents.toolkit.retrieve
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: agents
+      x-sdkwork-permission: ai.agents.read
+      x-sdkwork-tenant-scope: tenant
+      x-sdkwork-audit-event: agent.business.toolkit.retrieved
+      parameters:
+      - $ref: '#/components/parameters/AgentIdPath'
+      responses:
+        '200':
+          description: Effective agent toolkit (default MCP tools, external MCP
+            tools, skills, and the assembled system prompt)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentToolkitOverviewResponse'
+        '403':
+          description: Permission denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '404':
+          description: Agent not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
   /app/v3/api/ai/agents/{agentId}/provider_bindings:
     get:
       x-sdkwork-owner: sdkwork-agents
@@ -4696,7 +4740,6 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
-      parameters: []
   /app/v3/api/ai/model_configurations/apply:
     post:
       x-sdkwork-owner: sdkwork-agents
@@ -5723,6 +5766,93 @@ components:
           type: string
           minLength: 1
           maxLength: 4096
+    AgentToolkitOverview:
+      description: >-
+        Effective toolkit of one agent (model-visible MCP tools, attached
+        skills, and the assembled system prompt).
+      type: object
+      additionalProperties: false
+      required:
+      - agentId
+      - tools
+      - skills
+      properties:
+        agentId:
+          type: string
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/TurnToolDescriptor'
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResolvedSkill'
+        assembledSystemPrompt:
+          type: string
+          nullable: true
+    AgentToolkitOverviewResponse:
+      description: Effective agent toolkit following the SdkWorkApiResponse
+        envelope; the toolkit overview is returned under data.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            $ref: '#/components/schemas/AgentToolkitOverview'
+    TurnToolDescriptor:
+      description: One tool the model may call during a turn.
+      type: object
+      additionalProperties: false
+      required:
+      - toolId
+      - name
+      - description
+      - timeoutMs
+      - origin
+      properties:
+        toolId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        inputSchema:
+          type: object
+          additionalProperties: true
+        requiresApproval:
+          type: boolean
+        policyCategory:
+          type: string
+          nullable: true
+        timeoutMs:
+          type: integer
+          format: int64
+        origin:
+          type: string
+          enum:
+          - builtinGenerations
+          - builtinMedia
+          - externalMcp
+    ResolvedSkill:
+      description: One enabled skill attached to an agent.
+      type: object
+      additionalProperties: false
+      required:
+      - slotId
+      - targetRef
+      properties:
+        slotId:
+          type: string
+        targetRef:
+          type: string
+        title:
+          type: string
+          nullable: true
+        instructions:
+          type: string
+          nullable: true
     AgentResponse:
       description: Single managed agent response following SdkWorkApiResponse envelope.
       allOf:

@@ -15,6 +15,8 @@ import type { AgentsDriveMediaResource } from "@sdkwork/agents-pc-core/sdk/drive
 import type { CreateAgentTurnRequest } from "@sdkwork/agents-pc-core/sdk/agentsAppSdkClient";
 import { sha256Hash, uuid } from "@sdkwork/utils";
 
+import { extractToolMedia } from "@sdkwork/agents-pc-chat";
+import type { ChatToolCall } from "@sdkwork/agents-pc-chat";
 import { resolveChatRuntimeModel } from "./RuntimeCatalogService";
 import { sortSessionItems } from "./sessionMessageOrdering";
 
@@ -33,6 +35,8 @@ export interface ChatMessage {
   reasoning?: string;
   createdAt: string;
   mediaResources?: AgentsDriveMediaResource[];
+  /** Tool/media cards folded from ToolCall/ToolResult session items. */
+  toolCalls?: ChatToolCall[];
 }
 
 export interface ChatMessageListPage {
@@ -137,15 +141,55 @@ function mergeReasoningIntoAssistantMessages(
 ): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let pendingReasoning = "";
+  // Tool activity from the turn loop (ToolCall/ToolResult item pairs) is
+  // folded into the following assistant message as `toolCalls` so reloaded
+  // transcripts render the same media cards the live stream produced.
+  const pendingToolCalls: ChatToolCall[] = [];
+  const toolCallsById = new Map<string, ChatToolCall>();
   for (const item of items) {
     if (item.kind === "reasoning") {
       pendingReasoning += item.content ?? "";
+      continue;
+    }
+    if (item.kind === "tool_call" || item.kind === "tool_result") {
+      const toolCallId = item.toolCallId;
+      if (!toolCallId) continue;
+      let call = toolCallsById.get(toolCallId);
+      if (!call) {
+        call = {
+          id: toolCallId,
+          name: item.toolName ?? undefined,
+          status: "running",
+        };
+        toolCallsById.set(toolCallId, call);
+        pendingToolCalls.push(call);
+      }
+      if (item.kind === "tool_call") {
+        if (!call.name && item.toolName) call.name = item.toolName;
+        call.arguments = item.toolArguments ? JSON.stringify(item.toolArguments) : call.arguments;
+        continue;
+      }
+      const result = item.toolResult ?? {};
+      const resultContent =
+        typeof result.content === "string" ? result.content : undefined;
+      if (result.status === "succeeded") {
+        call.status = "completed";
+        call.media = extractToolMedia(call.name ?? "", resultContent);
+      } else {
+        call.status = "error";
+        call.error = resultContent ?? result.status;
+      }
       continue;
     }
     const message = toChatMessage(item);
     if (message.role === "assistant" && pendingReasoning.length > 0) {
       message.reasoning = pendingReasoning;
       pendingReasoning = "";
+    }
+    if (message.role === "assistant" && pendingToolCalls.length > 0) {
+      message.toolCalls = [...pendingToolCalls];
+      pendingToolCalls.length = 0;
+      toolCallsById.clear();
     }
     messages.push(message);
   }

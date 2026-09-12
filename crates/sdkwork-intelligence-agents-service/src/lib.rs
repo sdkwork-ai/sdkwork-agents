@@ -6,6 +6,7 @@ mod application;
 mod cloud_router_executor;
 mod domain;
 mod drive_asset_saver;
+mod generations_tool_port;
 mod dto;
 #[cfg(feature = "http-axum")]
 mod http;
@@ -34,6 +35,8 @@ mod session_item_cursor;
 mod task_execution_cursor;
 mod task_scheduler;
 mod task_scheduling;
+mod tool_calling;
+mod toolkit;
 mod tool_invocation;
 mod turn_runtime;
 mod usage;
@@ -90,6 +93,9 @@ pub use application::{
     UpdateSessionRuntimeBindingCommand, UpdateSessionUserStateCommand,
     UpdateTurnInputQueueEntryCommand, UpdateWorkspaceCommand, WorkspaceMutationCommand,
 };
+pub use generations_tool_port::{
+    image_parameters, music_parameters, speech_parameters, video_parameters, HttpGenerationsPort,
+};
 pub use cloud_router_executor::{
     CloudRouterFirstTurnExecutor, ENV_CLOUDROUTER_BASE_URL, RUNTIME_MODE_CLOUDROUTER,
 };
@@ -97,6 +103,18 @@ pub use drive_asset_saver::{DriveAssetRef, DriveAssetSaver, DriveSaveContext, Dr
 pub use media_tool_registry::{MediaToolRegistry, SessionMediaAuthTokenStore};
 pub use sdkwork_intelligence_prompts_ai_contract::{
     AgentPromptTemplateKind, AgentPromptTemplateRecord, PromptAiRepository,
+};
+pub use tool_calling::{
+    cap_tool_content, EmptyMcpSecretResolver, EnvMcpSecretResolver, ExternalMcpToolExecutor,
+    GenerationsToolExecutor, McpSecretResolver, McpServerConnection, MediaToolExecutor,
+    TurnToolCall, TurnToolDescriptor, TurnToolDispatcher, TurnToolEvent, TurnToolEventKind,
+    TurnToolExecution, TurnToolExecutionContext, TurnToolExecutor, TurnToolOrigin,
+    DEFAULT_TOOL_TIMEOUT_MS, EXTERNAL_MCP_TOOL_PREFIX, GENERATIONS_MCP_TOOL_PREFIX,
+    GENERATIONS_TOOL_TIMEOUT_MS, MAX_TOOL_RESULT_CONTENT_CHARS,
+};
+pub use toolkit::{
+    resolve_effective_toolkit, McpSlotPolicy, McpSlotPolicyTool, ResolvedSkill, ResolvedToolkit,
+    TurnToolkitConfig,
 };
 pub use tool_invocation::{
     MediaToolInvocationRequest, MediaToolInvocationService, ToolInvocationOutcome,

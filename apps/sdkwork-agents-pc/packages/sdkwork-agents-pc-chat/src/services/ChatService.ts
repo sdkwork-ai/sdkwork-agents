@@ -423,6 +423,7 @@ export class ChatService {
         role: message.role === 'assistant' ? 'model' : 'user',
         text: message.content,
         reasoning: message.reasoning,
+        toolCalls: message.toolCalls,
         images: mediaResources
           .filter((resource) => resource.kind === 'image' && resource.url)
           .map((resource) => resource.url as string),

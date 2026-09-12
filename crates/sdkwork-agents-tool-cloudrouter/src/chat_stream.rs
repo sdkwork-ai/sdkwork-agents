@@ -38,6 +38,61 @@ const STREAM_REQUEST_TIMEOUT: Duration = Duration::from_secs(1800);
 /// TCP connect bound for the gateway request.
 const STREAM_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// One tool call reconstructed from the streamed `tool_calls` deltas.
+///
+/// OpenAI-compatible upstreams stream each call as indexed partial entries:
+/// the call id/name arrive once and the JSON arguments arrive as fragments.
+/// The accumulator merges those fragments by `index` so consumers receive
+/// complete, ready-to-execute calls instead of raw delta strings.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StreamedToolCall {
+    /// Tool call identifier echoed back on the `role: tool` result message.
+    pub id: String,
+    /// Function name selected by the model.
+    pub name: String,
+    /// JSON-serialized function arguments (fragments concatenated).
+    pub arguments: String,
+}
+
+/// Merges one serialized `tool_calls` array fragment into the reconstruction
+/// state. Unknown entries are ignored; fragments without an `index` cannot be
+/// reconstructed and are dropped (upstreams stream an index on every delta).
+fn merge_streamed_tool_calls(merged: &mut Vec<StreamedToolCall>, fragment: &str) {
+    let Ok(items) = serde_json::from_str::<Vec<Value>>(fragment) else {
+        return;
+    };
+    for item in items {
+        let Some(index) = item.get("index").and_then(Value::as_u64) else {
+            continue;
+        };
+        while merged.len() <= index as usize {
+            merged.push(StreamedToolCall::default());
+        }
+        let slot = &mut merged[index as usize];
+        if slot.id.is_empty() {
+            if let Some(id) = item.get("id").and_then(Value::as_str) {
+                slot.id = id.to_string();
+            }
+        }
+        if slot.name.is_empty() {
+            if let Some(name) = item
+                .get("function")
+                .and_then(|function| function.get("name"))
+                .and_then(Value::as_str)
+            {
+                slot.name = name.to_string();
+            }
+        }
+        if let Some(arguments) = item
+            .get("function")
+            .and_then(|function| function.get("arguments"))
+            .and_then(Value::as_str)
+        {
+            slot.arguments.push_str(arguments);
+        }
+    }
+}
+
 /// Aggregated result from one streamed chat completion call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CloudRouterChatStreamResult {
@@ -48,6 +103,9 @@ pub struct CloudRouterChatStreamResult {
     /// Accumulated OpenAI-compatible tool-call argument fragments (JSON), one
     /// string per streamed tool-call argument delta.
     pub tool_call_fragments: Vec<String>,
+    /// Complete tool calls reconstructed from the streamed deltas (see
+    /// [`StreamedToolCall`]). Empty when the model issued no tool calls.
+    pub tool_calls: Vec<StreamedToolCall>,
     pub stream_deltas: Vec<String>,
     pub model: Option<String>,
     pub finish_reason: Option<String>,
@@ -431,6 +489,7 @@ struct StreamAccumulator<'a> {
     content: String,
     reasoning_content: String,
     tool_call_fragments: Vec<String>,
+    tool_calls: Vec<StreamedToolCall>,
     stream_deltas: Vec<String>,
     model: Option<String>,
     finish_reason: Option<String>,
@@ -443,6 +502,7 @@ impl<'a> StreamAccumulator<'a> {
             content: String::new(),
             reasoning_content: String::new(),
             tool_call_fragments: Vec::new(),
+            tool_calls: Vec::new(),
             stream_deltas: Vec::new(),
             model: None,
             finish_reason: None,
@@ -461,6 +521,7 @@ impl<'a> StreamAccumulator<'a> {
             }
             if !delta.tool_calls.is_empty() {
                 self.tool_call_fragments.push(delta.tool_calls.clone());
+                merge_streamed_tool_calls(&mut self.tool_calls, &delta.tool_calls);
             }
             (self.on_delta)(delta);
         }
@@ -539,6 +600,7 @@ fn consume_sse_buffer(
     content: &mut String,
     reasoning_content: &mut String,
     tool_call_fragments: &mut Vec<String>,
+    tool_calls: &mut Vec<StreamedToolCall>,
     stream_deltas: &mut Vec<String>,
     model: &mut Option<String>,
     finish_reason: &mut Option<String>,
@@ -548,6 +610,7 @@ fn consume_sse_buffer(
     accumulator.content = std::mem::take(content);
     accumulator.reasoning_content = std::mem::take(reasoning_content);
     accumulator.tool_call_fragments = std::mem::take(tool_call_fragments);
+    accumulator.tool_calls = std::mem::take(tool_calls);
     accumulator.stream_deltas = std::mem::take(stream_deltas);
     accumulator.model = model.take();
     accumulator.finish_reason = finish_reason.take();
@@ -556,6 +619,7 @@ fn consume_sse_buffer(
     *content = std::mem::take(&mut accumulator.content);
     *reasoning_content = std::mem::take(&mut accumulator.reasoning_content);
     *tool_call_fragments = std::mem::take(&mut accumulator.tool_call_fragments);
+    *tool_calls = std::mem::take(&mut accumulator.tool_calls);
     *stream_deltas = std::mem::take(&mut accumulator.stream_deltas);
     *model = accumulator.model;
     *finish_reason = accumulator.finish_reason;
@@ -624,7 +688,75 @@ pub fn stream_llm_completion_blocking(
 ) -> Result<CloudRouterChatStreamResult, SdkworkError> {
     request.stream = Some(true);
     let body = build_protocol_request_body(protocol, &request, true);
-    let endpoint = protocol.streaming_endpoint(&request.model);
+    let model_key = request.model.clone();
+    stream_gateway_body(
+        protocol,
+        base_url,
+        auth_token,
+        access_token,
+        &model_key,
+        body,
+        on_delta,
+    )
+}
+
+/// Streams one chat completion carrying the full OpenAI message fidelity
+/// (`tool_calls`, `tool_call_id`, null assistant content) required by
+/// function-calling loops.
+///
+/// The protocol body is assembled directly from the typed messages instead of
+/// the lossy `build_protocol_request_body` normalization (which flattens every
+/// message to `{role, content}` and drops tool metadata). `tools` is the
+/// serialized OpenAI `tools` array (function definitions with JSON Schema);
+/// when non-empty the request also pins `tool_choice: auto` and disables
+/// parallel tool calls so the caller's loop executes one call at a time.
+pub fn stream_chat_completion_with_tools_blocking(
+    base_url: &str,
+    auth_token: &str,
+    access_token: Option<&str>,
+    mut request: OpenAiChatCompletionRequest,
+    tools: Vec<serde_json::Value>,
+    on_delta: &mut dyn FnMut(CloudRouterStreamDelta),
+) -> Result<CloudRouterChatStreamResult, SdkworkError> {
+    request.stream = Some(true);
+    let messages: Vec<Value> = request
+        .messages
+        .iter()
+        .map(|message| serde_json::to_value(message).unwrap_or_default())
+        .collect();
+    let mut body = serde_json::json!({
+        "model": request.model,
+        "messages": messages,
+        "stream": true,
+    });
+    if !tools.is_empty() {
+        body["tools"] = serde_json::json!(tools);
+        body["tool_choice"] = serde_json::json!("auto");
+        body["parallel_tool_calls"] = serde_json::json!(false);
+    }
+    let model_key = request.model.clone();
+    stream_gateway_body(
+        WireProtocol::ChatCompletions,
+        base_url,
+        auth_token,
+        access_token,
+        &model_key,
+        body,
+        on_delta,
+    )
+}
+
+/// Shared SSE streaming loop over an assembled protocol body.
+fn stream_gateway_body(
+    protocol: WireProtocol,
+    base_url: &str,
+    auth_token: &str,
+    access_token: Option<&str>,
+    model_key: &str,
+    body: Value,
+    on_delta: &mut dyn FnMut(CloudRouterStreamDelta),
+) -> Result<CloudRouterChatStreamResult, SdkworkError> {
+    let endpoint = protocol.streaming_endpoint(model_key);
     let mut response = open_gateway_response(
         base_url,
         &endpoint,
@@ -658,7 +790,10 @@ pub fn stream_llm_completion_blocking(
         accumulator.flush_remaining(protocol, parser.as_mut(), &buffer);
     }
 
-    if accumulator.content.trim().is_empty() || accumulator.stream_deltas.is_empty() {
+    if accumulator.content.trim().is_empty()
+        && accumulator.stream_deltas.is_empty()
+        && accumulator.tool_calls.is_empty()
+    {
         return Err(SdkworkError::HttpStatus {
             status: status.as_u16(),
             body: "cloud router stream returned no assistant content".to_string(),
@@ -669,6 +804,7 @@ pub fn stream_llm_completion_blocking(
         content: accumulator.content,
         reasoning_content: accumulator.reasoning_content,
         tool_call_fragments: accumulator.tool_call_fragments,
+        tool_calls: accumulator.tool_calls,
         stream_deltas: accumulator.stream_deltas,
         model: accumulator.model,
         finish_reason: accumulator.finish_reason,
@@ -1047,6 +1183,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning_content = String::new();
         let mut tool_call_fragments = Vec::new();
+        let mut tool_calls = Vec::new();
         let mut stream_deltas = Vec::new();
         let mut model = None;
         let mut finish_reason = None;
@@ -1055,6 +1192,7 @@ mod tests {
             &mut content,
             &mut reasoning_content,
             &mut tool_call_fragments,
+            &mut tool_calls,
             &mut stream_deltas,
             &mut model,
             &mut finish_reason,
@@ -1077,6 +1215,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning_content = String::new();
         let mut tool_call_fragments = Vec::new();
+        let mut tool_calls = Vec::new();
         let mut stream_deltas = Vec::new();
         let mut model = None;
         let mut finish_reason = None;
@@ -1085,6 +1224,7 @@ mod tests {
             &mut content,
             &mut reasoning_content,
             &mut tool_call_fragments,
+            &mut tool_calls,
             &mut stream_deltas,
             &mut model,
             &mut finish_reason,
@@ -1104,6 +1244,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning_content = String::new();
         let mut tool_call_fragments = Vec::new();
+        let mut tool_calls = Vec::new();
         let mut stream_deltas = Vec::new();
         let mut model = None;
         let mut finish_reason = None;
@@ -1112,6 +1253,7 @@ mod tests {
             &mut content,
             &mut reasoning_content,
             &mut tool_call_fragments,
+            &mut tool_calls,
             &mut stream_deltas,
             &mut model,
             &mut finish_reason,
@@ -1121,6 +1263,54 @@ mod tests {
         assert!(stream_deltas.is_empty());
         assert_eq!(tool_call_fragments.len(), 1);
         assert!(tool_call_fragments[0].contains("search"));
+        assert_eq!(
+            tool_calls,
+            vec![StreamedToolCall {
+                id: String::new(),
+                name: "search".to_string(),
+                arguments: String::new(),
+            }]
+        );
+    }
+
+    #[test]
+    fn streamed_tool_calls_merge_arguments_by_index() {
+        let mut merged = Vec::new();
+        merge_streamed_tool_calls(
+            &mut merged,
+            r#"[{"index":0,"id":"call_1","type":"function","function":{"name":"image.create","arguments":"{\"prompt\":"}}]"#,
+        );
+        merge_streamed_tool_calls(
+            &mut merged,
+            r#"[{"index":0,"function":{"arguments":"\"a cat\"}"}}]"#,
+        );
+        merge_streamed_tool_calls(
+            &mut merged,
+            r#"[{"index":1,"id":"call_2","type":"function","function":{"name":"music.create","arguments":"{\"prompt\":\"jazz\"}"}}]"#,
+        );
+        assert_eq!(
+            merged,
+            vec![
+                StreamedToolCall {
+                    id: "call_1".to_string(),
+                    name: "image.create".to_string(),
+                    arguments: "{\"prompt\":\"a cat\"}".to_string(),
+                },
+                StreamedToolCall {
+                    id: "call_2".to_string(),
+                    name: "music.create".to_string(),
+                    arguments: "{\"prompt\":\"jazz\"}".to_string(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn streamed_tool_calls_ignore_malformed_fragments() {
+        let mut merged = Vec::new();
+        merge_streamed_tool_calls(&mut merged, "not-json");
+        merge_streamed_tool_calls(&mut merged, r#"[{"function":{"name":"no-index"}}]"#);
+        assert!(merged.is_empty());
     }
 
     #[test]
@@ -1132,6 +1322,7 @@ mod tests {
         let mut content = String::new();
         let mut reasoning_content = String::new();
         let mut tool_call_fragments = Vec::new();
+        let mut tool_calls = Vec::new();
         let mut stream_deltas = Vec::new();
         let mut model = None;
         let mut finish_reason = None;
@@ -1140,6 +1331,7 @@ mod tests {
             &mut content,
             &mut reasoning_content,
             &mut tool_call_fragments,
+            &mut tool_calls,
             &mut stream_deltas,
             &mut model,
             &mut finish_reason,

@@ -102,13 +102,91 @@ const ThinkingBlock: React.FC<{ content: string; streaming: boolean; active: boo
   );
 };
 
+/** Progress label key + fallback for one media tool (null = not a media tool). */
+function mediaProgress(tool: ChatToolCall): { key: string; fallback: string } | null {
+  const name = (tool.name ?? '').toLowerCase();
+  if (name.includes('image')) {
+    return { key: 'toolProgress.image', fallback: '图片生成中…' };
+  }
+  if (name.includes('video')) {
+    return { key: 'toolProgress.video', fallback: '视频生成中…' };
+  }
+  if (/(audio|speech|voice|music|sound)/.test(name)) {
+    return { key: 'toolProgress.audio', fallback: '音频合成中…' };
+  }
+  return null;
+}
+
+function mediaDoneLabel(kind: 'image' | 'video' | 'audio'): { key: string; fallback: string } {
+  switch (kind) {
+    case 'image':
+      return { key: 'toolDone.image', fallback: '图片已生成' };
+    case 'video':
+      return { key: 'toolDone.video', fallback: '视频已生成' };
+    case 'audio':
+      return { key: 'toolDone.audio', fallback: '音频已生成' };
+  }
+}
+
+/** Renders one generated media asset inline below the tool card header. */
+const ToolMediaResult: React.FC<{ tool: ChatToolCall }> = ({ tool }) => {
+  const { t: tCommon } = useTranslation('common');
+  if (!tool.media || tool.media.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5 px-2 pb-2">
+      {tool.media.map((media) => {
+        if (media.kind === 'image') {
+          return (
+            <img
+              key={media.url}
+              src={media.url}
+              alt={mediaDoneLabel('image').fallback}
+              loading="lazy"
+              className="max-h-72 w-auto max-w-full rounded-md border border-gray-200/80 object-contain dark:border-gray-700/80"
+            />
+          );
+        }
+        if (media.kind === 'video') {
+          return (
+            <video
+              key={media.url}
+              src={media.url}
+              controls
+              preload="metadata"
+              className="max-h-72 w-full max-w-full rounded-md border border-gray-200/80 bg-black dark:border-gray-700/80"
+            />
+          );
+        }
+        return (
+          <audio key={media.url} src={media.url} controls className="w-full" preload="metadata" />
+        );
+      })}
+      <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
+        {tCommon(mediaDoneLabel(tool.media[0].kind).key, {
+          defaultValue: mediaDoneLabel(tool.media[0].kind).fallback,
+        })}
+      </span>
+    </div>
+  );
+};
+
 /** Collapsible tool/skill/MCP invocation card. */
 const ToolCallCard: React.FC<{ tool: ChatToolCall }> = ({ tool }) => {
   const { t: tCommon } = useTranslation('common');
   const [open, setOpen] = React.useState(false);
   const running = tool.status === 'running';
+  const failed = tool.status === 'error';
+  const progress = running ? mediaProgress(tool) : null;
+  const hasMedia = (tool.media?.length ?? 0) > 0;
   return (
-    <div className="mb-1.5 w-full overflow-hidden rounded-md border border-gray-200/80 bg-gray-50/60 dark:border-gray-700/80 dark:bg-[#1f1f1f]">
+    <div
+      className={cn(
+        'mb-1.5 w-full overflow-hidden rounded-md border bg-gray-50/60 dark:bg-[#1f1f1f]',
+        failed
+          ? 'border-red-200/80 dark:border-red-900/60'
+          : 'border-gray-200/80 dark:border-gray-700/80',
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -125,12 +203,28 @@ const ToolCallCard: React.FC<{ tool: ChatToolCall }> = ({ tool }) => {
         <span className="truncate font-medium">
           {tool.name || tCommon('toolCall', { defaultValue: '工具调用' })}
         </span>
+        {progress && (
+          <span className="ml-1 shrink-0 text-[11px] text-[#1890ff]">
+            {tCommon(progress.key, { defaultValue: progress.fallback })}
+          </span>
+        )}
+        {failed && (
+          <span className="ml-1 shrink-0 text-[11px] text-red-500 dark:text-red-400">
+            {tCommon('toolFailed', { defaultValue: '执行失败' })}
+          </span>
+        )}
         {open ? (
           <ChevronDown size={13} className="ml-auto shrink-0" />
         ) : (
           <ChevronRight size={13} className="ml-auto shrink-0" />
         )}
       </button>
+      {hasMedia && !running && <ToolMediaResult tool={tool} />}
+      {open && tool.error && (
+        <pre className="max-h-40 overflow-auto border-t border-red-200/80 px-2.5 py-2 text-xs whitespace-pre-wrap break-all text-red-600 dark:border-red-900/60 dark:text-red-300">
+          {tool.error}
+        </pre>
+      )}
       {open && tool.arguments && (
         <pre className="max-h-56 overflow-auto border-t border-gray-200/80 px-2.5 py-2 text-xs whitespace-pre-wrap break-all text-gray-600 dark:border-gray-700/80 dark:text-gray-300">
           {tool.arguments}
