@@ -19,8 +19,8 @@ use crate::agent_turn_input_queue::{
 use crate::application::{
     AgentCompositionSlotCreateCommand, AgentCompositionSlotDeleteCommand,
     AgentCompositionSlotGetCommand, AgentCompositionSlotListCommand,
-    AgentCompositionSlotUpdateCommand, AgentItemDriveRefInput, AgentsService,
-    ArchiveSessionCommand, CancelTurnCommand, ClaimNextTurnInputQueueEntryCommand,
+    AgentCompositionSlotUpdateCommand, AgentItemDriveRefInput, AgentToolkitDescribeCommand,
+    AgentsService, ArchiveSessionCommand, CancelTurnCommand, ClaimNextTurnInputQueueEntryCommand,
     ClearTurnInputQueueEntriesCommand, CloseSessionCommand, CreateProjectCommand,
     CreateProjectCompositionSlotCommand, CreateSessionCommand, CreateTurnCommand,
     CreateTurnInputQueueEntryCommand, CreateWorkspaceCommand, DeleteProjectCompositionSlotCommand,
@@ -30,8 +30,7 @@ use crate::application::{
     GetSessionItemCommand, GetSessionRuntimeBindingCommand, GetSessionUserStateCommand,
     GetTaskCommand, GetTaskRunCommand, GetTurnByIdempotencyCommand, GetTurnCommand,
     GetWorkspaceCommand, ImportProjectCommand, ListAgentAuditEventsCommand,
-    AgentToolkitDescribeCommand, ListItemFeedbackCommand, ListMcpMarketplaceCommand,
-    ListProjectCompositionSlotsCommand,
+    ListItemFeedbackCommand, ListMcpMarketplaceCommand, ListProjectCompositionSlotsCommand,
     ListProjectsCommand, ListSessionActivitySummariesCommand, ListSessionCheckpointsCommand,
     ListSessionRuntimeBindingsCommand, ListSessionUserStatesCommand,
     ListTurnInputQueueEntriesCommand, ListTurnsCommand, ListWorkspacesCommand,
@@ -1491,10 +1490,7 @@ impl AgentHttpState {
     /// Registers the per-turn toolkit configuration source (default MCP tools
     /// plus external MCP listing). Wired by the gateway bootstrap so chat
     /// agents get the built-in image/video/audio/music tool set by default.
-    pub fn with_toolkit_config(
-        self,
-        toolkit_config: Option<Arc<dyn TurnToolkitConfig>>,
-    ) -> Self {
+    pub fn with_toolkit_config(self, toolkit_config: Option<Arc<dyn TurnToolkitConfig>>) -> Self {
         self.service.set_toolkit_config(toolkit_config);
         self
     }

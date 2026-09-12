@@ -71,18 +71,12 @@ impl CloudRouterMediaClient {
     /// `x-trace-id` carries the id, and a W3C `traceparent` is synthesized for
     /// gateway-side span correlation.
     pub fn with_trace_id(&self, sdk: &SdkworkAiClient, trace_id: Option<&str>) -> &Self {
-        let Some(trace_id) = trace_id
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-        else {
+        let Some(trace_id) = trace_id.map(str::trim).filter(|value| !value.is_empty()) else {
             return self;
         };
         sdk.set_header("x-trace-id", trace_id);
         if trace_id.len() == 32 {
-            sdk.set_header(
-                "traceparent",
-                format!("00-{trace_id}-0000000000000000-01"),
-            );
+            sdk.set_header("traceparent", format!("00-{trace_id}-0000000000000000-01"));
         }
         self
     }

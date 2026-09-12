@@ -120,10 +120,7 @@ fn split_conversation(
 }
 
 fn model_key(request: &OpenAiChatCompletionRequest) -> String {
-    request
-        .model
-        .trim()
-        .to_string()
+    request.model.trim().to_string()
 }
 
 fn optional_f64(value: Option<f64>) -> Value {
@@ -159,9 +156,11 @@ pub fn build_protocol_request_body(
                 .iter()
                 .map(|prompt| json!({"role": "system", "content": prompt}))
                 .collect::<Vec<_>>();
-            all_messages.extend(messages.iter().map(|(role, content)| {
-                json!({"role": role, "content": content})
-            }));
+            all_messages.extend(
+                messages
+                    .iter()
+                    .map(|(role, content)| json!({"role": role, "content": content})),
+            );
             let mut body = json!({
                 "model": model,
                 "messages": all_messages,
@@ -189,7 +188,11 @@ pub fn build_protocol_request_body(
             insert_if_present(&mut body, "temperature", optional_f64(request.temperature));
             // The normalized request carries stop as a single string; Anthropic
             // expects an array of stop sequences.
-            if let Some(stop) = request.stop.as_deref().filter(|stop| !stop.trim().is_empty()) {
+            if let Some(stop) = request
+                .stop
+                .as_deref()
+                .filter(|stop| !stop.trim().is_empty())
+            {
                 body["stop_sequences"] = json!([stop]);
             }
             body
@@ -214,7 +217,11 @@ pub fn build_protocol_request_body(
             if let Some(max_tokens) = request.max_tokens {
                 generation_config.insert("maxOutputTokens".to_string(), json!(max_tokens));
             }
-            if let Some(stop) = request.stop.as_deref().filter(|stop| !stop.trim().is_empty()) {
+            if let Some(stop) = request
+                .stop
+                .as_deref()
+                .filter(|stop| !stop.trim().is_empty())
+            {
                 generation_config.insert("stopSequences".to_string(), json!([stop]));
             }
             if !generation_config.is_empty() {
@@ -357,7 +364,8 @@ mod tests {
 
     #[test]
     fn anthropic_body_carries_system_and_mandatory_max_tokens() {
-        let body = build_protocol_request_body(WireProtocol::AnthropicMessages, &sample_request(), true);
+        let body =
+            build_protocol_request_body(WireProtocol::AnthropicMessages, &sample_request(), true);
         assert_eq!(body["model"], "default");
         assert_eq!(body["max_tokens"], DEFAULT_MAX_TOKENS);
         assert_eq!(body["system"], "You are helpful.");
@@ -370,7 +378,8 @@ mod tests {
 
     #[test]
     fn google_body_maps_assistant_to_model_and_system_instruction() {
-        let body = build_protocol_request_body(WireProtocol::GoogleContent, &sample_request(), true);
+        let body =
+            build_protocol_request_body(WireProtocol::GoogleContent, &sample_request(), true);
         let contents = body["contents"].as_array().expect("contents array");
         assert_eq!(contents.len(), 3);
         assert_eq!(contents[1]["role"], "model");
@@ -382,7 +391,8 @@ mod tests {
 
     #[test]
     fn responses_body_uses_typed_content_parts_and_instructions() {
-        let body = build_protocol_request_body(WireProtocol::OpenAiResponses, &sample_request(), false);
+        let body =
+            build_protocol_request_body(WireProtocol::OpenAiResponses, &sample_request(), false);
         let input = body["input"].as_array().expect("input array");
         assert_eq!(input.len(), 3);
         assert_eq!(input[0]["content"][0]["type"], "input_text");
@@ -423,6 +433,9 @@ mod tests {
             normalize_finish_reason(WireProtocol::ChatCompletions, "stop").as_deref(),
             Some("stop")
         );
-        assert_eq!(normalize_finish_reason(WireProtocol::GoogleContent, "WEIRD"), None);
+        assert_eq!(
+            normalize_finish_reason(WireProtocol::GoogleContent, "WEIRD"),
+            None
+        );
     }
 }

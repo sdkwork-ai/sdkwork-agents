@@ -21,9 +21,7 @@ use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::Value;
 
-use crate::wire_protocol::{
-    build_protocol_request_body, normalize_finish_reason, WireProtocol,
-};
+use crate::wire_protocol::{build_protocol_request_body, normalize_finish_reason, WireProtocol};
 
 /// Wall-clock ceiling for one streamed chat completion (30 minutes).
 ///
@@ -510,7 +508,12 @@ impl<'a> StreamAccumulator<'a> {
         }
     }
 
-    fn consume_frame(&mut self, protocol: WireProtocol, parser: &mut dyn ProtocolFrameParser, data: &str) {
+    fn consume_frame(
+        &mut self,
+        protocol: WireProtocol,
+        parser: &mut dyn ProtocolFrameParser,
+        data: &str,
+    ) {
         for delta in parser.feed(data) {
             if !delta.content.is_empty() {
                 self.content.push_str(&delta.content);
@@ -538,7 +541,12 @@ impl<'a> StreamAccumulator<'a> {
         }
     }
 
-    fn consume_sse_buffer(&mut self, protocol: WireProtocol, parser: &mut dyn ProtocolFrameParser, buffer: &mut String) {
+    fn consume_sse_buffer(
+        &mut self,
+        protocol: WireProtocol,
+        parser: &mut dyn ProtocolFrameParser,
+        buffer: &mut String,
+    ) {
         normalize_sse_buffer(buffer);
         while let Some(pos) = buffer.find("\n\n") {
             let block: String = buffer.drain(..pos).collect();
@@ -549,7 +557,12 @@ impl<'a> StreamAccumulator<'a> {
         }
     }
 
-    fn flush_remaining(&mut self, protocol: WireProtocol, parser: &mut dyn ProtocolFrameParser, buffer: &str) {
+    fn flush_remaining(
+        &mut self,
+        protocol: WireProtocol,
+        parser: &mut dyn ProtocolFrameParser,
+        buffer: &str,
+    ) {
         let mut tail = buffer.to_string();
         normalize_sse_buffer(&mut tail);
         for data in block_data_lines(&tail) {
@@ -652,11 +665,7 @@ fn open_gateway_response(
 
     let url = format!("{}{}", base_url.trim_end_matches('/'), endpoint);
     let client = streaming_client();
-    let response = client
-        .post(url)
-        .headers(headers)
-        .json(body)
-        .send()?;
+    let response = client.post(url).headers(headers).json(body).send()?;
     let status = response.status();
     if !status.is_success() {
         // The error body must be drained before returning so callers see the
@@ -773,12 +782,12 @@ fn stream_gateway_body(
     let mut chunk_buf = [0u8; 8 * 1024];
 
     loop {
-        let read = response.read(&mut chunk_buf).map_err(|error| {
-            SdkworkError::HttpStatus {
+        let read = response
+            .read(&mut chunk_buf)
+            .map_err(|error| SdkworkError::HttpStatus {
                 status: status.as_u16(),
                 body: format!("failed to read cloud router stream body: {error}"),
-            }
-        })?;
+            })?;
         if read == 0 {
             break;
         }
@@ -836,7 +845,10 @@ pub fn stream_chat_completion_blocking(
 /// Extracts the visible answer, reasoning, model, and stop reason from one
 /// non-streaming protocol response payload, normalizing to OpenAI-style
 /// vocabulary.
-fn normalize_completion_payload(protocol: WireProtocol, payload: &Value) -> CloudRouterCompletionResult {
+fn normalize_completion_payload(
+    protocol: WireProtocol,
+    payload: &Value,
+) -> CloudRouterCompletionResult {
     let mut content = String::new();
     let mut reasoning_content = String::new();
     let mut model: Option<String> = None;
@@ -903,7 +915,10 @@ fn normalize_completion_payload(protocol: WireProtocol, payload: &Value) -> Clou
                 .and_then(|candidates| candidates.first())
                 .cloned()
                 .unwrap_or_default();
-            if let Some(parts) = candidate.pointer("/content/parts").and_then(Value::as_array) {
+            if let Some(parts) = candidate
+                .pointer("/content/parts")
+                .and_then(Value::as_array)
+            {
                 for part in parts {
                     let Some(text) = part.get("text").and_then(Value::as_str) else {
                         continue;
@@ -933,15 +948,13 @@ fn normalize_completion_payload(protocol: WireProtocol, payload: &Value) -> Clou
                 for item in output {
                     match item.get("type").and_then(Value::as_str) {
                         Some("message") => {
-                            if let Some(parts) =
-                                item.pointer("/content").and_then(Value::as_array)
+                            if let Some(parts) = item.pointer("/content").and_then(Value::as_array)
                             {
                                 for part in parts {
                                     if part.get("type").and_then(Value::as_str)
                                         == Some("output_text")
                                     {
-                                        if let Some(text) =
-                                            part.get("text").and_then(Value::as_str)
+                                        if let Some(text) = part.get("text").and_then(Value::as_str)
                                         {
                                             content.push_str(text);
                                         }
@@ -950,12 +963,10 @@ fn normalize_completion_payload(protocol: WireProtocol, payload: &Value) -> Clou
                             }
                         }
                         Some("reasoning") => {
-                            if let Some(parts) =
-                                item.pointer("/summary").and_then(Value::as_array)
+                            if let Some(parts) = item.pointer("/summary").and_then(Value::as_array)
                             {
                                 for part in parts {
-                                    if let Some(text) = part.get("text").and_then(Value::as_str)
-                                    {
+                                    if let Some(text) = part.get("text").and_then(Value::as_str) {
                                         reasoning_content.push_str(text);
                                     }
                                 }
@@ -1048,9 +1059,7 @@ mod tests {
     /// full `Content-Length` body. hyper 1.x (reqwest 0.13) sends the request
     /// body after the headers on a separate write, so stopping at the header
     /// terminator races the client and breaks the connection mid-body.
-    fn read_complete_mock_request(
-        stream: &mut std::net::TcpStream,
-    ) -> String {
+    fn read_complete_mock_request(stream: &mut std::net::TcpStream) -> String {
         let mut request = String::new();
         let mut buf = [0u8; 2048];
         loop {
@@ -1083,7 +1092,10 @@ mod tests {
             "choices": [{ "delta": { "content": "hello" }, "index": 0 }],
             "object": "chat.completion.chunk"
         });
-        assert_eq!(extract_openai_stream_content(&chunk).as_deref(), Some("hello"));
+        assert_eq!(
+            extract_openai_stream_content(&chunk).as_deref(),
+            Some("hello")
+        );
     }
 
     #[test]
@@ -1092,7 +1104,10 @@ mod tests {
             "choices": [{ "delta": { "reasoning_content": "think" }, "index": 0 }],
             "object": "chat.completion.chunk"
         });
-        assert_eq!(extract_openai_stream_reasoning(&chunk).as_deref(), Some("think"));
+        assert_eq!(
+            extract_openai_stream_reasoning(&chunk).as_deref(),
+            Some("think")
+        );
         assert_eq!(extract_openai_stream_content(&chunk).as_deref(), None);
     }
 
@@ -1148,14 +1163,11 @@ mod tests {
     #[test]
     fn responses_parser_reads_output_text_and_reasoning_deltas() {
         let mut parser = OpenAiResponsesFrameParser::new();
-        let deltas = parser.feed(
-            r#"{"type":"response.reasoning_summary_text.delta","delta":"plan"}"#,
-        );
+        let deltas =
+            parser.feed(r#"{"type":"response.reasoning_summary_text.delta","delta":"plan"}"#);
         assert_eq!(deltas.len(), 1);
         assert_eq!(deltas[0].reasoning_content, "plan");
-        let deltas = parser.feed(
-            r#"{"type":"response.output_text.delta","delta":"answer text"}"#,
-        );
+        let deltas = parser.feed(r#"{"type":"response.output_text.delta","delta":"answer text"}"#);
         assert_eq!(deltas.len(), 1);
         assert_eq!(deltas[0].content, "answer text");
         parser.feed(r#"{"type":"response.completed","response":{"model":"gpt-5"}}"#);
@@ -1201,7 +1213,10 @@ mod tests {
         assert_eq!(content, "Hello");
         assert_eq!(reasoning_content, "");
         assert_eq!(stream_deltas, vec!["Hel".to_string(), "lo".to_string()]);
-        assert_eq!(collected.contents, vec!["Hel".to_string(), "lo".to_string()]);
+        assert_eq!(
+            collected.contents,
+            vec!["Hel".to_string(), "lo".to_string()]
+        );
         assert!(buffer.is_empty());
     }
 
@@ -1316,9 +1331,8 @@ mod tests {
     #[test]
     fn consume_sse_buffer_handles_crlf_delimited_events() {
         let mut on_delta = |_: CloudRouterStreamDelta| {};
-        let mut buffer = String::from(
-            "data: {\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\r\n\r\n",
-        );
+        let mut buffer =
+            String::from("data: {\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\r\n\r\n");
         let mut content = String::new();
         let mut reasoning_content = String::new();
         let mut tool_call_fragments = Vec::new();
@@ -1376,7 +1390,9 @@ mod tests {
                 body.len(),
                 body
             );
-            stream.write_all(response.as_bytes()).expect("write mock sse");
+            stream
+                .write_all(response.as_bytes())
+                .expect("write mock sse");
         });
         ready_rx
             .recv_timeout(Duration::from_secs(2))
@@ -1393,17 +1409,17 @@ mod tests {
             stream: Some(true),
             ..Default::default()
         };
-        let result = stream_chat_completion_blocking(
-            &base_url,
-            "test-auth",
-            None,
-            request,
-            &mut |delta| deltas.push(delta),
-        )
-        .expect("stream should succeed");
+        let result =
+            stream_chat_completion_blocking(&base_url, "test-auth", None, request, &mut |delta| {
+                deltas.push(delta)
+            })
+            .expect("stream should succeed");
         assert_eq!(result.content, "Hello");
         assert_eq!(result.reasoning_content, "th");
-        assert_eq!(result.stream_deltas, vec!["Hel".to_string(), "lo".to_string()]);
+        assert_eq!(
+            result.stream_deltas,
+            vec!["Hel".to_string(), "lo".to_string()]
+        );
         assert_eq!(deltas.len(), 3);
     }
 
@@ -1437,7 +1453,9 @@ mod tests {
                 body.len(),
                 body
             );
-            stream.write_all(response.as_bytes()).expect("write mock sse");
+            stream
+                .write_all(response.as_bytes())
+                .expect("write mock sse");
         });
         ready_rx
             .recv_timeout(Duration::from_secs(2))
@@ -1495,7 +1513,9 @@ mod tests {
                 body.len(),
                 body
             );
-            stream.write_all(response.as_bytes()).expect("write mock json");
+            stream
+                .write_all(response.as_bytes())
+                .expect("write mock json");
         });
         ready_rx
             .recv_timeout(Duration::from_secs(2))

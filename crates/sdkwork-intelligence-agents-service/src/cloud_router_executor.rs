@@ -349,8 +349,10 @@ fn run_cloud_router_turn(
             });
             let (status, result_content) = match descriptor {
                 None => {
-                    let message =
-                        format!("unknown tool `{}` in this agent's toolkit", streamed_call.name);
+                    let message = format!(
+                        "unknown tool `{}` in this agent's toolkit",
+                        streamed_call.name
+                    );
                     tool_events.push(TurnToolEvent {
                         tool_call_id: streamed_call.id.clone(),
                         tool_id: streamed_call.name.clone(),
@@ -767,7 +769,7 @@ mod tests {
         TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
-        mcp_connections: Vec::new(),
+            mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: "model-request.test".to_string(),
             agent_display_name: "Test Agent".to_string(),
@@ -953,24 +955,36 @@ mod tests {
             arguments: "{}".to_string(),
         };
         let content = r#"{"generation":{"id":"gen-1"},"mediaUrls":["https://cdn/img.png"]}"#;
-        emit_tool_call_result(Some(&sink), &call, "mcp__generations__image.create", "succeeded", content);
+        emit_tool_call_result(
+            Some(&sink),
+            &call,
+            "mcp__generations__image.create",
+            "succeeded",
+            content,
+        );
         let events = sink.0.lock().unwrap();
         assert_eq!(events.len(), 1);
         let payload: serde_json::Value = serde_json::from_str(&events[0].payload).unwrap();
-        assert_eq!(
-            events[0].event_type,
-            "agent.stream.tool.result"
-        );
+        assert_eq!(events[0].event_type, "agent.stream.tool.result");
         assert_eq!(payload["tool_call_id"], "call_1");
         assert_eq!(payload["tool_name"], "mcp__generations__image.create");
         assert_eq!(payload["is_error"], false);
         assert!(
-            payload["content"].as_str().unwrap().contains("https://cdn/img.png"),
+            payload["content"]
+                .as_str()
+                .unwrap()
+                .contains("https://cdn/img.png"),
             "payload content must carry the media URL"
         );
 
         // Failure results mark is_error so the UI renders the error state.
-        emit_tool_call_result(Some(&sink), &call, "mcp__generations__image.create", "failed", "boom");
+        emit_tool_call_result(
+            Some(&sink),
+            &call,
+            "mcp__generations__image.create",
+            "failed",
+            "boom",
+        );
         let events = sink.0.lock().unwrap();
         let payload: serde_json::Value = serde_json::from_str(&events[1].payload).unwrap();
         assert_eq!(payload["is_error"], true);

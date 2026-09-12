@@ -7,6 +7,7 @@
 //! preserves the service boundary: the agents process never embeds the
 //! generations database or provider adapters.
 
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use reqwest::blocking::Client;
@@ -23,36 +24,57 @@ const GENERATIONS_REQUEST_TIMEOUT: Duration = Duration::from_secs(300);
 /// `(modality, operation)`.
 fn generation_endpoint(modality: &str, operation: &str) -> Option<String> {
     match (modality, operation) {
-        ("image", "text_to_image") => Some("/app/v3/api/generations/images/text_to_image".to_string()),
+        ("image", "text_to_image") => {
+            Some("/app/v3/api/generations/images/text_to_image".to_string())
+        }
         ("image", "image_edit") => Some("/app/v3/api/generations/images/image_edit".to_string()),
-        ("video", "text_to_video") => Some("/app/v3/api/generations/videos/text_to_video".to_string()),
-        ("video", "image_to_video") => Some("/app/v3/api/generations/videos/image_to_video".to_string()),
-        ("video", "video_extend") => Some("/app/v3/api/generations/videos/video_extend".to_string()),
-        ("music", "text_to_music") => Some("/app/v3/api/generations/music/text_to_music".to_string()),
-        ("music", "lyrics_to_music") => Some("/app/v3/api/generations/music/lyrics_to_music".to_string()),
+        ("video", "text_to_video") => {
+            Some("/app/v3/api/generations/videos/text_to_video".to_string())
+        }
+        ("video", "image_to_video") => {
+            Some("/app/v3/api/generations/videos/image_to_video".to_string())
+        }
+        ("video", "video_extend") => {
+            Some("/app/v3/api/generations/videos/video_extend".to_string())
+        }
+        ("music", "text_to_music") => {
+            Some("/app/v3/api/generations/music/text_to_music".to_string())
+        }
+        ("music", "lyrics_to_music") => {
+            Some("/app/v3/api/generations/music/lyrics_to_music".to_string())
+        }
         ("voice", "speech") => Some("/app/v3/api/generations/voice/speech".to_string()),
         _ => None,
     }
 }
 
 /// Blocking HTTP port for the generations app API.
+///
+/// The HTTP client is built lazily: a misconfigured environment degrades to
+/// reqwest's default client instead of panicking on library construction
+/// (RUST_CODE_SPEC: no `unwrap`/`expect`/`panic!` reachable from public API).
 #[derive(Debug, Clone)]
 pub struct HttpGenerationsPort {
     base_url: String,
-    client: Client,
+    client: OnceLock<Client>,
 }
 
 impl HttpGenerationsPort {
     pub fn new(base_url: impl Into<String>) -> Self {
-        let client = Client::builder()
-            .connect_timeout(GENERATIONS_CONNECT_TIMEOUT)
-            .timeout(GENERATIONS_REQUEST_TIMEOUT)
-            .build()
-            .expect("generations http client");
         Self {
             base_url: base_url.into(),
-            client,
+            client: OnceLock::new(),
         }
+    }
+
+    fn client(&self) -> &Client {
+        self.client.get_or_init(|| {
+            Client::builder()
+                .connect_timeout(GENERATIONS_CONNECT_TIMEOUT)
+                .timeout(GENERATIONS_REQUEST_TIMEOUT)
+                .build()
+                .unwrap_or_else(|_| Client::new())
+        })
     }
 
     /// Creates one generation command. Returns the raw `data.item` payload.
@@ -137,11 +159,7 @@ impl HttpGenerationsPort {
         idempotency_key: Option<&str>,
     ) -> Result<serde_json::Value, String> {
         let url = format!("{}{}", self.base_url.trim_end_matches('/'), endpoint);
-        let mut request = self
-            .client
-            .post(&url)
-            .bearer_auth(auth_token)
-            .json(&body);
+        let mut request = self.client().post(&url).bearer_auth(auth_token).json(&body);
         if let Some(access_token) = access_token.filter(|token| !token.trim().is_empty()) {
             request = request.header("Access-Token", access_token);
         }
@@ -168,7 +186,7 @@ impl HttpGenerationsPort {
         access_token: Option<&str>,
     ) -> Result<serde_json::Value, String> {
         let url = format!("{}{}", self.base_url.trim_end_matches('/'), endpoint);
-        let mut request = self.client.get(&url).bearer_auth(auth_token);
+        let mut request = self.client().get(&url).bearer_auth(auth_token);
         if let Some(access_token) = access_token.filter(|token| !token.trim().is_empty()) {
             request = request.header("Access-Token", access_token);
         }

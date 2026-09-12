@@ -142,8 +142,11 @@ pub trait TurnToolExecutor: Send + Sync {
     }
 
     /// Executes one tool call within the given turn context.
-    fn execute(&self, call: &TurnToolCall, context: &TurnToolExecutionContext<'_>)
-        -> TurnToolExecution;
+    fn execute(
+        &self,
+        call: &TurnToolCall,
+        context: &TurnToolExecutionContext<'_>,
+    ) -> TurnToolExecution;
 }
 
 /// Aggregated turn-scoped tool dispatcher: routes model-selected calls by
@@ -176,7 +179,10 @@ impl TurnToolDispatcher {
         let mut descriptors: Vec<TurnToolDescriptor> = Vec::new();
         for executor in &self.executors {
             for descriptor in executor.descriptors() {
-                if !descriptors.iter().any(|known| known.tool_id == descriptor.tool_id) {
+                if !descriptors
+                    .iter()
+                    .any(|known| known.tool_id == descriptor.tool_id)
+                {
                     descriptors.push(descriptor);
                 }
             }
@@ -221,9 +227,9 @@ impl GenerationsToolExecutor {
     /// Build the executor over an embedded generations port (tests/local).
     pub fn new(port: Arc<dyn sdkwork_generations_mcp_service::GenerationsMcpPort>) -> Self {
         Self {
-            provider: sdkwork_generations_mcp_service::GenerationsMcpProvider::new(
-                Arc::clone(&port),
-            ),
+            provider: sdkwork_generations_mcp_service::GenerationsMcpProvider::new(Arc::clone(
+                &port,
+            )),
             runtime: GenerationsToolRuntime::Embedded(port),
         }
     }
@@ -232,7 +238,8 @@ impl GenerationsToolExecutor {
     pub fn new_http(port: Arc<crate::generations_tool_port::HttpGenerationsPort>) -> Self {
         // Descriptors are static; an in-memory port backs the provider for
         // descriptor listing only — invocation goes through the HTTP runtime.
-        let listing_port = Arc::new(sdkwork_generations_mcp_service::InMemoryGenerationsMcpPort::new());
+        let listing_port =
+            Arc::new(sdkwork_generations_mcp_service::InMemoryGenerationsMcpPort::new());
         Self {
             provider: sdkwork_generations_mcp_service::GenerationsMcpProvider::new(listing_port),
             runtime: GenerationsToolRuntime::Http(port),
@@ -257,9 +264,7 @@ impl GenerationsToolExecutor {
                     .unwrap_or_else(|| serde_json::json!({"type": "object"})),
                 requires_approval: false,
                 policy_category: descriptor.policy_categories.first().cloned(),
-                timeout_ms: descriptor
-                    .timeout_ms
-                    .unwrap_or(GENERATIONS_TOOL_TIMEOUT_MS),
+                timeout_ms: descriptor.timeout_ms.unwrap_or(GENERATIONS_TOOL_TIMEOUT_MS),
                 origin: TurnToolOrigin::BuiltinGenerations,
             })
             .collect()
@@ -313,7 +318,9 @@ impl GenerationsToolExecutor {
                     access_token,
                     &call.tool_call_id,
                 )
-                .and_then(|item| generation_payload_with_results(http, &item, auth_token, access_token))
+                .and_then(|item| {
+                    generation_payload_with_results(http, &item, auth_token, access_token)
+                })
             }
             "video.create" => {
                 let input = match Self::parse_arguments::<GenerateVideoInput>(call) {
@@ -341,7 +348,9 @@ impl GenerationsToolExecutor {
                     access_token,
                     &call.tool_call_id,
                 )
-                .and_then(|item| generation_payload_with_results(http, &item, auth_token, access_token))
+                .and_then(|item| {
+                    generation_payload_with_results(http, &item, auth_token, access_token)
+                })
             }
             "speech.create" => {
                 let input = match Self::parse_arguments::<SynthesizeSpeechInput>(call) {
@@ -360,7 +369,9 @@ impl GenerationsToolExecutor {
                     access_token,
                     &call.tool_call_id,
                 )
-                .and_then(|item| generation_payload_with_results(http, &item, auth_token, access_token))
+                .and_then(|item| {
+                    generation_payload_with_results(http, &item, auth_token, access_token)
+                })
             }
             "music.create" => {
                 let input = match Self::parse_arguments::<GenerateMusicInput>(call) {
@@ -384,27 +395,31 @@ impl GenerationsToolExecutor {
                     access_token,
                     &call.tool_call_id,
                 )
-                .and_then(|item| generation_payload_with_results(http, &item, auth_token, access_token))
+                .and_then(|item| {
+                    generation_payload_with_results(http, &item, auth_token, access_token)
+                })
             }
             "image.retrieve" | "video.retrieve" | "music.retrieve" => {
                 let input = match Self::parse_arguments::<GenerationRetrieveInput>(call) {
                     Ok(input) => input,
                     Err(error) => return error,
                 };
-                let generation = match http.get_generation(&input.generation_id, auth_token, access_token) {
-                    Ok(generation) => generation,
-                    Err(message) => {
-                        return TurnToolExecution::Failed {
-                            code: "generations_retrieve_failed".to_string(),
-                            message,
+                let generation =
+                    match http.get_generation(&input.generation_id, auth_token, access_token) {
+                        Ok(generation) => generation,
+                        Err(message) => {
+                            return TurnToolExecution::Failed {
+                                code: "generations_retrieve_failed".to_string(),
+                                message,
+                            }
                         }
-                    }
-                };
+                    };
                 let results = http
                     .list_results(&input.generation_id, auth_token, access_token)
                     .unwrap_or_else(|_| serde_json::json!({ "items": [] }));
-                let media_urls =
-                    extract_generation_media_urls(results.as_array().map(Vec::as_slice).unwrap_or(&[]));
+                let media_urls = extract_generation_media_urls(
+                    results.as_array().map(Vec::as_slice).unwrap_or(&[]),
+                );
                 serde_json::to_string(&serde_json::json!({
                     "generation": generation,
                     "results": results,
@@ -448,7 +463,10 @@ fn generation_payload_with_results(
         http.list_results(&generation_id, auth_token, access_token)
             .and_then(|payload| {
                 serde_json::from_value::<Vec<serde_json::Value>>(
-                    payload.get("items").cloned().unwrap_or_else(|| serde_json::json!([])),
+                    payload
+                        .get("items")
+                        .cloned()
+                        .unwrap_or_else(|| serde_json::json!([])),
                 )
                 .map_err(|error| format!("generations results are invalid: {error}"))
             })
@@ -592,9 +610,12 @@ impl TurnToolExecutor for MediaToolExecutor {
             },
             Ok(result) => TurnToolExecution::Failed {
                 code: result.status.clone(),
-                message: result
-                    .error
-                    .unwrap_or_else(|| format!("media tool {} returned status {}", call.tool_id, result.status)),
+                message: result.error.unwrap_or_else(|| {
+                    format!(
+                        "media tool {} returned status {}",
+                        call.tool_id, result.status
+                    )
+                }),
             },
             Err(error) => TurnToolExecution::Failed {
                 code: error.code().to_string(),
@@ -734,7 +755,9 @@ impl TurnToolExecutor for ExternalMcpToolExecutor {
                 .as_deref()
                 .and_then(|secret_ref| self.secrets.resolve(secret_ref))
             {
-                Some(secret) => headers.push(("Authorization".to_string(), format!("Bearer {secret}"))),
+                Some(secret) => {
+                    headers.push(("Authorization".to_string(), format!("Bearer {secret}")))
+                }
                 None => {
                     return TurnToolExecution::Failed {
                         code: "mcp_credential_unresolved".to_string(),
@@ -758,7 +781,9 @@ impl TurnToolExecutor for ExternalMcpToolExecutor {
             other => {
                 return TurnToolExecution::Failed {
                     code: "unsupported_mcp_auth".to_string(),
-                    message: format!("MCP server `{server_key}` auth type `{other}` is unsupported"),
+                    message: format!(
+                        "MCP server `{server_key}` auth type `{other}` is unsupported"
+                    ),
                 }
             }
         }
@@ -773,7 +798,9 @@ impl TurnToolExecutor for ExternalMcpToolExecutor {
             }
         });
         let client = reqwest::blocking::Client::builder()
-            .timeout(std::time::Duration::from_millis(connection.timeout_ms.max(1_000)))
+            .timeout(std::time::Duration::from_millis(
+                connection.timeout_ms.max(1_000),
+            ))
             .build();
         let client = match client {
             Ok(client) => client,
@@ -802,14 +829,17 @@ impl TurnToolExecutor for ExternalMcpToolExecutor {
             Err(error) => {
                 return TurnToolExecution::Failed {
                     code: "mcp_invalid_response".to_string(),
-                    message: format!("MCP server `{server_key}` returned an invalid response: {error}"),
+                    message: format!(
+                        "MCP server `{server_key}` returned an invalid response: {error}"
+                    ),
                 }
             }
         };
         match payload.get("error") {
             Some(error) => TurnToolExecution::Failed {
                 code: "mcp_tool_error".to_string(),
-                message: serde_json::to_string(error).unwrap_or_else(|_| "mcp tool error".to_string()),
+                message: serde_json::to_string(error)
+                    .unwrap_or_else(|_| "mcp tool error".to_string()),
             },
             None => {
                 let content = extract_mcp_text_content(&payload);
@@ -863,10 +893,9 @@ mod tests {
 
     #[test]
     fn dispatcher_fails_closed_for_unknown_tools() {
-        let dispatcher = TurnToolDispatcher::new()
-            .with_executor(Box::new(MediaToolExecutor::new(Arc::new(
-                MediaToolRegistry::new(),
-            ))));
+        let dispatcher = TurnToolDispatcher::new().with_executor(Box::new(MediaToolExecutor::new(
+            Arc::new(MediaToolRegistry::new()),
+        )));
         let call = TurnToolCall {
             tool_call_id: "call.1".to_string(),
             tool_id: "unknown.tool".to_string(),
@@ -880,15 +909,15 @@ mod tests {
             access_token: None,
             mcp_connections: &[],
         };
-        let error = dispatcher.execute(&call, &context).expect_err("unknown tool");
+        let error = dispatcher
+            .execute(&call, &context)
+            .expect_err("unknown tool");
         assert!(error.contains("no tool executor"));
     }
 
     #[test]
     fn generations_executor_owns_only_its_namespace() {
-        let executor = GenerationsToolExecutor::new(Arc::new(
-            InMemoryGenerationsMcpPort::new(),
-        ));
+        let executor = GenerationsToolExecutor::new(Arc::new(InMemoryGenerationsMcpPort::new()));
         assert!(executor.owns("mcp__generations__image.create"));
         assert!(!executor.owns("mcp__other__tool"));
         assert!(!executor.owns("image.generate"));
@@ -896,9 +925,7 @@ mod tests {
 
     #[test]
     fn generations_descriptors_cover_the_default_media_set() {
-        let executor = GenerationsToolExecutor::new(Arc::new(
-            InMemoryGenerationsMcpPort::new(),
-        ));
+        let executor = GenerationsToolExecutor::new(Arc::new(InMemoryGenerationsMcpPort::new()));
         let descriptors = executor.descriptors();
         let ids: Vec<&str> = descriptors.iter().map(|d| d.tool_id.as_str()).collect();
         for expected in [
@@ -1128,7 +1155,10 @@ mod tests {
         let long = "x".repeat(MAX_TOOL_RESULT_CONTENT_CHARS + 100);
         let capped = cap_tool_content(&long);
         assert!(capped.ends_with("…[truncated]"));
-        assert_eq!(capped.chars().count(), MAX_TOOL_RESULT_CONTENT_CHARS + "…[truncated]".chars().count());
+        assert_eq!(
+            capped.chars().count(),
+            MAX_TOOL_RESULT_CONTENT_CHARS + "…[truncated]".chars().count()
+        );
         assert_eq!(cap_tool_content("short"), "short");
     }
 }

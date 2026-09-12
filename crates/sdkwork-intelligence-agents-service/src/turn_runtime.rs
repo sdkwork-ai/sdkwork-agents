@@ -973,7 +973,7 @@ mod tests {
         let output = execute_agent_turn(&TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
-        mcp_connections: Vec::new(),
+            mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
             agent_display_name: "Demo Agent".to_string(),
@@ -1003,7 +1003,7 @@ mod tests {
         let output = execute_agent_turn(&TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
-        mcp_connections: Vec::new(),
+            mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
             agent_display_name: "Demo Agent".to_string(),
@@ -1075,7 +1075,7 @@ mod tests {
         let output = completer.complete(&TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
-        mcp_connections: Vec::new(),
+            mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
             agent_display_name: "Demo Agent".to_string(),
@@ -1180,7 +1180,7 @@ mod tests {
         TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
-        mcp_connections: Vec::new(),
+            mcp_connections: Vec::new(),
             turn_id: "turn.timeout-test".to_string(),
             model_request_id: turn_model_request_id("turn.timeout-test"),
             agent_display_name: "Timeout Test".to_string(),

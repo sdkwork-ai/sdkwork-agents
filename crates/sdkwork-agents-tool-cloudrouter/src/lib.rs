@@ -8,13 +8,15 @@ mod vendor;
 mod wire_protocol;
 
 pub use chat_stream::{
-    CloudRouterChatStreamResult, CloudRouterCompletionResult, CloudRouterStreamDelta,
     create_llm_completion_blocking, stream_chat_completion_blocking,
-    stream_chat_completion_with_tools_blocking, stream_llm_completion_blocking, StreamedToolCall,
+    stream_chat_completion_with_tools_blocking, stream_llm_completion_blocking,
+    CloudRouterChatStreamResult, CloudRouterCompletionResult, CloudRouterStreamDelta,
+    StreamedToolCall,
 };
-pub use client::{cloudrouter_http_error_hint,
-    cloudrouter_base_url, map_cloudrouter_error, run_sync, CloudRouterMediaClient,
-    DEFAULT_CLOUDROUTER_BASE_URL, ENV_CLOUDROUTER_BASE_URL, ENV_CLOUDROUTER_INGRESS_BIND,
+pub use client::{
+    cloudrouter_base_url, cloudrouter_http_error_hint, map_cloudrouter_error, run_sync,
+    CloudRouterMediaClient, DEFAULT_CLOUDROUTER_BASE_URL, ENV_CLOUDROUTER_BASE_URL,
+    ENV_CLOUDROUTER_INGRESS_BIND,
 };
 pub use rig_executor::{
     map_cloudrouter_kernel_error, RigCloudRouterExecutor, RigCloudRouterModelProvider,

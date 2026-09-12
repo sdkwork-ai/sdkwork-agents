@@ -8,7 +8,6 @@ pub use turn_input_queue::*;
 
 use crate::agent_turn::AgentTurnMode;
 use crate::agent_turn::{AgentTurnRecord, AgentTurnStatus};
-use crate::toolkit::{resolve_effective_toolkit, TurnToolkitConfig};
 use crate::domain::{
     AgentAuditAction, AgentAuditPayload, AgentBusinessRecord, AgentBusinessStatus,
     AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentCompositionTargetModule,
@@ -60,6 +59,7 @@ use crate::task_scheduler::{
     ReconcileTaskRunRequest, TaskRunClaim, TaskRunLease, TaskSchedulerRepository,
 };
 use crate::task_scheduling::{AgentTaskRunRecord, AgentTaskRunStatus};
+use crate::toolkit::{resolve_effective_toolkit, TurnToolkitConfig};
 use crate::turn_runtime::{
     complete_with_timeout, complete_with_timeout_and_sink, is_capacity_error, is_inference_error,
     turn_model_request_id, ContractTurnExecutor, TurnCancellationInput, TurnExecutionInput,
@@ -885,19 +885,20 @@ where
     /// Registers the toolkit configuration source (default tools plus external
     /// MCP tool listing). Without it every turn runs text-only; the gateway
     /// bootstrap always wires it so chat agents get the default MCP set.
-    pub fn with_toolkit_config(
-        self,
-        toolkit_config: Option<Arc<dyn TurnToolkitConfig>>,
-    ) -> Self {
-        *self.toolkit_config.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
-            toolkit_config;
+    pub fn with_toolkit_config(self, toolkit_config: Option<Arc<dyn TurnToolkitConfig>>) -> Self {
+        *self
+            .toolkit_config
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = toolkit_config;
         self
     }
 
     /// Replaces the toolkit configuration on a shared (Arc) service instance.
     pub fn set_toolkit_config(&self, toolkit_config: Option<Arc<dyn TurnToolkitConfig>>) {
-        *self.toolkit_config.write().unwrap_or_else(|poisoned| poisoned.into_inner()) =
-            toolkit_config;
+        *self
+            .toolkit_config
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = toolkit_config;
     }
 
     /// Resolves the per-turn toolkit: default MCP set merged with the agent's
@@ -8998,17 +8999,15 @@ where
         // ToolResult session items (pair-wise by tool_call_id) so the chat
         // transcript renders tool cards after reload and the approval flow
         // can re-inspect blocked calls.
-        completed_items.extend(
-            tool_items_from_turn_events(
-                &completion.tool_events,
-                &command.session_id,
-                &turn_id,
-                &user_input_item.item_id,
-                &session,
-                &command,
-                &self.repository,
-            )?,
-        );
+        completed_items.extend(tool_items_from_turn_events(
+            &completion.tool_events,
+            &command.session_id,
+            &turn_id,
+            &user_input_item.item_id,
+            &session,
+            &command,
+            &self.repository,
+        )?);
 
         turn.response_item_id = Some(assistant_output_item.item_id.clone());
         turn.model_id = assistant_output_item.model_id.clone();
@@ -13249,7 +13248,6 @@ fn compose_agent_call_record(
         completed_at,
     }
 }
-
 
 /// Projects the turn loop's tool activity onto durable ToolCall/ToolResult
 /// session items (pair-wise by `tool_call_id`), so chat transcripts render

@@ -17,12 +17,12 @@ use std::sync::Arc;
 
 use cloudrouter_open_sdk::models::{OpenAiChatCompletionRequest, OpenAiChatMessage};
 use cloudrouter_open_sdk::{SdkworkAiClient, SdkworkConfig};
-use serde_json::Value;
 use sdkwork_agent_kernel::{
     HostProvider, KernelError, KernelResult, ModelDescriptor, ModelProvider, ModelRequest,
     ModelResponse, ModelStreamChunk, ModelStreamSink, ProviderHealth, ProviderManifest, SecretRef,
 };
 use sdkwork_agent_provider_rig::{ids, RigBackendConfig, RigBackendExecutor, RigModelProvider};
+use serde_json::Value;
 
 use crate::chat_stream::stream_chat_completion_blocking;
 use crate::chat_stream::CloudRouterStreamDelta;
@@ -101,7 +101,10 @@ impl RigCloudRouterExecutor {
         client: &SdkworkAiClient,
         request: &ModelRequest,
     ) -> KernelResult<()> {
-        if let Some(auth_token) = request.auth_token.as_deref().filter(|token| !token.trim().is_empty())
+        if let Some(auth_token) = request
+            .auth_token
+            .as_deref()
+            .filter(|token| !token.trim().is_empty())
         {
             // Dual-token access per API_SPEC §819/§824: the gateway resolves
             // the account route context from the auth token and carries the
@@ -172,10 +175,7 @@ impl RigCloudRouterExecutor {
         ))
     }
 
-    fn stream_completion_request(
-        &self,
-        request: &ModelRequest,
-    ) -> OpenAiChatCompletionRequest {
+    fn stream_completion_request(&self, request: &ModelRequest) -> OpenAiChatCompletionRequest {
         let mut completion_request = build_chat_completion_request(request);
         completion_request.stream = Some(true);
         completion_request
@@ -215,9 +215,11 @@ impl RigBackendExecutor for RigCloudRouterExecutor {
             .finish_reason
             .clone()
             .unwrap_or_else(|| "stop".to_string());
-        Ok(ModelResponse::text(request_id, ids::MODEL_PROVIDER_ID, content)
-            .with_model_id(completion.model.clone())
-            .with_finish_reason(finish_reason))
+        Ok(
+            ModelResponse::text(request_id, ids::MODEL_PROVIDER_ID, content)
+                .with_model_id(completion.model.clone())
+                .with_finish_reason(finish_reason),
+        )
     }
 }
 
@@ -230,10 +232,7 @@ pub struct RigCloudRouterModelProvider {
 }
 
 impl RigCloudRouterModelProvider {
-    pub fn new(
-        config: RigBackendConfig,
-        host: Arc<dyn HostProvider + Send + Sync>,
-    ) -> Self {
+    pub fn new(config: RigBackendConfig, host: Arc<dyn HostProvider + Send + Sync>) -> Self {
         let executor = Arc::new(RigCloudRouterExecutor::new(config.clone(), host));
         Self {
             inner: RigModelProvider::with_executor(config, executor.clone()),
@@ -363,10 +362,7 @@ impl ModelStreamSink for CollectingModelStreamSink<'_> {
         Ok(())
     }
 
-    fn push_event(
-        &mut self,
-        _event: sdkwork_agent_kernel::KernelEvent,
-    ) -> KernelResult<()> {
+    fn push_event(&mut self, _event: sdkwork_agent_kernel::KernelEvent) -> KernelResult<()> {
         Ok(())
     }
 }
@@ -598,8 +594,10 @@ mod tests {
 
     #[test]
     fn chat_messages_fall_back_to_single_user_message_for_unprefixed_items() {
-        let request =
-            ModelRequest::new("request-1", vec!["plain prompt".to_string(), "more".to_string()]);
+        let request = ModelRequest::new(
+            "request-1",
+            vec!["plain prompt".to_string(), "more".to_string()],
+        );
         let messages = chat_messages_from_model_request(&request);
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].role, "user");
@@ -639,20 +637,18 @@ mod tests {
     #[test]
     fn credentials_prefer_caller_dual_tokens_over_api_key() {
         let config = live_config(Some("secret://rig/cloudrouter"));
-        let executor = RigCloudRouterExecutor::with_base_url(
-            config,
-            test_host(),
-            "http://127.0.0.1:0",
+        let executor =
+            RigCloudRouterExecutor::with_base_url(config, test_host(), "http://127.0.0.1:0");
+        let request = ModelRequest::new("request-1", vec!["user: hi".to_string()]).for_caller(
+            Some("caller-auth-token".to_string()),
+            Some("caller-access-token".to_string()),
         );
-        let request = ModelRequest::new("request-1", vec!["user: hi".to_string()])
-            .for_caller(
-                Some("caller-auth-token".to_string()),
-                Some("caller-access-token".to_string()),
-            );
 
         // Dual tokens are accepted without touching the secret host; the call
         // itself fails against the dead base URL, not on credentials.
-        let error = executor.invoke_model(request).expect_err("gateway call must fail");
+        let error = executor
+            .invoke_model(request)
+            .expect_err("gateway call must fail");
         assert_ne!(
             error.kind(),
             KernelErrorKind::ProviderUnavailable,
@@ -666,10 +662,15 @@ mod tests {
 
     #[test]
     fn credentials_fail_closed_without_tokens_or_api_key() {
-        let executor =
-            RigCloudRouterExecutor::with_base_url(live_config(None), test_host(), "http://127.0.0.1:0");
+        let executor = RigCloudRouterExecutor::with_base_url(
+            live_config(None),
+            test_host(),
+            "http://127.0.0.1:0",
+        );
         let request = ModelRequest::new("request-1", vec!["user: hi".to_string()]);
-        let error = executor.invoke_model(request).expect_err("must fail closed");
+        let error = executor
+            .invoke_model(request)
+            .expect_err("must fail closed");
         assert_eq!(error.kind(), KernelErrorKind::ProviderError);
         assert!(
             error.to_string().contains("requires the caller auth token"),

@@ -82,7 +82,9 @@ pub fn resolve_effective_toolkit(
     // Disabled tool slots trim the default set (and any added tool).
     let disabled_tool_ids: Vec<&str> = slots
         .iter()
-        .filter(|slot| slot.slot_kind == crate::domain::AgentCompositionSlotKind::Tool && !slot.enabled)
+        .filter(|slot| {
+            slot.slot_kind == crate::domain::AgentCompositionSlotKind::Tool && !slot.enabled
+        })
         .map(|slot| slot.target_ref.as_str())
         .collect();
     tools.retain(|tool| !disabled_tool_ids.contains(&tool.tool_id.as_str()));
@@ -131,7 +133,10 @@ pub fn resolve_effective_toolkit(
                 connections.push(crate::tool_calling::McpServerConnection {
                     server_key: slot.target_ref.clone(),
                     endpoint_url,
-                    auth_type: policy.auth_type.clone().unwrap_or_else(|| "none".to_string()),
+                    auth_type: policy
+                        .auth_type
+                        .clone()
+                        .unwrap_or_else(|| "none".to_string()),
                     secret_ref: policy.secret_ref.clone(),
                     timeout_ms: policy
                         .timeout_ms
@@ -208,9 +213,10 @@ impl McpSlotPolicy {
                                 .and_then(serde_json::Value::as_str)
                                 .unwrap_or_default()
                                 .to_string(),
-                            input_schema: item.get("inputSchema").cloned().unwrap_or_else(|| {
-                                serde_json::json!({"type": "object"})
-                            }),
+                            input_schema: item
+                                .get("inputSchema")
+                                .cloned()
+                                .unwrap_or_else(|| serde_json::json!({"type": "object"})),
                             requires_approval: item
                                 .get("requiresApproval")
                                 .and_then(serde_json::Value::as_bool)
@@ -238,9 +244,7 @@ impl McpSlotPolicy {
                 .map(str::trim)
                 .filter(|value| !value.is_empty())
                 .map(str::to_string),
-            timeout_ms: value
-                .get("timeoutMs")
-                .and_then(serde_json::Value::as_u64),
+            timeout_ms: value.get("timeoutMs").and_then(serde_json::Value::as_u64),
             allowed_tools: string_list(&value, "allowedTools"),
             denied_tools: string_list(&value, "deniedTools"),
             tools,
@@ -248,14 +252,14 @@ impl McpSlotPolicy {
     }
 
     fn tool_permitted(&self, tool_name: &str) -> bool {
-        if self
-            .denied_tools
-            .iter()
-            .any(|denied| denied == tool_name)
-        {
+        if self.denied_tools.iter().any(|denied| denied == tool_name) {
             return false;
         }
-        self.allowed_tools.is_empty() || self.allowed_tools.iter().any(|allowed| allowed == tool_name)
+        self.allowed_tools.is_empty()
+            || self
+                .allowed_tools
+                .iter()
+                .any(|allowed| allowed == tool_name)
     }
 }
 
