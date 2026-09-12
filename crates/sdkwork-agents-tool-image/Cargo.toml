@@ -7,6 +7,9 @@ license.workspace = true
 description = "Image media tool sub-crate for SDKWork Agents: generation, edits, and variations via cloudrouter open-api"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_image"
 [lints]
 workspace = true
 [dependencies]

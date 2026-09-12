@@ -7,6 +7,9 @@ license.workspace = true
 description = "Intelligence tool sub-crate for SDKWork Agents: model discovery, embeddings, and content moderation via cloudrouter open-api"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_intelligence"
 [lints]
 workspace = true
 [dependencies]

@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Shared sdkwork-cloudrouter open-api client adapter for the SDKWork Agents media tool family (auth-token account-pool routing)"
 
+
+[lib]
+name = "sdkwork_agents_tool_cloudrouter"
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agent-provider-rig.workspace = true

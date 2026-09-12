@@ -7,6 +7,9 @@ license.workspace = true
 description = "SDKWork Agents application database lifecycle host"
 
 
+
+[lib]
+name = "sdkwork_agents_database_host"
 [lints]
 workspace = true
 [dependencies]

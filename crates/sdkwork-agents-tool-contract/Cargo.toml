@@ -7,6 +7,9 @@ license.workspace = true
 description = "Extensible media tool definition contract for SDKWork Agents (category, definitions, calls, results)"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_contract"
 [lints]
 workspace = true
 [dependencies]

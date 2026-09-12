@@ -7,6 +7,9 @@ license.workspace = true
 description = "SDKWork Agents runtime environment helpers shared by route and integration-test crates"
 
 
+
+[lib]
+name = "sdkwork_agents_contract"
 [lints]
 workspace = true
 [dependencies]

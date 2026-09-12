@@ -7,6 +7,9 @@ license.workspace = true
 description = "Open API route boundary for SDKWork agents managed store HTTP surfaces."
 
 
+
+[lib]
+name = "sdkwork_routes_agents_open_api"
 [lints]
 workspace = true
 [dependencies]

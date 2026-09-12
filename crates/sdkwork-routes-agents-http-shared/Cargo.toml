@@ -7,6 +7,9 @@ license.workspace = true
 description = "Shared sdkwork-web-framework route manifests and bootstrap for agents managed store HTTP surfaces."
 
 
+
+[lib]
+name = "sdkwork_routes_agents_http_shared"
 [lints]
 workspace = true
 [dependencies]

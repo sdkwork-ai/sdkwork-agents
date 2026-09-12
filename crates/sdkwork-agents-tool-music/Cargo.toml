@@ -7,6 +7,9 @@ license.workspace = true
 description = "Music media tool sub-crate for SDKWork Agents: Suno music generation and task polling via cloudrouter open-api"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_music"
 [lints]
 workspace = true
 [dependencies]

@@ -7,6 +7,9 @@ license.workspace = true
 description = "Sound-effect media tool sub-crate for SDKWork Agents (capability reserved until cloudrouter opens a sound-effect endpoint)"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_sound_effect"
 [lints]
 workspace = true
 [dependencies]

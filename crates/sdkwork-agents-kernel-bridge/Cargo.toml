@@ -7,6 +7,9 @@ license.workspace = true
 description = "Composition boundary between SDKWork Agents application and sdkwork-kernel"
 
 
+
+[lib]
+name = "sdkwork_agents_kernel_bridge"
 [lints]
 workspace = true
 [dependencies]

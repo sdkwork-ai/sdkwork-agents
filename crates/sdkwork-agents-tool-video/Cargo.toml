@@ -7,6 +7,9 @@ license.workspace = true
 description = "Video media tool sub-crate for SDKWork Agents: generation, edits, extensions, remix, and characters via cloudrouter open-api"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_video"
 [lints]
 workspace = true
 [dependencies]

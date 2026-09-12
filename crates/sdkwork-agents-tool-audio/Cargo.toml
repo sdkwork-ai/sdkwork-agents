@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Audio media tool sub-crate for SDKWork Agents: speech synthesis, transcription, translation, and voice listing via cloudrouter open-api"
 
+
+[lib]
+name = "sdkwork_agents_tool_audio"
 [dependencies]
 sdkwork-agent-kernel.workspace = true
 sdkwork-agents-tool-contract.workspace = true

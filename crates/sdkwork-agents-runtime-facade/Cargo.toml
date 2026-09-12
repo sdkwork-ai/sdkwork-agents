@@ -5,6 +5,9 @@ edition.workspace = true
 license.workspace = true
 description = "Agents application facade for kernel agent-engine provider bootstrap and runtime execution"
 
+
+[lib]
+name = "sdkwork_agents_runtime_facade"
 [features]
 default = []
 # Codex agent provider carries its own embedded SQLite runtime store

@@ -7,6 +7,9 @@ license.workspace = true
 description = "File media tool sub-crate for SDKWork Agents: gateway file upload, listing, retrieval, deletion, and content via cloudrouter open-api"
 
 
+
+[lib]
+name = "sdkwork_agents_tool_file"
 [lints]
 workspace = true
 [dependencies]
