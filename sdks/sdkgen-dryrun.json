@@ -4,7 +4,7 @@ Agent v3 OpenAPI SDK boundaries materialized.
   "app": "agents",
   "mode": "dry-run",
   "standardProfile": "sdkwork-v3",
-  "sdkgenPath": "E:/sdkwork-space/sdkwork-sdk-generator/bin/sdkgen.js",
+  "sdkgenPath": "sdkwork-sdk-generator/bin/sdkgen.js",
   "startedAt": "2026-08-04T00:34:03.106Z",
   "families": [
     {

@@ -284,9 +284,20 @@ function writeJson(filePath, value) {
 }
 
 function toReportPath(filePath) {
-  const relative = path.relative(root, path.resolve(root, filePath));
-  if (relative && !relative.startsWith('..') && !path.isAbsolute(relative)) {
-    return normalizeReportPath(relative);
+  const absolute = path.resolve(root, filePath);
+  const withinRepo = path.relative(root, absolute);
+  if (withinRepo && !withinRepo.startsWith('..') && !path.isAbsolute(withinRepo)) {
+    return normalizeReportPath(withinRepo);
+  }
+  // Sibling repositories (`sdkwork-sdk-generator` among them) live outside this
+  // repository but inside the same relocatable checkout root. Recording the raw
+  // absolute path there froze the generating machine's drive letter into a
+  // committed report; record it relative to the checkout root instead, which is
+  // the parent directory every `sdkwork-*` repository shares.
+  const checkoutRoot = path.dirname(root);
+  const withinCheckout = path.relative(checkoutRoot, absolute);
+  if (withinCheckout && !withinCheckout.startsWith('..') && !path.isAbsolute(withinCheckout)) {
+    return normalizeReportPath(withinCheckout);
   }
   return normalizeReportPath(filePath);
 }

@@ -439,7 +439,7 @@ fn resolve_selected_cwd(
     }
 }
 
-#[cfg(test)]
+#[cfg(test)] // WORKSPACE-PATH:allow-fixture-block: this module is the file's #[cfg(test)] unit-test fixture data
 mod tests {
     use super::*;
     use crate::agent_engines::bootstrap_agent_engine;

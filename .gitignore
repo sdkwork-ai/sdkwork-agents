@@ -75,3 +75,7 @@ sdks/**/*.d.ts.map
 
 # Merge leftover backups (git revert/merge -X conflict artifacts)
 *.revert-merge
+
+# Agent scratch: session memory and generated reports (the portability and
+# shell-portability gates exclude this directory as scratch too)
+.workbuddy/

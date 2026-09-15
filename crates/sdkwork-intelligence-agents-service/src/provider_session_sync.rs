@@ -2541,7 +2541,10 @@ mod tests {
         let mut session = AgentSession::new(provider_session_id)
             .with_title(format!("{} provider session {ordinal}", engine.engine_key))
             .with_model(default_model.model_id.clone())
-            .with_cwd(r"E:\sdkwork-space\sdkwork-birdcoder");
+            // Fixture data only: no assertion reads this value back, and it is
+            // derived from the ambient temp directory so the test never pins a
+            // real checkout path into this crate.
+            .with_cwd(std::env::temp_dir().join("birdcoder-provider-session").to_string_lossy());
         session.created_at = Some(timestamp.clone());
         session.updated_at = Some(timestamp);
         let directory = sdkwork_agents_runtime_facade::ProviderSessionDirectoryEntry {

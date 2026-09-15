@@ -4,6 +4,7 @@
 //! Production mounts use `sdkwork-routes-agents-*-api::build_served_router` with
 //! `sdkwork-web-framework`. These tests inject the same domain and web context
 //! types at the raw route boundary.
+// WORKSPACE-PATH:allow-fixture: fixtures name a foreign checkout root, drive, or home directory to exercise path handling, so the literal is the value under assertion rather than a binding this build resolves
 
 use axum::body::{to_bytes, Body};
 use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};

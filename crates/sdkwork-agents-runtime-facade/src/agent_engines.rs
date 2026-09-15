@@ -1241,7 +1241,7 @@ pub fn bootstrap_rig_agent_engine(
     Ok(AgentEngineSlot::Rig(upgraded))
 }
 
-#[cfg(test)]
+#[cfg(test)] // WORKSPACE-PATH:allow-fixture-block: this module is the file's #[cfg(test)] unit-test fixture data
 mod tests {
     use super::*;
     use std::collections::VecDeque;
