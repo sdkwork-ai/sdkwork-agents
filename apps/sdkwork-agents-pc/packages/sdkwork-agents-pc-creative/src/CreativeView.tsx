@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreativeInputBox, creativeModelCatalogService } from '@sdkwork/agents-pc-commons';
+import { CreativeInputBox, consumeCreativeHandoff, creativeModelCatalogService } from '@sdkwork/agents-pc-commons';
+import { resolveCreativeCreationType } from '@sdkwork/agents-pc-core/sdk/creationTypes';
 import { ImageDetailModal } from '@sdkwork/agents-pc-inspiration';
 import { VideoDetailModal } from '@sdkwork/agents-pc-inspiration';
 import { useTranslation } from 'react-i18next';
@@ -195,16 +196,11 @@ export const CreativeView = ({ defaultCreationMode = 'agent' }: CreativeViewProp
 
   // Handle incoming prompt from InspirationView
   useEffect(() => {
-    const pendingPrompt = sessionStorage.getItem('pending_creative_prompt');
-    const pendingMode = sessionStorage.getItem('pending_creative_mode') || 'agent';
-    
-    if (pendingPrompt) {
-      // Clear immediately to avoid multiple triggering
-      sessionStorage.removeItem('pending_creative_prompt');
-      sessionStorage.removeItem('pending_creative_mode');
-      
-      // Trigger the generation
-      handleSend(pendingPrompt, pendingMode);
+    const handoff = consumeCreativeHandoff();
+    if (handoff) {
+      // The staged settings used to be dropped here, so every inspiration-page
+      // submission arrived at `handleSend` with `settings === undefined`.
+      handleSend(handoff.prompt, handoff.mode, handoff.settings);
     }
   }, [activeSessionId]);
 
@@ -242,7 +238,7 @@ export const CreativeView = ({ defaultCreationMode = 'agent' }: CreativeViewProp
       mode: mode,
       timestamp: Date.now(),
       settings: settings || {
-        model: mode === 'agent' ? 'Agent Pro' : (mode === 'video' ? '视频 5.0' : '图片 5.0 Ultra'),
+        model: resolveCreativeCreationType(mode).label,
         ratio: '1:1'
       }
     };
@@ -291,7 +287,11 @@ export const CreativeView = ({ defaultCreationMode = 'agent' }: CreativeViewProp
           }
           return s;
         }));
-      }, mode === 'agent' ? undefined : settings?.model);
+      }, mode === 'agent' ? undefined : settings?.model, {
+        // Reference images change the operation (image_edit / image_to_video)
+        // rather than only decorating it.
+        hasReferenceImages: Array.isArray(settings?.refImages) && settings.refImages.length > 0,
+      });
     } catch (error) {
       if (assistantMessageId) {
         setSessions(prev => prev.map(s => s.id === activeSessionId

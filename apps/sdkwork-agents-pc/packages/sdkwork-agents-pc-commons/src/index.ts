@@ -1,5 +1,10 @@
 export { cn } from "./utils";
 export {
+  consumeCreativeHandoff,
+  writeCreativeHandoff,
+} from "./creativeHandoff";
+export type { CreativeHandoffPayload } from "./creativeHandoff";
+export {
   creativeModelCatalogService,
   useCreativeModelCatalog,
   STATIC_DEFAULT_MODEL_IDS,

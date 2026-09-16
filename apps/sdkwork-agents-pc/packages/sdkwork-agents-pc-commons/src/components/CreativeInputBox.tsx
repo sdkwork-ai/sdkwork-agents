@@ -2,7 +2,7 @@ import React from 'react';
 import { useCreativeInputBox } from '../hooks/useCreativeInputBox';
 import { 
   Image as ImageIcon, Crop, Type, AtSign, ArrowUp, ChevronDown, ChevronUp, Plus, Sparkles,
-  Wand2, PlaySquare, Music, AudioLines, Smile, Accessibility, Check, Settings2, Wrench, Mic, Box,
+  Wand2, PlaySquare, Music, AudioLines, Waves, Smile, Accessibility, Check, Settings2, Wrench, Mic, Box,
   PenTool, RectangleHorizontal, LayoutTemplate, Scan, Minus, Play, Pause, Search, X
 } from 'lucide-react';
 import { cn } from './MarkdownRenderer';
@@ -15,6 +15,10 @@ import {
   agentsDriveUploadService,
   type AgentsDriveMediaResource,
 } from '@sdkwork/agents-pc-core/sdk/driveUploadService';
+import {
+  CREATIVE_CREATION_TYPES,
+  resolveCreativeCreationType,
+} from '@sdkwork/agents-pc-core/sdk/creationTypes';
 import { uuid } from '@sdkwork/utils';
 
 interface CreativeInputBoxProps {
@@ -34,16 +38,6 @@ interface CreativeInputBoxProps {
   onModeChange?: (mode: string) => void;
   onSettingsChange?: (settings: any) => void;
 }
-
-const CREATION_TYPES = [
-  { id: 'agent', label: 'Agent 模式', icon: Wand2 },
-  { id: 'image', label: '图片生成', icon: ImageIcon },
-  { id: 'video', label: '视频生成', icon: PlaySquare },
-  { id: 'music', label: '音乐生成', icon: Music },
-  { id: 'voice', label: '配音生成', icon: AudioLines },
-  { id: 'digital_human', label: '数字人', icon: Smile },
-  { id: 'action', label: '动作模仿', icon: Accessibility },
-];
 
 // Reusable custom Model Icon (similar to the image)
 const ModelIcon = () => (
@@ -148,10 +142,11 @@ export const CreativeInputBox: React.FC<CreativeInputBoxProps> = ({
     toggleVoiceSettings,
     toggleImageSettings,
     uploadedImages, setUploadedImages,
-    isVideo, isImage, isAgent, isMusic, isVoice, isDigitalHuman, isAction,
-    imageModels, videoModels, musicModels, voiceModels, avatarModels, actionModels,
+    isVideo, isImage, isAgent, isMusic, isVoice, isSfx, isDigitalHuman, isAction,
+    imageModels, videoModels, musicModels, voiceModels, soundEffectsModels, avatarModels, actionModels,
     selectedAvatarModel, setSelectedAvatarModel,
     selectedActionModel, setSelectedActionModel,
+    selectedSfxModel, setSelectedSfxModel,
     selectedModelId
   } = useCreativeInputBox(defaultValue, initialMode, initialSettings, onSettingsChange);
 
@@ -301,14 +296,15 @@ export const CreativeInputBox: React.FC<CreativeInputBoxProps> = ({
     }
   };
 
-  const currentType = CREATION_TYPES.find(t => t.id === creationType) || CREATION_TYPES[0];
+  const currentType = resolveCreativeCreationType(creationType);
   const TypeIcon = currentType.icon;
-  const currentModels = isDigitalHuman ? avatarModels : isAction ? actionModels : isVoice ? voiceModels : isMusic ? musicModels : isVideo ? videoModels : imageModels;
+  const currentModels = isDigitalHuman ? avatarModels : isAction ? actionModels : isSfx ? soundEffectsModels : isVoice ? voiceModels : isMusic ? musicModels : isVideo ? videoModels : imageModels;
   const currentModel = currentModels.find(m => m.id === selectedModelId) || currentModels[0];
 
   const placeholderText = isVideo ? "描述您想要生成的视频内容，例如：“一只赛博朋克风格的机器猫在霓虹灯下行走”..." :
     isMusic ? "描述您想要生成的音乐风格，例如：“一首轻快的电子乐，适合作为Vlog背景音乐”..." :
     isVoice ? "输入您想要转换的文本内容，选择一个合适的音色..." :
+    isSfx ? "描述您想要的音效，例如：“一扇旧木门缓缓推开的吱呀声，带一点回声”..." :
     isDigitalHuman ? "输入数字人想要说的话，例如：“大家好，欢迎来到我的智能频道，今天我们来聊聊...”" :
     isAction ? "上传图片后，选择模板即可生成" :
     isAgent ? "告诉智能体您想要完成什么任务，例如：“帮我分析一下最近的AI行业趋势”..." :
@@ -845,6 +841,13 @@ export const CreativeInputBox: React.FC<CreativeInputBoxProps> = ({
                 <span>智能动作姿态参考</span>
               </div>
             </div>
+          ) : isSfx ? (
+            <div className="flex items-center gap-2 select-none">
+              <div className="text-[13px] text-zinc-500 flex items-center gap-1.5 font-medium">
+                <Waves size={13} className="text-cyan-400" />
+                <span>描述即得音效，时长与强度由模型自动决定</span>
+              </div>
+            </div>
           ) : (
             <>
               <div className="relative shrink-0 flex items-center" ref={imageSettingsRef}>
@@ -914,6 +917,10 @@ export const CreativeInputBox: React.FC<CreativeInputBoxProps> = ({
             <div className="flex items-center gap-1.5 text-[13px] text-zinc-500 mx-2 font-medium">
               <Sparkles size={14} className="fill-zinc-500" /> 5/首
             </div>
+          ) : isSfx || isVoice || isDigitalHuman ? (
+            <div className="flex items-center gap-1.5 text-[13px] text-zinc-500 mx-2 font-medium">
+              <Sparkles size={14} className="fill-zinc-500" /> 1/次
+            </div>
           ) : (
             <div className="flex items-center gap-1.5 text-[13px] text-zinc-500 mx-2 font-medium">
               <Sparkles size={14} className="fill-zinc-500" /> 3/张
@@ -944,7 +951,7 @@ export const CreativeInputBox: React.FC<CreativeInputBoxProps> = ({
             )}
           >
             <div className="px-4 py-1.5 text-zinc-400 text-[12px] mb-1 dark:text-zinc-500">创作类型</div>
-            {CREATION_TYPES.map(type => {
+            {CREATIVE_CREATION_TYPES.map(type => {
               const Icon = type.icon;
               return (
                 <button
@@ -1040,6 +1047,7 @@ export const CreativeInputBox: React.FC<CreativeInputBoxProps> = ({
             onSelectModel={(id) => {
               if (isDigitalHuman) setSelectedAvatarModel(id);
               else if (isAction) setSelectedActionModel(id);
+              else if (isSfx) setSelectedSfxModel(id);
               else if (isVoice) setSelectedVoiceModel(id);
               else if (isMusic) setSelectedMusicModel(id);
               else if (isVideo) setSelectedVideoModel(id); 

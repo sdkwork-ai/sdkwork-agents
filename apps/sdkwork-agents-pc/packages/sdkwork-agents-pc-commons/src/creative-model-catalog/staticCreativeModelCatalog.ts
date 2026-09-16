@@ -59,6 +59,15 @@ export const STATIC_VOICE_MODELS: CreativeModelDefinition[] = [
   staticModel('voice', 1, { id: 'voice_1.0', label: '即梦配音 1.0', desc: '支持多种音色与情绪控制' }),
 ];
 
+/**
+ * Sound-effect catalog. The id is the model the generations provider adapter
+ * actually sends for the ElevenLabs sound-generation surface
+ * (`DEFAULT_SOUND_EFFECT_MODEL` in `sfx.rs`), not a product-brand alias.
+ */
+export const STATIC_SOUND_EFFECT_MODELS: CreativeModelDefinition[] = [
+  staticModel('sound_effects', 0, { id: 'eleven_audio_v2', label: 'ElevenLabs 音效 v2', desc: '按文字描述生成音效', spark: true }),
+];
+
 export const STATIC_DIGITAL_HUMAN_MODELS: CreativeModelDefinition[] = [
   staticModel('digital_human', 0, {
     id: 'master_mode',
@@ -94,6 +103,7 @@ export const STATIC_CREATIVE_MODELS: Readonly<
   video: STATIC_VIDEO_MODELS,
   music: STATIC_MUSIC_MODELS,
   voice: STATIC_VOICE_MODELS,
+  sound_effects: STATIC_SOUND_EFFECT_MODELS,
   digital_human: STATIC_DIGITAL_HUMAN_MODELS,
   action: STATIC_ACTION_MODELS,
 });
@@ -106,6 +116,7 @@ export const STATIC_DEFAULT_MODEL_IDS: Readonly<
   video: '2.0-mini',
   music: 'music_pro',
   voice: 'voice_pro',
+  sound_effects: 'eleven_audio_v2',
   digital_human: 'fast_mode',
   action: 'vivid',
 });
@@ -123,6 +134,7 @@ export const REMOTE_MODALITY_QUERY: Readonly<
   video: ['video'],
   music: ['music'],
   voice: ['audio'],
+  sound_effects: [],
   digital_human: [],
   action: [],
 });

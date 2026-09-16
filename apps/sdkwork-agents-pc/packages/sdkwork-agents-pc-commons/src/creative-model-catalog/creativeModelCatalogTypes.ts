@@ -16,6 +16,7 @@ export type CreativeModelModality =
   | 'video'
   | 'music'
   | 'voice'
+  | 'sound_effects'
   | 'digital_human'
   | 'action';
 

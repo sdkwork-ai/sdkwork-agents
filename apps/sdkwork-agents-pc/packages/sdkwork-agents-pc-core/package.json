@@ -28,6 +28,7 @@
     "./sdk/skillsAppSdkClient": "./src/sdk/skillsAppSdkClient.ts",
     "./sdk/voiceAppSdkClient": "./src/sdk/voiceAppSdkClient.ts",
     "./sdk/pagination": "./src/sdk/pagination.ts",
+    "./sdk/creationTypes": "./src/sdk/creationTypes.ts",
     "./modules": "./src/modules/index.ts",
     "./host": "./src/host/index.ts",
     "./session": "./src/session/index.ts",

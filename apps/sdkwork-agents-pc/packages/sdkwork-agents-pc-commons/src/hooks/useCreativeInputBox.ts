@@ -40,6 +40,7 @@ export function useCreativeInputBox(
   const videoCatalog = useCreativeModelCatalog('video', { initialModelId: initialSettings?.model });
   const musicCatalog = useCreativeModelCatalog('music', { initialModelId: initialSettings?.model });
   const voiceCatalog = useCreativeModelCatalog('voice', { initialModelId: initialSettings?.model });
+  const soundEffectsCatalog = useCreativeModelCatalog('sound_effects', { initialModelId: initialSettings?.model });
   const digitalHumanCatalog = useCreativeModelCatalog('digital_human', { initialModelId: initialSettings?.model });
   const actionCatalog = useCreativeModelCatalog('action', { initialModelId: initialSettings?.model });
   const selectedImageModel = imageCatalog.selectedModelId;
@@ -50,6 +51,8 @@ export function useCreativeInputBox(
   const setSelectedMusicModel = musicCatalog.selectModel;
   const selectedVoiceModel = voiceCatalog.selectedModelId;
   const setSelectedVoiceModel = voiceCatalog.selectModel;
+  const selectedSfxModel = soundEffectsCatalog.selectedModelId;
+  const setSelectedSfxModel = soundEffectsCatalog.selectModel;
   const selectedAvatarModel = digitalHumanCatalog.selectedModelId;
   const setSelectedAvatarModel = digitalHumanCatalog.selectModel;
   const selectedActionModel = actionCatalog.selectedModelId;
@@ -241,10 +244,11 @@ export function useCreativeInputBox(
   const isAgent = creationType === 'agent';
   const isMusic = creationType === 'music';
   const isVoice = creationType === 'voice';
+  const isSfx = creationType === 'sfx';
   const isDigitalHuman = creationType === 'digital_human';
   const isAction = creationType === 'action';
 
-  const selectedModelId = isDigitalHuman ? selectedAvatarModel : isAction ? selectedActionModel : isVoice ? selectedVoiceModel : isMusic ? selectedMusicModel : isVideo ? selectedVideoModel : selectedImageModel;
+  const selectedModelId = isSfx ? selectedSfxModel : isDigitalHuman ? selectedAvatarModel : isAction ? selectedActionModel : isVoice ? selectedVoiceModel : isMusic ? selectedMusicModel : isVideo ? selectedVideoModel : selectedImageModel;
 
   const onSettingsChangeRef = useRef(onSettingsChange);
   useEffect(() => {
@@ -289,6 +293,7 @@ export function useCreativeInputBox(
     isImage,
     isMusic,
     isVoice,
+    isSfx,
     isDigitalHuman,
     isAction
   ]);
@@ -314,12 +319,14 @@ export function useCreativeInputBox(
     videoModels: videoCatalog.models,
     musicModels: musicCatalog.models,
     voiceModels: voiceCatalog.models,
+    soundEffectsModels: soundEffectsCatalog.models,
     avatarModels: digitalHumanCatalog.models,
     actionModels: actionCatalog.models,
     selectedImageModel, setSelectedImageModel,
     selectedVideoModel, setSelectedVideoModel,
     selectedMusicModel, setSelectedMusicModel,
     selectedVoiceModel, setSelectedVoiceModel,
+    selectedSfxModel, setSelectedSfxModel,
     selectedAvatarModel, setSelectedAvatarModel,
     selectedActionModel, setSelectedActionModel,
     isCreationMenuOpen, setIsCreationMenuOpen,
@@ -372,7 +379,7 @@ export function useCreativeInputBox(
     toggleVoiceSettings,
     toggleImageSettings,
     uploadedImages, setUploadedImages,
-    isVideo, isImage, isAgent, isMusic, isVoice, isDigitalHuman, isAction,
+    isVideo, isImage, isAgent, isMusic, isVoice, isSfx, isDigitalHuman, isAction,
     selectedModelId
   };
 }

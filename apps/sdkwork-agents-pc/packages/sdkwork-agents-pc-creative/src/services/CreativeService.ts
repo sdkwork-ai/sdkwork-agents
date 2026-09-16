@@ -2,6 +2,10 @@ import type {
   GenerationMediaResult,
   GenerationRecord,
 } from '@sdkwork/agents-pc-core/sdk/generationsService';
+import {
+  resolveCreativeCreationType,
+  resolveCreativeGenerationDispatch,
+} from '@sdkwork/agents-pc-core/sdk/creationTypes';
 import { creativeModelCatalogService } from '@sdkwork/agents-pc-commons';
 import { uuid } from '@sdkwork/utils';
 
@@ -14,13 +18,20 @@ async function loadGenerationsService() {
   return agentsGenerationsService;
 }
 
-function toMode(record: GenerationRecord): 'image' | 'video' {
-  return record.modality === 'video' ? 'video' : 'image';
+/**
+ * Display modality for a record. The previous implementation collapsed every
+ * non-video modality onto `image`; the record already carries the modality the
+ * command was dispatched with, so surface it as-is.
+ */
+function toMode(record: GenerationRecord): string {
+  const modality = (record as { modality?: string }).modality;
+  return modality?.trim() ? modality.trim() : 'image';
 }
 
 function toModelInfo(record: GenerationRecord): string {
-  return record.sourceProvider?.trim()
-    || (record.modality === 'video' ? 'SDKWork Video' : 'SDKWork Image');
+  const provider = record.sourceProvider?.trim();
+  if (provider) return provider;
+  return `SDKWork ${toMode(record).replace(/_/gu, ' ')}`;
 }
 
 function toProgress(record: GenerationRecord): number {
@@ -37,6 +48,7 @@ function toAssistantMessage(
   const mode = toMode(record);
   const imageUrls = media.filter((item) => item.kind === 'image').map((item) => item.url);
   const videoUrls = media.filter((item) => item.kind === 'video').map((item) => item.url);
+  const audioUrls = media.filter((item) => item.kind === 'audio').map((item) => item.url);
   return {
     id: messageId,
     role: 'assistant',
@@ -49,6 +61,8 @@ function toAssistantMessage(
     imageUrls,
     videoUrl: videoUrls[0],
     videoUrls,
+    audioUrl: audioUrls[0],
+    audioUrls,
   };
 }
 
@@ -92,16 +106,31 @@ export class CreativeService {
     mode: string,
     onUpdate: (message: CreativeMessage) => void,
     model?: string,
+    options: { hasReferenceImages?: boolean } = {},
   ): Promise<CreativeMessage> {
     const generationsService = await loadGenerationsService();
-    const normalizedMode = mode === 'video' ? 'video' : 'image';
+    // The mode is preserved. It used to be collapsed by
+    // `mode === 'video' ? 'video' : 'image'`, which silently replayed music,
+    // voice, sound-effect, digital-human and action prompts as text-to-image.
+    //
+    // `agent` is deliberately left on its previous assisted-image behaviour: it
+    // is not a generation modality, and re-pointing it is a separate product
+    // decision from the modality-collapse fix.
+    const dispatch = resolveCreativeGenerationDispatch(mode, options)
+      ?? (mode === 'agent' ? resolveCreativeGenerationDispatch('image') : null);
+    if (!dispatch) {
+      throw new Error(
+        `“${mode}” 不是内容生成类型，无法提交生成请求。`,
+      );
+    }
+    const modality = dispatch.modality;
     // Resolve the selected model through the unified creative model catalog:
     // stale or deprecated ids fall back to the replacement/default model.
     const resolvedModel = model
-      ? creativeModelCatalogService.resolveSelection(normalizedMode, model)
+      ? creativeModelCatalogService.resolveSelection(modality, model)
       : undefined;
     const resolvedModelLabel = resolvedModel
-      ? creativeModelCatalogService.getDefinition(normalizedMode, resolvedModel)?.label ?? resolvedModel
+      ? creativeModelCatalogService.getDefinition(modality, resolvedModel)?.label ?? resolvedModel
       : undefined;
     const pendingMessage: CreativeMessage = {
       id: uuid(),
@@ -109,17 +138,17 @@ export class CreativeService {
       text: prompt,
       stage: 'thinking',
       progress: 0,
-      mode: normalizedMode,
-      modelInfo: resolvedModelLabel
-        ?? (normalizedMode === 'video' ? 'SDKWork Video' : 'SDKWork Image'),
+      mode: resolveCreativeCreationType(mode).id,
+      modelInfo: resolvedModelLabel ?? `SDKWork ${modality.replace(/_/gu, ' ')}`,
       imageUrls: [],
       videoUrls: [],
+      audioUrls: [],
     };
     onUpdate(pendingMessage);
 
     const command = await generationsService.create({
-      modality: normalizedMode,
-      operationType: normalizedMode === 'video' ? 'text_to_video' : 'text_to_image',
+      modality,
+      operationType: dispatch.operationType,
       prompt,
       ...(resolvedModel ? { model: resolvedModel } : {}),
     });

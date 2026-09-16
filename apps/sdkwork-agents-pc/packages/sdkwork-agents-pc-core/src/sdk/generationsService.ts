@@ -6,6 +6,11 @@ import {
   resolveAppSdkTenantId,
 } from "../session/session";
 import { agentsDriveUploadService } from "./driveUploadService";
+import {
+  CREATIVE_DEFAULT_OPERATION_BY_MODALITY,
+  type CreativeGenerationModality,
+  type CreativeGenerationOperationType,
+} from "./creationTypes";
 import type {
   GenerationCommandResponse,
   GenerationModality,
@@ -17,19 +22,35 @@ import type {
 } from "./generationsAppSdkClient";
 
 export type { GenerationRecord } from "./generationsAppSdkClient";
+export type {
+  CreativeGenerationModality,
+  CreativeGenerationOperationType,
+} from "./creationTypes";
 
 export interface GenerationCommandInput {
-  modality: "image" | "video";
-  operationType?: "image_edit" | "image_to_video" | "text_to_image" | "text_to_video";
+  /**
+   * Modality carried on the command. Every creation surface (image / video /
+   * music / voice / sound effect / digital human / action) has its own modality;
+   * an unknown modality is rejected instead of being downgraded to image.
+   */
+  modality: CreativeGenerationModality;
+  /**
+   * Explicit operation. Omitted operations resolve through
+   * `CREATIVE_DEFAULT_OPERATION_BY_MODALITY` for the given modality.
+   */
+  operationType?: CreativeGenerationOperationType;
   prompt: string;
   model?: string;
   inputAssetIds?: readonly string[];
   parameters?: Record<string, unknown>;
 }
 
+/** Result kind a generation produced. `audio` covers music / voice / sound effect. */
+export type GenerationMediaKind = "image" | "video" | "audio";
+
 export interface GenerationMediaResult {
   generationResult: GenerationResult;
-  kind: "image" | "video";
+  kind: GenerationMediaKind;
   url: string;
 }
 
@@ -71,7 +92,7 @@ function readString(record: Record<string, unknown>, keys: readonly string[]): s
   return undefined;
 }
 
-function inferResultKind(result: GenerationResult): "image" | "video" | null {
+function inferResultKind(result: GenerationResult): GenerationMediaKind | null {
   const snapshot = isRecord(result.resourceSnapshot) ? result.resourceSnapshot : {};
   const signal = [
     result.resultType,
@@ -79,6 +100,15 @@ function inferResultKind(result: GenerationResult): "image" | "video" | null {
   ].filter(Boolean).join(" ").toLowerCase();
   if (signal.includes("video")) return "video";
   if (signal.includes("image")) return "image";
+  // Music / speech / sound-effect results carry `audio` (or the vendor-specific
+  // `music` / `sfx` / `voice`) instead of an image or video media type. Without
+  // this branch they were dropped from `listMediaResults`, which then made a
+  // successful audio generation look like "completed without a renderable
+  // media result".
+  if (signal.includes("audio") || signal.includes("music") || signal.includes("sfx")
+    || signal.includes("sound") || signal.includes("voice") || signal.includes("speech")) {
+    return "audio";
+  }
   return null;
 }
 
@@ -101,6 +131,75 @@ function toGenerationResultPage(value: unknown): GenerationResultPage {
     ...(typeof value.nextCursor === "string" ? { nextCursor: value.nextCursor } : {}),
   };
 }
+
+type GenerationsApi = SdkworkGenerationsAppClient["generations"];
+type CreateGenerationCommandBody = Parameters<GenerationsApi["images"]["textToImage"]>[0];
+type GenerationCommandParams = Parameters<GenerationsApi["images"]["textToImage"]>[1];
+
+type GenerationOperationSender = (
+  client: SdkworkGenerationsAppClient,
+  body: CreateGenerationCommandBody,
+  params: GenerationCommandParams,
+) => Promise<GenerationCommandResponse>;
+
+/**
+ * Bridge for the two operations that are registered by the generations router
+ * and declared in the app OpenAPI contract, but have no typed method in the
+ * checked-in generated SDK (`avatar`, `motion_mimicry`). They go through the
+ * same authenticated HTTP client — same base URL, same interceptors — so they
+ * still reach the contract. Delete this once the SDK is regenerated and the
+ * generated methods exist.
+ */
+async function sendUnlistedGenerationCommand(
+  client: SdkworkGenerationsAppClient,
+  path: string,
+  body: CreateGenerationCommandBody,
+  params: GenerationCommandParams,
+): Promise<GenerationCommandResponse> {
+  const { appApiPath } = await import("@sdkwork/generations-app-sdk");
+  // `BaseHttpClient.request` lives outside this workspace (`@sdkwork/sdk-common`),
+  // so its option type is described structurally here instead of imported.
+  const http = client.http as unknown as {
+    request<T>(path: string, options: {
+      method: string;
+      body?: unknown;
+      contentType?: string;
+      headers?: Record<string, string>;
+      sdkworkUnwrapKind?: "item" | "page" | "command" | "data" | "void";
+    }): Promise<T>;
+  };
+  return http.request<GenerationCommandResponse>(appApiPath(path), {
+    method: "POST",
+    body,
+    contentType: "application/json",
+    headers: { "Idempotency-Key": params.idempotencyKey },
+    sdkworkUnwrapKind: "item",
+  });
+}
+
+/**
+ * One sender per operation. The previous implementation branched on four
+ * operation types and forwarded everything else to `images.textToImage`, which
+ * turned music / voice / sound-effect / digital-human / action commands into
+ * silent image requests.
+ */
+const GENERATION_OPERATION_SENDERS: Record<CreativeGenerationOperationType, GenerationOperationSender> = {
+  text_to_image: (client, body, params) => client.generations.images.textToImage(body, params),
+  image_edit: (client, body, params) => client.generations.images.imageEdit(body, params),
+  text_to_video: (client, body, params) => client.generations.videos.textToVideo(body, params),
+  image_to_video: (client, body, params) => client.generations.videos.imageToVideo(body, params),
+  video_extend: (client, body, params) => client.generations.videos.videoExtend(body, params),
+  text_to_music: (client, body, params) => client.generations.music.textToMusic(body, params),
+  lyrics_to_music: (client, body, params) => client.generations.music.lyricsToMusic(body, params),
+  sound_effects: (client, body, params) => client.generations.soundEffects.create(body, params),
+  speech: (client, body, params) => client.generations.voice.speech(body, params),
+  transcription: (client, body, params) => client.generations.voice.transcription(body, params),
+  translation: (client, body, params) => client.generations.voice.translation(body, params),
+  avatar: (client, body, params) =>
+    sendUnlistedGenerationCommand(client, "/generations/videos/avatar", body, params),
+  motion_mimicry: (client, body, params) =>
+    sendUnlistedGenerationCommand(client, "/generations/videos/motion_mimicry", body, params),
+};
 
 export class AgentsGenerationsService {
   constructor(
@@ -132,19 +231,15 @@ export class AgentsGenerationsService {
     };
     const params = { idempotencyKey: `agents-generation-${uuid()}` };
     const operationType = input.operationType
-      ?? (input.modality === "video" ? "text_to_video" : "text_to_image");
-    const generations = (await this.getClient()).generations;
-
-    if (operationType === "image_edit") {
-      return generations.images.imageEdit(body, params);
+      ?? CREATIVE_DEFAULT_OPERATION_BY_MODALITY[input.modality];
+    const sender = GENERATION_OPERATION_SENDERS[operationType];
+    if (!sender) {
+      throw new Error(
+        `Unsupported generation operation "${String(operationType)}" for modality "${String(input.modality)}".`,
+      );
     }
-    if (operationType === "image_to_video") {
-      return generations.videos.imageToVideo(body, params);
-    }
-    if (operationType === "text_to_video") {
-      return generations.videos.textToVideo(body, params);
-    }
-    return generations.images.textToImage(body, params);
+    const client = await this.getClient();
+    return sender(client, body, params);
   }
 
   async listRecords(input: {

@@ -8,6 +8,9 @@ export interface CreativeMessage {
   imageUrls?: string[];
   videoUrl?: string;
   videoUrls?: string[];
+  /** Music / voice / sound-effect results (audio media). */
+  audioUrl?: string;
+  audioUrls?: string[];
   suggestions?: string[];
   mode?: string;
   modelInfo?: string;

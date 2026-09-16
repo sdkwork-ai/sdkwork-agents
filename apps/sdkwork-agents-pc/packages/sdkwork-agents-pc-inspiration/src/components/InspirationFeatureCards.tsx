@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '@sdkwork/agents-pc-commons';
+import { CREATIVE_CREATION_TYPES } from '@sdkwork/agents-pc-core/sdk/creationTypes';
 
 interface FeatureCardProps {
   id: string;
@@ -10,13 +11,31 @@ interface FeatureCardProps {
   bg: string;
 }
 
-const FEATURE_CARDS: FeatureCardProps[] = [
+/**
+ * Workspace entries. They are not creation types: selecting one switches to
+ * another tab instead of changing the input box mode.
+ */
+const WORKSPACE_CARDS: FeatureCardProps[] = [
   { id: 'octo', title: 'Magic Studio', desc: 'Vibe create, 创作自然流动', tag: 'Beta', icon: '✨', bg: 'bg-gradient-to-br from-orange-400 to-rose-400' },
   { id: 'canvas', title: '无限画布', desc: '自由创作', icon: '🎨', bg: 'bg-gradient-to-br from-blue-400 to-cyan-400' },
-  { id: 'agent', title: 'Agent 模式', desc: '52.0视频创作', icon: '🤖', bg: 'bg-gradient-to-br from-emerald-400 to-teal-400' },
-  { id: 'image', title: '图片生成', desc: '智能美学提升', tag: 'New', icon: '🖼️', bg: 'bg-gradient-to-br from-blue-500 to-indigo-500' },
-  { id: 'video', title: '视频生成', desc: 'Seedance 2.0', icon: '🎬', bg: 'bg-gradient-to-br from-purple-500 to-violet-500' },
 ];
+
+/**
+ * Generation entries are derived from the shared creation-type taxonomy rather
+ * than hard-coded here. The list used to be five fixed entries, which left
+ * music / voice / sound-effect / digital-human / action unreachable from the
+ * inspiration page even though the input box could select them.
+ */
+const GENERATION_CARDS: FeatureCardProps[] = CREATIVE_CREATION_TYPES.map((type) => ({
+  id: type.id,
+  title: type.label,
+  desc: type.card.description,
+  icon: type.card.emoji,
+  bg: type.card.background,
+  ...(type.card.tag ? { tag: type.card.tag } : {}),
+}));
+
+const FEATURE_CARDS: FeatureCardProps[] = [...WORKSPACE_CARDS, ...GENERATION_CARDS];
 
 interface InspirationFeatureCardsProps {
   inputBoxMode: string;

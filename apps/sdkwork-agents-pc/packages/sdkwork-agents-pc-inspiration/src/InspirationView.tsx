@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { CreativeInputBox } from '@sdkwork/agents-pc-commons';
+import { CreativeInputBox, writeCreativeHandoff } from '@sdkwork/agents-pc-commons';
+import { resolveCreativeCreationType } from '@sdkwork/agents-pc-core/sdk/creationTypes';
 import { ImageDetailModal } from './components/ImageDetailModal';
 import { VideoDetailModal } from './components/VideoDetailModal';
 import { ActivityDetailView } from './components/ActivityDetailView';
@@ -57,9 +58,10 @@ export const InspirationView = () => {
     setLoadedTabQuery((prev) => ({ ...prev, [activeTab]: searchQuery }));
   }, [activeTab, searchQuery, loadedTabQuery]);
 
-  const handleInputSubmit = (value: string, mode: string) => {
-    sessionStorage.setItem('pending_creative_prompt', value);
-    sessionStorage.setItem('pending_creative_mode', mode);
+  const handleInputSubmit = (value: string, mode: string, settings?: unknown) => {
+    // Ratio / duration / reference images used to be dropped here, so the
+    // creative page always fell back to the default model and parameters.
+    writeCreativeHandoff({ prompt: value, mode, settings });
     window.dispatchEvent(new CustomEvent('switch-tab', { detail: { tab: 'creative' } }));
   };
   const [selectedImage, setSelectedImage] = useState<any>(null);
@@ -91,7 +93,7 @@ export const InspirationView = () => {
         {/* Top Centered Section */}
         <div className="w-full max-w-[1200px] px-8 flex flex-col items-center">
           <h1 className="text-2xl font-medium mb-12 flex items-center gap-2">
-            开启你的 <span className="text-cyan-400 flex items-center cursor-pointer hover:text-cyan-300 transition-colors">图片生成 <ChevronDown size={18} className="ml-0.5" /></span> 即刻造梦！
+            开启你的 <span className="text-cyan-400 flex items-center cursor-pointer hover:text-cyan-300 transition-colors">{resolveCreativeCreationType(inputBoxMode).label} <ChevronDown size={18} className="ml-0.5" /></span> 即刻造梦！
           </h1>
           
           {/* Input Box */}
