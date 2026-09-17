@@ -1,4 +1,0 @@
-<view class="container">
-  <text class="title">{{title}}</text>
-  <button class="entry" bindtap="openAgents">打开智能体中心</button>
-</view>

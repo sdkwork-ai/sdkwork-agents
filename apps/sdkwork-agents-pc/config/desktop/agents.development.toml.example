@@ -1,4 +1,0 @@
-# Desktop environment configuration
-environment = "development"
-deployment_profile = "standalone"
-runtime_target = "desktop"

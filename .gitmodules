@@ -1,0 +1,3 @@
+[submodule "apps"]
+	path = apps
+	url = git@github.com:sdkwork-ai/sdkwork-agents-apps.git

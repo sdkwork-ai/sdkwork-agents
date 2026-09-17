@@ -1,7 +1,0 @@
-{
-  "deploymentProfile": "standalone",
-  "environment": "development",
-  "profileId": "standalone.development",
-  "runtimeTarget": "mini-program",
-  "platform": "MP_WEIXIN"
-}

@@ -1,8 +1,0 @@
-{
-  "agents": {
-    "apiBaseUrl": "http://127.0.0.1:8095/app/v3/api"
-  },
-  "appbase": {
-    "loginUrl": "http://127.0.0.1:8095"
-  }
-}
