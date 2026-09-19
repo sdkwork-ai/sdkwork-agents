@@ -120,16 +120,37 @@ assert.match(
 );
 
 const mpAgentsPage = mustExist("apps/sdkwork-agents-mini-program/src/pages/agents/index.js");
+const mpAgentsPageWxml = mustExist("apps/sdkwork-agents-mini-program/src/pages/agents/index.wxml");
 assert.doesNotMatch(
-  mustExist("apps/sdkwork-agents-mini-program/src/pages/agents/index.wxml"),
+  mpAgentsPageWxml,
   /<web-view/u,
   "agents index page must be native (WebView moved to agents-h5)",
 );
-assert.match(mpAgentsPage, /getAgentsMpSdkClient/u, "agents index must load agents via runtime SDK");
+// The page loads agents through the mini program runtime bundle, which resolves
+// the generated SDK client itself (`getAgentsMpRuntimeServices` ->
+// `getAgentsAppSdkClient`). The page consumes the capability services and must
+// not reach for the SDK client directly.
 assert.match(
-  mustExist("apps/sdkwork-agents-mini-program/src/pages/agents/index.wxml"),
-  /agents-h5/u,
-  "agents index wxml must link to the explicit editor bridge page",
+  mpAgentsPage,
+  /getAgentsMpRuntimeServices/u,
+  "agents index must load agents via runtime SDK services",
+);
+assert.doesNotMatch(
+  mpAgentsPage,
+  /getAgentsMpSdkClient/u,
+  "agents index must consume runtime services instead of resolving the SDK client itself",
+);
+// The editor bridge target lives in the page script; the template only wires the
+// handler, so the bridge page path is asserted where it is authored.
+assert.match(
+  mpAgentsPage,
+  /\/pages\/agents-h5\/index/u,
+  "agents index must link to the explicit editor bridge page",
+);
+assert.match(
+  mpAgentsPageWxml,
+  /onOpenFullVersion/u,
+  "agents index wxml must wire the editor bridge action",
 );
 
 const pcAppSource = mustExist(`${pcApp}/App.tsx`);

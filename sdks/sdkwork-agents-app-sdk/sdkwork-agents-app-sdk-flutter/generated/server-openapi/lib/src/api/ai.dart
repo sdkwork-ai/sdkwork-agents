@@ -208,7 +208,7 @@ class AiApi {
   }
 
   /// Aggregate usage totals
-  Future<AgentUsageSummaryResponse?> agentsUsageSummaryRetrieve([AgentId? agentId, String? sessionId, String? modelId, String? from, String? to]) async {
+  Future<AgentUsageSummaryResponse?> agentsUsageSummaryRetrieve([String? agentId, String? sessionId, String? modelId, String? from, String? to]) async {
     final query = buildQueryString([
       QueryParameterSpec('agentId', agentId, 'form', true, false, null),
       QueryParameterSpec('sessionId', sessionId, 'form', true, false, null),
@@ -224,7 +224,7 @@ class AiApi {
   }
 
   /// List usage records
-  Future<AgentUsageRecordListResponse?> agentsUsageRecordsList([AgentId? agentId, String? sessionId, String? modelId, String? from, String? to, String? cursor, int? pageSize]) async {
+  Future<AgentUsageRecordListResponse?> agentsUsageRecordsList([String? agentId, String? sessionId, String? modelId, String? from, String? to, String? cursor, int? pageSize]) async {
     final query = buildQueryString([
       QueryParameterSpec('agentId', agentId, 'form', true, false, null),
       QueryParameterSpec('sessionId', sessionId, 'form', true, false, null),

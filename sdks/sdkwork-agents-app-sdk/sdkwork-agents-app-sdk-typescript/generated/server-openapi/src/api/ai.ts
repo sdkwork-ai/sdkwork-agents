@@ -1058,7 +1058,7 @@ export class AiAgentsWebhooksApi {
 }
 
 export interface AiAgentsUsageRecordsListParams {
-  agentId?: unknown;
+  agentId?: string;
   sessionId?: string;
   modelId?: string;
   from_?: string;
@@ -1091,7 +1091,7 @@ export class AiAgentsUsageRecordsApi {
 }
 
 export interface AiAgentsUsageSummaryRetrieveParams {
-  agentId?: unknown;
+  agentId?: string;
   sessionId?: string;
   modelId?: string;
   from_?: string;

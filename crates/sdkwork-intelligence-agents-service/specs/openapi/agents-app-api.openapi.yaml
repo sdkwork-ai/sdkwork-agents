@@ -1015,7 +1015,8 @@ paths:
         in: query
         required: false
         schema:
-          $ref: '#/components/schemas/AgentId'
+          type: string
+          minLength: 1
       - name: sessionId
         in: query
         required: false
@@ -1075,7 +1076,8 @@ paths:
         in: query
         required: false
         schema:
-          $ref: '#/components/schemas/AgentId'
+          type: string
+          minLength: 1
       - name: sessionId
         in: query
         required: false
