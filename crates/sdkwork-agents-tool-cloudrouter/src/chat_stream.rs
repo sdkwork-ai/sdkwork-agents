@@ -21,6 +21,7 @@ use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::Value;
 
+use crate::credentials::HopCredentials;
 use crate::wire_protocol::{build_protocol_request_body, normalize_finish_reason, WireProtocol};
 
 /// Wall-clock ceiling for one streamed chat completion (30 minutes).
@@ -582,21 +583,53 @@ fn block_data_lines(block: &str) -> Vec<String> {
         .collect()
 }
 
+/// Renders the selected open-api credential onto the outbound HTTP headers.
+///
+/// The **selection** comes from [`HopCredentials::select`], the single rule
+/// both transports share (`crate::credentials`); this function only renders the
+/// chosen source. Before the rule was shared, this arm always sent the caller's
+/// token pair while the in-process arm preferred a configured API key, so one
+/// turn authenticated as two different principals depending on the deployment
+/// profile.
+///
+/// Exactly one source is ever rendered: CloudRouter answers `400
+/// invalid_request` for "API key mixed with either token" (`API_SPEC.md` §10).
 fn apply_dual_token_headers(
     headers: &mut HeaderMap,
     auth_token: &str,
     access_token: Option<&str>,
 ) -> Result<(), SdkworkError> {
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {auth_token}"))
-            .map_err(SdkworkError::InvalidHeaderValue)?,
+    let credentials = HopCredentials::select(
+        crate::credentials::embedded_open_api_key().as_deref(),
+        auth_token,
+        access_token,
     );
-    if let Some(access_token) = access_token.filter(|token| !token.trim().is_empty()) {
-        headers.insert(
-            "Access-Token",
-            HeaderValue::from_str(access_token).map_err(SdkworkError::InvalidHeaderValue)?,
-        );
+    match credentials {
+        // `X-API-Key` only — the deployment-provisioned identity.
+        HopCredentials::ApiKey(api_key) => {
+            headers.insert(
+                crate::credentials::API_KEY_HEADER,
+                HeaderValue::from_str(&api_key).map_err(SdkworkError::InvalidHeaderValue)?,
+            );
+        }
+        // The caller's complete dual-token pair.
+        HopCredentials::CallerPair {
+            auth_token,
+            access_token,
+        } => {
+            headers.insert(
+                AUTHORIZATION,
+                HeaderValue::from_str(&format!("Bearer {auth_token}"))
+                    .map_err(SdkworkError::InvalidHeaderValue)?,
+            );
+            if let Some(access_token) = access_token {
+                headers.insert(
+                    crate::credentials::ACCESS_TOKEN_HEADER,
+                    HeaderValue::from_str(&access_token)
+                        .map_err(SdkworkError::InvalidHeaderValue)?,
+                );
+            }
+        }
     }
     Ok(())
 }
@@ -607,6 +640,10 @@ fn normalize_sse_buffer(buffer: &mut String) {
     }
 }
 
+/// Test-only convenience wrapper over [`StreamAccumulator::consume_sse_buffer`]
+/// that keeps the parser's outputs in loose locals, so the SSE framing tests can
+/// assert each channel independently.
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 fn consume_sse_buffer(
     buffer: &mut String,
@@ -709,25 +746,27 @@ pub fn stream_llm_completion_blocking(
     )
 }
 
-/// Streams one chat completion carrying the full OpenAI message fidelity
-/// (`tool_calls`, `tool_call_id`, null assistant content) required by
-/// function-calling loops.
+/// Assembles the OpenAI chat body that carries full message fidelity
+/// (`tool_calls`, `tool_call_id`, null assistant content) plus the tool
+/// definitions required by a function-calling loop.
 ///
-/// The protocol body is assembled directly from the typed messages instead of
-/// the lossy `build_protocol_request_body` normalization (which flattens every
-/// message to `{role, content}` and drops tool metadata). `tools` is the
-/// serialized OpenAI `tools` array (function definitions with JSON Schema);
-/// when non-empty the request also pins `tool_choice: auto` and disables
-/// parallel tool calls so the caller's loop executes one call at a time.
-pub fn stream_chat_completion_with_tools_blocking(
-    base_url: &str,
-    auth_token: &str,
-    access_token: Option<&str>,
-    mut request: OpenAiChatCompletionRequest,
-    tools: Vec<serde_json::Value>,
-    on_delta: &mut dyn FnMut(CloudRouterStreamDelta),
-) -> Result<CloudRouterChatStreamResult, SdkworkError> {
-    request.stream = Some(true);
+/// This exists as its own function because **both transports** need the exact
+/// same body: the HTTP arm passes it to `stream_gateway_body`, and the
+/// in-process arm (`turn_transport::build_in_process_request`) dispatches it
+/// into the CloudRouter surface. Two hand-written copies would let the same
+/// turn behave differently depending only on the deployment profile — the
+/// regression `both_arms_build_the_same_chat_tools_body` guards against.
+///
+/// The body is assembled directly from the typed messages instead of the lossy
+/// `build_protocol_request_body` normalization (which flattens every message to
+/// `{role, content}` and drops tool metadata). `tools` is the serialized OpenAI
+/// `tools` array (function definitions with JSON Schema); when non-empty the
+/// request also pins `tool_choice: auto` and disables parallel tool calls so
+/// the caller's loop executes one call at a time.
+pub(crate) fn build_chat_tools_body(
+    request: &OpenAiChatCompletionRequest,
+    tools: &[serde_json::Value],
+) -> Value {
     let messages: Vec<Value> = request
         .messages
         .iter()
@@ -743,6 +782,22 @@ pub fn stream_chat_completion_with_tools_blocking(
         body["tool_choice"] = serde_json::json!("auto");
         body["parallel_tool_calls"] = serde_json::json!(false);
     }
+    body
+}
+
+/// Streams one chat completion carrying the full OpenAI message fidelity
+/// (`tool_calls`, `tool_call_id`, null assistant content) required by
+/// function-calling loops.
+pub fn stream_chat_completion_with_tools_blocking(
+    base_url: &str,
+    auth_token: &str,
+    access_token: Option<&str>,
+    mut request: OpenAiChatCompletionRequest,
+    tools: Vec<serde_json::Value>,
+    on_delta: &mut dyn FnMut(CloudRouterStreamDelta),
+) -> Result<CloudRouterChatStreamResult, SdkworkError> {
+    request.stream = Some(true);
+    let body = build_chat_tools_body(&request, &tools);
     let model_key = request.model.clone();
     stream_gateway_body(
         WireProtocol::ChatCompletions,
@@ -799,12 +854,44 @@ fn stream_gateway_body(
         accumulator.flush_remaining(protocol, parser.as_mut(), &buffer);
     }
 
+    finish_accumulated_stream(accumulator, status.as_u16())
+}
+
+/// Accumulates one already-buffered SSE body into a chat stream result.
+///
+/// Split out of the HTTP exchange so the in-process dispatch arm
+/// (`turn_transport`) parses the identical body through the identical parser:
+/// one implementation owns protocol framing, delta delivery, and tool-call
+/// reconstruction, and the two transports differ only in how the body arrives.
+pub(crate) fn accumulate_stream_body(
+    protocol: WireProtocol,
+    body: &[u8],
+    on_delta: &mut dyn FnMut(CloudRouterStreamDelta),
+) -> Result<CloudRouterChatStreamResult, SdkworkError> {
+    let mut accumulator = StreamAccumulator::new(on_delta);
+    let mut parser = frame_parser_for(protocol);
+    let mut buffer = String::from_utf8_lossy(body).to_string();
+    accumulator.consume_sse_buffer(protocol, parser.as_mut(), &mut buffer);
+    if !buffer.trim().is_empty() {
+        accumulator.flush_remaining(protocol, parser.as_mut(), &buffer);
+    }
+    // 200: the HTTP status is already known-good, so only the "no content"
+    // guard below can fail.
+    finish_accumulated_stream(accumulator, 200)
+}
+
+/// Converts a drained accumulator into the public result, rejecting a stream
+/// that produced no assistant content.
+fn finish_accumulated_stream(
+    accumulator: StreamAccumulator<'_>,
+    status: u16,
+) -> Result<CloudRouterChatStreamResult, SdkworkError> {
     if accumulator.content.trim().is_empty()
         && accumulator.stream_deltas.is_empty()
         && accumulator.tool_calls.is_empty()
     {
         return Err(SdkworkError::HttpStatus {
-            status: status.as_u16(),
+            status,
             body: "cloud router stream returned no assistant content".to_string(),
         });
     }
@@ -1027,7 +1114,7 @@ pub fn create_llm_completion_blocking(
     request.stream = Some(false);
     let body = build_protocol_request_body(protocol, &request, false);
     let endpoint = protocol.endpoint(&request.model);
-    let mut response = open_gateway_response(
+    let response = open_gateway_response(
         base_url,
         &endpoint,
         auth_token,
@@ -1084,6 +1171,156 @@ mod tests {
             }
         }
         request
+    }
+
+    /// Reads the credential headers one HTTP hop would send for `(auth, access)`
+    /// under whatever `SDKWORK_CLOUDROUTER_OPEN_API_KEY` currently holds.
+    ///
+    /// Mirrors the real call site: start from the header map the transport
+    /// builds (content negotiation) and let [`apply_dual_token_headers`] add the
+    /// credential.
+    fn http_arm_credential_headers(
+        auth_token: &str,
+        access_token: Option<&str>,
+    ) -> Vec<(String, String)> {
+        let mut headers = HeaderMap::new();
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        apply_dual_token_headers(&mut headers, auth_token, access_token)
+            .expect("header rendering should succeed");
+        headers
+            .iter()
+            .map(|(name, value)| {
+                (
+                    name.as_str().to_ascii_lowercase(),
+                    value.to_str().expect("ascii header").to_string(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn both_transports_present_the_same_credential_source() {
+        use std::sync::{Mutex, OnceLock};
+
+        use crate::credentials::{
+            embedded_open_api_key, ACCESS_TOKEN_HEADER, API_KEY_HEADER,
+            ENV_CLOUDROUTER_OPEN_API_KEY,
+        };
+        use crate::turn_transport::CloudRouterTurnRequest;
+
+        // `std::env` is process-global, so this test must not race the other
+        // env-touching tests in this crate.
+        static GUARD: OnceLock<Mutex<()>> = OnceLock::new();
+        let _guard = GUARD
+            .get_or_init(|| Mutex::new(()))
+            .lock()
+            .expect("credential parity env lock");
+
+        let previous = std::env::var(ENV_CLOUDROUTER_OPEN_API_KEY).ok();
+        let restore = |value: Option<String>| match value {
+            Some(value) => std::env::set_var(ENV_CLOUDROUTER_OPEN_API_KEY, value),
+            None => std::env::remove_var(ENV_CLOUDROUTER_OPEN_API_KEY),
+        };
+
+        // A request builder that renders the in-process arm's headers, so both
+        // arms are exercised through their real rendering functions rather than
+        // through the shared rule alone.
+        let in_process_keys = |auth_token: &str, access_token: Option<&str>| {
+            let mut request = cloudrouter_open_sdk::models::OpenAiChatCompletionRequest::default();
+            request.model = "default".to_string();
+            let input = CloudRouterTurnRequest {
+                protocol: WireProtocol::ChatCompletions,
+                auth_token,
+                access_token,
+                request,
+                tools: Vec::new(),
+            };
+            let request = crate::turn_transport::build_surface_request_for_test(&input)
+                .expect("in-process request should build");
+            let headers = request.headers();
+            let mut keys: Vec<String> = headers
+                .keys()
+                .map(|name| name.as_str().to_ascii_lowercase())
+                .filter(|name| {
+                    name == API_KEY_HEADER
+                        || name == "authorization"
+                        || name == ACCESS_TOKEN_HEADER.to_ascii_lowercase().as_str()
+                })
+                .collect();
+            keys.sort();
+            keys
+        };
+
+        // --- Case 1: a configured key must select the API-key branch in BOTH
+        // transports. This is the regression the module doc records: the HTTP
+        // arm used to ignore the variable and always send the caller's pair.
+        std::env::set_var(ENV_CLOUDROUTER_OPEN_API_KEY, "sk-deployment");
+        assert_eq!(
+            embedded_open_api_key().as_deref(),
+            Some("sk-deployment"),
+            "the env read is the input both arms consume"
+        );
+
+        let http_headers = http_arm_credential_headers("caller-auth", Some("caller-access"));
+        assert_eq!(
+            http_headers,
+            vec![
+                ("content-type".to_string(), "application/json".to_string()),
+                (API_KEY_HEADER.to_string(), "sk-deployment".to_string()),
+            ],
+            "HTTP arm must send X-API-Key alone when the deployment key is set"
+        );
+        assert_eq!(
+            in_process_keys("caller-auth", Some("caller-access")),
+            vec![API_KEY_HEADER.to_string()],
+            "in-process arm must send X-API-Key alone when the deployment key is set"
+        );
+
+        // --- Case 2: without a configured key both arms fall back to the
+        // caller's dual-token pair, verbatim.
+        std::env::remove_var(ENV_CLOUDROUTER_OPEN_API_KEY);
+        assert!(embedded_open_api_key().is_none());
+
+        let http_headers = http_arm_credential_headers("caller-auth", Some("caller-access"));
+        assert_eq!(
+            http_headers,
+            vec![
+                ("content-type".to_string(), "application/json".to_string()),
+                (
+                    "authorization".to_string(),
+                    "Bearer caller-auth".to_string()
+                ),
+                (
+                    ACCESS_TOKEN_HEADER.to_ascii_lowercase(),
+                    "caller-access".to_string()
+                ),
+            ],
+            "HTTP arm must project the caller's dual-token pair verbatim"
+        );
+        assert_eq!(
+            in_process_keys("caller-auth", Some("caller-access")),
+            vec![
+                ACCESS_TOKEN_HEADER.to_ascii_lowercase(),
+                "authorization".to_string()
+            ],
+            "in-process arm must project the same pair"
+        );
+
+        // --- Case 3: a blank key is absent in both arms (never an empty
+        // credential header, which CloudRouter would reject).
+        std::env::set_var(ENV_CLOUDROUTER_OPEN_API_KEY, "   ");
+        let http_headers = http_arm_credential_headers("caller-auth", None);
+        assert!(
+            http_headers.iter().any(|(name, _)| name == "authorization"),
+            "a blank key must not shadow the caller's identity: {http_headers:?}"
+        );
+        assert_eq!(
+            in_process_keys("caller-auth", None),
+            vec!["authorization".to_string()],
+            "a blank key leaves the in-process arm on the caller pair too"
+        );
+
+        restore(previous);
     }
 
     #[test]

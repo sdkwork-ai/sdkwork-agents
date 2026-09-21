@@ -13,7 +13,7 @@ use cloudrouter_open_sdk::models::{
 };
 use sdkwork_agent_kernel::{AgentStreamEvent, KernelError, ModelStreamChunk};
 use sdkwork_agents_tool_cloudrouter::{
-    stream_chat_completion_with_tools_blocking, stream_llm_completion_blocking, WireProtocol,
+    CloudRouterTurnRequest, CloudRouterTurnTransport, WireProtocol,
 };
 
 use crate::domain::AgentSessionItemKind;
@@ -40,11 +40,48 @@ pub const ENV_CLOUDROUTER_BASE_URL: &str = "SDKWORK_AGENTS_CLOUDROUTER_BASE_URL"
 /// Fallback model key sent when the turn carries no model id.
 const DEFAULT_MODEL_KEY: &str = "default";
 
-fn cloudrouter_base_url() -> String {
-    // Shared resolver: env override -> the gateway's own ingress bind (the
-    // federated topology hosts this surface inside the cloudrouter gateway,
-    // whose port varies per deployment profile) -> the platform proxy default.
-    sdkwork_agents_tool_cloudrouter::cloudrouter_base_url()
+/// Stable detail key marking a turn failure that never reached a transport.
+///
+/// Sits next to [`sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY`]
+/// so both failure classes can ride out of `TurnExecutionOutput` on
+/// `runtime_mode` — the output struct has no free-form detail channel, so a
+/// class label has to be promoted into a mode name to survive the boundary.
+pub(crate) const TRANSPORT_FAILURE_DETAIL_KEY: &str = "cloudrouter_transport";
+
+/// Resolves the transport this turn must use to reach CloudRouter.
+///
+/// The decision belongs to the shared component (`sdkwork-agents-tool-cloudrouter`
+/// `turn_transport`), which selects by deployment profile: a `standalone`
+/// process that composes the CloudRouter assembly dispatches in-process, every
+/// other profile dials the resolved HTTP base URL. Resolving here — once per
+/// turn, before the tool loop — keeps a mid-loop transport flip impossible.
+///
+/// The previous implementation required an HTTP base URL unconditionally, so an
+/// embedded profile (which correctly resolves to "no HTTP transport") failed
+/// every turn with `provider_error: ... has no HTTP base URL` / `50301`. The
+/// missing piece was the in-process arm, not a configuration value.
+fn cloudrouter_transport() -> Result<CloudRouterTurnTransport, KernelError> {
+    CloudRouterTurnTransport::resolve().map_err(|error| {
+        KernelError::provider_error("cloudrouter_transport_unavailable", error.to_string())
+            .with_detail(
+                TRANSPORT_FAILURE_DETAIL_KEY,
+                transport_failure_detail(&error),
+            )
+            .with_retryable(false)
+            .with_safe_for_user(false)
+    })
+}
+
+/// Stable detail label naming which transport arm failed, so an operator can
+/// tell "the composition root did not wire the port" from "no base URL".
+fn transport_failure_detail(
+    error: &sdkwork_agents_tool_cloudrouter::CloudRouterTransportError,
+) -> &'static str {
+    use sdkwork_agents_tool_cloudrouter::CloudRouterTransportError;
+    match error {
+        CloudRouterTransportError::EmbeddedSurfaceNotWired => "embedded_surface_not_wired",
+        CloudRouterTransportError::NoBaseUrl(_) => "split_no_base_url",
+    }
 }
 
 /// Turn executor that routes non-rig chat turns through the cloudrouter
@@ -170,6 +207,21 @@ where
     }
 }
 
+/// Renders the operator-facing message for a failed turn.
+///
+/// `KernelError`'s `Display` prints only `{kind}: {message}` and drops every
+/// detail, while `TurnExecutionOutput` has no detail channel. For a transport
+/// failure the detail *is* the diagnosis — it names which arm of
+/// [`cloudrouter_transport`] failed — so it is appended to the message here,
+/// which is the one string that survives all the way to the client-visible
+/// problem `detail`.
+fn turn_failure_message(error: &KernelError) -> String {
+    match error.detail_value(TRANSPORT_FAILURE_DETAIL_KEY) {
+        Some(label) => format!("cloud router turn failed: {error} [{label}]"),
+        None => format!("cloud router turn failed: {error}"),
+    }
+}
+
 fn complete_cloud_router_streaming_turn(
     input: &TurnExecutionInput,
     dispatcher: &TurnToolDispatcher,
@@ -182,9 +234,16 @@ fn complete_cloud_router_streaming_turn(
                 session_id = %input.session.session_id,
                 turn_id = %input.turn_id,
                 error = %error,
+                transport = error
+                    .detail_value(TRANSPORT_FAILURE_DETAIL_KEY)
+                    .unwrap_or("-"),
                 "cloud router streaming turn execution failed"
             );
-            inference_error_output(input, format!("cloud router turn failed: {error}"))
+            inference_error_output(
+                input,
+                turn_failure_message(&error),
+                turn_failure_runtime_mode(&error),
+            )
         }
     }
 }
@@ -200,11 +259,43 @@ fn complete_cloud_router_turn(
                 session_id = %input.session.session_id,
                 turn_id = %input.turn_id,
                 error = %error,
+                transport = error
+                    .detail_value(TRANSPORT_FAILURE_DETAIL_KEY)
+                    .unwrap_or("-"),
                 "cloud router turn execution failed"
             );
-            inference_error_output(input, format!("cloud router turn failed: {error}"))
+            inference_error_output(
+                input,
+                turn_failure_message(&error),
+                turn_failure_runtime_mode(&error),
+            )
         }
     }
+}
+
+/// Selects the runtime mode that carries a turn failure to the HTTP boundary.
+///
+/// The output struct only holds a message string, so the failure *class* has
+/// to travel on `runtime_mode`. Two classes get their own mode so the boundary
+/// stops rendering every one of them as a 50301 "service unavailable":
+///
+/// * a tagged funding shortfall answers 402/`40201` with a recharge action;
+/// * a transport-resolution failure is a deployment/assembly defect and must
+///   stay distinguishable from both an upstream fault and a wallet problem.
+///
+/// The transport check comes first: it is the most specific cause (the turn
+/// never reached any upstream), and every other mapper in the chain preserves
+/// the tag rather than overwriting it.
+fn turn_failure_runtime_mode(error: &KernelError) -> &'static str {
+    if error.detail_value(TRANSPORT_FAILURE_DETAIL_KEY).is_some() {
+        return crate::turn_runtime::RUNTIME_MODE_TRANSPORT_ERROR;
+    }
+    if error.detail_value(sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY)
+        == Some("insufficient_balance")
+    {
+        return crate::turn_runtime::RUNTIME_MODE_FUNDING_ERROR;
+    }
+    crate::turn_runtime::RUNTIME_MODE_INFERENCE_ERROR
 }
 
 /// Executes one turn through the cloudrouter gateway, running the
@@ -231,10 +322,23 @@ fn run_cloud_router_turn(
         .as_deref()
         .filter(|token| !token.trim().is_empty());
     let protocol = resolve_wire_protocol(input)?;
-    // Function calling is carried on the chat_completions wire for P1; other
-    // protocols stream text-only until their tool mapping lands.
-    let tool_loop_enabled =
-        !input.effective_tools.is_empty() && protocol == WireProtocol::ChatCompletions;
+    let tool_loop_enabled = tool_loop_enabled(input, protocol);
+    // An agent configured with tools but running a non-chat wire loses them
+    // silently: the model simply never calls anything, and the operator has no
+    // signal to explain why. Say so once per turn, naming the fix.
+    if tools_dropped_by_protocol(input, protocol) {
+        tracing::warn!(
+            protocol = %protocol.as_str(),
+            tools = input.effective_tools.len(),
+            turn_id = %input.turn_id,
+            "this agent has tools configured but the session's wire protocol carries no \
+             function calling; the tools will NOT be offered to the model. Switch the \
+             session to `chat_completions` to use them."
+        );
+    }
+    // Resolved once per turn: the transport is a property of this process, and
+    // settling it before the loop keeps a mid-loop flip impossible.
+    let transport = cloudrouter_transport()?;
 
     let mut messages = build_chat_messages(input);
     let mut tool_events: Vec<TurnToolEvent> = Vec::new();
@@ -278,26 +382,18 @@ fn run_cloud_router_turn(
                 }
             }
         };
-        let mut streamed = if tool_loop_enabled {
-            stream_chat_completion_with_tools_blocking(
-                &cloudrouter_base_url(),
-                auth_token,
-                access_token,
-                request,
-                tools_json,
+        let mut streamed = transport
+            .stream_chat_completion(
+                CloudRouterTurnRequest {
+                    protocol,
+                    auth_token,
+                    access_token,
+                    request,
+                    tools: tools_json,
+                },
                 &mut on_delta,
             )
-        } else {
-            stream_llm_completion_blocking(
-                protocol,
-                &cloudrouter_base_url(),
-                auth_token,
-                access_token,
-                request,
-                &mut on_delta,
-            )
-        }
-        .map_err(cloud_router_error)?;
+            .map_err(cloud_router_error)?;
 
         model_id = streamed.model.clone().or(model_id);
         finish_reason = streamed.finish_reason.clone().or(finish_reason);
@@ -594,6 +690,25 @@ fn resolve_wire_protocol(input: &TurnExecutionInput) -> Result<WireProtocol, Ker
     })
 }
 
+/// Whether this turn runs the function-calling loop.
+///
+/// Function calling is carried on the `chat_completions` wire for P1; the other
+/// protocols stream text-only until their tool mapping lands. Kept as a named
+/// function (rather than an inline expression) so the rule is asserted by
+/// `tool_loop_requires_both_tools_and_the_chat_wire`.
+fn tool_loop_enabled(input: &TurnExecutionInput, protocol: WireProtocol) -> bool {
+    !input.effective_tools.is_empty() && protocol == WireProtocol::ChatCompletions
+}
+
+/// Whether this turn has tools that the selected protocol will silently drop.
+///
+/// `true` is the operator-visible anomaly: the agent is configured with tools
+/// but the session's wire cannot carry them, so the model will never call
+/// anything. The caller logs it once per turn.
+fn tools_dropped_by_protocol(input: &TurnExecutionInput, protocol: WireProtocol) -> bool {
+    !input.effective_tools.is_empty() && !tool_loop_enabled(input, protocol)
+}
+
 /// Maps the durable turn history into OpenAI chat messages: the agent system
 /// prompt (request-level override wins; otherwise the slot-assembled prompt)
 /// and welcome message lead as `system` messages (mirroring
@@ -665,8 +780,30 @@ fn build_chat_completion_request(
 
 /// Maps a cloudrouter SDK failure to a kernel provider error with an
 /// actionable hint for the common account-pool routing failures.
+///
+/// A wallet shortfall is classified before every operator-facing branch: the
+/// user can resolve it themselves by recharging, so it is tagged with a
+/// `funding_shortfall` detail that the HTTP boundary turns into a 402
+/// (`40201 INSUFFICIENT_BALANCE`) instead of the 50301
+/// "service unavailable" that reads as an infrastructure outage. The trailing
+/// account-pool diagnostic hint is deliberately *not* appended in that case —
+/// it tells the end user to check server-side pricing configuration, which
+/// they cannot act on.
 fn cloud_router_error(error: cloudrouter_open_sdk::SdkworkError) -> KernelError {
     use cloudrouter_open_sdk::SdkworkError;
+    if let SdkworkError::HttpStatus { status, body } = &error {
+        if sdkwork_agents_tool_cloudrouter::is_cloudrouter_insufficient_balance(*status, body) {
+            return KernelError::resource_exhausted(format!(
+                "cloud router turn rejected: insufficient account balance"
+            ))
+            .with_detail(
+                sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
+                "insufficient_balance",
+            )
+            .with_retryable(false)
+            .with_safe_for_user(true);
+        }
+    }
     let hint = match &error {
         SdkworkError::HttpStatus { status, body } if *status == 404 && body.contains("model_not_found") => {
             "; 所选模型在账号池路由中不可用：请在 Cloud Router 中为该供应商配置模型映射规则（ai_model_mapping_rule）或供应商支持模型"
@@ -701,7 +838,11 @@ fn estimate_tokens(text: &str) -> u64 {
     (text.chars().count() / 4) as u64
 }
 
-fn inference_error_output(input: &TurnExecutionInput, message: String) -> TurnExecutionOutput {
+fn inference_error_output(
+    input: &TurnExecutionInput,
+    message: String,
+    runtime_mode: &'static str,
+) -> TurnExecutionOutput {
     TurnExecutionOutput {
         tool_events: Vec::new(),
         model_request_id: Some(input.model_request_id.clone()),
@@ -712,7 +853,7 @@ fn inference_error_output(input: &TurnExecutionInput, message: String) -> TurnEx
         provider_session_id: None,
         input_tokens: 0,
         output_tokens: 0,
-        runtime_mode: crate::turn_runtime::RUNTIME_MODE_INFERENCE_ERROR,
+        runtime_mode,
         stream_deltas: Vec::new(),
         stream_events: Vec::new(),
     }
@@ -869,7 +1010,11 @@ mod tests {
         impl TurnExecutor for RecordingFallback {
             fn complete(&self, input: &TurnExecutionInput) -> TurnExecutionOutput {
                 self.0.lock().unwrap().push(input.user_content.clone());
-                inference_error_output(input, "fallback".to_string())
+                inference_error_output(
+                    input,
+                    "fallback".to_string(),
+                    crate::turn_runtime::RUNTIME_MODE_INFERENCE_ERROR,
+                )
             }
         }
         let fallback = RecordingFallback(std::sync::Mutex::new(Vec::new()));
@@ -962,20 +1107,26 @@ mod tests {
             "succeeded",
             content,
         );
-        let events = sink.0.lock().unwrap();
-        assert_eq!(events.len(), 1);
-        let payload: serde_json::Value = serde_json::from_str(&events[0].payload).unwrap();
-        assert_eq!(events[0].event_type, "agent.stream.tool.result");
-        assert_eq!(payload["tool_call_id"], "call_1");
-        assert_eq!(payload["tool_name"], "mcp__generations__image.create");
-        assert_eq!(payload["is_error"], false);
-        assert!(
-            payload["content"]
-                .as_str()
-                .unwrap()
-                .contains("https://cdn/img.png"),
-            "payload content must carry the media URL"
-        );
+        // Each guard is scoped to its own block. `RecordingSink::push_event`
+        // takes the same non-reentrant `Mutex`, so holding a guard across the
+        // next `emit_tool_call_result` call would deadlock this test forever
+        // (it did: the suite hung with no output for 40+ minutes).
+        {
+            let events = sink.0.lock().unwrap();
+            assert_eq!(events.len(), 1);
+            let payload: serde_json::Value = serde_json::from_str(&events[0].payload).unwrap();
+            assert_eq!(events[0].event_type, "agent.stream.tool.result");
+            assert_eq!(payload["tool_call_id"], "call_1");
+            assert_eq!(payload["tool_name"], "mcp__generations__image.create");
+            assert_eq!(payload["is_error"], false);
+            assert!(
+                payload["content"]
+                    .as_str()
+                    .unwrap()
+                    .contains("https://cdn/img.png"),
+                "payload content must carry the media URL"
+            );
+        }
 
         // Failure results mark is_error so the UI renders the error state.
         emit_tool_call_result(
@@ -1009,5 +1160,214 @@ mod tests {
         }
         assert_eq!(calls[0].id, "call_model-request.test_0");
         assert_eq!(calls[1].id, "call_upstream");
+    }
+
+    /// One descriptor with every field populated, so a future field addition
+    /// cannot make the tool-loop tests vacuously pass on a half-built value.
+    fn sample_tool() -> TurnToolDescriptor {
+        TurnToolDescriptor {
+            tool_id: "mcp__generations__image.create".to_string(),
+            name: "mcp__generations__image.create".to_string(),
+            description: "Create an image from a prompt.".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": { "prompt": { "type": "string" } },
+                "required": ["prompt"],
+            }),
+            requires_approval: false,
+            policy_category: Some("media".to_string()),
+            timeout_ms: crate::tool_calling::DEFAULT_TOOL_TIMEOUT_MS,
+            origin: crate::tool_calling::TurnToolOrigin::BuiltinGenerations,
+        }
+    }
+
+    /// The function-calling loop is a property of **two** inputs: the turn must
+    /// carry tools *and* the wire must be `chat_completions`. Pinning only one
+    /// of them would let a regression reintroduce "tools silently vanish on
+    /// anthropic/google/responses sessions", which is exactly the anomaly the
+    /// `tracing::warn!` in `execute_turn` reports.
+    ///
+    /// `tool_loop_enabled` / `tools_dropped_by_protocol` are the two named
+    /// predicates that decide this; they must stay exact complements whenever
+    /// tools are present, and both must be inert when no tools exist (so a
+    /// tool-free non-chat turn logs nothing).
+    #[test]
+    fn tool_loop_requires_both_tools_and_the_chat_wire() {
+        let mut input = sample_input(Some("token"), Some("access"));
+
+        // No tools -> never a loop, never a drop warning, on any protocol.
+        for protocol in [
+            WireProtocol::ChatCompletions,
+            WireProtocol::AnthropicMessages,
+            WireProtocol::GoogleContent,
+            WireProtocol::OpenAiResponses,
+        ] {
+            assert!(
+                !tool_loop_enabled(&input, protocol),
+                "{protocol:?}: a tool-free turn must not enter the tool loop"
+            );
+            assert!(
+                !tools_dropped_by_protocol(&input, protocol),
+                "{protocol:?}: a tool-free turn must not warn about dropped tools"
+            );
+        }
+
+        // With tools: chat runs the loop, every other wire drops them.
+        input.effective_tools = vec![sample_tool()];
+        assert!(
+            tool_loop_enabled(&input, WireProtocol::ChatCompletions),
+            "chat_completions is the P1 carrier for function calling"
+        );
+        assert!(
+            !tools_dropped_by_protocol(&input, WireProtocol::ChatCompletions),
+            "chat_completions must not report dropped tools"
+        );
+        for protocol in [
+            WireProtocol::AnthropicMessages,
+            WireProtocol::GoogleContent,
+            WireProtocol::OpenAiResponses,
+        ] {
+            assert!(
+                !tool_loop_enabled(&input, protocol),
+                "{protocol:?}: only chat_completions carries function calling for P1"
+            );
+            assert!(
+                tools_dropped_by_protocol(&input, protocol),
+                "{protocol:?}: tools configured on a text-only wire are silently dropped \
+                 and must be reported"
+            );
+            // Complement invariant: exactly one of the two can hold when tools
+            // are present, so the warning cannot drift away from the loop gate.
+            assert_ne!(
+                tool_loop_enabled(&input, protocol),
+                tools_dropped_by_protocol(&input, protocol),
+                "{protocol:?}: the loop gate and the drop warning must be exact complements"
+            );
+        }
+    }
+
+    /// A transport-resolution failure must leave this module carrying the
+    /// transport tag, because `TurnExecutionOutput` has no detail channel and
+    /// the tag is the *only* way the failure class survives to the HTTP
+    /// boundary. Without it, an unassembled composition root reaches the client
+    /// as a plain 50301 "service unavailable" — indistinguishable from a
+    /// transient provider outage, and unactionable for the operator who is the
+    /// only one able to fix it.
+    #[test]
+    fn transport_failures_are_tagged_and_selected_over_other_classes() {
+        // Both arms of the resolver failure the real `cloudrouter_transport()`
+        // can produce, exercised through the same classifier the caller uses.
+        for label in ["embedded_surface_not_wired", "split_no_base_url"] {
+            let error = KernelError::provider_error("cloudrouter_transport_unavailable", "boom")
+                .with_detail(TRANSPORT_FAILURE_DETAIL_KEY, label);
+            assert_eq!(
+                turn_failure_runtime_mode(&error),
+                crate::turn_runtime::RUNTIME_MODE_TRANSPORT_ERROR,
+                "{label}: a tagged transport failure must select the transport mode"
+            );
+        }
+
+        // A funding shortfall keeps its own, more actionable classification.
+        let funding = KernelError::resource_exhausted("no balance").with_detail(
+            sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
+            "insufficient_balance",
+        );
+        assert_eq!(
+            turn_failure_runtime_mode(&funding),
+            crate::turn_runtime::RUNTIME_MODE_FUNDING_ERROR
+        );
+
+        // An untagged failure — the overwhelmingly common case — must NOT be
+        // promoted to either specialised mode, or every upstream hiccup would
+        // start claiming a deployment defect.
+        let plain = KernelError::provider_error("turn_inference_failed", "upstream said no");
+        assert_eq!(
+            turn_failure_runtime_mode(&plain),
+            crate::turn_runtime::RUNTIME_MODE_INFERENCE_ERROR
+        );
+
+        // Precedence: a failure carrying *both* tags is resolved as a transport
+        // failure. The transport is the more specific cause (the turn never
+        // reached an upstream), and a transport failure cannot legitimately be
+        // funded, so this ordering can only be produced by a mapper bug — and
+        // the deployment-defect reading is the safer one to surface.
+        let both = KernelError::provider_error("cloudrouter_transport_unavailable", "boom")
+            .with_detail(TRANSPORT_FAILURE_DETAIL_KEY, "embedded_surface_not_wired")
+            .with_detail(
+                sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
+                "insufficient_balance",
+            );
+        assert_eq!(
+            turn_failure_runtime_mode(&both),
+            crate::turn_runtime::RUNTIME_MODE_TRANSPORT_ERROR,
+            "the transport classification must win over the funding one"
+        );
+    }
+
+    /// The transport label is the only diagnosis an operator gets. It must
+    /// survive into the message string, because that string is the sole field
+    /// that reaches the client-visible problem `detail` — `Display` on
+    /// `KernelError` prints `{kind}: {message}` and silently drops details.
+    ///
+    /// Losing it is exactly what made the original incident undiagnosable: an
+    /// unassembled composition root and a transient upstream fault produced an
+    /// identical error string.
+    #[test]
+    fn transport_label_survives_into_the_operator_facing_message() {
+        for label in ["embedded_surface_not_wired", "split_no_base_url"] {
+            let error = KernelError::provider_error("cloudrouter_transport_unavailable", "boom")
+                .with_detail(TRANSPORT_FAILURE_DETAIL_KEY, label);
+            let message = turn_failure_message(&error);
+            assert!(
+                message.contains(label),
+                "{label}: the transport label must remain readable in the message, got: {message}"
+            );
+            // The label must not leak into a plain failure: an untagged error
+            // gets the unadorned form, so the bracket marker stays meaningful.
+            assert!(message.starts_with("cloud router turn failed: "));
+        }
+
+        let plain = KernelError::provider_error("turn_inference_failed", "upstream said no");
+        let message = turn_failure_message(&plain);
+        assert_eq!(
+            message,
+            "cloud router turn failed: provider_error: upstream said no"
+        );
+        assert!(
+            !message.contains('['),
+            "an untagged failure must not carry a transport marker: {message}"
+        );
+    }
+
+    /// The three failure modes must stay mutually exclusive, so the HTTP
+    /// boundary's `if / else if` chain cannot silently start treating a
+    /// transport defect as a wallet problem (the reverse mistake is equally
+    /// harmful: telling a user to recharge when the deployment is broken).
+    #[test]
+    fn failure_mode_predicates_are_mutually_exclusive() {
+        use crate::turn_runtime::{
+            is_capacity_error, is_funding_error, is_inference_error, is_transport_error,
+        };
+        let modes = [
+            crate::turn_runtime::RUNTIME_MODE_TRANSPORT_ERROR,
+            crate::turn_runtime::RUNTIME_MODE_FUNDING_ERROR,
+            crate::turn_runtime::RUNTIME_MODE_INFERENCE_ERROR,
+            crate::turn_runtime::RUNTIME_MODE_CAPACITY_ERROR,
+        ];
+        for mode in modes {
+            let hits = [
+                is_transport_error(mode),
+                is_funding_error(mode),
+                is_inference_error(mode),
+                is_capacity_error(mode),
+            ]
+            .into_iter()
+            .filter(|hit| *hit)
+            .count();
+            assert_eq!(
+                hits, 1,
+                "{mode}: exactly one predicate may accept a mode name"
+            );
+        }
     }
 }

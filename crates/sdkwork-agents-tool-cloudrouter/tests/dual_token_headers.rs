@@ -26,26 +26,41 @@ struct UnusedSecretHost;
 
 impl HostProvider for UnusedSecretHost {
     fn provider_manifest(&self) -> ProviderManifest {
-        ProviderManifest::new("provider.test-host", "test", "Test secret host", "0.1.0", Vec::new())
+        ProviderManifest::new(
+            "provider.test-host",
+            "test",
+            "Test secret host",
+            "0.1.0",
+            Vec::new(),
+        )
     }
 
     fn health(&self) -> ProviderHealth {
         ProviderHealth::available()
     }
 
-    fn filesystem(&self, _request: FilesystemRequest) -> KernelResult<sdkwork_agent_kernel::FilesystemResult> {
+    fn filesystem(
+        &self,
+        _request: FilesystemRequest,
+    ) -> KernelResult<sdkwork_agent_kernel::FilesystemResult> {
         Err(KernelError::CapabilityMissing {
             capability_id: "filesystem".to_string(),
         })
     }
 
-    fn process(&self, _request: ProcessRequest) -> KernelResult<sdkwork_agent_kernel::ProcessResult> {
+    fn process(
+        &self,
+        _request: ProcessRequest,
+    ) -> KernelResult<sdkwork_agent_kernel::ProcessResult> {
         Err(KernelError::CapabilityMissing {
             capability_id: "process".to_string(),
         })
     }
 
-    fn network(&self, _request: NetworkRequest) -> KernelResult<sdkwork_agent_kernel::NetworkResult> {
+    fn network(
+        &self,
+        _request: NetworkRequest,
+    ) -> KernelResult<sdkwork_agent_kernel::NetworkResult> {
         Err(KernelError::CapabilityMissing {
             capability_id: "network".to_string(),
         })
@@ -118,8 +133,10 @@ fn rig_executor_sends_dual_tokens_on_chat_completion() {
     let executor =
         RigCloudRouterExecutor::with_base_url(config, Arc::new(UnusedSecretHost), base_url);
 
-    let request = ModelRequest::new("request-1", vec!["user: hello".to_string()])
-        .for_caller(Some("auth-token-abc".to_string()), Some("access-token-xyz".to_string()));
+    let request = ModelRequest::new("request-1", vec!["user: hello".to_string()]).for_caller(
+        Some("auth-token-abc".to_string()),
+        Some("access-token-xyz".to_string()),
+    );
 
     let response = executor.invoke_model(request).expect("chat completion");
     assert_eq!(response.messages.join("\n"), "pong");

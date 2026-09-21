@@ -12,6 +12,7 @@ name = "sdkwork_agents_tool_cloudrouter"
 sdkwork-agent-kernel.workspace = true
 sdkwork-agent-provider-rig.workspace = true
 sdkwork-agents-tool-contract.workspace = true
+sdkwork-utils-rust.workspace = true
 cloudrouter-open-sdk.workspace = true
 # Pinned to 0.13 to match the generated cloudrouter-open-sdk crate: its
 # SdkworkError embeds `#[from] reqwest::Error`, so both crates must resolve
@@ -20,3 +21,8 @@ reqwest = { version = "0.13", features = ["json", "stream", "blocking"] }
 tokio.workspace = true
 tracing.workspace = true
 serde_json.workspace = true
+# The in-process turn transport (`turn_transport`) dispatches into the CloudRouter
+# API assembly router instead of an HTTP listener when the profile embeds it
+# (APPLICATION_GATEWAY_SPEC §2.3). Both are needed to build and drive that hop.
+axum.workspace = true
+tower.workspace = true

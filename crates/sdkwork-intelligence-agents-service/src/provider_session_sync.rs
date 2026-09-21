@@ -2544,7 +2544,11 @@ mod tests {
             // Fixture data only: no assertion reads this value back, and it is
             // derived from the ambient temp directory so the test never pins a
             // real checkout path into this crate.
-            .with_cwd(std::env::temp_dir().join("birdcoder-provider-session").to_string_lossy());
+            .with_cwd(
+                std::env::temp_dir()
+                    .join("birdcoder-provider-session")
+                    .to_string_lossy(),
+            );
         session.created_at = Some(timestamp.clone());
         session.updated_at = Some(timestamp);
         let directory = sdkwork_agents_runtime_facade::ProviderSessionDirectoryEntry {

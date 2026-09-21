@@ -429,8 +429,23 @@ fn split_role_item(item: &str) -> Option<(&'static str, &str)> {
 
 /// Maps a cloudrouter SDK failure to a kernel provider error with an
 /// actionable hint for the common account-pool routing failures.
+///
+/// A funding shortfall is handled before the generic branches: it is not a
+/// provider defect but the caller's own wallet, so it is tagged with the
+/// shared `funding_shortfall` detail. The HTTP boundary reads that tag to
+/// emit a 402 (`40201 INSUFFICIENT_BALANCE`) instead of a 50301.
 pub fn map_cloudrouter_kernel_error(error: cloudrouter_open_sdk::SdkworkError) -> KernelError {
     use cloudrouter_open_sdk::SdkworkError;
+    if let SdkworkError::HttpStatus { status, body } = &error {
+        if crate::is_cloudrouter_insufficient_balance(*status, body) {
+            return KernelError::resource_exhausted(
+                "cloud router chat completion rejected: insufficient account balance",
+            )
+            .with_detail(crate::FUNDING_SHORTFALL_DETAIL_KEY, "insufficient_balance")
+            .with_retryable(false)
+            .with_safe_for_user(true);
+        }
+    }
     let hint = match &error {
         SdkworkError::HttpStatus { status, body }
             if *status == 404 && body.contains("model_not_found") =>

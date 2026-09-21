@@ -61,9 +61,10 @@ use crate::task_scheduler::{
 use crate::task_scheduling::{AgentTaskRunRecord, AgentTaskRunStatus};
 use crate::toolkit::{resolve_effective_toolkit, TurnToolkitConfig};
 use crate::turn_runtime::{
-    complete_with_timeout, complete_with_timeout_and_sink, is_capacity_error, is_inference_error,
-    turn_model_request_id, ContractTurnExecutor, TurnCancellationInput, TurnExecutionInput,
-    TurnExecutionStreamSink, TurnExecutor, TURN_EXECUTION_TIMEOUT,
+    complete_with_timeout, complete_with_timeout_and_sink, is_capacity_error, is_funding_error,
+    is_inference_error, is_transport_error, turn_model_request_id, ContractTurnExecutor,
+    TurnCancellationInput, TurnExecutionInput, TurnExecutionStreamSink, TurnExecutor,
+    TURN_EXECUTION_TIMEOUT,
 };
 use crate::validation::{
     default_json_array_if_blank, default_json_object_if_blank, default_plain_text_if_blank,
@@ -8741,13 +8742,34 @@ where
                 TURN_EXECUTION_TIMEOUT,
             )
         };
-        if is_inference_error(completion.runtime_mode) || is_capacity_error(completion.runtime_mode)
+        if is_inference_error(completion.runtime_mode)
+            || is_capacity_error(completion.runtime_mode)
+            || is_funding_error(completion.runtime_mode)
+            || is_transport_error(completion.runtime_mode)
         {
             let capacity_exhausted = is_capacity_error(completion.runtime_mode);
+            let funding_shortfall = is_funding_error(completion.runtime_mode);
+            let transport_unavailable = is_transport_error(completion.runtime_mode);
             let (error_code, error_detail) = if capacity_exhausted {
                 (
                     "turn_provider_capacity_exhausted",
                     "provider execution capacity is exhausted",
+                )
+            } else if funding_shortfall {
+                (
+                    "turn_insufficient_balance",
+                    "account balance cannot fund the turn",
+                )
+            } else if transport_unavailable {
+                (
+                    // Deliberately its own code: this is a deployment/assembly
+                    // defect (the composition root did not wire the in-process
+                    // port, or a split deployment resolved no base URL), not an
+                    // upstream outage. Reporting it as `turn_inference_failed`
+                    // is what made the original incident indistinguishable
+                    // from a transient provider failure.
+                    "turn_cloudrouter_transport_unavailable",
+                    "the CloudRouter transport was not assembled for this deployment",
                 )
             } else {
                 ("turn_inference_failed", "managed turn inference failed")
@@ -8763,7 +8785,29 @@ where
                 command.requested_by.clone(),
                 command.requested_at.clone(),
             )?;
-            return if capacity_exhausted {
+            // A funding shortfall must not be reported as a provider failure:
+            // it is tagged so the HTTP boundary answers 402/`40201` with a
+            // recharge action the user can act on.
+            return if funding_shortfall {
+                Err(KernelError::resource_exhausted(completion.content)
+                    .with_detail(
+                        sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
+                        "insufficient_balance",
+                    )
+                    .with_retryable(false)
+                    .with_safe_for_user(true))
+            } else if transport_unavailable {
+                // Re-raise with the transport tag intact so `ApiProblem::from`
+                // can give it a distinct, operator-actionable shape instead of
+                // the generic 50301 dependency-unavailable envelope.
+                Err(KernelError::provider_error(error_code, completion.content)
+                    .with_detail(
+                        crate::cloud_router_executor::TRANSPORT_FAILURE_DETAIL_KEY,
+                        "unresolved",
+                    )
+                    .with_retryable(false)
+                    .with_safe_for_user(false))
+            } else if capacity_exhausted {
                 Err(KernelError::resource_exhausted(completion.content))
             } else {
                 Err(KernelError::provider_error(error_code, completion.content))

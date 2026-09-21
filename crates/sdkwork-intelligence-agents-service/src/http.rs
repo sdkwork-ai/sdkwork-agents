@@ -10,6 +10,7 @@ pub(crate) use media_tools::{
     backend_update_media_tool_configuration,
 };
 
+use crate::response::ProblemAction;
 use crate::toolkit::TurnToolkitConfig;
 
 use crate::agent_turn_input_queue::{
@@ -5651,6 +5652,24 @@ impl ApiProblem {
                 Self::permission(error.safe_message())
             }
             KernelErrorKind::ProviderUnavailable | KernelErrorKind::ProviderError => {
+                // A transport-resolution failure is a *deployment* defect, not
+                // an upstream outage: no amount of client retrying fixes a
+                // composition root that never wired the in-process port. Give
+                // it its own machine-readable marker so operators and clients
+                // can tell it apart from a genuine provider fault, while
+                // keeping the 50301 envelope the client already understands.
+                if error
+                    .detail_value(crate::cloud_router_executor::TRANSPORT_FAILURE_DETAIL_KEY)
+                    .is_some()
+                {
+                    return Self::dependency_unavailable(error.safe_message())
+                        .with_result_code(SdkWorkResultCode::ServiceUnavailable)
+                        .with_action(ProblemAction {
+                            kind: "deployment_misconfiguration",
+                            href: None,
+                            label: None,
+                        });
+                }
                 // Carry the standard 50301 result code so the problem body
                 // includes `code`/`i18nKey` and keeps the business-safe
                 // message (provider/account-pool reason) in `detail`.
@@ -5661,8 +5680,22 @@ impl ApiProblem {
             KernelErrorKind::Cancelled => Self::conflict(error.safe_message()),
             KernelErrorKind::RateLimited => Self::too_many_requests(error.safe_message(), None),
             KernelErrorKind::ResourceExhausted => {
-                Self::dependency_unavailable(error.safe_message())
-                    .with_result_code(SdkWorkResultCode::ServiceUnavailable)
+                // A funding shortfall rides on `ResourceExhausted` (the kernel
+                // taxonomy has no dedicated wallet variant) and is tagged with
+                // the shared `funding_shortfall` detail by the cloudrouter
+                // mappers. It must surface as an actionable 402/40201 — the
+                // user can recharge — instead of a 50301 that reads as an
+                // infrastructure outage.
+                if error.detail_value(sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY)
+                    == Some("insufficient_balance")
+                {
+                    // Attach the funding remedy so the client renders a
+                    // recharge affordance rather than a bare error string.
+                    Self::payment_required(error.safe_message()).with_recharge_action()
+                } else {
+                    Self::dependency_unavailable(error.safe_message())
+                        .with_result_code(SdkWorkResultCode::ServiceUnavailable)
+                }
             }
             KernelErrorKind::UnsafeContent => Self::unprocessable(error.safe_message()),
             KernelErrorKind::InternalError => Self::internal(error.safe_message()),

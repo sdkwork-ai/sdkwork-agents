@@ -28,6 +28,22 @@ pub const RUNTIME_MODE_FACADE: &str = "agents-runtime-facade";
 pub const RUNTIME_MODE_INFERENCE_ERROR: &str = "managed-agent-inference-error";
 /// Runtime mode when the bounded provider worker capacity is exhausted.
 pub const RUNTIME_MODE_CAPACITY_ERROR: &str = "managed-agent-capacity-error";
+/// Runtime mode when the turn was rejected because the caller's own wallet
+/// cannot fund it. Distinct from [`RUNTIME_MODE_INFERENCE_ERROR`] so the HTTP
+/// boundary can answer 402/`40201` with a recharge action instead of a 50301
+/// that reads as an infrastructure outage.
+pub const RUNTIME_MODE_FUNDING_ERROR: &str = "managed-agent-funding-error";
+/// Runtime mode when the CloudRouter transport itself could not be resolved —
+/// the composition root never wired the in-process port, or a split deployment
+/// resolved no HTTP base URL.
+///
+/// Distinct from [`RUNTIME_MODE_INFERENCE_ERROR`] on purpose. Both end up as a
+/// provider error at the HTTP boundary, but they call for opposite operator
+/// actions: an inference error is an upstream fault the user can retry, while a
+/// missing transport is a *deployment/assembly* defect that no amount of
+/// retrying can fix. Collapsing them into one 50301 is what made the original
+/// incident undiagnosable from the client-visible error alone.
+pub const RUNTIME_MODE_TRANSPORT_ERROR: &str = "managed-agent-transport-error";
 
 pub fn is_inference_error(runtime_mode: &str) -> bool {
     runtime_mode == RUNTIME_MODE_INFERENCE_ERROR
@@ -35,6 +51,18 @@ pub fn is_inference_error(runtime_mode: &str) -> bool {
 
 pub fn is_capacity_error(runtime_mode: &str) -> bool {
     runtime_mode == RUNTIME_MODE_CAPACITY_ERROR
+}
+
+/// Whether the turn failed because the caller's balance is insufficient.
+pub fn is_funding_error(runtime_mode: &str) -> bool {
+    runtime_mode == RUNTIME_MODE_FUNDING_ERROR
+}
+
+/// Whether the turn failed because the CloudRouter transport could not be
+/// resolved (composition-root assembly defect, or a split deployment with no
+/// reachable base URL). See [`RUNTIME_MODE_TRANSPORT_ERROR`].
+pub fn is_transport_error(runtime_mode: &str) -> bool {
+    runtime_mode == RUNTIME_MODE_TRANSPORT_ERROR
 }
 
 const DEFAULT_PROVIDER_WORKER_LIMIT: usize = 32;

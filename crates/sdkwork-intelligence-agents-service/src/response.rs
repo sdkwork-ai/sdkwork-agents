@@ -106,6 +106,23 @@ pub struct ApiProblem {
     pub message: String,
     status: StatusCode,
     result_code: Option<SdkWorkResultCode>,
+    /// Optional machine-readable remedy the client should surface (e.g. a
+    /// funding entry point). Rendered as the problem `action` field.
+    action: Option<ProblemAction>,
+}
+
+/// A remedy attached to a problem so the client can offer a one-click recovery
+/// instead of a plain error string.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ProblemAction {
+    /// Machine kind, e.g. `recharge`. Clients match on this, not on `label`.
+    pub kind: &'static str,
+    /// Optional locale-independent route the host opens.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub href: Option<String>,
+    /// Optional server-provided label override (clients fall back to i18n).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
 }
 
 impl ApiProblem {
@@ -114,6 +131,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::BAD_REQUEST,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -122,6 +141,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::BAD_REQUEST,
             result_code: Some(SdkWorkResultCode::InvalidParameter),
+
+            action: None,
         }
     }
 
@@ -130,6 +151,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::FORBIDDEN,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -138,6 +161,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::NOT_FOUND,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -146,6 +171,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::CONFLICT,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -154,6 +181,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::UNPROCESSABLE_ENTITY,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -162,6 +191,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::PAYLOAD_TOO_LARGE,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -170,6 +201,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::TOO_MANY_REQUESTS,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -178,7 +211,38 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::SERVICE_UNAVAILABLE,
             result_code: None,
+
+            action: None,
         }
+    }
+
+    /// The caller's own wallet cannot fund this request (HTTP 402).
+    ///
+    /// Distinct from [`Self::dependency_unavailable`]: nothing is broken, the
+    /// user simply has no balance, so the client must present a recharge
+    /// affordance instead of a "try again later" hint.
+    pub fn payment_required(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            status: StatusCode::PAYMENT_REQUIRED,
+            result_code: Some(SdkWorkResultCode::InsufficientBalance),
+            action: None,
+        }
+    }
+
+    /// Attaches a machine-readable remedy the client renders as an affordance.
+    pub fn with_action(mut self, action: ProblemAction) -> Self {
+        self.action = Some(action);
+        self
+    }
+
+    /// The standard funding remedy for [`SdkWorkResultCode::InsufficientBalance`].
+    pub fn with_recharge_action(self) -> Self {
+        self.with_action(ProblemAction {
+            kind: "recharge",
+            href: None,
+            label: None,
+        })
     }
 
     /// Carries a standard SDKWork result code (e.g. `50301`) so the problem
@@ -194,6 +258,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::GATEWAY_TIMEOUT,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -202,6 +268,8 @@ impl ApiProblem {
             message: message.into(),
             status: StatusCode::INTERNAL_SERVER_ERROR,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -231,6 +299,8 @@ impl ApiProblem {
             message: error.message,
             status,
             result_code: None,
+
+            action: None,
         }
     }
 
@@ -273,10 +343,27 @@ impl ApiProblem {
             if !self.message.trim().is_empty() {
                 problem.detail = Some(self.message.clone());
             }
+            // `SdkWorkProblemDetail` has no `action` slot (it is the shared RFC
+            // 9457 envelope), so a remedy is injected into the serialized body.
+            // Clients treat its presence as "this failure is self-healable" and
+            // render the matching affordance instead of a retry hint.
+            let body = match self.action.as_ref() {
+                Some(action) => {
+                    let mut value =
+                        serde_json::to_value(&problem).unwrap_or(serde_json::Value::Null);
+                    if let serde_json::Value::Object(map) = &mut value {
+                        if let Ok(action_value) = serde_json::to_value(action) {
+                            map.insert("action".to_owned(), action_value);
+                        }
+                    }
+                    Json(value)
+                }
+                None => Json(serde_json::to_value(&problem).unwrap_or(serde_json::Value::Null)),
+            };
             let response = (
                 self.status,
                 [(axum::http::header::CONTENT_TYPE, "application/problem+json")],
-                Json(problem),
+                body,
             )
                 .into_response();
             return finalize_response(ctx, response);

@@ -6,8 +6,8 @@ mod application;
 mod cloud_router_executor;
 mod domain;
 mod drive_asset_saver;
-mod generations_tool_port;
 mod dto;
+mod generations_tool_port;
 #[cfg(feature = "http-axum")]
 mod http;
 mod id;
@@ -36,8 +36,8 @@ mod task_execution_cursor;
 mod task_scheduler;
 mod task_scheduling;
 mod tool_calling;
-mod toolkit;
 mod tool_invocation;
+mod toolkit;
 mod turn_runtime;
 mod usage;
 mod validation;
@@ -93,13 +93,13 @@ pub use application::{
     UpdateSessionRuntimeBindingCommand, UpdateSessionUserStateCommand,
     UpdateTurnInputQueueEntryCommand, UpdateWorkspaceCommand, WorkspaceMutationCommand,
 };
-pub use generations_tool_port::{
-    image_parameters, music_parameters, speech_parameters, video_parameters, HttpGenerationsPort,
-};
 pub use cloud_router_executor::{
     CloudRouterFirstTurnExecutor, ENV_CLOUDROUTER_BASE_URL, RUNTIME_MODE_CLOUDROUTER,
 };
 pub use drive_asset_saver::{DriveAssetRef, DriveAssetSaver, DriveSaveContext, DriveSaveError};
+pub use generations_tool_port::{
+    image_parameters, music_parameters, speech_parameters, video_parameters, HttpGenerationsPort,
+};
 pub use media_tool_registry::{MediaToolRegistry, SessionMediaAuthTokenStore};
 pub use sdkwork_intelligence_prompts_ai_contract::{
     AgentPromptTemplateKind, AgentPromptTemplateRecord, PromptAiRepository,
@@ -112,19 +112,21 @@ pub use tool_calling::{
     DEFAULT_TOOL_TIMEOUT_MS, EXTERNAL_MCP_TOOL_PREFIX, GENERATIONS_MCP_TOOL_PREFIX,
     GENERATIONS_TOOL_TIMEOUT_MS, MAX_TOOL_RESULT_CONTENT_CHARS,
 };
+pub use tool_invocation::{
+    MediaToolInvocationRequest, MediaToolInvocationService, ToolInvocationOutcome,
+};
 pub use toolkit::{
     resolve_effective_toolkit, McpSlotPolicy, McpSlotPolicyTool, ResolvedSkill, ResolvedToolkit,
     TurnToolkitConfig,
 };
-pub use tool_invocation::{
-    MediaToolInvocationRequest, MediaToolInvocationService, ToolInvocationOutcome,
-};
 pub use turn_runtime::{
     complete_with_timeout, complete_with_timeout_and_sink, execute_agent_turn, is_capacity_error,
-    is_inference_error, turn_model_request_id, ContractTurnExecutor, KernelModelTurnExecutor,
-    RuntimeFacadeTurnExecutor, TurnCancellationInput, TurnCancellationOutput, TurnExecutionInput,
-    TurnExecutionOutput, TurnExecutionStreamSink, TurnExecutor, RUNTIME_MODE_CAPACITY_ERROR,
-    RUNTIME_MODE_FACADE, RUNTIME_MODE_INFERENCE_ERROR, TURN_EXECUTION_TIMEOUT,
+    is_funding_error, is_inference_error, is_transport_error, turn_model_request_id,
+    ContractTurnExecutor, KernelModelTurnExecutor, RuntimeFacadeTurnExecutor,
+    TurnCancellationInput, TurnCancellationOutput, TurnExecutionInput, TurnExecutionOutput,
+    TurnExecutionStreamSink, TurnExecutor, RUNTIME_MODE_CAPACITY_ERROR, RUNTIME_MODE_FACADE,
+    RUNTIME_MODE_FUNDING_ERROR, RUNTIME_MODE_INFERENCE_ERROR, RUNTIME_MODE_TRANSPORT_ERROR,
+    TURN_EXECUTION_TIMEOUT,
 };
 
 pub use domain::AgentVersionRecord;
