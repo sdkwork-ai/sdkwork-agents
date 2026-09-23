@@ -13034,6 +13034,7 @@ async fn execute_update(
     agent_id: String,
     body: UpdateAgentBody,
 ) -> ApiResult<ResourceData<AgentRecordResponse>> {
+    let acting_owner_user_id = scope.owner_evidence();
     let mut default_code_task_intent = body.default_code_task_intent.map(Into::into);
     if let Some(management_profile) = body.management_profile {
         let base_intent = match default_code_task_intent.take() {
@@ -13073,7 +13074,10 @@ async fn execute_update(
     .into_command(scope.subject)
     .map_err(ApiProblem::from_kernel_error)?;
 
-    let record = with_service(&state, move |service| service.update_agent(command)).await?;
+    let record = with_service(&state, move |service| {
+        service.update_agent_as(command, acting_owner_user_id)
+    })
+    .await?;
     Ok(ResourceData {
         item: map_agent_record(&AgentRecordDto::from_record(&record))?,
     })
@@ -13084,6 +13088,7 @@ async fn execute_delete(
     scope: RequestScope,
     agent_id: String,
 ) -> ApiResult<()> {
+    let acting_owner_user_id = scope.owner_evidence();
     let command = DeleteAgentRequestDto {
         tenant_id: scope.tenant_id,
         agent_id,
@@ -13093,7 +13098,10 @@ async fn execute_delete(
     .into_command(scope.subject)
     .map_err(ApiProblem::from_kernel_error)?;
 
-    with_service(&state, move |service| service.delete_agent(command)).await?;
+    with_service(&state, move |service| {
+        service.delete_agent_as(command, acting_owner_user_id)
+    })
+    .await?;
     Ok(())
 }
 

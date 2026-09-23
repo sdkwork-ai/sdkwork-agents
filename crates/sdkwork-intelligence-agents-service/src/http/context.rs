@@ -88,6 +88,19 @@ impl RequestScope {
             .map_err(ApiProblem::from_kernel_error)
     }
 
+    /// Ownership *evidence* for self-service authorization, as opposed to
+    /// [`Self::owner_scope`] which is a data-scope filter.
+    ///
+    /// Ownership evidence must never fail a request: an absent or unparsable
+    /// user id simply means "ownership not proven", and the caller then falls
+    /// back to the management-permission branch. Failing here instead would
+    /// reject requests that the data-scope filter has no reason to reject —
+    /// every no-principal and service-to-service caller, for instance.
+    /// Unproven ownership is always the safe direction: it never grants.
+    pub(crate) fn owner_evidence(&self) -> Option<u64> {
+        self.owner_scope().ok().flatten()
+    }
+
     pub(crate) fn subject(&self) -> &PolicySubject {
         &self.subject
     }

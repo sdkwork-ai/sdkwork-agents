@@ -182,13 +182,24 @@ paths:
       tags:
       - ai
       summary: Update one managed agent
+      description: 'Updates an agent the caller created, or any agent in the tenant
+        when the caller holds `ai.agents.manage`.
+
+        Ownership is proven server-side from the authenticated user id, so a caller
+        holding only `ai.agents.use` reaches their own records and never the records
+        of another user. A caller holding neither permission is rejected before the
+        record is loaded, so a missing agent id stays indistinguishable from a
+        forbidden one.
+
+        '
       operationId: agents.update
       security:
       - AuthToken: []
         AccessToken: []
       x-sdkwork-domain: ai
       x-sdkwork-resource: agents
-      x-sdkwork-permission: ai.agents.manage
+      x-sdkwork-permission: ai.agents.use
+      x-sdkwork-permission-scope: authenticated
       x-sdkwork-tenant-scope: tenant
       x-sdkwork-audit-event: agent.business.updated
       parameters:
@@ -261,13 +272,24 @@ paths:
       tags:
       - ai
       summary: Soft-delete one managed agent
+      description: 'Soft-deletes an agent the caller created, or any agent in the
+        tenant when the caller holds `ai.agents.manage`.
+
+        Ownership is proven server-side from the authenticated user id, so a caller
+        holding only `ai.agents.use` reaches their own records and never the records
+        of another user. A caller holding neither permission is rejected before the
+        record is loaded, so a missing agent id stays indistinguishable from a
+        forbidden one.
+
+        '
       operationId: agents.delete
       security:
       - AuthToken: []
         AccessToken: []
       x-sdkwork-domain: ai
       x-sdkwork-resource: agents
-      x-sdkwork-permission: ai.agents.manage
+      x-sdkwork-permission: ai.agents.use
+      x-sdkwork-permission-scope: authenticated
       x-sdkwork-tenant-scope: tenant
       x-sdkwork-audit-event: agent.business.deleted
       parameters:

@@ -2916,20 +2916,58 @@ where
         Ok(record)
     }
 
+    /// Updates an agent with no ownership evidence, so the caller is evaluated
+    /// against the unqualified `update` action and needs `ai.agents.manage`.
     pub fn update_agent(&self, command: UpdateAgentCommand) -> KernelResult<AgentBusinessRecord> {
+        self.update_agent_as(command, None)
+    }
+
+    /// Updates an agent on behalf of an identified caller.
+    ///
+    /// `acting_owner_user_id` is the authenticated user id resolved at the
+    /// request boundary (`RequestScope::owner_scope`). It is *evidence*, never a
+    /// grant: the policy provider still decides, it just decides under a
+    /// different action name. When the evidence matches the stored record's
+    /// `owner_user_id`, authorization runs under the ownership-qualified
+    /// `update_owned` action, which `ai.agents.use` satisfies — this is what
+    /// lets a user edit an agent they created without holding
+    /// `ai.agents.manage`. Otherwise the unqualified `update` action applies and
+    /// the management permission is required. `None` never matches, so a caller
+    /// that cannot prove ownership falls back to the manage-only branch.
+    pub fn update_agent_as(
+        &self,
+        command: UpdateAgentCommand,
+        acting_owner_user_id: Option<u64>,
+    ) -> KernelResult<AgentBusinessRecord> {
         validate_agent_id(command.agent_id.as_str())?;
         let policy_resource = format!("agent.business.{}", command.agent_id);
+
+        // Gate 1 — the minimum bar. Evaluated *before* the record is loaded so a
+        // missing id stays indistinguishable from a forbidden one for callers
+        // holding no agent permission at all; denying later would turn a 403
+        // into an existence oracle.
         self.authorize(
             "agent.business.update",
             command.requested_by.clone(),
-            policy_resource,
-            "update",
+            policy_resource.clone(),
+            "update_owned",
         )?;
 
         let mut record = self
             .repository
             .get(command.tenant_id, command.agent_id.as_str())?
             .ok_or_else(|| KernelError::not_found("agent not found"))?;
+
+        // Gate 2 — `ai.agents.use` reaches only the caller's own record;
+        // touching somebody else's still requires `ai.agents.manage`.
+        if !acting_owner_matches(acting_owner_user_id, record.owner_user_id) {
+            self.authorize(
+                "agent.business.update",
+                command.requested_by.clone(),
+                policy_resource,
+                "update",
+            )?;
+        }
 
         if record.is_deleted() {
             return Err(KernelError::validation("deleted agent cannot be updated"));
@@ -3027,20 +3065,48 @@ where
         Ok(record)
     }
 
+    /// Deletes an agent with no ownership evidence, so the caller is evaluated
+    /// against the unqualified `delete` action and needs `ai.agents.manage`.
     pub fn delete_agent(&self, command: DeleteAgentCommand) -> KernelResult<AgentBusinessRecord> {
+        self.delete_agent_as(command, None)
+    }
+
+    /// Deletes an agent on behalf of an identified caller.
+    ///
+    /// Mirrors [`Self::update_agent_as`]: matching ownership evidence selects the
+    /// `delete_owned` action (`ai.agents.use`); the absence of it falls back to
+    /// the unqualified `delete` action (`ai.agents.manage`). `None` never
+    /// matches.
+    pub fn delete_agent_as(
+        &self,
+        command: DeleteAgentCommand,
+        acting_owner_user_id: Option<u64>,
+    ) -> KernelResult<AgentBusinessRecord> {
         validate_agent_id(command.agent_id.as_str())?;
         let policy_resource = format!("agent.business.{}", command.agent_id);
+
+        // Gate 1 — minimum bar, before the record load: see `update_agent_as`.
         self.authorize(
             "agent.business.delete",
             command.requested_by.clone(),
-            policy_resource,
-            "delete",
+            policy_resource.clone(),
+            "delete_owned",
         )?;
 
         let mut record = self
             .repository
             .get(command.tenant_id, command.agent_id.as_str())?
             .ok_or_else(|| KernelError::not_found("agent not found"))?;
+
+        // Gate 2 — someone else's agent still needs the management permission.
+        if !acting_owner_matches(acting_owner_user_id, record.owner_user_id) {
+            self.authorize(
+                "agent.business.delete",
+                command.requested_by.clone(),
+                policy_resource,
+                "delete",
+            )?;
+        }
 
         if record.is_deleted() {
             return Err(KernelError::validation("agent already deleted"));
@@ -10976,6 +11042,24 @@ impl KernelEventExt for KernelEvent {
     }
 }
 
+/// Returns `true` only when the request actually *proved* ownership of a record.
+///
+/// Both sides must be a real, positive user id. An absent or unparsable acting
+/// identity is not evidence of anything, and the sentinel `0` is reachable on
+/// both sides — records written before an owner was resolved, and `unwrap_or(0)`
+/// fallbacks in persistence and audit paths. `parse_tenant_id` guards
+/// `tenant_id` for exactly this reason; the same guard here keeps a lost
+/// identity header from silently turning into a self-service grant.
+///
+/// The result only selects *which* policy action is evaluated; the policy
+/// provider still decides. See `AgentsService::update_agent_as`.
+fn acting_owner_matches(acting_owner_user_id: Option<u64>, record_owner_user_id: u64) -> bool {
+    match acting_owner_user_id {
+        Some(acting) => acting > 0 && acting == record_owner_user_id,
+        None => false,
+    }
+}
+
 fn is_valid_status_transition(from: AgentBusinessStatus, to: AgentBusinessStatus) -> bool {
     matches!(
         (from, to),
@@ -13360,4 +13444,256 @@ fn tool_items_from_turn_events<R: AgentRepository>(
         items.push(record);
     }
     Ok(items)
+}
+
+/// Ownership self-service authorization for the top-level agent mutations.
+///
+/// These tests pin the *pair* of gates documented on
+/// [`AgentsService::update_agent_as`]: a caller holding exactly the `app_user`
+/// grant from the IAM module manifest (`ai.agents.read` + `ai.agents.use`, and
+/// deliberately no `ai.agents.manage`) must be able to edit and delete an agent
+/// they created, and must not be able to touch anyone else's.
+#[cfg(test)]
+mod agent_ownership_tests {
+    use super::acting_owner_matches;
+    use super::task_tests::{create_agent_cmd, test_policy_provider};
+    use crate::application::{AgentsService, DeleteAgentCommand, UpdateAgentCommand};
+    use crate::infrastructure::{
+        IamGatedPolicyProvider, InMemoryAgentAuditSink, InMemoryAgentRepository,
+    };
+    use sdkwork_agent_kernel::{KernelError, PolicySubject};
+
+    const TENANT_ID: u64 = 100_001;
+    const OWNER_USER_ID: u64 = 100;
+    const OTHER_USER_ID: u64 = 999;
+
+    type OwnershipTestService =
+        AgentsService<InMemoryAgentRepository, InMemoryAgentAuditSink, IamGatedPolicyProvider>;
+
+    fn service() -> OwnershipTestService {
+        AgentsService::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        )
+    }
+
+    /// The exact `app_user` grant from
+    /// `sdkwork-iam/iam/modules/ai/iam.module.manifest.json`: read + use, and
+    /// deliberately no `manage`.
+    fn app_user_subject() -> PolicySubject {
+        PolicySubject {
+            subject_id: format!("user.{OWNER_USER_ID}"),
+            tenant_id: TENANT_ID.to_string(),
+            roles: vec!["ai.agents.read".to_string(), "ai.agents.use".to_string()],
+        }
+    }
+
+    fn manage_subject() -> PolicySubject {
+        PolicySubject {
+            subject_id: "user.1".to_string(),
+            tenant_id: TENANT_ID.to_string(),
+            roles: vec!["ai.agents.manage".to_string()],
+        }
+    }
+
+    /// Update requires optimistic concurrency, so the seeded version travels with
+    /// every command: `ensure_expected_version` rejects a missing `expectedVersion`
+    /// outright rather than reading it as "unconditional".
+    fn update_cmd(
+        agent_id: &str,
+        requested_by: PolicySubject,
+        expected_version: u64,
+    ) -> UpdateAgentCommand {
+        UpdateAgentCommand {
+            tenant_id: TENANT_ID,
+            agent_id: agent_id.to_string(),
+            expected_version: Some(expected_version),
+            display_name: Some("Renamed".to_string()),
+            description: None,
+            manifest: None,
+            visibility: None,
+            tags: None,
+            default_code_task_intent: None,
+            implementation_provider_id: None,
+            implementation_kind: None,
+            implementation_type: None,
+            requested_by,
+            requested_at: "2026-09-23T00:00:00Z".to_string(),
+        }
+    }
+
+    fn delete_cmd(agent_id: &str, requested_by: PolicySubject) -> DeleteAgentCommand {
+        DeleteAgentCommand {
+            tenant_id: TENANT_ID,
+            agent_id: agent_id.to_string(),
+            expected_version: None,
+            requested_by,
+            requested_at: "2026-09-23T00:00:00Z".to_string(),
+        }
+    }
+
+    /// Seeds one agent and returns its stored version for optimistic concurrency.
+    fn seed_agent(
+        service: &OwnershipTestService,
+        agent_id: &str,
+        owner_user_id: u64,
+        code: &str,
+    ) -> u64 {
+        service
+            .create_agent(create_agent_cmd(
+                agent_id,
+                TENANT_ID,
+                0,
+                owner_user_id,
+                code,
+                "Ownership Fixture",
+                "2026-09-23T00:00:00Z",
+            ))
+            .expect("seed agent")
+            .version
+    }
+
+    /// Unwrap a denial, asserting it really came from the policy provider rather
+    /// than from some unrelated guard further down the call.
+    fn permission_denied_message(error: KernelError) -> String {
+        match error {
+            KernelError::Structured { info } => {
+                assert_eq!(info.kind.as_str(), "permission_required");
+                info.message
+            }
+            other => panic!("expected permission_required, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn acting_owner_matches_requires_a_real_positive_user_id_on_both_sides() {
+        assert!(acting_owner_matches(Some(OWNER_USER_ID), OWNER_USER_ID));
+        assert!(
+            !acting_owner_matches(None, OWNER_USER_ID),
+            "a missing identity is not ownership evidence"
+        );
+        assert!(
+            !acting_owner_matches(Some(0), 0),
+            "the platform sentinel 0 must never count as ownership"
+        );
+        assert!(!acting_owner_matches(Some(0), OWNER_USER_ID));
+        assert!(!acting_owner_matches(Some(OWNER_USER_ID), 0));
+        assert!(!acting_owner_matches(Some(OTHER_USER_ID), OWNER_USER_ID));
+    }
+
+    #[test]
+    fn app_user_can_update_an_agent_they_own() {
+        let service = service();
+        let version = seed_agent(&service, "agent.owned.update", OWNER_USER_ID, "alpha");
+
+        let updated = service
+            .update_agent_as(
+                update_cmd("agent.owned.update", app_user_subject(), version),
+                Some(OWNER_USER_ID),
+            )
+            .expect("an app user must be able to edit the agent they created");
+
+        assert_eq!(updated.display_name, "Renamed");
+    }
+
+    #[test]
+    fn app_user_can_delete_an_agent_they_own() {
+        let service = service();
+        let _ = seed_agent(&service, "agent.owned.delete", OWNER_USER_ID, "bravo");
+
+        let deleted = service
+            .delete_agent_as(
+                delete_cmd("agent.owned.delete", app_user_subject()),
+                Some(OWNER_USER_ID),
+            )
+            .expect("an app user must be able to delete the agent they created");
+
+        assert!(deleted.is_deleted());
+    }
+
+    #[test]
+    fn app_user_cannot_update_another_users_agent() {
+        let service = service();
+        let version = seed_agent(&service, "agent.foreign.update", OTHER_USER_ID, "charlie");
+
+        let error = service
+            .update_agent_as(
+                update_cmd("agent.foreign.update", app_user_subject(), version),
+                Some(OWNER_USER_ID),
+            )
+            .expect_err("an app user must not edit another user's agent");
+
+        assert!(
+            permission_denied_message(error).contains("iam.permission.missing:ai.agents.manage")
+        );
+    }
+
+    #[test]
+    fn app_user_cannot_delete_another_users_agent() {
+        let service = service();
+        let _ = seed_agent(&service, "agent.foreign.delete", OTHER_USER_ID, "delta");
+
+        let error = service
+            .delete_agent_as(
+                delete_cmd("agent.foreign.delete", app_user_subject()),
+                Some(OWNER_USER_ID),
+            )
+            .expect_err("an app user must not delete another user's agent");
+
+        assert!(
+            permission_denied_message(error).contains("iam.permission.missing:ai.agents.manage")
+        );
+    }
+
+    #[test]
+    fn unproven_ownership_keeps_the_manage_requirement() {
+        let service = service();
+        let version = seed_agent(&service, "agent.unproven.update", OWNER_USER_ID, "echo");
+
+        let error = service
+            .update_agent_as(
+                update_cmd("agent.unproven.update", app_user_subject(), version),
+                None,
+            )
+            .expect_err("absent ownership evidence must not grant self-service access");
+
+        assert!(
+            permission_denied_message(error).contains("iam.permission.missing:ai.agents.manage")
+        );
+    }
+
+    #[test]
+    fn read_only_app_user_cannot_update_an_agent_they_own() {
+        let service = service();
+        let version = seed_agent(&service, "agent.readonly.update", OWNER_USER_ID, "foxtrot");
+
+        let read_only_subject = PolicySubject {
+            subject_id: format!("user.{OWNER_USER_ID}"),
+            tenant_id: TENANT_ID.to_string(),
+            roles: vec!["ai.agents.read".to_string()],
+        };
+
+        let error = service
+            .update_agent_as(
+                update_cmd("agent.readonly.update", read_only_subject, version),
+                Some(OWNER_USER_ID),
+            )
+            .expect_err("ownership alone is not authority; the use permission is still required");
+
+        assert!(permission_denied_message(error).contains("iam.permission.missing:ai.agents.use"));
+    }
+
+    #[test]
+    fn manage_holder_can_still_mutate_any_agent_in_the_tenant() {
+        let service = service();
+        let version = seed_agent(&service, "agent.admin.update", OTHER_USER_ID, "golf");
+
+        service
+            .update_agent_as(
+                update_cmd("agent.admin.update", manage_subject(), version),
+                Some(OWNER_USER_ID),
+            )
+            .expect("a manage holder keeps tenant-wide mutation regardless of ownership");
+    }
 }

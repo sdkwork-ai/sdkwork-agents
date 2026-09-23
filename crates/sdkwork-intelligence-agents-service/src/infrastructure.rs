@@ -6092,11 +6092,21 @@ const READ_ONLY_POLICY_OPERATIONS: &[&str] = &["list", "read", "retrieve"];
 /// Owner-scoped and runtime mutations available to ordinary app users. This
 /// list is intentionally exact so future actions remain manage-only until
 /// their ownership checks and permission classification are reviewed.
+///
+/// `*_owned` variants are the top-level agent mutations whose ownership is
+/// proven by the application layer *before* the policy request is built: the
+/// provider only ever sees an action name, so it cannot inspect a record's
+/// `owner_user_id`. Callers reach for these variants only after loading the
+/// record and confirming the acting subject owns it, which is what lets a user
+/// who holds `ai.agents.use` (but not `ai.agents.manage`) edit and delete an
+/// agent they created. The unqualified `update` / `delete` actions stay
+/// manage-only and remain what non-owners are evaluated against.
 const SELF_SERVICE_POLICY_ACTIONS: &[&str] = &[
     "checkpoint.create",
     "checkpoint.invalidate",
     "checkpoint.restore",
     "create",
+    "delete_owned",
     "interaction.answer",
     "interaction.approve",
     "interaction.claim",
@@ -6128,6 +6138,7 @@ const SELF_SERVICE_POLICY_ACTIONS: &[&str] = &[
     "task.execute",
     "turn.cancel",
     "turn.create",
+    "update_owned",
     "workspace.archive",
     "workspace.create",
     "workspace.delete",
@@ -7319,6 +7330,12 @@ mod tests {
 
     #[test]
     fn iam_gated_provider_keeps_management_actions_behind_manage_permission() {
+        // The unqualified `update` / `delete` names are what a caller who has not
+        // proven ownership is evaluated against, so they must keep requiring
+        // `ai.agents.manage` even though the `*_owned` siblings next to them in
+        // `SELF_SERVICE_POLICY_ACTIONS` are self-service. Deleting this pair, or
+        // adding the unqualified names to that vocabulary, would silently widen
+        // every tenant-wide mutation to ordinary app users.
         let provider = IamGatedPolicyProvider::default();
         for action in [
             "update",
@@ -7341,6 +7358,39 @@ mod tests {
                 .as_deref()
                 .unwrap_or_default()
                 .contains("iam.permission.missing:ai.agents.manage"));
+        }
+    }
+
+    #[test]
+    fn iam_gated_provider_allows_owned_mutations_with_use_permission() {
+        let provider = IamGatedPolicyProvider::default();
+        for action in ["update_owned", "delete_owned"] {
+            let request = policy_request_with_action_and_roles(action, &["ai.agents.use"]);
+            let decision = provider.evaluate(request).expect("evaluate should succeed");
+            assert_eq!(
+                decision.decision,
+                PolicyDecisionValue::Allow,
+                "{action} must be satisfied by ai.agents.use once the caller proved ownership"
+            );
+        }
+    }
+
+    #[test]
+    fn iam_gated_provider_denies_owned_mutations_with_only_read_permission() {
+        let provider = IamGatedPolicyProvider::default();
+        for action in ["update_owned", "delete_owned"] {
+            let request = policy_request_with_action_and_roles(action, &["ai.agents.read"]);
+            let decision = provider.evaluate(request).expect("evaluate should succeed");
+            assert_eq!(
+                decision.decision,
+                PolicyDecisionValue::Deny,
+                "{action} must not be reachable with read-only access"
+            );
+            assert!(decision
+                .safe_reason
+                .as_deref()
+                .unwrap_or_default()
+                .contains("iam.permission.missing:ai.agents.use"));
         }
     }
 
