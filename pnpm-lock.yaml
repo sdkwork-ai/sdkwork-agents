@@ -327,6 +327,16 @@ importers:
         specifier: ^6.0.2
         version: 6.0.3
 
+  ../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-desktop-auth:
+    dependencies:
+      '@sdkwork/iam-sdk-ports':
+        specifier: workspace:*
+        version: link:../sdkwork-iam-sdk-ports
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.3
+
   ../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-runtime:
     dependencies:
       '@sdkwork/iam-app-sdk':
@@ -408,6 +418,9 @@ importers:
       '@sdkwork/iam-contracts':
         specifier: workspace:*
         version: link:../../../sdkwork-iam-common/packages/sdkwork-iam-contracts
+      '@sdkwork/iam-desktop-auth':
+        specifier: workspace:*
+        version: link:../../../sdkwork-iam-common/packages/sdkwork-iam-desktop-auth
       '@sdkwork/iam-sdk-adapter':
         specifier: workspace:*
         version: link:../../../sdkwork-iam-common/packages/sdkwork-iam-sdk-adapter
@@ -722,6 +735,21 @@ importers:
       '@sdkwork/utils':
         specifier: ^0.11.0
         version: 0.11.0
+
+  ../sdkwork-memory/apps/sdkwork-memory-pc/packages/sdkwork-memory-pc-commons:
+    dependencies:
+      '@sdkwork/utils':
+        specifier: workspace:*
+        version: link:../../../../../sdkwork-utils/packages/sdkwork-utils-typescript
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.47.0(react@19.3.0)
+      react:
+        specifier: 'catalog:'
+        version: 19.3.0
+      react-router-dom:
+        specifier: ^7.14.0
+        version: 7.18.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
 
   ../sdkwork-memory/sdks/sdkwork-memory-app-sdk/sdkwork-memory-app-sdk-typescript:
     dependencies:
@@ -1053,6 +1081,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.8
         version: 1.2.10(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@sdkwork/iam-credential-entry':
+        specifier: workspace:*
+        version: link:../../sdkwork-iam/apps/sdkwork-iam-common/packages/sdkwork-iam-credential-entry
       '@sdkwork/utils':
         specifier: ^0.11.0
         version: 0.11.0
@@ -1659,6 +1690,12 @@ importers:
       '@sdkwork/agents-pc-core':
         specifier: workspace:*
         version: link:../sdkwork-agents-pc-core
+      '@sdkwork/memory-pc-commons':
+        specifier: workspace:*
+        version: link:../../../../../sdkwork-memory/apps/sdkwork-memory-pc/packages/sdkwork-memory-pc-commons
+      '@sdkwork/models-pc-picker':
+        specifier: workspace:*
+        version: link:../../../../../sdkwork-models/apps/sdkwork-models-pc/packages/sdkwork-models-pc-picker
       '@sdkwork/utils':
         specifier: workspace:*
         version: link:../../../../../sdkwork-utils/packages/sdkwork-utils-typescript
@@ -1692,6 +1729,9 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
+      react-i18next:
+        specifier: 'catalog:'
+        version: 17.0.14(i18next@26.4.2(typescript@6.0.3))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@6.0.3)
 
   apps/sdkwork-agents-pc/packages/sdkwork-agents-pc-assets:
     dependencies:
