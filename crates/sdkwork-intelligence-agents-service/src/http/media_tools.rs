@@ -342,6 +342,24 @@ pub async fn backend_update_media_tool_configuration(
         let (tenant_id, organization_id, _) =
             scope_numbers(&RequestScope::from_context(context.clone()), &context)?;
 
+        // Tenant-wide tool state is a management operation: it must pass the
+        // same IAM-gated authorization as every other tenant-level write.
+        let mut subject = sdkwork_agent_kernel::PolicySubject::new(
+            context.subject_id.clone(),
+            tenant_id.to_string(),
+        );
+        for role in &context.roles {
+            subject = subject.with_role(role.clone());
+        }
+        let request_id = context
+            .request_id
+            .clone()
+            .unwrap_or_else(|| format!("tool.configuration.{tenant_id}.{}", path.tool_id));
+        state
+            .service
+            .authorize_tool_configuration_management(request_id, subject)
+            .map_err(ApiProblem::from_kernel_error)?;
+
         // The registry must know the tool; unknown tool ids are rejected.
         let definition = invocation
             .registry()

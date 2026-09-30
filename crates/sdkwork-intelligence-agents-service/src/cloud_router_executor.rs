@@ -935,6 +935,7 @@ mod tests {
             auth_token: auth_token.map(str::to_string),
             access_token: access_token.map(str::to_string),
             wire_protocol: None,
+            execution_route: None,
         }
     }
 

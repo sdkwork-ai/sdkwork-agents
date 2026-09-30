@@ -6303,3 +6303,209 @@ async fn durable_turn_input_queue_serializes_claims_and_reconciles_terminal_turn
     )
     .await;
 }
+
+// ---------------------------------------------------------------------------
+// Execution-route contract: per-request executionRoute resolution
+// (`in_process` | `sandbox`), fail-closed validation, and sandbox refusals.
+// ---------------------------------------------------------------------------
+
+/// POSTs a turn-create payload and returns the raw response so tests can
+/// assert problem+json envelopes without losing the status framing.
+async fn post_turn_raw(
+    app: &axum::Router,
+    agent_id: &str,
+    session_id: &str,
+    body: Value,
+) -> axum::http::Response<axum::body::Body> {
+    let request = Request::builder()
+        .method("POST")
+        .uri(format!(
+            "/app/v3/api/ai/agents/{agent_id}/sessions/{session_id}/turns"
+        ))
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .expect("turn request should be built");
+    app.clone()
+        .oneshot(request)
+        .await
+        .expect("turn request should succeed")
+}
+
+#[tokio::test]
+async fn app_turn_rejects_an_unknown_execution_route() {
+    let turn_executor: Arc<dyn TurnExecutor> = Arc::new(RichTurnExecutor);
+    let state = AgentHttpState::with_turn_executor(
+        InMemoryAgentRepository::new(),
+        InMemoryAgentAuditSink::default(),
+        test_policy_provider(),
+        turn_executor,
+    );
+    let app = build_test_app(state);
+    let agent_id = "agent.route.invalid";
+    create_agent(&app, agent_id, "Route Validation Agent").await;
+    let session_id = "session.route.invalid";
+    create_app_session(
+        &app,
+        agent_id,
+        session_id,
+        "Route validation session",
+        "2026-09-29T12:00:00Z",
+    )
+    .await;
+
+    let problem = post_json(
+        &app,
+        &format!("/app/v3/api/ai/agents/{agent_id}/sessions/{session_id}/turns"),
+        json!({
+            "content": "hello",
+            "turnMode": "interactive",
+            "executionRoute": "cluster",
+            "idempotencyKey": "turn-route-invalid-1",
+            "payloadHash": "sha256:turn-route-invalid-1",
+            "requestedAt": "2026-09-29T12:00:01Z"
+        }),
+        StatusCode::BAD_REQUEST,
+    )
+    .await;
+    assert!(
+        problem["detail"]
+            .as_str()
+            .is_some_and(|detail| detail.contains("invalid executionRoute")),
+        "the problem must name the invalid executionRoute: {problem}"
+    );
+}
+
+#[tokio::test]
+async fn app_turn_with_sandbox_route_fails_closed_when_sandbox_is_not_assembled() {
+    // The route executor is assembled without a sandbox session port: a
+    // sandbox-routed turn must fail with its own operator-actionable problem
+    // instead of silently executing in-process (the fallback policy is off).
+    let routed: Arc<dyn TurnExecutor> = Arc::new(
+        sdkwork_intelligence_agents_service::RoutedTurnExecutor::new(
+            sdkwork_intelligence_agents_service::RuntimeFacadeTurnExecutor,
+        )
+        .with_sandbox_policy(sdkwork_intelligence_agents_service::SandboxRoutePolicy {
+            allow_in_process_fallback: false,
+            ..sdkwork_intelligence_agents_service::SandboxRoutePolicy::default()
+        }),
+    );
+    let state = AgentHttpState::with_turn_executor(
+        InMemoryAgentRepository::new(),
+        InMemoryAgentAuditSink::default(),
+        test_policy_provider(),
+        routed,
+    );
+    let app = build_test_app(state);
+    let agent_id = "agent.route.sandbox";
+    create_agent(&app, agent_id, "Sandbox Route Agent").await;
+    let session_id = "session.route.sandbox";
+    create_app_session(
+        &app,
+        agent_id,
+        session_id,
+        "Sandbox route session",
+        "2026-09-29T12:00:00Z",
+    )
+    .await;
+    create_turn_runtime(&app, agent_id, session_id, "route-sandbox").await;
+
+    let turn_id = "turn.route.sandbox.unavailable";
+    let response = post_turn_raw(
+        &app,
+        agent_id,
+        session_id,
+        json!({
+            "turnId": turn_id,
+            "content": "run inside the sandbox",
+            "turnMode": "interactive",
+            "executionRoute": "sandbox",
+            "idempotencyKey": "turn-route-sandbox-1",
+            "payloadHash": "sha256:turn-route-sandbox-1",
+            "requestedAt": "2026-09-29T12:00:01Z"
+        }),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("problem response body should be readable");
+    let problem: Value =
+        serde_json::from_slice(&body).expect("problem response should be valid json");
+    assert_eq!(problem["code"], 50301);
+    // The problem body stays business-safe (safe_for_user is off, matching
+    // the transport-failure precedent); the
+    // action is what tells operators this is an assembly defect, and the
+    // durable Turn record below carries the specific error code.
+    assert_eq!(problem["action"]["kind"], "deployment_misconfiguration");
+
+    // The failed Turn is durably classified with its own error code.
+    let turn = get_json(
+        &app,
+        &format!("/app/v3/api/ai/agents/{agent_id}/sessions/{session_id}/turns/{turn_id}"),
+        StatusCode::OK,
+    )
+    .await;
+    assert_eq!(turn["data"]["item"]["status"], "failed");
+    assert_eq!(
+        turn["data"]["item"]["errorCode"],
+        "turn_sandbox_unavailable"
+    );
+}
+
+#[tokio::test]
+async fn app_turn_without_execution_route_keeps_in_process_execution() {
+    let turn_executor: Arc<dyn TurnExecutor> = Arc::new(RichTurnExecutor);
+    let state = AgentHttpState::with_turn_executor(
+        InMemoryAgentRepository::new(),
+        InMemoryAgentAuditSink::default(),
+        test_policy_provider(),
+        turn_executor,
+    );
+    let app = build_test_app(state);
+    let agent_id = "agent.route.default";
+    create_agent(&app, agent_id, "Default Route Agent").await;
+    let session_id = "session.route.default";
+    create_app_session(
+        &app,
+        agent_id,
+        session_id,
+        "Default route session",
+        "2026-09-29T12:00:00Z",
+    )
+    .await;
+    create_turn_runtime(&app, agent_id, session_id, "route-default").await;
+
+    let turn_id = "turn.route.default.inprocess";
+    let response = post_turn_raw(
+        &app,
+        agent_id,
+        session_id,
+        json!({
+            "turnId": turn_id,
+            "content": "in-process turn",
+            "turnMode": "interactive",
+            "idempotencyKey": "turn-route-default-1",
+            "payloadHash": "sha256:turn-route-default-1",
+            "requestedAt": "2026-09-29T12:00:01Z"
+        }),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("turn response body should be readable");
+    let value: Value = serde_json::from_slice(&body).expect("turn response should be valid json");
+    let assistant_content = value["data"]["item"]["items"]
+        .as_array()
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| item["kind"] == "assistant_output")
+                .and_then(|item| item["content"].as_str().map(str::to_string))
+        })
+        .unwrap_or_default();
+    assert_eq!(
+        assistant_content, "Hello world",
+        "the in-process route executes the conversation normally"
+    );
+}

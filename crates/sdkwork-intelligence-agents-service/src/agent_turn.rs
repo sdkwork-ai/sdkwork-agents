@@ -162,6 +162,26 @@ impl AgentTurnRecord {
         self.version = self.version.saturating_add(1);
     }
 
+    /// Installs the execution lease of a running interactive turn.
+    ///
+    /// Interactive turns execute in-process on the replica that accepted the
+    /// request, so they must carry a live lease like task runs do: without it
+    /// the turn reconciler on any replica treats a silent stretch longer than
+    /// the stale threshold (long thinking, long tool call) as a crashed worker
+    /// and fails a turn that is still executing. The token doubles as the
+    /// completion fencing input — `complete_turn` requires the executing
+    /// replica to present the token it acquired.
+    pub fn begin_lease(
+        &mut self,
+        owner: impl Into<String>,
+        token: impl Into<String>,
+        expires_at: impl Into<String>,
+    ) {
+        self.lease_owner = Some(owner.into());
+        self.lease_token = Some(token.into());
+        self.lease_expires_at = Some(expires_at.into());
+    }
+
     pub fn mark_failed(
         &mut self,
         error_code: impl Into<String>,

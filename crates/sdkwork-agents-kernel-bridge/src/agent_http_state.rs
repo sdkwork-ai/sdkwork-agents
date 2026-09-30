@@ -11,8 +11,9 @@ use sdkwork_intelligence_agents_service::{
     AgentHttpState, AllowAllPolicyProvider, CloudRouterFirstTurnExecutor, ExternalMcpToolExecutor,
     GenerationsToolExecutor, HttpGenerationsPort, IamGatedPolicyProvider, InMemoryAgentAuditSink,
     InMemoryAgentRepository, MediaToolExecutor, MediaToolInvocationService, MediaToolRegistry,
-    PostgresAgentConfigurationStore, RuntimeFacadeTurnExecutor, SqlAgentAuditSink,
-    SqlAgentRepository, SyncPostgresAdapter, TurnToolDispatcher, TurnToolkitConfig,
+    PostgresAgentConfigurationStore, RoutedTurnExecutor, RuntimeFacadeTurnExecutor,
+    SqlAgentAuditSink, SqlAgentRepository, SyncPostgresAdapter, TurnToolDispatcher,
+    TurnToolkitConfig,
 };
 use std::sync::Arc;
 
@@ -47,6 +48,57 @@ fn build_turn_tool_dispatcher() -> TurnToolDispatcher {
         ))))
 }
 
+/// Environment variable selecting the deployment-default conversation
+/// execution route (`in_process` | `sandbox`). Per-request `executionRoute`
+/// overrides always win over this default.
+pub const AGENTS_TURN_EXECUTION_ROUTE_ENV: &str = "SDKWORK_AGENTS_TURN_EXECUTION_ROUTE";
+
+/// Reads and validates the deployment-default execution route from the
+/// environment. `None` (the built-in in-process default applies) or a
+/// canonical route code; an unknown code is a deployment misconfiguration
+/// and fails the bootstrap instead of silently degrading.
+fn deployment_default_execution_route(
+) -> Result<Option<sdkwork_agents_runtime_facade::AgentConversationExecutionRoute>, String> {
+    let configured = std::env::var(AGENTS_TURN_EXECUTION_ROUTE_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let Some(code) = configured else {
+        return Ok(None);
+    };
+    sdkwork_agents_runtime_facade::AgentConversationExecutionRoute::parse(Some(&code))
+        .map(Some)
+        .ok_or_else(|| {
+            format!(
+                "{AGENTS_TURN_EXECUTION_ROUTE_ENV} must be one of in_process, sandbox (got \"{code}\")"
+            )
+        })
+}
+
+/// Wraps the cloudrouter-first executor chain with the route-aware executor
+/// so conversation turns can run in-process (default) or inside an SDKWork
+/// Sandbox session, decided per request (`executionRoute`) with this
+/// deployment default as fallback.
+///
+/// `sandbox_port` is the kernel [`SandboxedSessionPort`] surface: pass the
+/// adapter composed over the sandbox session lifecycle service when the
+/// deployment provides one; sandbox-routed turns fail closed (or degrade,
+/// per `SandboxRoutePolicy`) when it is absent.
+fn build_routed_turn_executor(
+    sandbox_port: Option<Arc<dyn sdkwork_agent_kernel::SandboxedSessionPort>>,
+    deployment_default: Option<sdkwork_agents_runtime_facade::AgentConversationExecutionRoute>,
+    dispatcher: Arc<TurnToolDispatcher>,
+) -> RoutedTurnExecutor<CloudRouterFirstTurnExecutor<RuntimeFacadeTurnExecutor>> {
+    let cloud_router_first = CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)
+        .with_tool_dispatcher(dispatcher);
+    let routed = RoutedTurnExecutor::new(cloud_router_first)
+        .with_deployment_default_route(deployment_default);
+    match sandbox_port {
+        Some(port) => routed.with_sandbox_port(port),
+        None => routed,
+    }
+}
+
 /// Build agents managed store HTTP state using postgres in production-like profiles and
 /// in-memory fixtures only when dev inline auth is explicitly enabled.
 ///
@@ -60,6 +112,17 @@ fn build_turn_tool_dispatcher() -> TurnToolDispatcher {
 /// `AllowAllPolicyProvider` is only used for development scenarios where the
 /// dev inline auth resolver is explicitly enabled.
 pub fn build_agent_http_state() -> Result<AgentHttpState> {
+    build_agent_http_state_with_sandbox_port(None)
+}
+
+/// Like [`build_agent_http_state`], but installs the kernel sandbox session
+/// port so the `sandbox` execution route can be honored for conversation
+/// turns. The port is composed by the caller over the kernel
+/// `SandboxSessionLifecycleAdapter` (the sandbox lifecycle service itself is
+/// owned by the deployment, not by this bootstrap).
+pub fn build_agent_http_state_with_sandbox_port(
+    sandbox_port: Option<Arc<dyn sdkwork_agent_kernel::SandboxedSessionPort>>,
+) -> Result<AgentHttpState> {
     ensure_dev_auth_bypass_allowed()
         .map_err(|message| anyhow::anyhow!("agents security bootstrap: {message}"))?;
 
@@ -68,13 +131,15 @@ pub fn build_agent_http_state() -> Result<AgentHttpState> {
             env = %sdkwork_agents_contract::agents_deployment_environment_name(),
             "agents dev inline auth bypass is active; using in-memory repository and AllowAllPolicyProvider"
         );
-        return dev_agent_http_state();
+        return dev_agent_http_state(sandbox_port);
     }
 
-    production_postgres_agent_http_state()
+    production_postgres_agent_http_state(sandbox_port)
 }
 
-fn dev_agent_http_state() -> Result<AgentHttpState> {
+fn dev_agent_http_state(
+    sandbox_port: Option<Arc<dyn sdkwork_agent_kernel::SandboxedSessionPort>>,
+) -> Result<AgentHttpState> {
     let dispatcher = Arc::new(build_turn_tool_dispatcher());
     Ok(AgentHttpState::with_turn_executor(
         InMemoryAgentRepository::try_new().context("build agents dev in-memory repository")?,
@@ -82,15 +147,20 @@ fn dev_agent_http_state() -> Result<AgentHttpState> {
         AllowAllPolicyProvider::try_allow("policy.agents.dev")
             .map_err(anyhow::Error::msg)
             .context("build agents dev-only policy provider")?,
-        Arc::new(
-            CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)
-                .with_tool_dispatcher(Arc::clone(&dispatcher)),
-        ),
+        Arc::new(build_routed_turn_executor(
+            sandbox_port,
+            deployment_default_execution_route()
+                .map_err(anyhow::Error::msg)
+                .context("resolve agents turn execution route default")?,
+            Arc::clone(&dispatcher),
+        )),
     )
     .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig { dispatcher }))))
 }
 
-fn production_postgres_agent_http_state() -> Result<AgentHttpState> {
+fn production_postgres_agent_http_state(
+    sandbox_port: Option<Arc<dyn sdkwork_agent_kernel::SandboxedSessionPort>>,
+) -> Result<AgentHttpState> {
     let repository_adapter = SyncPostgresAdapter::connect_from_agents_database_env()
         .context("connect canonical Agents PostgreSQL database")?;
 
@@ -127,11 +197,16 @@ fn production_postgres_agent_http_state() -> Result<AgentHttpState> {
         IamGatedPolicyProvider::default(),
         // Chat turns carrying a user auth token route through the cloudrouter
         // account-pool gateway; turns without one (worker/backend flows) keep
-        // the local agent-engine facade execution.
-        Arc::new(
-            CloudRouterFirstTurnExecutor::new(RuntimeFacadeTurnExecutor)
-                .with_tool_dispatcher(Arc::clone(&tool_dispatcher)),
-        ),
+        // the local agent-engine facade execution. The route-aware wrapper
+        // lets a request (or the deployment default) place the whole turn
+        // execution inside an SDKWork Sandbox session instead.
+        Arc::new(build_routed_turn_executor(
+            sandbox_port,
+            deployment_default_execution_route()
+                .map_err(anyhow::Error::msg)
+                .context("resolve agents turn execution route default")?,
+            Arc::clone(&tool_dispatcher),
+        )),
     )
     .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig {
         dispatcher: tool_dispatcher,

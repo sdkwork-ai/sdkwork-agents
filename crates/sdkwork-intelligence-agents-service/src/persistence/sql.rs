@@ -446,6 +446,8 @@ pub const SQL_LIST_RECONCILABLE_AGENT_TURNS: &str =
 pub const SQL_APPEND_TURN_STREAMING_CONTENT: &str =
     "UPDATE ai_agent_turn SET streaming_content = $4, updated_at = $5::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 AND status IN (0, 1)";
 #[cfg(feature = "postgres-sync")]
+pub const SQL_EXTEND_AGENT_TURN_LEASE: &str =
+    "UPDATE ai_agent_turn SET lease_expires_at = $4::timestamptz, updated_at = $5::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 AND status IN (0, 1) AND lease_token = $6";#[cfg(feature = "postgres-sync")]
 pub const SQL_CLEAR_TURN_STREAMING_CONTENT: &str =
     "UPDATE ai_agent_turn SET streaming_content = NULL WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3";
 #[cfg(feature = "postgres-sync")]

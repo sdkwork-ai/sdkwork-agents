@@ -1232,6 +1232,7 @@ fn execute_turn_persists_user_input_and_assistant_output() {
         auth_token: None,
         access_token: None,
         wire_protocol: None,
+        execution_route: None,
     };
     let result = service
         .execute_turn(turn_command.clone())

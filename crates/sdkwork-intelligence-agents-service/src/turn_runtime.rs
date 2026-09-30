@@ -9,12 +9,17 @@ use crate::domain::{AgentSessionItemKind, AgentSessionRecord};
 use crate::runtime_facade_bridge::{agent_engine_host_for, engine_key_for_binding_id};
 use sdkwork_agent_kernel::{
     KernelError, KernelEvent, KernelResult, ModelProvider, ModelRequest, ModelResponse,
-    ModelStatus, ModelStreamChunk, ModelStreamSink,
+    ModelStatus, ModelStreamChunk, ModelStreamSink, SandboxedExecutionCoordinator,
+    SandboxedSessionPort,
 };
 use sdkwork_agents_runtime_facade::{
     agent_engine_model_request_id, execute_agent_engine_turn,
     execute_agent_engine_turn_with_stream, execute_agent_engine_turn_with_stream_sink,
     AgentEngineTurnInput,
+};
+use sdkwork_agents_runtime_facade::{
+    resolve_agent_conversation_execution_route, AgentConversationExecutionDecision,
+    AgentConversationExecutionRoute,
 };
 use sdkwork_utils_rust::string::is_blank;
 use std::collections::HashMap;
@@ -33,6 +38,21 @@ pub const RUNTIME_MODE_CAPACITY_ERROR: &str = "managed-agent-capacity-error";
 /// boundary can answer 402/`40201` with a recharge action instead of a 50301
 /// that reads as an infrastructure outage.
 pub const RUNTIME_MODE_FUNDING_ERROR: &str = "managed-agent-funding-error";
+/// Runtime mode when the turn executed through the sandbox execution route
+/// (the agent-engine facade ran coordinated by the kernel sandbox session
+/// lifecycle). Layered on top of [`RUNTIME_MODE_FACADE`]: only successful
+/// facade executions are re-tagged; error modes keep their own classification.
+pub const RUNTIME_MODE_SANDBOX: &str = "agents-runtime-facade-sandbox";
+/// Runtime mode when the sandbox route was selected but sandboxed execution
+/// could not start (route executor assembled without a sandbox session port,
+/// no async runtime to drive the lifecycle port, or the sandbox session
+/// lifecycle refused the turn). Fail-closed: never silently falls back unless
+/// [`SandboxRoutePolicy::allow_in_process_fallback`] is enabled explicitly.
+pub const RUNTIME_MODE_SANDBOX_UNAVAILABLE: &str = "managed-agent-sandbox-unavailable";
+/// Kernel error detail key tagging a sandbox-route refusal so the HTTP
+/// boundary can render an operator-actionable problem instead of a generic
+/// provider failure.
+pub const SANDBOX_ROUTE_UNAVAILABLE_DETAIL_KEY: &str = "sandbox_route_unavailable";
 /// Runtime mode when the CloudRouter transport itself could not be resolved —
 /// the composition root never wired the in-process port, or a split deployment
 /// resolved no HTTP base URL.
@@ -47,6 +67,14 @@ pub const RUNTIME_MODE_TRANSPORT_ERROR: &str = "managed-agent-transport-error";
 
 pub fn is_inference_error(runtime_mode: &str) -> bool {
     runtime_mode == RUNTIME_MODE_INFERENCE_ERROR
+}
+
+/// Whether the turn failed because the sandbox execution route could not be
+/// honored. Distinct from [`RUNTIME_MODE_INFERENCE_ERROR`] so the application
+/// boundary answers `turn_sandbox_unavailable` (a placement/configuration
+/// defect) instead of a generic upstream provider failure.
+pub fn is_sandbox_unavailable_error(runtime_mode: &str) -> bool {
+    runtime_mode == RUNTIME_MODE_SANDBOX_UNAVAILABLE
 }
 
 pub fn is_capacity_error(runtime_mode: &str) -> bool {
@@ -111,6 +139,12 @@ pub struct TurnExecutionInput {
     /// invocation (`chat_completions` default, `anthropic_messages`,
     /// `google_content`, `openai_responses`). Transient — never persisted.
     pub wire_protocol: Option<String>,
+    /// Per-request execution-route override for this turn
+    /// (`in_process` | `sandbox`). Transient — never persisted; when blank the
+    /// route executor applies the deployment default and then the built-in
+    /// in-process default. Validated by the caller before reaching the
+    /// executor; the executor fails closed on unknown codes anyway.
+    pub execution_route: Option<String>,
     /// Effective tool set the model may call this turn (function calling).
     /// Resolved per turn from the agent's default toolkit plus composition
     /// slot overrides; empty disables the tool-calling loop.
@@ -525,6 +559,343 @@ fn local_turn_cancellation(input: &TurnCancellationInput) -> TurnCancellationOut
         model_request_id: input.model_request_id.clone(),
         finish_reason: "cancelled".to_string(),
     }
+}
+
+/// Policy knobs for the sandbox execution route.
+///
+/// `auto_start`/`auto_stop` mirror the kernel `SandboxExecutionBinding`
+/// semantics: the coordinator starts a bound sandbox session that is not
+/// running before the turn and stops it afterwards. Conversation sessions
+/// span many turns, so the default stops nothing (`auto_stop: false`);
+/// enabling `auto_stop` fits one-shot automation turns only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SandboxRoutePolicy {
+    pub auto_start: bool,
+    pub auto_stop: bool,
+    /// When sandboxed execution cannot start (route executor assembled
+    /// without a sandbox session port, no async runtime, or the sandbox
+    /// lifecycle refused the turn), degrade to in-process execution instead
+    /// of failing the turn. Off by default: a requested sandbox route that
+    /// silently executed in-process would hide placement misconfiguration.
+    pub allow_in_process_fallback: bool,
+}
+
+impl Default for SandboxRoutePolicy {
+    fn default() -> Self {
+        Self {
+            auto_start: true,
+            auto_stop: false,
+            allow_in_process_fallback: false,
+        }
+    }
+}
+
+/// Route-aware turn executor: resolves the execution route per turn
+/// (request override → deployment default → built-in in-process) and either
+/// delegates to the wrapped executor directly or coordinates the wrapped
+/// execution inside the kernel sandbox session lifecycle.
+///
+/// The sandbox path requires a [`SandboxedSessionPort`] (kernel trait,
+/// assembled by the composition root over the kernel `SandboxSessionLifecycleAdapter`).
+/// Without one the sandbox route fails closed with
+/// [`RUNTIME_MODE_SANDBOX_UNAVAILABLE`] unless in-process fallback is enabled.
+#[derive(Clone)]
+pub struct RoutedTurnExecutor<T> {
+    inner: T,
+    sandbox_port: Option<std::sync::Arc<dyn SandboxedSessionPort>>,
+    sandbox_policy: SandboxRoutePolicy,
+    deployment_default: Option<AgentConversationExecutionRoute>,
+}
+
+impl<T: TurnExecutor> RoutedTurnExecutor<T> {
+    pub fn new(inner: T) -> Self {
+        Self {
+            inner,
+            sandbox_port: None,
+            sandbox_policy: SandboxRoutePolicy::default(),
+            deployment_default: None,
+        }
+    }
+
+    /// Installs the kernel sandbox session port enabling the sandbox route.
+    pub fn with_sandbox_port(mut self, port: std::sync::Arc<dyn SandboxedSessionPort>) -> Self {
+        self.sandbox_port = Some(port);
+        self
+    }
+
+    /// Overrides the sandbox route policy (start/stop and fallback knobs).
+    pub fn with_sandbox_policy(mut self, policy: SandboxRoutePolicy) -> Self {
+        self.sandbox_policy = policy;
+        self
+    }
+
+    /// Sets the deployment-default route applied when the turn carries no
+    /// request override.
+    pub fn with_deployment_default_route(
+        mut self,
+        route: Option<AgentConversationExecutionRoute>,
+    ) -> Self {
+        self.deployment_default = route;
+        self
+    }
+
+    fn resolve_decision(&self, input: &TurnExecutionInput) -> AgentConversationExecutionDecision {
+        resolve_agent_conversation_execution_route(
+            input.execution_route.as_deref(),
+            self.deployment_default
+                .map(AgentConversationExecutionRoute::as_str),
+        )
+        .unwrap_or_else(|error| {
+            // Defensive: request parameters are validated upstream, so this
+            // only triggers on a misconfigured composition default.
+            tracing::error!(error = %error, "execution route resolution failed; failing closed");
+            AgentConversationExecutionDecision::built_in_default(
+                AgentConversationExecutionRoute::InProcess,
+            )
+        })
+    }
+
+    fn complete_routed(
+        &self,
+        input: &TurnExecutionInput,
+        execute_inner: impl Fn(&Self, &TurnExecutionInput) -> TurnExecutionOutput,
+    ) -> TurnExecutionOutput {
+        let decision = self.resolve_decision(input);
+        match decision.route {
+            AgentConversationExecutionRoute::InProcess => execute_inner(self, input),
+            AgentConversationExecutionRoute::Sandbox => {
+                self.execute_sandboxed(input, decision, execute_inner)
+            }
+        }
+    }
+
+    fn execute_sandboxed(
+        &self,
+        input: &TurnExecutionInput,
+        decision: AgentConversationExecutionDecision,
+        execute_inner: impl Fn(&Self, &TurnExecutionInput) -> TurnExecutionOutput,
+    ) -> TurnExecutionOutput {
+        let Some(port) = self.sandbox_port.as_ref() else {
+            return self.sandbox_start_refused(
+                input,
+                execute_inner,
+                "sandbox session port is not assembled in this deployment",
+            );
+        };
+
+        // The sandbox lifecycle port is an async-trait surface while turn
+        // execution is synchronous. Drive it through the ambient tokio
+        // runtime (turn executors run on blocking workers inside one); a
+        // runtime-less caller cannot honor the sandbox route at all.
+        enum SandboxAttempt {
+            /// The turn executed inside the sandbox lifecycle.
+            Completed(TurnExecutionOutput),
+            /// The turn executed, but the post-turn lifecycle step (auto
+            /// stop) failed afterwards. The real output is recovered so a
+            /// cleanup defect can never replay provider side effects.
+            CompletedThenCleanupFailed(TurnExecutionOutput, String),
+            /// The turn never started inside the sandbox; fallback/refusal
+            /// decisions are side-effect free here.
+            NotStarted(String),
+        }
+
+        let attempt = if let Ok(handle) = tokio_handle() {
+            let coordinator = SandboxedExecutionCoordinator::new(std::sync::Arc::clone(port));
+            // Double-run guard: cache the action output so a lifecycle
+            // failure after a successful turn surfaces the real result
+            // instead of inviting a second provider execution.
+            let executed: std::sync::Arc<std::cell::OnceCell<Option<TurnExecutionOutput>>> =
+                std::sync::Arc::new(std::cell::OnceCell::new());
+            let executed_for_action = std::sync::Arc::clone(&executed);
+            let run_inner = &execute_inner;
+            let result = handle.block_on(coordinator.run_sandboxed(
+                input.session.tenant_id.to_string(),
+                &kernel_sandbox_binding(input, &self.sandbox_policy),
+                format!("agents-turn-{}", input.turn_id),
+                move || {
+                    std::future::ready(Ok(executed_with(&executed_for_action, || {
+                        run_inner(self, input)
+                    })))
+                },
+            ));
+            let recovered = || {
+                executed
+                    .get()
+                    .and_then(Option::as_ref)
+                    .cloned()
+                    .map(|mut output| {
+                        if output.runtime_mode == RUNTIME_MODE_FACADE {
+                            output.runtime_mode = RUNTIME_MODE_SANDBOX;
+                        }
+                        output
+                    })
+            };
+            match result {
+                Ok(sandboxed) => SandboxAttempt::Completed({
+                    let mut output = sandboxed.result;
+                    if output.runtime_mode == RUNTIME_MODE_FACADE {
+                        output.runtime_mode = RUNTIME_MODE_SANDBOX;
+                    }
+                    output
+                }),
+                Err(error) => match recovered() {
+                    Some(output) => {
+                        SandboxAttempt::CompletedThenCleanupFailed(output, error.to_string())
+                    }
+                    None => SandboxAttempt::NotStarted(error.to_string()),
+                },
+            }
+        } else {
+            SandboxAttempt::NotStarted(
+                "no async runtime is available to drive the sandbox session lifecycle".to_string(),
+            )
+        };
+
+        match attempt {
+            SandboxAttempt::Completed(mut output) => {
+                tracing::debug!(
+                    session_id = %input.session.session_id,
+                    turn_id = %input.turn_id,
+                    route_source = decision.source.as_str(),
+                    "turn executed through the sandbox execution route"
+                );
+                output
+            }
+            SandboxAttempt::CompletedThenCleanupFailed(output, reason) => {
+                tracing::warn!(
+                    session_id = %input.session.session_id,
+                    turn_id = %input.turn_id,
+                    reason = %reason,
+                    "sandbox turn executed but post-turn lifecycle cleanup failed"
+                );
+                output
+            }
+            SandboxAttempt::NotStarted(reason) => {
+                self.sandbox_start_refused(input, execute_inner, &reason)
+            }
+        }
+    }
+
+    /// Applies the sandbox-route refusal policy: degrade to in-process when
+    /// explicitly configured, otherwise fail closed with a distinct runtime
+    /// mode the application boundary maps to `turn_sandbox_unavailable`.
+    fn sandbox_start_refused(
+        &self,
+        input: &TurnExecutionInput,
+        execute_inner: impl Fn(&Self, &TurnExecutionInput) -> TurnExecutionOutput,
+        reason: &str,
+    ) -> TurnExecutionOutput {
+        if self.sandbox_policy.allow_in_process_fallback {
+            tracing::warn!(
+                session_id = %input.session.session_id,
+                turn_id = %input.turn_id,
+                reason = %reason,
+                "sandbox route unavailable; degrading to in-process execution"
+            );
+            return execute_inner(self, input);
+        }
+        tracing::warn!(
+            session_id = %input.session.session_id,
+            turn_id = %input.turn_id,
+            reason = %reason,
+            "sandbox route unavailable; failing the turn closed"
+        );
+        TurnExecutionOutput {
+            model_request_id: None,
+            finish_reason: None,
+            content: format!("sandbox execution route is unavailable: {reason}"),
+            model_id: None,
+            provider_id: None,
+            provider_session_id: None,
+            input_tokens: 0,
+            output_tokens: 0,
+            runtime_mode: RUNTIME_MODE_SANDBOX_UNAVAILABLE,
+            stream_deltas: Vec::new(),
+            stream_events: Vec::new(),
+            tool_events: Vec::new(),
+        }
+    }
+}
+
+impl<T: TurnExecutor> TurnExecutor for RoutedTurnExecutor<T> {
+    fn complete(&self, input: &TurnExecutionInput) -> TurnExecutionOutput {
+        self.complete_routed(input, |executor, input| executor.inner.complete(input))
+    }
+
+    fn cancel(&self, input: &TurnCancellationInput) -> KernelResult<TurnCancellationOutput> {
+        self.inner.cancel(input)
+    }
+
+    fn complete_with_stream_preference(
+        &self,
+        input: &TurnExecutionInput,
+        prefer_stream: bool,
+    ) -> TurnExecutionOutput {
+        self.complete_routed(input, |executor, input| {
+            executor
+                .inner
+                .complete_with_stream_preference(input, prefer_stream)
+        })
+    }
+
+    fn complete_with_stream_sink(
+        &self,
+        input: &TurnExecutionInput,
+        sink: Arc<dyn TurnExecutionStreamSink>,
+    ) -> TurnExecutionOutput {
+        self.complete_routed(input, |executor, input| {
+            executor
+                .inner
+                .complete_with_stream_sink(input, Arc::clone(&sink))
+        })
+    }
+}
+
+/// Builds the kernel sandbox execution binding for one conversation turn.
+///
+/// The kernel maps the canonical Agents session id onto the sandbox session
+/// identity (1:1 projection), so the binding references the conversation
+/// session id directly; workspace, lease, and fencing surfaces stay
+/// kernel-owned and are never named here.
+fn kernel_sandbox_binding(
+    input: &TurnExecutionInput,
+    policy: &SandboxRoutePolicy,
+) -> sdkwork_agent_kernel::SandboxExecutionBinding {
+    let mut binding =
+        sdkwork_agent_kernel::SandboxExecutionBinding::new(input.session.session_id.clone());
+    if policy.auto_start {
+        binding = binding.with_auto_start();
+    }
+    if policy.auto_stop {
+        binding = binding.with_auto_stop();
+    }
+    binding
+}
+
+/// Runs `produce` at most once, caching the output so a lifecycle failure
+/// after a successful turn returns the real result instead of re-executing.
+fn executed_with(
+    executed: &std::cell::OnceCell<Option<TurnExecutionOutput>>,
+    produce: impl FnOnce() -> TurnExecutionOutput,
+) -> TurnExecutionOutput {
+    if let Some(output) = executed.get().and_then(Option::as_ref) {
+        return output.clone();
+    }
+    let output = produce();
+    let _ = executed.set(Some(output.clone()));
+    output
+}
+
+/// Resolves the ambient tokio runtime handle when the service is compiled
+/// with an async runtime feature and called from within one.
+#[cfg(any(feature = "http-axum", feature = "postgres-sync"))]
+fn tokio_handle() -> Result<tokio::runtime::Handle, ()> {
+    tokio::runtime::Handle::try_current().map_err(|_| ())
+}
+
+#[cfg(not(any(feature = "http-axum", feature = "postgres-sync")))]
+fn tokio_handle() -> Result<tokio::runtime::Handle, ()> {
+    Err(())
 }
 
 fn cancellation_from_model_response(
@@ -1019,6 +1390,7 @@ mod tests {
             auth_token: None,
             access_token: None,
             wire_protocol: None,
+            execution_route: None,
         });
         assert!(output.content.contains("Hello"));
         assert!(output.content.contains("Welcome"));
@@ -1049,6 +1421,7 @@ mod tests {
             auth_token: None,
             access_token: None,
             wire_protocol: None,
+            execution_route: None,
         });
         assert_eq!(output.runtime_mode, "managed-agent-provider-bound-v1");
         assert!(output.content.contains("canonical agent-engine"));
@@ -1121,6 +1494,7 @@ mod tests {
             auth_token: None,
             access_token: None,
             wire_protocol: None,
+            execution_route: None,
         });
         assert_eq!(output.content, "kernel reply");
         assert_eq!(output.runtime_mode, "managed-agent-kernel-model-v1");
@@ -1226,6 +1600,7 @@ mod tests {
             auth_token: None,
             access_token: None,
             wire_protocol: None,
+            execution_route: None,
         }
     }
 
@@ -1327,5 +1702,383 @@ mod tests {
         );
         assert_eq!(output.runtime_mode, RUNTIME_MODE_INFERENCE_ERROR);
         assert!(output.content.contains("timed out"));
+    }
+
+    // -----------------------------------------------------------------------
+    // RoutedTurnExecutor: execution route resolution and sandbox coordination
+    // -----------------------------------------------------------------------
+
+    use sdkwork_agent_kernel::{
+        SandboxSessionCommandRequest, SandboxSessionRuntimeProjection, SandboxSessionState,
+    };
+
+    /// Records every sandbox lifecycle call and answers with a scripted
+    /// projection, so route tests can assert the coordination steps.
+    struct RecordingSandboxPort {
+        state: std::sync::Mutex<SandboxSessionState>,
+        gets: std::sync::atomic::AtomicUsize,
+        starts: std::sync::atomic::AtomicUsize,
+        stops: std::sync::atomic::AtomicUsize,
+        get_error: bool,
+        stop_error: bool,
+    }
+
+    impl RecordingSandboxPort {
+        fn running() -> std::sync::Arc<Self> {
+            std::sync::Arc::new(Self {
+                state: std::sync::Mutex::new(SandboxSessionState::Running),
+                gets: std::sync::atomic::AtomicUsize::new(0),
+                starts: std::sync::atomic::AtomicUsize::new(0),
+                stops: std::sync::atomic::AtomicUsize::new(0),
+                get_error: false,
+                stop_error: false,
+            })
+        }
+
+        fn stopped() -> Self {
+            Self {
+                state: std::sync::Mutex::new(SandboxSessionState::Stopped),
+                gets: std::sync::atomic::AtomicUsize::new(0),
+                starts: std::sync::atomic::AtomicUsize::new(0),
+                stops: std::sync::atomic::AtomicUsize::new(0),
+                get_error: false,
+                stop_error: false,
+            }
+        }
+
+        fn running_with_stop_error() -> Self {
+            Self {
+                state: std::sync::Mutex::new(SandboxSessionState::Running),
+                gets: std::sync::atomic::AtomicUsize::new(0),
+                starts: std::sync::atomic::AtomicUsize::new(0),
+                stops: std::sync::atomic::AtomicUsize::new(0),
+                get_error: false,
+                stop_error: true,
+            }
+        }
+
+        fn with_get_error(mut self) -> Self {
+            self.get_error = true;
+            self
+        }
+
+        fn with_stop_error(mut self) -> Self {
+            self.stop_error = true;
+            self
+        }
+
+        fn starts(&self) -> usize {
+            self.starts.load(std::sync::atomic::Ordering::SeqCst)
+        }
+
+        fn stops(&self) -> usize {
+            self.stops.load(std::sync::atomic::Ordering::SeqCst)
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl SandboxedSessionPort for RecordingSandboxPort {
+        async fn get_sandbox_session(
+            &self,
+            _tenant_id: String,
+            _agent_session_id: String,
+        ) -> KernelResult<SandboxSessionRuntimeProjection> {
+            self.gets.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if self.get_error {
+                return Err(KernelError::validation("sandbox session was not found"));
+            }
+            let state = *self.state.lock().expect("port state");
+            Ok(SandboxSessionRuntimeProjection::new(
+                "workspace.route-test",
+                "session.test",
+                state,
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+            ))
+        }
+
+        async fn start_sandbox_session(
+            &self,
+            _request: SandboxSessionCommandRequest,
+        ) -> KernelResult<SandboxSessionRuntimeProjection> {
+            self.starts
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            *self.state.lock().expect("port state") = SandboxSessionState::Running;
+            Ok(SandboxSessionRuntimeProjection::new(
+                "workspace.route-test",
+                "session.test",
+                SandboxSessionState::Running,
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+            ))
+        }
+
+        async fn stop_sandbox_session(
+            &self,
+            _request: SandboxSessionCommandRequest,
+        ) -> KernelResult<SandboxSessionRuntimeProjection> {
+            self.stops.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            if self.stop_error {
+                return Err(KernelError::provider_error(
+                    "sandbox_stop_failed",
+                    "stop refused",
+                ));
+            }
+            Ok(SandboxSessionRuntimeProjection::new(
+                "workspace.route-test",
+                "session.test",
+                SandboxSessionState::Stopped,
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+                Option::<String>::None,
+            ))
+        }
+    }
+
+    /// Inner executor counting invocations and answering a facade-mode reply.
+    #[derive(Default)]
+    struct CountingInnerExecutor {
+        calls: std::sync::atomic::AtomicUsize,
+    }
+
+    impl CountingInnerExecutor {
+        fn calls(&self) -> usize {
+            self.calls.load(std::sync::atomic::Ordering::SeqCst)
+        }
+    }
+
+    impl TurnExecutor for CountingInnerExecutor {
+        fn complete(&self, _input: &TurnExecutionInput) -> TurnExecutionOutput {
+            self.calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            TurnExecutionOutput {
+                model_request_id: Some("model-request.routed".to_string()),
+                finish_reason: Some("stop".to_string()),
+                content: "inner reply".to_string(),
+                model_id: None,
+                provider_id: None,
+                provider_session_id: None,
+                input_tokens: 1,
+                output_tokens: 1,
+                runtime_mode: RUNTIME_MODE_FACADE,
+                stream_deltas: Vec::new(),
+                stream_events: Vec::new(),
+                tool_events: Vec::new(),
+            }
+        }
+    }
+
+    fn routed_test_input(execution_route: Option<&str>) -> TurnExecutionInput {
+        TurnExecutionInput {
+            execution_route: execution_route.map(str::to_string),
+            ..sample_turn_execution_input()
+        }
+    }
+
+    fn with_test_runtime<T>(work: impl FnOnce() -> T) -> T {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("test runtime");
+        let _enter = runtime.enter();
+        work()
+    }
+
+    #[test]
+    fn in_process_is_the_built_in_default_route() {
+        let inner = CountingInnerExecutor::default();
+        let port = RecordingSandboxPort::running();
+        let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+        let output = executor.complete(&routed_test_input(None));
+
+        assert_eq!(output.runtime_mode, RUNTIME_MODE_FACADE);
+        assert_eq!(output.content, "inner reply");
+        assert_eq!(executor.inner.calls(), 1);
+        assert_eq!(port.gets.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn sandbox_route_coordinates_execution_through_the_sandbox_lifecycle() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = RecordingSandboxPort::running();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+            let output = executor.complete(&routed_test_input(Some("sandbox")));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(output.content, "inner reply");
+            assert_eq!(
+                executor.inner.calls(),
+                1,
+                "the inner executor runs exactly once inside the sandbox lifecycle"
+            );
+            assert_eq!(
+                port.gets.load(std::sync::atomic::Ordering::SeqCst),
+                1,
+                "the bound sandbox session must be resolved before execution"
+            );
+            assert_eq!(port.starts(), 0, "a running session is not started again");
+            assert_eq!(
+                port.stops(),
+                0,
+                "conversation sessions are not auto-stopped by default"
+            );
+        });
+    }
+
+    #[test]
+    fn sandbox_route_starts_a_stopped_session_when_auto_start_is_enabled() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = std::sync::Arc::new(RecordingSandboxPort::stopped());
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+            let output = executor.complete(&routed_test_input(Some("sandbox")));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(executor.inner.calls(), 1);
+            assert_eq!(port.starts(), 1);
+        });
+    }
+
+    #[test]
+    fn sandbox_route_without_a_port_fails_closed() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let executor = RoutedTurnExecutor::new(inner);
+
+            let output = executor.complete(&routed_test_input(Some("sandbox")));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX_UNAVAILABLE);
+            assert!(
+                output
+                    .content
+                    .contains("sandbox session port is not assembled"),
+                "the refusal names the missing assembly: {}",
+                output.content
+            );
+            assert_eq!(executor.inner.calls(), 0);
+        });
+    }
+
+    #[test]
+    fn sandbox_route_can_degrade_to_in_process_only_when_explicitly_configured() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_policy(SandboxRoutePolicy {
+                allow_in_process_fallback: true,
+                ..SandboxRoutePolicy::default()
+            });
+
+            let output = executor.complete(&routed_test_input(Some("sandbox")));
+
+            assert_eq!(
+                executor.inner.calls(),
+                1,
+                "fallback executes in-process exactly once"
+            );
+            assert_eq!(
+                output.runtime_mode, RUNTIME_MODE_FACADE,
+                "a degraded execution is not reported as a sandbox execution"
+            );
+        });
+    }
+
+    #[test]
+    fn missing_sandbox_session_fails_closed_without_silent_fallback() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = std::sync::Arc::new(RecordingSandboxPort::stopped().with_get_error());
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+            let output = executor.complete(&routed_test_input(Some("sandbox")));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX_UNAVAILABLE);
+            assert_eq!(executor.inner.calls(), 0);
+        });
+    }
+
+    #[test]
+    fn cleanup_failure_after_execution_returns_the_real_output_without_replaying() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let inner_port = RecordingSandboxPort::running_with_stop_error();
+            let port = std::sync::Arc::new(inner_port);
+            let executor = RoutedTurnExecutor::new(inner)
+                .with_sandbox_port(port.clone())
+                .with_sandbox_policy(SandboxRoutePolicy {
+                    auto_stop: true,
+                    ..SandboxRoutePolicy::default()
+                });
+
+            let output = executor.complete(&routed_test_input(Some("sandbox")));
+
+            assert_eq!(
+                output.content, "inner reply",
+                "the real turn output survives the cleanup failure"
+            );
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(
+                executor.inner.calls(),
+                1,
+                "a failed post-turn cleanup must never replay the turn"
+            );
+            assert_eq!(port.stops(), 1);
+        });
+    }
+
+    #[test]
+    fn request_override_beats_a_sandbox_deployment_default() {
+        let inner = CountingInnerExecutor::default();
+        let port = RecordingSandboxPort::running();
+        let executor = RoutedTurnExecutor::new(inner)
+            .with_sandbox_port(port.clone())
+            .with_deployment_default_route(Some(AgentConversationExecutionRoute::Sandbox));
+
+        let output = executor.complete(&routed_test_input(Some("in_process")));
+
+        assert_eq!(output.runtime_mode, RUNTIME_MODE_FACADE);
+        assert_eq!(port.gets.load(std::sync::atomic::Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn deployment_default_selects_the_sandbox_route_without_an_override() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = RecordingSandboxPort::running();
+            let executor = RoutedTurnExecutor::new(inner)
+                .with_sandbox_port(port.clone())
+                .with_deployment_default_route(Some(AgentConversationExecutionRoute::Sandbox));
+
+            let output = executor.complete(&routed_test_input(None));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(
+                port.gets.load(std::sync::atomic::Ordering::SeqCst),
+                1,
+                "the deployment default applies when no override is present"
+            );
+        });
+    }
+
+    #[test]
+    fn sandbox_route_streams_through_the_lifecycle_coordinator() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = RecordingSandboxPort::running();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+            let output =
+                executor.complete_with_stream_preference(&routed_test_input(Some("sandbox")), true);
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(executor.inner.calls(), 1);
+        });
     }
 }

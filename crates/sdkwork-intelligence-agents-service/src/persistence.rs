@@ -165,7 +165,7 @@ pub use sql::{
 pub use sql::{
     SQL_ACTIVATE_AGENT_SESSION_RUNTIME_BINDING, SQL_APPEND_TURN_STREAMING_CONTENT,
     SQL_CLEAR_TURN_STREAMING_CONTENT, SQL_COMPLETE_AGENT_TURN_STATE, SQL_COUNT_AGENT_INTERACTIONS,
-    SQL_COUNT_AGENT_ITEM_FEEDBACK, SQL_COUNT_AGENT_PROJECTS,
+    SQL_COUNT_AGENT_ITEM_FEEDBACK, SQL_COUNT_AGENT_PROJECTS, SQL_EXTEND_AGENT_TURN_LEASE,
     SQL_COUNT_AGENT_PROJECT_COMPOSITION_SLOTS, SQL_COUNT_AGENT_RESOURCE_USER_STATES,
     SQL_COUNT_AGENT_SESSIONS, SQL_COUNT_AGENT_SESSION_CHECKPOINTS, SQL_COUNT_AGENT_SESSION_ITEMS,
     SQL_COUNT_AGENT_SESSION_RUNTIME_BINDINGS, SQL_COUNT_AGENT_TURNS, SQL_COUNT_AGENT_WORKSPACES,
@@ -3034,6 +3034,30 @@ pub trait AgentRepositoryAdapter: Send + Sync {
             message: "append_turn_streaming_content requires an adapter override".to_string(),
         })
     }
+    /// Extends the execution lease of a running turn (heartbeat). Returns the
+    /// number of rows updated: 0 means the turn is no longer running or the
+    /// lease token no longer matches.
+    fn extend_agent_turn_lease(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+        lease_token: &str,
+        lease_expires_at: &str,
+        occurred_at: &str,
+    ) -> KernelResult<u64> {
+        let _ = (
+            tenant_id,
+            organization_id,
+            turn_id,
+            lease_token,
+            lease_expires_at,
+            occurred_at,
+        );
+        Err(KernelError::Internal {
+            message: "extend_agent_turn_lease requires an adapter override".to_string(),
+        })
+    }
     /// Clears the streaming checkpoint after the turn completes durably.
     fn clear_turn_streaming_content(
         &self,
@@ -4395,6 +4419,26 @@ where
             content,
             updated_at,
         )
+    }
+
+    fn extend_agent_turn_lease(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+        lease_token: &str,
+        lease_expires_at: &str,
+        occurred_at: &str,
+    ) -> KernelResult<bool> {
+        let updated = self.adapter.extend_agent_turn_lease(
+            tenant_id,
+            organization_id,
+            turn_id,
+            lease_token,
+            lease_expires_at,
+            occurred_at,
+        )?;
+        Ok(updated > 0)
     }
 
     fn clear_turn_streaming_content(
@@ -9877,6 +9921,31 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 updated_at
             )?;
             Ok(())
+        })
+    }
+
+    fn extend_agent_turn_lease(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+        lease_token: &str,
+        lease_expires_at: &str,
+        occurred_at: &str,
+    ) -> KernelResult<u64> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_EXTEND_AGENT_TURN_LEASE,
+                tenant_id,
+                organization_id,
+                turn_id,
+                lease_expires_at,
+                occurred_at,
+                lease_token
+            )
         })
     }
 

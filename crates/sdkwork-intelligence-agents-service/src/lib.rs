@@ -16,6 +16,7 @@ mod infrastructure;
 mod list_cursors;
 mod mcp_marketplace;
 mod media_tool_registry;
+mod network_guard;
 mod persistence;
 mod ports;
 mod postgres_model_configuration_store;
@@ -121,12 +122,13 @@ pub use toolkit::{
 };
 pub use turn_runtime::{
     complete_with_timeout, complete_with_timeout_and_sink, execute_agent_turn, is_capacity_error,
-    is_funding_error, is_inference_error, is_transport_error, turn_model_request_id,
-    ContractTurnExecutor, KernelModelTurnExecutor, RuntimeFacadeTurnExecutor,
-    TurnCancellationInput, TurnCancellationOutput, TurnExecutionInput, TurnExecutionOutput,
-    TurnExecutionStreamSink, TurnExecutor, RUNTIME_MODE_CAPACITY_ERROR, RUNTIME_MODE_FACADE,
-    RUNTIME_MODE_FUNDING_ERROR, RUNTIME_MODE_INFERENCE_ERROR, RUNTIME_MODE_TRANSPORT_ERROR,
-    TURN_EXECUTION_TIMEOUT,
+    is_funding_error, is_inference_error, is_sandbox_unavailable_error, is_transport_error,
+    turn_model_request_id, ContractTurnExecutor, KernelModelTurnExecutor, RoutedTurnExecutor,
+    RuntimeFacadeTurnExecutor, SandboxRoutePolicy, TurnCancellationInput, TurnCancellationOutput,
+    TurnExecutionInput, TurnExecutionOutput, TurnExecutionStreamSink, TurnExecutor,
+    RUNTIME_MODE_CAPACITY_ERROR, RUNTIME_MODE_FACADE, RUNTIME_MODE_FUNDING_ERROR,
+    RUNTIME_MODE_INFERENCE_ERROR, RUNTIME_MODE_SANDBOX, RUNTIME_MODE_SANDBOX_UNAVAILABLE,
+    RUNTIME_MODE_TRANSPORT_ERROR, TURN_EXECUTION_TIMEOUT,
 };
 
 pub use domain::AgentVersionRecord;

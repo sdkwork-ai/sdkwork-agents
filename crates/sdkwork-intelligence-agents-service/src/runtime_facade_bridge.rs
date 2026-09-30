@@ -300,8 +300,40 @@ pub fn execute_agent_call_engine(
     }
 }
 
-static AGENT_ENGINE_HOSTS: std::sync::LazyLock<Mutex<HashMap<String, Arc<AgentsAgentEngineHost>>>> =
+static AGENT_ENGINE_HOSTS: std::sync::LazyLock<Mutex<HashMap<String, AgentEngineHostCacheEntry>>> =
     std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// Monotonic clock for least-recently-used eviction of scoped engine hosts.
+static AGENT_ENGINE_HOST_ACCESS_COUNTER: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
+/// Upper bound on distinct `(tenant_id, agent_id)` engine hosts retained in
+/// memory. Every entry may carry a full engine host (eight engine slots and,
+/// for refreshed rig scopes, a private tokio runtime), so the cache must stay
+/// bounded: a large multi-tenant deployment would otherwise grow the map with
+/// every new scope until the process runs out of memory.
+pub const ENV_AGENT_ENGINE_HOST_CACHE_CAPACITY: &str =
+    "SDKWORK_AGENTS_ENGINE_HOST_CACHE_CAPACITY";
+const DEFAULT_AGENT_ENGINE_HOST_CACHE_CAPACITY: usize = 1024;
+
+fn agent_engine_host_cache_capacity() -> usize {
+    std::env::var(ENV_AGENT_ENGINE_HOST_CACHE_CAPACITY)
+        .ok()
+        .and_then(|value| value.trim().parse::<usize>().ok())
+        .filter(|value| (16..=65536).contains(value))
+        .unwrap_or(DEFAULT_AGENT_ENGINE_HOST_CACHE_CAPACITY)
+}
+
+#[derive(Clone)]
+struct AgentEngineHostCacheEntry {
+    host: Arc<AgentsAgentEngineHost>,
+    last_used: u64,
+}
+
+fn next_host_access_stamp() -> u64 {
+    AGENT_ENGINE_HOST_ACCESS_COUNTER
+        .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
 
 /// Host key for the shared default engine host: the product-default
 /// cloudrouter dual-token rig backend used by agents without a per-agent
@@ -324,6 +356,67 @@ fn build_default_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
     }
 }
 
+fn cache_entry(host: Arc<AgentsAgentEngineHost>) -> AgentEngineHostCacheEntry {
+    AgentEngineHostCacheEntry {
+        host,
+        last_used: next_host_access_stamp(),
+    }
+}
+
+/// Drops retired engine hosts outside async contexts.
+///
+/// A retired host's rig slot may own a tokio runtime, and dropping a runtime
+/// from within an asynchronous execution context panics. Eviction only fires
+/// when the cache exceeds its capacity, so the detached thread cost is
+/// negligible; this module is the documented owner and the thread only drops
+/// already-unreferenced `Arc`s.
+fn retire_engine_hosts(victims: Vec<Arc<AgentsAgentEngineHost>>) {
+    if victims.is_empty() {
+        return;
+    }
+    // On spawn failure the closure (and the victims it captured) is dropped
+    // by the threading API itself, so no fallback drop is needed here.
+    let spawned = std::thread::Builder::new()
+        .name("agent-engine-host-eviction".to_string())
+        .spawn(move || drop(victims));
+    if spawned.is_err() {
+        tracing::warn!(
+            target: "sdkwork.agents.engine_host",
+            "engine host eviction thread could not be spawned; retired hosts are released on the next eviction"
+        );
+    }
+}
+
+/// Evicts least-recently-used scoped hosts until the cache holds at most
+/// `capacity` entries, returning the retired hosts. The shared default entry
+/// is never evicted: every scope aliases it until a per-agent configuration
+/// is applied, so removing it would not release memory and would only force
+/// a rebuild.
+fn evict_stale_engine_hosts(
+    guard: &mut HashMap<String, AgentEngineHostCacheEntry>,
+    capacity: usize,
+) -> Vec<Arc<AgentsAgentEngineHost>> {
+    let reserved = usize::from(guard.contains_key(DEFAULT_AGENT_ENGINE_HOST_KEY));
+    let scoped_over_limit = guard.len().saturating_sub(capacity + reserved);
+    if scoped_over_limit == 0 {
+        return Vec::new();
+    }
+    let mut victims: Vec<(String, u64)> = guard
+        .iter()
+        .filter(|(key, _)| key.as_str() != DEFAULT_AGENT_ENGINE_HOST_KEY)
+        .map(|(key, entry)| (key.clone(), entry.last_used))
+        .collect();
+    victims.sort_unstable_by_key(|(_, stamp)| *stamp);
+    let retired: Vec<Arc<AgentsAgentEngineHost>> = victims
+        .into_iter()
+        .take(scoped_over_limit)
+        .filter_map(|(key, _)| guard.remove(&key).map(|entry| entry.host))
+        .collect();
+    // Map-owned Arc strong counts are released here; in-flight turns keep
+    // their clone alive through their own Arc.
+    retired
+}
+
 pub fn shared_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
     // A failed bootstrap must not be cached: engine availability can recover
     // (e.g. the provider directory becomes readable again) and a permanently
@@ -331,8 +424,18 @@ pub fn shared_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
     let guard = AGENT_ENGINE_HOSTS
         .lock()
         .expect("provider engine host mutex poisoned");
-    if let Some(host) = guard.get(DEFAULT_AGENT_ENGINE_HOST_KEY) {
-        return Some(host.clone());
+    if let Some(entry) = guard.get(DEFAULT_AGENT_ENGINE_HOST_KEY) {
+        let host = entry.host.clone();
+        drop(guard);
+        let stamp = next_host_access_stamp();
+        if let Some(entry) = AGENT_ENGINE_HOSTS
+            .lock()
+            .expect("provider engine host mutex poisoned")
+            .get_mut(DEFAULT_AGENT_ENGINE_HOST_KEY)
+        {
+            entry.last_used = stamp;
+        }
+        return Some(host);
     }
     drop(guard);
     let host = build_default_agent_engine_host()?;
@@ -341,7 +444,7 @@ pub fn shared_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
         .expect("provider engine host mutex poisoned");
     guard
         .entry(DEFAULT_AGENT_ENGINE_HOST_KEY.to_string())
-        .or_insert_with(|| host.clone());
+        .or_insert_with(|| cache_entry(host.clone()));
     Some(host)
 }
 
@@ -351,21 +454,39 @@ pub fn shared_agent_engine_host() -> Option<Arc<AgentsAgentEngineHost>> {
 /// so a custom LLM provider configuration only affects its own agent scope;
 /// otherwise the shared default host (cloudrouter dual-token rig backend) is
 /// lazily cached under this scope so every scope keeps a stable `Arc` across
-/// turns.
+/// turns. The scope cache is bounded ([`ENV_AGENT_ENGINE_HOST_CACHE_CAPACITY`])
+/// with LRU eviction, so unused scopes release their engine hosts.
 pub fn agent_engine_host_for(tenant_id: u64, agent_id: &str) -> Option<Arc<AgentsAgentEngineHost>> {
     let key = agent_engine_host_key(tenant_id, agent_id);
-    let guard = AGENT_ENGINE_HOSTS
-        .lock()
-        .expect("provider engine host mutex poisoned");
-    if let Some(host) = guard.get(&key) {
-        return Some(host.clone());
+    {
+        let guard = AGENT_ENGINE_HOSTS
+            .lock()
+            .expect("provider engine host mutex poisoned");
+        if let Some(entry) = guard.get(&key) {
+            let host = entry.host.clone();
+            drop(guard);
+            let stamp = next_host_access_stamp();
+            if let Some(entry) = AGENT_ENGINE_HOSTS
+                .lock()
+                .expect("provider engine host mutex poisoned")
+                .get_mut(&key)
+            {
+                entry.last_used = stamp;
+            }
+            return Some(host);
+        }
     }
-    drop(guard);
     let shared = shared_agent_engine_host()?;
     let mut guard = AGENT_ENGINE_HOSTS
         .lock()
         .expect("provider engine host mutex poisoned");
-    guard.entry(key).or_insert_with(|| shared.clone());
+    if let Some(entry) = guard.get(&key) {
+        return Some(entry.host.clone());
+    }
+    let capacity = agent_engine_host_cache_capacity();
+    let retired = evict_stale_engine_hosts(&mut guard, capacity.saturating_sub(1));
+    retire_engine_hosts(retired);
+    guard.insert(key, cache_entry(shared.clone()));
     Some(shared)
 }
 
@@ -398,10 +519,21 @@ pub fn refresh_rig_agent_engine_for(
     // rig slot may own a tokio runtime) is dropped outside async contexts —
     // dropping a runtime from within an asynchronous context panics.
     std::thread::spawn(move || {
-        let mut guard = AGENT_ENGINE_HOSTS
-            .lock()
-            .expect("provider engine host mutex poisoned");
-        guard.insert(key, Arc::new(rebuilt));
+        let retired_host = {
+            let mut guard = AGENT_ENGINE_HOSTS
+                .lock()
+                .expect("provider engine host mutex poisoned");
+            let previous = guard
+                .insert(key, cache_entry(Arc::new(rebuilt)))
+                .map(|entry| entry.host);
+            let retired =
+                evict_stale_engine_hosts(&mut guard, agent_engine_host_cache_capacity());
+            (previous, retired)
+        };
+        // The replaced host is only referenced by this map slot (in-flight
+        // interactions keep their own Arc); dropping it here keeps the
+        // runtime teardown outside async contexts.
+        drop(retired_host);
     })
     .join()
     .map_err(|_| {
@@ -418,7 +550,45 @@ pub fn refresh_rig_agent_engine(
     configuration: &AgentConfiguration,
     host: Arc<dyn HostProvider + Send + Sync>,
 ) -> sdkwork_agents_runtime_facade::RuntimeFacadeResult<()> {
-    refresh_rig_agent_engine_for(0, DEFAULT_AGENT_ENGINE_HOST_KEY, configuration, host)
+    refresh_shared_rig_agent_engine(configuration, host)
+}
+
+/// Rebuilds the shared default engine host under [`DEFAULT_AGENT_ENGINE_HOST_KEY`]
+/// so every scope that aliases it (no per-agent configuration) observes the new
+/// provider backend without a process restart.
+fn refresh_shared_rig_agent_engine(
+    configuration: &AgentConfiguration,
+    host: Arc<dyn HostProvider + Send + Sync>,
+) -> sdkwork_agents_runtime_facade::RuntimeFacadeResult<()> {
+    let rebuilt = AgentsAgentEngineHost::bootstrap_selected_with_rig(
+        &bootstrappable_engine_keys(),
+        Some(configuration),
+        host,
+        LiveInteractionRegistry::new(),
+    );
+    if rebuilt.engine_keys().next().is_none() {
+        return Ok(());
+    }
+    std::thread::spawn(move || {
+        let mut guard = AGENT_ENGINE_HOSTS
+            .lock()
+            .expect("provider engine host mutex poisoned");
+        if let Some(entry) = guard.get_mut(DEFAULT_AGENT_ENGINE_HOST_KEY) {
+            entry.host = Arc::new(rebuilt);
+            entry.last_used = next_host_access_stamp();
+        } else {
+            guard.insert(
+                DEFAULT_AGENT_ENGINE_HOST_KEY.to_string(),
+                cache_entry(Arc::new(rebuilt)),
+            );
+        }
+    })
+    .join()
+    .map_err(|_| {
+        sdkwork_agents_runtime_facade::RuntimeFacadeError::InvalidInput(
+            "shared rig agent engine host refresh worker panicked".to_string(),
+        )
+    })
 }
 
 /// Kernel host surface backed by the model configuration runtime secret store.
@@ -606,6 +776,39 @@ mod tests {
             descriptor.metadata_value("sdkwork.backend.fail_closed"),
             Some("false")
         );
+    }
+
+    #[test]
+    fn engine_host_cache_evicts_least_recently_used_scopes() {
+        let mut guard: HashMap<String, AgentEngineHostCacheEntry> = HashMap::new();
+        let placeholder = || {
+            Arc::new(AgentsAgentEngineHost::bootstrap_selected(
+                &bootstrappable_engine_keys(),
+                LiveInteractionRegistry::new(),
+            ))
+        };
+        for index in 0..4 {
+            let key = format!("scope-{index}");
+            guard.insert(key, cache_entry(placeholder()));
+        }
+        // Touch scope-1 so it becomes the most recently used entry; scope-0
+        // stays the least recently used.
+        guard.get_mut("scope-1").unwrap().last_used = next_host_access_stamp();
+
+        let retired = evict_stale_engine_hosts(&mut guard, 3);
+        assert_eq!(retired.len(), 1, "one entry over the capacity is retired");
+        assert!(!guard.contains_key("scope-0"), "LRU scope is evicted");
+        assert!(guard.contains_key("scope-1"), "recently used scope survives");
+        assert_eq!(guard.len(), 3);
+
+        // A cache holding the shared default entry reserves one slot for it.
+        guard.insert(
+            DEFAULT_AGENT_ENGINE_HOST_KEY.to_string(),
+            cache_entry(placeholder()),
+        );
+        let retired = evict_stale_engine_hosts(&mut guard, 3);
+        assert_eq!(retired.len(), 0, "the default entry is never evicted");
+        assert!(guard.contains_key(DEFAULT_AGENT_ENGINE_HOST_KEY));
     }
 
     #[test]

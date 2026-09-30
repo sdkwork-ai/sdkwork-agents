@@ -970,6 +970,11 @@ pub struct CreateTurnCommand {
     /// invocation (`chat_completions` default, `anthropic_messages`,
     /// `google_content`, `openai_responses`). Transient — never persisted.
     pub wire_protocol: Option<String>,
+    /// Per-request execution-route override for this turn
+    /// (`in_process` | `sandbox`). Transient — never persisted; validated by
+    /// the HTTP boundary, resolved against the deployment default by the
+    /// route-aware turn executor.
+    pub execution_route: Option<String>,
 }
 
 /// Result of one completed Turn with its complete authoritative item set.

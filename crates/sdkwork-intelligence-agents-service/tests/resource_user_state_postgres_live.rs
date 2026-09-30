@@ -517,6 +517,9 @@ fn live_turn_command(
         prefer_stream: false,
         auth_token: None,
         wire_protocol: None,
+        system_prompt: None,
+        access_token: None,
+        execution_route: None,
     }
 }
 
@@ -1403,6 +1406,9 @@ fn postgres_resource_user_state_round_trip_and_stale_write_rollback() {
             prefer_stream: false,
             auth_token: None,
             wire_protocol: None,
+            system_prompt: None,
+            access_token: None,
+            execution_route: None,
         })
         .unwrap();
     assert_eq!(turn.session.item_count, 3);
@@ -1455,6 +1461,9 @@ fn postgres_resource_user_state_round_trip_and_stale_write_rollback() {
         prefer_stream: false,
         auth_token: None,
         wire_protocol: None,
+        system_prompt: None,
+        access_token: None,
+        execution_route: None,
     });
     assert!(invalid_result.is_err());
 
@@ -1480,6 +1489,9 @@ fn postgres_resource_user_state_round_trip_and_stale_write_rollback() {
         prefer_stream: false,
         auth_token: None,
         wire_protocol: None,
+        system_prompt: None,
+        access_token: None,
+        execution_route: None,
     });
     assert!(duplicate_result.is_err());
     let page_after_rejections = service
@@ -1523,6 +1535,9 @@ fn postgres_resource_user_state_round_trip_and_stale_write_rollback() {
         prefer_stream: false,
         auth_token: None,
         wire_protocol: None,
+        system_prompt: None,
+        access_token: None,
+        execution_route: None,
     });
     assert!(failed_result.is_err());
     let lifecycle_repository = SqlAgentRepository::new(

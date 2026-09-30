@@ -1027,6 +1027,25 @@ impl AgentRepository for DynAgentRepository {
         )
     }
 
+    fn extend_agent_turn_lease(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+        lease_token: &str,
+        lease_expires_at: &str,
+        occurred_at: &str,
+    ) -> KernelResult<bool> {
+        self.0.extend_agent_turn_lease(
+            tenant_id,
+            organization_id,
+            turn_id,
+            lease_token,
+            lease_expires_at,
+            occurred_at,
+        )
+    }
+
     fn clear_turn_streaming_content(
         &self,
         tenant_id: u64,
@@ -2329,6 +2348,7 @@ impl sdkwork_agents_runtime_facade::AgentsSessionFacade for HttpAgentsSessionFac
                 auth_token: None,
                 access_token: None,
                 wire_protocol: None,
+                execution_route: None,
             })
             .map_err(|error| {
                 sdkwork_agents_runtime_facade::RuntimeFacadeError::Handler(error.to_string())
@@ -5182,6 +5202,12 @@ struct AppCreateTurnBody {
     /// `anthropic_messages`, `google_content`, `openai_responses`).
     #[serde(default)]
     wire_protocol: Option<String>,
+    /// Optional execution-route override for this turn (`in_process` runs the
+    /// conversation in this process; `sandbox` coordinates the execution
+    /// inside an SDKWork Sandbox session). Additive, optional; when omitted
+    /// the deployment default applies.
+    #[serde(default)]
+    execution_route: Option<String>,
     #[serde(default)]
     drive_refs: Vec<AgentItemDriveRefBody>,
     requested_at: String,
@@ -5393,6 +5419,12 @@ struct CreateTurnBody {
     idempotency_key: String,
     payload_hash: String,
     client_request_id: Option<String>,
+    /// Optional execution-route override for this turn (`in_process` runs the
+    /// conversation in this process; `sandbox` coordinates the execution
+    /// inside an SDKWork Sandbox session). Additive, optional; when omitted
+    /// the deployment default applies.
+    #[serde(default)]
+    execution_route: Option<String>,
     #[serde(default)]
     drive_refs: Vec<AgentItemDriveRefBody>,
     requested_at: String,
@@ -5660,6 +5692,22 @@ impl ApiProblem {
                 // keeping the 50301 envelope the client already understands.
                 if error
                     .detail_value(crate::cloud_router_executor::TRANSPORT_FAILURE_DETAIL_KEY)
+                    .is_some()
+                {
+                    return Self::dependency_unavailable(error.safe_message())
+                        .with_result_code(SdkWorkResultCode::ServiceUnavailable)
+                        .with_action(ProblemAction {
+                            kind: "deployment_misconfiguration",
+                            href: None,
+                            label: None,
+                        });
+                }
+                // Same category: a sandbox execution route that cannot be
+                // honored is a deployment/configuration defect (no sandbox
+                // session port assembled, or no sandbox session bound), not
+                // an upstream provider fault.
+                if error
+                    .detail_value(crate::turn_runtime::SANDBOX_ROUTE_UNAVAILABLE_DETAIL_KEY)
                     .is_some()
                 {
                     return Self::dependency_unavailable(error.safe_message())
@@ -6526,6 +6574,10 @@ fn webhook_http_client() -> &'static reqwest::Client {
     WEBHOOK_HTTP_CLIENT.get_or_init(|| {
         reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(10))
+            // Webhook endpoints must not be reached through redirects: the
+            // signature header would follow the redirect, and the redirect
+            // target is not re-validated by the SSRF guard.
+            .redirect(reqwest::redirect::Policy::none())
             .build()
             .unwrap_or_else(|_| reqwest::Client::new())
     })
@@ -6773,8 +6825,13 @@ async fn app_test_webhook(
             )
         })
         .await?;
-        // Outbound transport: POST the signed test payload to the endpoint
-        // with a bounded timeout, then record the terminal delivery state.
+        // Outbound transport: validate the endpoint against the shared SSRF
+        // guard at delivery time (the subscription-time check cannot cover
+        // DNS changes), then POST the signed test payload with a bounded
+        // timeout and record the terminal delivery state.
+        crate::network_guard::ensure_outbound_target_is_public(&outcome.url)
+            .await
+            .map_err(|error| ApiProblem::validation(error.0))?;
         let response = webhook_http_client()
             .post(&outcome.url)
             .header("Sdkwork-Signature", outcome.delivery.signature.clone())
@@ -10485,6 +10542,9 @@ async fn app_create_turn(
                         .ok_or_else(|| ApiProblem::validation("invalid wireProtocol"))
                 })
                 .transpose()?,
+            // Fail closed on unknown execution-route codes for the same
+            // reason: a typo must never silently change execution placement.
+            execution_route: validate_execution_route_override(body.execution_route)?,
         };
         execute_turn_http_response(
             &state,
@@ -11999,6 +12059,7 @@ async fn backend_create_turn(
             auth_token: extract_bearer_auth_token(&headers),
             access_token: extract_access_token(&headers),
             wire_protocol: None,
+            execution_route: validate_execution_route_override(body.execution_route)?,
         };
         execute_turn_http_response(
             &state,
@@ -14339,6 +14400,28 @@ pub(crate) fn extract_bearer_auth_token(headers: &HeaderMap) -> Option<String> {
         .or_else(|| value.strip_prefix("bearer "))?;
     let token = token.trim();
     (!token.is_empty()).then(|| token.to_string())
+}
+
+/// Validates a client-supplied execution-route override, preserving `None`
+/// (fall through to the deployment default) and failing closed on unknown
+/// codes so a typo can never silently change execution placement.
+pub(crate) fn validate_execution_route_override(
+    execution_route: Option<String>,
+) -> Result<Option<String>, ApiProblem> {
+    match execution_route.as_deref() {
+        None | Some("") => Ok(None),
+        Some(code) => {
+            if sdkwork_agents_runtime_facade::AgentConversationExecutionRoute::parse(Some(code))
+                .is_some()
+            {
+                Ok(Some(code.to_string()))
+            } else {
+                Err(ApiProblem::validation(
+                    "invalid executionRoute: must be one of in_process, sandbox",
+                ))
+            }
+        }
+    }
 }
 
 fn offset_page_info(page: usize, page_size: usize, total_count: u64, has_more: bool) -> PageInfo {

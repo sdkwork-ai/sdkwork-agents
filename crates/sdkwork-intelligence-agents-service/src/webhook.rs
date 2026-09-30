@@ -221,6 +221,22 @@ pub fn validate_webhook_url(url: &str) -> KernelResult<()> {
     Ok(())
 }
 
+/// Validates a webhook target immediately before dialing it: HTTPS scheme
+/// plus the shared SSRF guard (no internal network hosts).
+///
+/// Called at delivery time — not only at subscription time — because DNS
+/// records can change between the two; the delivery client additionally
+/// never follows redirects, so every connection targets the validated host.
+pub(crate) async fn validate_webhook_delivery_target(url: &str) -> Result<(), String> {
+    let parsed = crate::network_guard::ensure_outbound_target_is_public(url)
+        .await
+        .map_err(|error| error.0)?;
+    if parsed.scheme() != "https" {
+        return Err("webhook url must use the https scheme".to_string());
+    }
+    Ok(())
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct WebhookEventTypeListPayload {

@@ -3751,6 +3751,35 @@ impl AgentRepository for InMemoryAgentRepository {
         Ok(())
     }
 
+    fn extend_agent_turn_lease(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+        lease_token: &str,
+        lease_expires_at: &str,
+        occurred_at: &str,
+    ) -> KernelResult<bool> {
+        let mut turns = self.turns.recovering_write();
+        for (key, turn) in turns.iter_mut() {
+            if key.0 != tenant_id || key.1 != organization_id || turn.turn_id != turn_id {
+                continue;
+            }
+            let running = matches!(
+                turn.status,
+                crate::agent_turn::AgentTurnStatus::Requested
+                    | crate::agent_turn::AgentTurnStatus::Running
+            );
+            if !running || turn.lease_token.as_deref() != Some(lease_token) {
+                return Ok(false);
+            }
+            turn.lease_expires_at = Some(lease_expires_at.to_string());
+            turn.updated_at = occurred_at.to_string();
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
     fn clear_turn_streaming_content(
         &self,
         tenant_id: u64,

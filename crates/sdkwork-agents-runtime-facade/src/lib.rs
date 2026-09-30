@@ -7,6 +7,7 @@ mod agent_engine_catalog;
 mod agent_engine_config;
 mod agent_engines;
 mod error;
+mod execution_route;
 mod live_interaction;
 mod provider_sessions;
 mod runtime_host;
@@ -26,13 +27,19 @@ pub use agent_engines::{
     agent_engine_agent_id, agent_engine_binding_id, agent_engine_provider_scope,
     apply_agent_engine_model_configuration, apply_agent_engine_model_selection,
     bootstrap_agent_engine, bootstrap_rig_agent_engine, bootstrappable_engine_keys,
-    canonical_agent_engine_keys, codex_engine_enabled, dematerialize_agent_engine_model_configuration,
-    is_canonical_agent_engine, plan_agent_engine_configuration_upgrade,
-    read_agent_engine_model_configuration, resolve_agent_engine_runtime_identity,
-    AgentEngineBootstrapError, AgentEngineInteractionResolution, AgentEngineRuntimeIdentity,
-    AgentEngineSlot, CANONICAL_AGENT_ENGINE_KEYS,
+    canonical_agent_engine_keys, codex_engine_enabled,
+    dematerialize_agent_engine_model_configuration, is_canonical_agent_engine,
+    plan_agent_engine_configuration_upgrade, read_agent_engine_model_configuration,
+    resolve_agent_engine_runtime_identity, AgentEngineBootstrapError,
+    AgentEngineInteractionResolution, AgentEngineRuntimeIdentity, AgentEngineSlot,
+    CANONICAL_AGENT_ENGINE_KEYS,
 };
 pub use error::{RuntimeFacadeError, RuntimeFacadeResult};
+pub use execution_route::{
+    resolve_agent_conversation_execution_route, AgentConversationExecutionDecision,
+    AgentConversationExecutionRoute, AgentConversationExecutionRouteSource,
+    InvalidExecutionRouteError, EXECUTION_ROUTE_IN_PROCESS, EXECUTION_ROUTE_SANDBOX,
+};
 pub use live_interaction::{
     ApprovalDecision, EngineLiveInteraction, LiveInteractionRegistry, UserQuestionAnswer,
 };

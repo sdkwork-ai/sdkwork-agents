@@ -62,9 +62,9 @@ use crate::task_scheduling::{AgentTaskRunRecord, AgentTaskRunStatus};
 use crate::toolkit::{resolve_effective_toolkit, TurnToolkitConfig};
 use crate::turn_runtime::{
     complete_with_timeout, complete_with_timeout_and_sink, is_capacity_error, is_funding_error,
-    is_inference_error, is_transport_error, turn_model_request_id, ContractTurnExecutor,
-    TurnCancellationInput, TurnExecutionInput, TurnExecutionStreamSink, TurnExecutor,
-    TURN_EXECUTION_TIMEOUT,
+    is_inference_error, is_sandbox_unavailable_error, is_transport_error, turn_model_request_id,
+    ContractTurnExecutor, TurnCancellationInput, TurnExecutionInput, TurnExecutionStreamSink,
+    TurnExecutor, TURN_EXECUTION_TIMEOUT,
 };
 use crate::validation::{
     default_json_array_if_blank, default_json_object_if_blank, default_plain_text_if_blank,
@@ -277,6 +277,125 @@ fn format_utc_seconds(value: OffsetDateTime) -> String {
         value.minute(),
         value.second()
     )
+}
+
+pub const ENV_TURN_LEASE_TTL_SECONDS: &str = "SDKWORK_AGENTS_TURN_LEASE_TTL_SECONDS";
+pub const ENV_TURN_LEASE_HEARTBEAT_SECONDS: &str = "SDKWORK_AGENTS_TURN_LEASE_HEARTBEAT_SECONDS";
+const DEFAULT_TURN_LEASE_TTL_SECONDS: usize = 90;
+const DEFAULT_TURN_LEASE_HEARTBEAT_SECONDS: usize = 30;
+
+fn env_turn_lease_usize(key: &str, default: usize, minimum: usize, maximum: usize) -> usize {
+    std::env::var(key)
+        .ok()
+        .and_then(|value| value.trim().parse::<usize>().ok())
+        .filter(|value| (minimum..=maximum).contains(value))
+        .unwrap_or(default)
+}
+
+/// Execution lease of one in-process interactive turn.
+///
+/// The lease keeps the reconciler on every replica from recovering a turn
+/// whose silent stretch (long thinking, a long tool call without streaming
+/// deltas) exceeds the stale threshold, and its token doubles as the
+/// completion fencing input.
+struct TurnExecutionLease {
+    owner: String,
+    token: String,
+    ttl_seconds: usize,
+    heartbeat_seconds: usize,
+}
+
+impl TurnExecutionLease {
+    fn begin() -> Self {
+        let ttl_seconds = env_turn_lease_usize(
+            ENV_TURN_LEASE_TTL_SECONDS,
+            DEFAULT_TURN_LEASE_TTL_SECONDS,
+            30,
+            3600,
+        );
+        // The heartbeat must fire well before the lease expires: a lost
+        // heartbeat round still leaves at least one full interval of margin.
+        let heartbeat_seconds = env_turn_lease_usize(
+            ENV_TURN_LEASE_HEARTBEAT_SECONDS,
+            DEFAULT_TURN_LEASE_HEARTBEAT_SECONDS,
+            5,
+            600,
+        )
+        .min(ttl_seconds / 2)
+        .max(1);
+        use rand::RngCore;
+        let mut token_bytes = [0u8; 16];
+        rand::rng().fill_bytes(&mut token_bytes);
+        Self {
+            owner: turn_lease_owner(),
+            token: token_bytes.iter().map(|byte| format!("{byte:02x}")).collect(),
+            ttl_seconds,
+            heartbeat_seconds,
+        }
+    }
+}
+
+/// Stable per-process lease owner identity: the deployed node instance id
+/// when present (pod identity in cluster deployments), otherwise the process
+/// id so concurrent processes on one host stay distinguishable.
+fn turn_lease_owner() -> String {
+    match std::env::var("SDKWORK_NODE_INSTANCE_ID") {
+        Ok(node_id) if !node_id.trim().is_empty() => format!("turn-lease:{node_id}"),
+        _ => format!("turn-lease:pid-{}", std::process::id()),
+    }
+}
+
+/// Extends the executing turn's lease until the execution finishes so the
+/// reconciler on any replica does not recover a still-running turn during a
+/// silent stretch (long thinking, a long tool call without streaming deltas).
+/// Stops as soon as the stop flag is set or the lease is lost (`Ok(false)`:
+/// the turn reached a terminal state or another replica recovered it); a
+/// failed extension keeps retrying so a transient database blip does not
+/// forfeit a healthy turn.
+#[allow(clippy::too_many_arguments)]
+fn heartbeat_turn_lease<R: AgentRepository>(
+    repository: &R,
+    stop: Arc<std::sync::atomic::AtomicBool>,
+    tenant_id: u64,
+    organization_id: u64,
+    turn_id: &str,
+    lease_token: &str,
+    ttl_seconds: usize,
+    heartbeat_seconds: usize,
+) {
+    loop {
+        // 1s stop granularity keeps the post-execution join latency bounded
+        // while the heartbeat interval stays configurable.
+        for _ in 0..heartbeat_seconds.max(1) {
+            if stop.load(std::sync::atomic::Ordering::Relaxed) {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+        if stop.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
+        let now = OffsetDateTime::now_utc();
+        let lease_expires_at =
+            format_utc_seconds(now + time::Duration::seconds(ttl_seconds as i64));
+        let occurred_at = format_utc_seconds(now);
+        match repository.extend_agent_turn_lease(
+            tenant_id,
+            organization_id,
+            turn_id,
+            lease_token,
+            &lease_expires_at,
+            &occurred_at,
+        ) {
+            Ok(true) => {}
+            Ok(false) => return,
+            Err(error) => tracing::warn!(
+                target: "sdkwork.agents.turn.lease",
+                error = %error,
+                "turn lease heartbeat failed; the lease is left to expire"
+            ),
+        }
+    }
 }
 
 fn validate_interaction_options(value: &serde_json::Value) -> KernelResult<()> {
@@ -8738,6 +8857,22 @@ where
         let turn_id = turn.turn_id.clone();
         let user_content = user_input_item.content.clone().unwrap_or_default();
         turn.mark_running(command.requested_at.clone());
+        // Interactive turns execute in-process on the replica that accepted
+        // the request, so the running turn carries a live lease like task
+        // runs do: without it the turn reconciler on any replica treats a
+        // silent stretch longer than the stale threshold (long thinking, a
+        // long tool call without streaming deltas) as a crashed worker and
+        // fails a turn that is still executing. The token doubles as the
+        // completion fencing input.
+        let lease = TurnExecutionLease::begin();
+        let lease_started_at = OffsetDateTime::now_utc();
+        turn.begin_lease(
+            lease.owner.clone(),
+            lease.token.clone(),
+            format_utc_seconds(
+                lease_started_at + time::Duration::seconds(lease.ttl_seconds as i64),
+            ),
+        );
         // `update_turn_state` expects the pre-incremented version: the caller
         // must bump `turn.version` before the call and pass the stored
         // version. Fresh turns carry version 1 after `insert_turn_request`;
@@ -8791,31 +8926,64 @@ where
             auth_token: command.auth_token.clone(),
             access_token: command.access_token.clone(),
             wire_protocol: command.wire_protocol.clone(),
+            execution_route: command.execution_route.clone(),
         };
-        let completion = if let Some(stream_sink) = stream_sink.as_ref() {
-            stream_sink.begin_turn(&session.session_id, &turn_id);
-            complete_with_timeout_and_sink(
-                Arc::clone(&self.turn_executor),
-                &execution_input,
-                Arc::clone(stream_sink),
-                TURN_EXECUTION_TIMEOUT,
-            )
-        } else {
-            complete_with_timeout(
-                Arc::clone(&self.turn_executor),
-                &execution_input,
-                command.prefer_stream,
-                TURN_EXECUTION_TIMEOUT,
-            )
-        };
+        let stop_heartbeat = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let completion = std::thread::scope(|scope| {
+            // The heartbeat borrows the repository through the scoped thread:
+            // no additional handle is needed, and the loop polls the stop flag
+            // every second so the join below delays completion by at most 1s.
+            let heartbeat = {
+                let stop = Arc::clone(&stop_heartbeat);
+                let repository = &self.repository;
+                let (tenant_id, organization_id) = (turn.tenant_id, turn.organization_id);
+                let turn_id = turn_id.clone();
+                let lease_token = lease.token.clone();
+                let (ttl_seconds, heartbeat_seconds) =
+                    (lease.ttl_seconds, lease.heartbeat_seconds);
+                scope.spawn(move || {
+                    heartbeat_turn_lease(
+                        repository,
+                        stop,
+                        tenant_id,
+                        organization_id,
+                        &turn_id,
+                        &lease_token,
+                        ttl_seconds,
+                        heartbeat_seconds,
+                    );
+                })
+            };
+            let completion = if let Some(stream_sink) = stream_sink.as_ref() {
+                stream_sink.begin_turn(&session.session_id, &turn_id);
+                complete_with_timeout_and_sink(
+                    Arc::clone(&self.turn_executor),
+                    &execution_input,
+                    Arc::clone(stream_sink),
+                    TURN_EXECUTION_TIMEOUT,
+                )
+            } else {
+                complete_with_timeout(
+                    Arc::clone(&self.turn_executor),
+                    &execution_input,
+                    command.prefer_stream,
+                    TURN_EXECUTION_TIMEOUT,
+                )
+            };
+            stop_heartbeat.store(true, std::sync::atomic::Ordering::Relaxed);
+            let _ = heartbeat.join();
+            completion
+        });
         if is_inference_error(completion.runtime_mode)
             || is_capacity_error(completion.runtime_mode)
             || is_funding_error(completion.runtime_mode)
             || is_transport_error(completion.runtime_mode)
+            || is_sandbox_unavailable_error(completion.runtime_mode)
         {
             let capacity_exhausted = is_capacity_error(completion.runtime_mode);
             let funding_shortfall = is_funding_error(completion.runtime_mode);
             let transport_unavailable = is_transport_error(completion.runtime_mode);
+            let sandbox_unavailable = is_sandbox_unavailable_error(completion.runtime_mode);
             let (error_code, error_detail) = if capacity_exhausted {
                 (
                     "turn_provider_capacity_exhausted",
@@ -8836,6 +9004,16 @@ where
                     // from a transient provider failure.
                     "turn_cloudrouter_transport_unavailable",
                     "the CloudRouter transport was not assembled for this deployment",
+                )
+            } else if sandbox_unavailable {
+                // Same assembly-defect category: the sandbox route was
+                // requested (per request or deployment default) but the
+                // sandbox session lifecycle could not honor it. Failing with
+                // its own code keeps it diagnosable and retry-meaningless
+                // until the composition wires the sandbox session port.
+                (
+                    "turn_sandbox_unavailable",
+                    "the sandbox execution route is unavailable for this deployment",
                 )
             } else {
                 ("turn_inference_failed", "managed turn inference failed")
@@ -8875,6 +9053,18 @@ where
                     .with_safe_for_user(false))
             } else if capacity_exhausted {
                 Err(KernelError::resource_exhausted(completion.content))
+            } else if sandbox_unavailable {
+                // Same operator-actionable shape as the transport failure:
+                // retrying cannot fix a missing sandbox session port; the
+                // deployment must assemble one (or the caller must drop the
+                // sandbox route override).
+                Err(KernelError::provider_error(error_code, completion.content)
+                    .with_detail(
+                        crate::turn_runtime::SANDBOX_ROUTE_UNAVAILABLE_DETAIL_KEY,
+                        "unavailable",
+                    )
+                    .with_retryable(false)
+                    .with_safe_for_user(false))
             } else {
                 Err(KernelError::provider_error(error_code, completion.content))
             };
@@ -9221,6 +9411,20 @@ where
             ));
         }
         Ok(())
+    }
+
+    /// Authorizes a tenant-level media tool configuration management
+    /// operation (enable/disable, default arguments, drive persistence).
+    ///
+    /// These switches apply to every agent in the tenant, so the operation
+    /// always requires the manage capability — the HTTP edge must not be the
+    /// only authorization layer for tenant-wide tool state.
+    pub fn authorize_tool_configuration_management(
+        &self,
+        request_id: impl Into<String>,
+        subject: PolicySubject,
+    ) -> KernelResult<()> {
+        self.authorize(request_id, subject, "agent.tools.configuration", "manage")
     }
 
     fn emit_audit_event(
@@ -12316,6 +12520,7 @@ mod task_tests {
                 auth_token: None,
                 access_token: None,
                 wire_protocol: None,
+                execution_route: None,
             })
         });
         executor.wait_until_started();
@@ -12502,6 +12707,7 @@ mod task_tests {
             auth_token: None,
             access_token: None,
             wire_protocol: None,
+            execution_route: None,
         };
 
         // First attempt: provider failure marks the Turn Failed.

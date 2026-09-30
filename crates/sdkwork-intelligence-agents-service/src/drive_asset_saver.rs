@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use sdkwork_agents_tool_contract::MediaResource;
-use sdkwork_drive_object_runtime::DriveObjectStoreRuntime;
+use sdkwork_drive_object_runtime::{DriveObjectStoreRuntime, ProviderAccessIntent};
 use sdkwork_drive_storage_contract::DriveObjectStore;
 use sdkwork_drive_uploader_service::service::{
     DriveUploaderService, PrepareUploaderUploadCommand, SqlUploaderStore, UploadBytesCommand,
@@ -126,7 +126,7 @@ impl DriveAssetSaver {
 
         let store = SqlUploaderStore::new(self.pool.clone());
         let service = DriveUploaderService::new(store);
-        let object_store = self.resolve_active_object_store().await?;
+        let object_store = self.resolve_active_object_store(&context.tenant_id).await?;
 
         let item = service
             .upload_bytes(
@@ -150,17 +150,18 @@ impl DriveAssetSaver {
         })
     }
 
-    /// Resolves the first active storage provider adapter for the shared
-    /// database, used as the `DriveObjectStore` for uploads.
+    /// Resolves the tenant's first active storage provider adapter for the
+    /// shared database, used as the `DriveObjectStore` for uploads.
     async fn resolve_active_object_store(
         &self,
+        tenant_id: &str,
     ) -> Result<Arc<dyn DriveObjectStore>, DriveSaveError> {
         let provider_store =
             sdkwork_drive_workspace_service::infrastructure::sql::storage_provider_store::SqlStorageProviderStore::new(
                 self.pool.clone(),
             );
         let providers = provider_store
-            .list_storage_providers(Some("active"), 0, 1)
+            .list_storage_providers(tenant_id, None, Some("active"), 0, 1)
             .await
             .map_err(|error| DriveSaveError::Provider(service_error_message(error)))?;
         let provider = providers.first().ok_or_else(|| {
@@ -168,8 +169,12 @@ impl DriveAssetSaver {
         })?;
 
         let runtime = DriveObjectStoreRuntime::new(self.pool.clone());
+        // `resolve` is intent-scoped: `Write` is the intent for minting new
+        // presigned URLs or accepting new bytes, which is exactly what this
+        // upload path does, and it is the intent that requires an `active`
+        // provider — the same status this function already filters on above.
         let store = runtime
-            .resolve(&provider.id, provider.version)
+            .resolve(&provider.id, ProviderAccessIntent::Write)
             .await
             .map_err(|error| DriveSaveError::Provider(error.to_string()))?;
         Ok(store)
@@ -227,13 +232,15 @@ fn now_epoch_ms() -> i64 {
 
 /// Fetches the bytes of a generated media resource from its delivery URL.
 ///
-/// The fetch is bounded on every axis: scheme and host are validated against
-/// the local/private network before connecting (SSRF guard), connect and
-/// total timeouts are enforced, and the body is streamed with a hard size
-/// cap so an oversized or unbounded provider response can never exhaust
-/// process memory.
+/// The fetch is bounded on every axis: the URL is validated against the
+/// local/private network before connecting through the shared SSRF guard
+/// ([`crate::network_guard`]), connect and total timeouts are enforced, and
+/// the body is streamed with a hard size cap so an oversized or unbounded
+/// provider response can never exhaust process memory.
 pub async fn fetch_resource_bytes(url: &str) -> Result<Vec<u8>, DriveSaveError> {
-    let url = validate_media_fetch_url(url).await?;
+    let url = crate::network_guard::ensure_outbound_target_is_public(url)
+        .await
+        .map_err(|error| DriveSaveError::Fetch(error.0))?;
     let response = media_fetch_client()
         .get(url)
         .send()
@@ -265,74 +272,6 @@ pub async fn fetch_resource_bytes(url: &str) -> Result<Vec<u8>, DriveSaveError> 
         body.extend_from_slice(&chunk);
     }
     Ok(body)
-}
-
-/// Validates a provider delivery URL before the server connects to it.
-///
-/// Only `http`/`https` is accepted, and loopback, link-local, private and
-/// multicast targets are rejected so a provider-controlled URL can never
-/// point the server at cloud metadata endpoints or other internal services.
-async fn validate_media_fetch_url(raw: &str) -> Result<reqwest::Url, DriveSaveError> {
-    let url = reqwest::Url::parse(raw)
-        .map_err(|error| DriveSaveError::Fetch(format!("invalid media URL: {error}")))?;
-    if !matches!(url.scheme(), "http" | "https") {
-        return Err(DriveSaveError::Fetch(
-            "media URL must use http or https".to_string(),
-        ));
-    }
-    let host = url
-        .host_str()
-        .ok_or_else(|| DriveSaveError::Fetch("media URL has no host".to_string()))?;
-    if host_is_unreachable_from_server(host).await {
-        return Err(DriveSaveError::Fetch(format!(
-            "media URL host {host} is not reachable from the server"
-        )));
-    }
-    Ok(url)
-}
-
-/// Rejects hosts that resolve to internal or link-local network space.
-///
-/// IP literals are checked directly; hostnames are checked for known
-/// internal suffixes and, when resolvable, for internal resolved addresses
-/// (the DNS rebinding window is bounded by the fetch timeout).
-async fn host_is_unreachable_from_server(host: &str) -> bool {
-    if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-        return is_internal_ip(ip);
-    }
-    let host = host.to_ascii_lowercase();
-    if host == "localhost"
-        || host.ends_with(".localhost")
-        || host.ends_with(".local")
-        || host.ends_with(".internal")
-        || host.ends_with(".localdomain")
-    {
-        return true;
-    }
-    // Resolve and inspect every address. Resolution failure is treated as
-    // reachable-unknown; the fetch timeout still bounds the attempt.
-    if let Ok(addresses) = tokio::net::lookup_host((host.as_str(), 0)).await {
-        return addresses.map(|address| address.ip()).any(is_internal_ip);
-    }
-    false
-}
-
-/// Whether an address belongs to network space the server must never fetch:
-/// loopback, private, link-local, unspecified, multicast or broadcast.
-fn is_internal_ip(ip: std::net::IpAddr) -> bool {
-    match ip {
-        std::net::IpAddr::V4(v4) => {
-            v4.is_loopback()
-                || v4.is_private()
-                || v4.is_link_local()
-                || v4.is_unspecified()
-                || v4.is_broadcast()
-                || v4.is_multicast()
-        }
-        std::net::IpAddr::V6(v6) => {
-            v6.is_loopback() || v6.is_unspecified() || v6.is_multicast() || v6.is_unique_local()
-        }
-    }
 }
 
 /// Errors surfaced by the server-side drive persistence path.
@@ -438,20 +377,6 @@ mod tests {
             Ok(_) => {}
             Err(other) => panic!("unexpected error kind for public URL: {other:?}"),
         }
-    }
-
-    #[test]
-    fn internal_ip_detection_covers_ipv4_and_ipv6() {
-        assert!(is_internal_ip("127.0.0.1".parse().expect("ip")));
-        assert!(is_internal_ip("10.1.2.3".parse().expect("ip")));
-        assert!(is_internal_ip("172.16.0.1".parse().expect("ip")));
-        assert!(is_internal_ip("192.168.1.1".parse().expect("ip")));
-        assert!(is_internal_ip("169.254.1.1".parse().expect("ip")));
-        assert!(is_internal_ip("::1".parse().expect("ip")));
-        assert!(is_internal_ip("fd00::1".parse().expect("ip")));
-        assert!(!is_internal_ip("8.8.8.8".parse().expect("ip")));
-        assert!(!is_internal_ip("93.184.216.34".parse().expect("ip")));
-        assert!(!is_internal_ip("2606:2800:220:1::1".parse().expect("ip")));
     }
 
     #[test]

@@ -1950,6 +1950,21 @@ pub trait AgentRepository: Send + Sync {
         updated_at: &str,
     ) -> KernelResult<()>;
 
+    /// Extends the execution lease of a running turn (heartbeat).
+    ///
+    /// Returns `Ok(false)` when the turn is no longer running or the lease
+    /// token no longer matches, so a replica that lost its lease stops
+    /// extending it and the reconciler can recover the turn.
+    fn extend_agent_turn_lease(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        turn_id: &str,
+        lease_token: &str,
+        lease_expires_at: &str,
+        occurred_at: &str,
+    ) -> KernelResult<bool>;
+
     /// Clears the streaming checkpoint after the turn completes durably.
     fn clear_turn_streaming_content(
         &self,

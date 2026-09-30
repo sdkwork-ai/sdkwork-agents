@@ -43,9 +43,31 @@ pub fn agents_is_production_like_environment() -> bool {
         .any(|id| agents_deployment_environment_name() == *id)
 }
 
+/// True when at least one variable naming the deployment environment is
+/// explicitly configured (non-empty).
+pub fn agents_environment_is_explicitly_configured() -> bool {
+    [
+        "SDKWORK_DEPLOYMENT_ENV",
+        "ENVIRONMENT",
+        "SDKWORK_AGENTS_ENVIRONMENT",
+        "SDKWORK_AGENTS_CONFIG_PROFILE",
+    ]
+    .iter()
+    .any(|key| {
+        std::env::var(key)
+            .ok()
+            .is_some_and(|value| !value.trim().is_empty())
+    })
+}
+
 /// When false, preview/prompt-optimization must not silently echo input without an agent engine.
+///
+/// Fail-closed: an unset environment is treated as production-like, matching
+/// the web layer's posture for unknown environments. A deployment that forgot
+/// to configure its environment must not silently enable the deterministic
+/// fallback that echoes user input as model output.
 pub fn agents_allow_contract_runtime_fallback() -> bool {
-    !agents_is_production_like_environment()
+    agents_environment_is_explicitly_configured() && !agents_is_production_like_environment()
 }
 
 /// `SDKWORK_AGENTS_DEV_AUTH_BYPASS` enables inline dev credentials only outside production profiles.
@@ -153,11 +175,15 @@ mod tests {
         std::env::remove_var("SDKWORK_AGENTS_DEV_AUTH_BYPASS");
 
         assert_eq!(agents_deployment_environment_name(), "development");
-        assert!(!agents_is_production_like_environment());
-        assert!(agents_allow_contract_runtime_fallback());
+        // Fail-closed: an unset environment is treated as production-like for
+        // the security gates even though the canonical name stays development.
+        assert!(!agents_allow_contract_runtime_fallback());
         assert!(!agents_use_dev_inline_auth_resolver());
 
         std::env::set_var("SDKWORK_DEPLOYMENT_ENV", "development");
+        assert!(agents_allow_contract_runtime_fallback());
+        assert!(!agents_use_dev_inline_auth_resolver());
+
         std::env::set_var("SDKWORK_AGENTS_DEV_AUTH_BYPASS", "true");
 
         assert!(!agents_is_production_like_environment());
