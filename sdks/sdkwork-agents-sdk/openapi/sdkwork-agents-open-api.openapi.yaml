@@ -22,6 +22,7 @@ paths:
       - ai
       summary: List managed agents
       operationId: agents.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -319,6 +320,7 @@ paths:
       - ai
       summary: List provider bindings for one managed agent
       operationId: agents.providerBindings.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -506,6 +508,7 @@ paths:
       - ai
       summary: List agent sessions for one managed agent
       operationId: agents.sessions.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -626,6 +629,7 @@ paths:
         default sort is sequence ascending; use -sequence to fetch the newest items
         first.
       operationId: agents.sessionItems.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -701,6 +705,7 @@ paths:
       - ai
       summary: List durable turns for one agent session
       operationId: agents.turns.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -829,6 +834,7 @@ paths:
       description: P1 interactive offset list. Supports kind and status filters and
         uses createdAt descending with the interaction id as a stable tie-breaker.
       operationId: agents.interactions.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -1061,6 +1067,7 @@ paths:
       - ai
       summary: List resumable checkpoints for one agent session
       operationId: agents.checkpoints.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -1216,6 +1223,7 @@ paths:
       - ai
       summary: List runtime bindings for one agent session
       operationId: agents.sessionRuntimeBindings.list
+      x-sdkwork-pagination-mode: offset
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -1403,6 +1411,7 @@ paths:
       - ai
       summary: List scheduled tasks for one managed agent
       operationId: agents.tasks.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -1661,6 +1670,7 @@ paths:
       - ai
       summary: List Runs for one scheduled task using opaque keyset pagination
       operationId: agents.taskRuns.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -1808,6 +1818,7 @@ paths:
       - ai
       summary: List execution Attempts for one scheduled task Run
       operationId: agents.taskRunAttempts.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - ApiKey: []
       x-sdkwork-domain: ai
@@ -4666,6 +4677,12 @@ components:
         requestedModelId:
           type: string
           maxLength: 128
+        executionRoute:
+          type: string
+          enum:
+          - in_process
+          - sandbox
+          description: Optional execution placement override for this turn. `in_process` executes on the receiving replica's agent engines; `sandbox` requires the deployment to assemble the sandbox session port and fails closed otherwise. Omitted resolves through the deployment default (SDKWORK_AGENTS_TURN_EXECUTION_ROUTE).
         idempotencyKey:
           type: string
           minLength: 1

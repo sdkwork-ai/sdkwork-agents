@@ -228,6 +228,5 @@ export type { MediaToolInvokeBody } from './media-tool-invoke-body';
 export type { MediaToolInvokeResponse } from './media-tool-invoke-response';
 export type { DriveAssetView } from './drive-asset-view';
 export type { ToolAssetView } from './tool-asset-view';
-export type { MediaToolConfigurationBody } from './media-tool-configuration-body';
 export type { FieldError } from './field-error';
 export type { ProblemDetail } from './problem-detail';

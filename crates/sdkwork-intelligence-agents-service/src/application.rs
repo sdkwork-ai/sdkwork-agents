@@ -2,8 +2,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 mod commands;
+mod outbox_dispatch;
 mod turn_input_queue;
 pub use commands::*;
+pub use outbox_dispatch::*;
 pub use turn_input_queue::*;
 
 use crate::agent_turn::AgentTurnMode;
@@ -970,9 +972,8 @@ pub(crate) enum ProviderSessionBindingClaim {
     /// The canonical target Session already owns the binding.
     AlreadyTarget,
     /// A provider-import Session (canonical `session.{engine}.*`, or a
-    /// legacy `session.native.*` / `session.provider.*` Session from an
-    /// older scheme or another project) claimed the identity and was
-    /// retired (archived Session + released binding).
+    /// Session under a retired pre-canonical prefix) claimed the identity
+    /// and was retired (archived Session + released binding).
     Retired,
     /// A user-created Session owns the binding; the provider Session is
     /// already a live Session and must not be imported again.
@@ -2074,7 +2075,52 @@ where
             terminal_status,
             requested_at.clone(),
         );
-        self.repository.update_runtime_execution(record.clone())?;
+        // The terminal transition and its announcing outbox event commit
+        // atomically: webhook subscribers must never observe a call whose
+        // completion event is missing, and the dispatcher must never see an
+        // event for a transition that did not persist.
+        let webhook_type = if terminal_status == AgentRuntimeExecutionStatus::Completed {
+            "agent_call.completed"
+        } else {
+            "agent_call.failed"
+        };
+        let event = crate::persistence::AgentOutboxEventRow {
+            id: self.repository.next_id()?,
+            tenant_id: record.tenant_id,
+            organization_id: 0,
+            event_id: format!("agent-call-{}:{}", record.execution_id, record.completed_at),
+            aggregate_type: "agent_call".to_string(),
+            aggregate_id: record.execution_id.clone(),
+            aggregate_version: 1,
+            event_type: webhook_type.to_string(),
+            payload_json: serde_json::json!({
+                "executionId": record.execution_id,
+                "agentId": record.agent_id,
+                "status": terminal_status.as_str(),
+                "errorCode": Option::<String>::None,
+            })
+            .to_string(),
+            headers_json: "{}".to_string(),
+            dedupe_key: format!(
+                "agent-call-terminal:{}:{}",
+                record.execution_id, record.completed_at
+            ),
+            status: crate::persistence::OUTBOX_STATUS_PENDING,
+            attempt_count: 0,
+            max_attempts: 10,
+            available_at: requested_at.clone(),
+            lease_owner: None,
+            lease_token: None,
+            lease_expires_at: None,
+            fencing_token: 0,
+            published_at: None,
+            last_error_code: None,
+            last_error_detail: None,
+            created_at: requested_at.clone(),
+            updated_at: requested_at.clone(),
+        };
+        self.repository
+            .update_runtime_execution_with_outbox(record.clone(), event)?;
         self.emit_runtime_execution_audit_event(
             if terminal_status == AgentRuntimeExecutionStatus::Completed {
                 AgentAuditAction::RuntimeExecutionCompleted
@@ -2678,6 +2724,16 @@ where
             record.secret = String::new();
         }
         Ok(PaginatedResult::new(items, None, None))
+    }
+
+    /// Total active-scope webhook subscription count for one tenant scope,
+    /// backing the offset-mode `pageInfo.totalItems` of `agents.webhooks.list`.
+    pub fn count_webhook_subscriptions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64> {
+        self.repository.count_webhook_subscriptions(tenant_id, organization_id)
     }
 
     /// `agents.webhooks.delete` — removes the subscription. Past deliveries
@@ -6400,8 +6456,8 @@ where
     /// provider Session constraint.
     ///
     /// Provider-import Sessions that predate the canonical scheme
-    /// (`session.provider.*` / `session.native.*`, detected by
-    /// `is_legacy_provider_session_id`) or that are attributed to another
+    /// (detected by `is_legacy_provider_session_id`) or that are attributed
+    /// to another
     /// project are archived and their bindings released. User-created
     /// Sessions that already own the identity are left untouched and
     /// reported so the caller skips the redundant import.
@@ -6447,8 +6503,8 @@ where
         // legacy-scheme imports, including imports attributed to another
         // project); user-created Sessions that already own the provider
         // identity must never be archived. Legacy-scheme Sessions are the
-        // only place the old `session.provider.*` / `session.native.*`
-        // prefixes are recognized (via `is_legacy_provider_session_id`).
+        // only place the retired pre-canonical prefixes are recognized
+        // (via `is_legacy_provider_session_id`).
         let is_provider_import = is_provider_session_id(&binding.session_id);
         if !is_provider_import {
             return Ok(ProviderSessionBindingClaim::AlreadyBoundByUserSession);
@@ -12310,7 +12366,7 @@ mod task_tests {
         let organization_one_read = service
             .get_task(GetTaskCommand {
                 tenant_id: 100_001,
-                organization_id: 10,
+                organization_id: 4210,
                 path_agent_id: organization_one_agent.agent_id.clone(),
                 task_id: organization_one_task.task_id.clone(),
                 owner_scope: None,
@@ -12388,7 +12444,7 @@ mod task_tests {
         let unchanged = service
             .get_task(GetTaskCommand {
                 tenant_id: 100_001,
-                organization_id: 10,
+                organization_id: 4210,
                 path_agent_id: organization_one_agent.agent_id,
                 task_id: organization_one_only_task.task_id,
                 owner_scope: None,

@@ -79,8 +79,14 @@ pub fn agents_dev_auth_bypass_enabled() -> bool {
 }
 
 /// Whether HTTP surfaces may use inline dev auth resolver.
+///
+/// Fail-closed on an unset environment, matching
+/// [`agents_allow_contract_runtime_fallback`]: an unconfigured deployment
+/// must never resolve inline dev credentials.
 pub fn agents_use_dev_inline_auth_resolver() -> bool {
-    !agents_is_production_like_environment() && agents_dev_auth_bypass_enabled()
+    agents_environment_is_explicitly_configured()
+        && !agents_is_production_like_environment()
+        && agents_dev_auth_bypass_enabled()
 }
 
 /// Fail closed when dev auth bypass is enabled in a production-like deployment.

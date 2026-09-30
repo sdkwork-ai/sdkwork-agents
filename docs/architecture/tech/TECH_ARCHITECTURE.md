@@ -55,7 +55,7 @@ No other module owns a durable agent execution Session or transcript.
 | --- | --- | --- |
 | HTTP | Rust, Axum, `sdkwork-web-framework` | request context, routing, envelopes, problem details |
 | Application | Rust service/use-case layer | authorization, orchestration, transactions |
-| Persistence | PostgreSQL, `sdkwork-database` | 23-table managed module and lifecycle |
+| Persistence | PostgreSQL, `sdkwork-database` | 30-table managed module and lifecycle |
 | Scheduling | PostgreSQL materializer and horizontally scaled workers | cron/timezone, occurrences, leases, fencing, retries, reconciliation |
 | Runtime | `sdkwork-agents-runtime-facade` | product-safe kernel adapter |
 | Agent Provider mechanism | `sdkwork-kernel` | model/agent-engine SPI, plugins and transient events |
@@ -119,7 +119,7 @@ stays under `generated/server-openapi` and is never hand-edited.
 
 | Surface | Authority | Prefix | Operations | Auth |
 | --- | --- | --- | ---: | --- |
-| App | `sdkwork-agents-app-api` | `/app/v3/api` | 112 | dual token |
+| App | `sdkwork-agents-app-api` | `/app/v3/api` | 127 | dual token |
 | Backend | `sdkwork-agents-backend-api` | `/backend/v3/api` | 60 | dual token/operator |
 | Open | `sdkwork-agents-open-api` | `/agent/v3/api` | 56 | API key |
 
@@ -148,6 +148,7 @@ the same contract before constructing the generated client.
 | Workspace and Project | `ai_agent_workspace`, `ai_agent_project`, `ai_agent_project_composition_slot`, `ai_agent_project_member`, `ai_agent_share_link` |
 | Session execution | `ai_agent_session`, `ai_agent_session_runtime_binding`, `ai_agent_turn`, `ai_agent_session_item`, `ai_agent_item_drive_ref`, `ai_agent_item_feedback`, `ai_agent_interaction`, `ai_agent_session_checkpoint` |
 | Orchestration and delivery | `ai_agent_task`, `ai_agent_task_run`, `ai_agent_task_run_attempt`, `ai_agent_resource_user_state`, `ai_agent_outbox_event` |
+| Governance and extensions | `ai_agent_runtime_execution`, `ai_agent_version`, `ai_agent_webhook_subscription`, `ai_agent_webhook_delivery`, `ai_agent_model_configuration_profile`, `ai_agent_tool_configuration`, `ai_agent_tool_asset` |
 
 The Session execution group also contains
 `ai_agent_turn_input_queue_entry`, the durable owner-scoped FIFO input queue.
@@ -238,10 +239,12 @@ authority. Optional capability services may be mounted or remote without
 changing public resource semantics.
 
 Standalone and cloud Task workers currently poll PostgreSQL directly. Outbox
-facts are committed with aggregate changes, while external delivery remains
-disabled until a platform-owned publisher SPI supplies reviewed idempotency,
-retry, and observability behavior. Agents does not implement a local Kafka or
-raw HTTP publisher. Future broker or Redis acceleration never owns schedule
+facts are committed with aggregate changes, and the worker's outbox dispatch
+stage delivers them: events map to webhook event types, fan out to active
+subscriptions with HMAC signatures (claim leases via `FOR UPDATE SKIP LOCKED`,
+exponential backoff with a dead-letter state, per-attempt delivery rows), and
+internal events are marked published directly. Broker (Kafka/Redis)
+acceleration remains a platform-relay decision and never owns schedule
 correctness.
 
 ## 9. Architecture Decision Index

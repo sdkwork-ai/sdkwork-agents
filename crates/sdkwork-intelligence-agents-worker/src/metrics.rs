@@ -9,6 +9,11 @@ use sdkwork_utils_rust::{diff_millis, parse_datetime};
 pub struct SchedulerWorkerMetrics {
     materialized_total: AtomicU64,
     claimed_total: AtomicU64,
+    outbox_events_claimed_total: AtomicU64,
+    outbox_deliveries_sent_total: AtomicU64,
+    outbox_events_published_total: AtomicU64,
+    outbox_events_retried_total: AtomicU64,
+    outbox_events_dead_lettered_total: AtomicU64,
     recovered_leases_total: AtomicU64,
     recovered_timeouts_total: AtomicU64,
     retries_total: AtomicU64,
@@ -67,6 +72,24 @@ impl SchedulerWorkerMetrics {
 
     pub(crate) fn add_timed_out_recovered(&self, count: u64) {
         add(&self.recovered_timeouts_total, count);
+    }
+
+    /// Records one transactional-outbox dispatch round's outcome.
+    pub(crate) fn record_outbox_dispatch(
+        &self,
+        summary: &sdkwork_intelligence_agents_service::OutboxDispatchSummary,
+    ) {
+        add(&self.outbox_events_claimed_total, summary.claimed as u64);
+        add(
+            &self.outbox_deliveries_sent_total,
+            summary.deliveries_sent as u64,
+        );
+        add(&self.outbox_events_published_total, summary.delivered as u64);
+        add(&self.outbox_events_retried_total, summary.retried as u64);
+        add(
+            &self.outbox_events_dead_lettered_total,
+            summary.dead_lettered as u64,
+        );
     }
 
     pub(crate) fn record_snapshot(&self, snapshot: TaskSchedulerMetricsSnapshot) {
@@ -217,6 +240,36 @@ impl SchedulerWorkerMetrics {
             "sdkwork_agents_task_worker_recovered_leases_total",
             "Expired Task Run leases recovered.",
             load(&self.recovered_leases_total),
+        );
+        counter(
+            &mut output,
+            "sdkwork_agents_outbox_events_claimed_total",
+            "Outbox events claimed by dispatch rounds.",
+            load(&self.outbox_events_claimed_total),
+        );
+        counter(
+            &mut output,
+            "sdkwork_agents_outbox_deliveries_sent_total",
+            "Webhook deliveries attempted for outbox events.",
+            load(&self.outbox_deliveries_sent_total),
+        );
+        counter(
+            &mut output,
+            "sdkwork_agents_outbox_events_published_total",
+            "Outbox events fully published.",
+            load(&self.outbox_events_published_total),
+        );
+        counter(
+            &mut output,
+            "sdkwork_agents_outbox_events_retried_total",
+            "Outbox events rescheduled for retry after a failed delivery.",
+            load(&self.outbox_events_retried_total),
+        );
+        counter(
+            &mut output,
+            "sdkwork_agents_outbox_events_dead_lettered_total",
+            "Outbox events dead-lettered after exhausting attempts.",
+            load(&self.outbox_events_dead_lettered_total),
         );
         counter(
             &mut output,

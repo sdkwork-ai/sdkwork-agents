@@ -196,6 +196,20 @@ pub async fn app_list_media_tools(
 /// or leave the HTTP request suspended.
 const MEDIA_TOOL_INVOKE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
+/// Concurrent media-tool pipeline executions. One execution can buffer media
+/// up to the single-resource fetch cap, so this gate bounds the aggregate
+/// pipeline memory independently of request concurrency.
+const DEFAULT_MEDIA_TOOL_LIMIT: usize = 4;
+static MEDIA_TOOL_LIMIT: std::sync::LazyLock<std::sync::Arc<tokio::sync::Semaphore>> =
+    std::sync::LazyLock::new(|| {
+        let configured = std::env::var("SDKWORK_AGENTS_MEDIA_TOOL_LIMIT")
+            .ok()
+            .and_then(|value| value.trim().parse::<usize>().ok())
+            .filter(|value| (1..=64).contains(value))
+            .unwrap_or(DEFAULT_MEDIA_TOOL_LIMIT);
+        std::sync::Arc::new(tokio::sync::Semaphore::new(configured))
+    });
+
 /// POST /app/v3/api/ai/tools/{toolId}/invoke — execute one media tool.
 pub async fn app_invoke_media_tool(
     State(state): State<AgentHttpState>,
@@ -237,10 +251,27 @@ pub async fn app_invoke_media_tool(
         // Run the synchronous pipeline on the blocking pool with a hard
         // timeout so a hung cloudrouter/storage call cannot block the async
         // executor; the worker keeps running after the bound and its result
-        // is dropped.
+        // is dropped. The dedicated media gate bounds concurrent pipeline
+        // executions independently of the request pool: one invocation can
+        // buffer media up to the single-resource fetch cap, so unbounded
+        // concurrency would scale that peak memory linearly with traffic. A
+        // full gate rejects quickly (bounded rejection over unbounded
+        // queuing).
+        let permit = match MEDIA_TOOL_LIMIT.clone().try_acquire_owned() {
+            Ok(permit) => permit,
+            Err(_) => {
+                return Err(ApiProblem::too_many_requests(
+                    "media tool pipeline is at capacity; retry shortly",
+                    Some(5),
+                ));
+            }
+        };
         let outcome = tokio::time::timeout(
             MEDIA_TOOL_INVOKE_TIMEOUT,
-            tokio::task::spawn_blocking(move || invocation.invoke(&request)),
+            tokio::task::spawn_blocking(move || {
+                let _permit = permit;
+                invocation.invoke(&request)
+            }),
         )
         .await
         .map_err(|_| ApiProblem::gateway_timeout("media tool invocation timed out"))?

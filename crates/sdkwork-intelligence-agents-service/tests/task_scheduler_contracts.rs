@@ -14,7 +14,7 @@ fn task(task_id: &str, tenant_id: u64, max_concurrent_runs: u16) -> AgentTaskRec
         id: tenant_id + u64::try_from(task_id.len()).expect("task id length"),
         task_id: task_id.to_string(),
         tenant_id,
-        organization_id: 10,
+        organization_id: 4210,
         agent_id: "agent.scheduler-contract".to_string(),
         owner_user_id: 100,
         session_id: format!("session.{task_id}"),
@@ -517,7 +517,7 @@ fn pause_and_resume_advance_task_version_and_generation() {
     let paused = service
         .pause_task(PauseTaskCommand {
             tenant_id: 100_001,
-            organization_id: 10,
+            organization_id: 4210,
             path_agent_id: "agent.scheduler-contract".to_string(),
             task_id: "task.pause-resume".to_string(),
             expected_version: 0,
@@ -533,7 +533,7 @@ fn pause_and_resume_advance_task_version_and_generation() {
     let resumed = service
         .resume_task(ResumeTaskCommand {
             tenant_id: 100_001,
-            organization_id: 10,
+            organization_id: 4210,
             path_agent_id: "agent.scheduler-contract".to_string(),
             task_id: "task.pause-resume".to_string(),
             expected_version: paused.version,
@@ -688,7 +688,7 @@ fn cancellation_distinguishes_pending_and_active_run_outcomes() {
     assert!(repository
         .reconcile_task_run(&ReconcileTaskRunRequest {
             tenant_id: 100_001,
-            organization_id: 10,
+            organization_id: 4210,
             run_id: active.run_id.clone(),
             expected_version: reconciling.version.saturating_sub(1),
             terminal_status: AgentTaskRunStatus::Succeeded,
@@ -699,7 +699,7 @@ fn cancellation_distinguishes_pending_and_active_run_outcomes() {
     let succeeded = repository
         .reconcile_task_run(&ReconcileTaskRunRequest {
             tenant_id: 100_001,
-            organization_id: 10,
+            organization_id: 4210,
             run_id: active.run_id.clone(),
             expected_version: reconciling.version,
             terminal_status: AgentTaskRunStatus::Succeeded,

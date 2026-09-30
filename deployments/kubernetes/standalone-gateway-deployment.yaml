@@ -68,6 +68,15 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
+            # Cluster replicas hold no local CLI provider state (Codex /
+            # Claude Code sessions live on a developer workstation), so cloud
+            # turns must route to a sandbox session or a remote engine. The
+            # sandbox route fails closed when no sandbox port is assembled.
+            - name: SDKWORK_AGENTS_TURN_EXECUTION_ROUTE
+              value: sandbox
+            # Structured logs for the cluster log collector.
+            - name: SDKWORK_LOG_FORMAT
+              value: json
           startupProbe:
             httpGet:
               path: /healthz

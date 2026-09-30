@@ -54,6 +54,15 @@ pub trait TaskWorkerClient: Clone + Send + Sync + 'static {
         limit: usize,
     ) -> KernelResult<TaskRunReconciliationResult>;
 
+    /// Runs one transactional-outbox dispatch round (webhook delivery +
+    /// agent-call recovery). The default is a no-op for test clients.
+    async fn dispatch_outbox_events(
+        &self,
+        _worker_id: String,
+    ) -> KernelResult<sdkwork_intelligence_agents_service::OutboxDispatchSummary> {
+        Ok(sdkwork_intelligence_agents_service::OutboxDispatchSummary::default())
+    }
+
     async fn execute_task_run_claim(
         &self,
         claim: TaskRunClaim,
@@ -127,6 +136,13 @@ impl TaskWorkerClient for AgentTaskWorkerHandle {
     ) -> KernelResult<AgentTaskRunRecord> {
         AgentTaskWorkerHandle::execute_task_run_claim(self, claim, requested_by, requested_at).await
     }
+
+    async fn dispatch_outbox_events(
+        &self,
+        worker_id: String,
+    ) -> KernelResult<sdkwork_intelligence_agents_service::OutboxDispatchSummary> {
+        AgentTaskWorkerHandle::dispatch_outbox_events(self, worker_id).await
+    }
 }
 
 pub async fn run_scheduler_worker<C>(
@@ -143,13 +159,16 @@ pub async fn run_scheduler_worker<C>(
     let mut recover = tokio::time::interval(config.recovery_interval);
     let mut metrics_snapshot = tokio::time::interval(config.metrics_snapshot_interval);
     let mut reconcile = tokio::time::interval(config.reconciliation_interval);
+    let mut outbox_dispatch = tokio::time::interval(config.outbox_dispatch_interval);
     materialize.set_missed_tick_behavior(MissedTickBehavior::Skip);
     claim.set_missed_tick_behavior(MissedTickBehavior::Skip);
     recover.set_missed_tick_behavior(MissedTickBehavior::Skip);
     metrics_snapshot.set_missed_tick_behavior(MissedTickBehavior::Skip);
     reconcile.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    outbox_dispatch.set_missed_tick_behavior(MissedTickBehavior::Skip);
     let mut executions = JoinSet::new();
     let mut reconciliations = JoinSet::new();
+    let mut outbox_rounds = JoinSet::new();
     control.mark_started();
     let mut materialize_failures = 0u32;
     let mut claim_failures = 0u32;
@@ -173,6 +192,31 @@ pub async fn run_scheduler_worker<C>(
                 if let Err(error) = result {
                     metrics.record_operation_error();
                     tracing::error!(error = %error, "task run reconciliation worker join failed");
+                }
+            }
+            Some(result) = outbox_rounds.join_next(), if !outbox_rounds.is_empty() => {
+                match result {
+                    Ok(Ok(summary)) => {
+                        metrics.record_outbox_dispatch(&summary);
+                        if summary.claimed > 0 {
+                            tracing::debug!(
+                                claimed = summary.claimed,
+                                delivered = summary.delivered,
+                                retried = summary.retried,
+                                dead_lettered = summary.dead_lettered,
+                                unmatched = summary.unmatched,
+                                "outbox dispatch round completed"
+                            );
+                        }
+                    }
+                    Ok(Err(error)) => {
+                        metrics.record_operation_error();
+                        tracing::error!(error = %error, "outbox dispatch round failed");
+                    }
+                    Err(error) => {
+                        metrics.record_operation_error();
+                        tracing::error!(error = %error, "outbox dispatch worker join failed");
+                    }
                 }
             }
             _ = materialize.tick() => {
@@ -228,6 +272,16 @@ pub async fn run_scheduler_worker<C>(
                     }
                 }
             }
+            _ = outbox_dispatch.tick(), if outbox_rounds.is_empty() => {
+                // Bounded overlap guard: one round at a time, delivery
+                // latency (bounded HTTP timeouts) must not stack rounds.
+                let client = client.clone();
+                let metrics = metrics.clone();
+                let worker_id = config.worker_id.clone();
+                outbox_rounds.spawn(async move {
+                    client.dispatch_outbox_events(worker_id).await
+                });
+            }
             _ = metrics_snapshot.tick() => {
                 match client.scheduler_metrics_snapshot(current_time()).await {
                     Ok(snapshot) => metrics.record_snapshot(snapshot),
@@ -237,8 +291,7 @@ pub async fn run_scheduler_worker<C>(
                     }
                 }
             }
-            _ = reconcile.tick(), if reconciliations.is_empty() => {
-                let (updated_before, occurred_at) = reconciliation_window(
+            _ = reconcile.tick(), if reconciliations.is_empty() => {                let (updated_before, occurred_at) = reconciliation_window(
                     config.reconciliation_min_age,
                 );
                 let client = client.clone();

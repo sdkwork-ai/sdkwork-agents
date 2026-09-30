@@ -259,6 +259,12 @@ impl MediaToolInvocationService {
     }
 }
 
+/// Maximum media resources persisted per tool result. Provider outputs carry
+/// single digits of items (one image grid, a handful of tracks); a hostile
+/// or malformed result must not drive an unbounded fetch+upload sequence —
+/// every resource beyond the cap is skipped with a warning.
+const MAX_TOOL_MEDIA_RESOURCES: usize = 8;
+
 /// Extracts normalized media resources from a succeeded tool result.
 ///
 /// Supports both single-resource outputs (`{kind,source,url,...}`) and
@@ -271,6 +277,15 @@ fn extract_resources(result: &MediaToolResult) -> Result<Vec<MediaResource>, Med
             "tool result carries no generated media URL to persist (status {})",
             result.status
         )));
+    }
+    if resources.len() > MAX_TOOL_MEDIA_RESOURCES {
+        tracing::warn!(
+            target: "sdkwork.agents.media",
+            total = resources.len(),
+            kept = MAX_TOOL_MEDIA_RESOURCES,
+            "tool result carries more media resources than the persistence cap; extras are skipped"
+        );
+        resources.truncate(MAX_TOOL_MEDIA_RESOURCES);
     }
     Ok(resources)
 }

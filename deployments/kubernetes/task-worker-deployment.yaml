@@ -74,6 +74,12 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.uid
+            # Structured logs for the cluster log collector.
+            - name: SDKWORK_LOG_FORMAT
+              value: json
+            # Outbox dispatch (webhook delivery + agent-call recovery) cadence.
+            - name: SDKWORK_AGENTS_OUTBOX_DISPATCH_INTERVAL_MILLIS
+              value: "1000"
             - name: SDKWORK_NODE_INSTANCE_ID
               valueFrom:
                 fieldRef:

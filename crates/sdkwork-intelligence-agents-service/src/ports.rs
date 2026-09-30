@@ -2321,6 +2321,111 @@ pub trait AgentRepository: Send + Sync {
             message: "webhook persistence is not supported by this repository".to_string(),
         })
     }
+
+    /// Counts the webhook subscriptions of one tenant scope (offset-mode
+    /// list total).
+    fn count_webhook_subscriptions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64> {
+        let _ = (tenant_id, organization_id);
+        Err(KernelError::Internal {
+            message: "webhook persistence is not supported by this repository".to_string(),
+        })
+    }
+
+    /// Persists one outbox event row (status `pending`). Durable adapters
+    /// should prefer the transactional
+    /// [`AgentRepository::update_runtime_execution_with_outbox`] when the
+    /// event announces a runtime-execution transition.
+    fn append_outbox_event(
+        &self,
+        event: crate::persistence::AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        let _ = event;
+        Err(KernelError::Internal {
+            message: "outbox dispatch requires a durable adapter".to_string(),
+        })
+    }
+
+    /// Atomically persists a runtime-execution transition together with the
+    /// outbox event announcing it. Durable adapters MUST implement this as a
+    /// single transaction; the default composition performs two independent
+    /// durable writes (acceptable only for in-memory test repositories).
+    fn update_runtime_execution_with_outbox(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+        event: crate::persistence::AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        self.update_runtime_execution(record)?;
+        self.append_outbox_event(event)
+    }
+
+    /// Atomically claims up to `limit` pending outbox events for one
+    /// dispatcher worker: each claimed row moves to `processing` under a
+    /// lease so concurrent dispatcher replicas never deliver the same event
+    /// twice. The durable adapter implements this with
+    /// `FOR UPDATE SKIP LOCKED` inside a single `UPDATE ... RETURNING`.
+    fn claim_pending_outbox_events(
+        &self,
+        worker_id: &str,
+        lease_token: &str,
+        now: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::persistence::AgentOutboxEventRow>> {
+        let _ = (worker_id, lease_token, now, limit);
+        Err(KernelError::Internal {
+            message: "outbox dispatch requires a durable adapter".to_string(),
+        })
+    }
+
+    /// Marks a claimed outbox event published (fenced by the claim lease
+    /// token). Returns the number of rows updated.
+    fn complete_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        published_at: &str,
+    ) -> KernelResult<u64> {
+        let _ = (id, tenant_id, organization_id, lease_token, published_at);
+        Err(KernelError::Internal {
+            message: "outbox dispatch requires a durable adapter".to_string(),
+        })
+    }
+
+    /// Returns a claimed outbox event to the pending queue with an exponential
+    /// backoff `next_available_at`, or dead-letters it once attempts are
+    /// exhausted (fenced by the claim lease token). Returns the number of rows
+    /// updated.
+    #[allow(clippy::too_many_arguments)]
+    fn fail_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        next_available_at: &str,
+        error_code: &str,
+        error_detail: &str,
+        now: &str,
+    ) -> KernelResult<u64> {
+        let _ = (
+            id,
+            tenant_id,
+            organization_id,
+            lease_token,
+            next_available_at,
+            error_code,
+            error_detail,
+            now,
+        );
+        Err(KernelError::Internal {
+            message: "outbox dispatch requires a durable adapter".to_string(),
+        })
+    }
 }
 
 /// Thread-safe audit event sink port.

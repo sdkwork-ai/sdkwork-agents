@@ -43,7 +43,7 @@ test("agents database manifest declares one canonical PostgreSQL engine", () => 
   );
   assert.equal(
     manifest.baselineAnchorTable,
-    "ai_agent_outbox_event",
+    "ai_agent_tool_asset",
     "the pre-launch completion anchor must be created only after the complete Agents baseline",
   );
   assert.equal(manifest.paths.contract, "contract/schema.yaml");
@@ -72,7 +72,7 @@ test("agents database contract is materialized without placeholders", () => {
     /ddl_authority: ddl\/baseline\/postgres\/0001_agents_baseline\.sql/u,
   );
   assert.equal((schema.match(/lifecycle_status: expanding/gu) ?? []).length, 0);
-  assert.equal((schema.match(/lifecycle_status: active/gu) ?? []).length, 23);
+  assert.equal((schema.match(/lifecycle_status: active/gu) ?? []).length, 30);
   assert.equal(
     (schema.match(/- \[document, documents\]/gu) ?? []).length,
     2,
@@ -88,14 +88,14 @@ test("agents database contract is materialized without placeholders", () => {
     readFileSync(path.join(repoRoot, "database/contract/table-registry.json"), "utf8"),
   );
   assert.equal(registry.contractVersion, "7.2.0");
-  assert.equal(registry.tables.length, 23);
+  assert.equal(registry.tables.length, 30);
   assert.ok(
     registry.tables.every((entry) => entry.lifecycle_status === "active"),
     "every Agents 7.2 table must be active in the contract registry",
   );
 });
 
-test("PostgreSQL baseline exactly matches the 23-table contract registry", () => {
+test("PostgreSQL baseline exactly matches the 30-table contract registry", () => {
   const baseline = readFileSync(
     path.join(repoRoot, "database/ddl/baseline/postgres/0001_agents_baseline.sql"),
     "utf8",
@@ -412,7 +412,7 @@ test("audit baseline accepts every action emitted by the runtime", () => {
   );
   const actionCodes = Array.from(
     domain
-      .match(/pub fn action_code[\s\S]*?\n    \}\n\}/u)?.[0]
+      .match(/pub fn action_code[\s\S]*?\r?\n    \}\r?\n\}/u)?.[0]
       ?.matchAll(/=>\s*"([a-z_]+)"/gu) ?? [],
     (match) => match[1],
   );

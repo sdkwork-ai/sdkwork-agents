@@ -128,24 +128,11 @@ pub struct AgentServiceMetrics {
     pub http_requests_per_second: f64,
     pub service_worker_rejections_total: u64,
     pub provider_worker_rejections_total: u64,
-    /// Total number of agents across all tenants
-    pub total_agents: u64,
-    /// Number of active (non-deleted) agents
-    pub active_agents: u64,
-    /// Number of soft-deleted agents
-    pub deleted_agents: u64,
-    /// Total number of provider bindings
-    pub total_provider_bindings: u64,
-    /// Number of active provider bindings
-    pub active_provider_bindings: u64,
-    /// Total number of composition slots
-    pub total_composition_slots: u64,
-    /// Number of audit events recorded
-    pub audit_events_count: u64,
-    /// Request count by operation (operation -> count)
-    pub request_counts: std::collections::HashMap<String, u64>,
-    /// Error count by operation (operation -> count)
-    pub error_counts: std::collections::HashMap<String, u64>,
+    // Domain gauges (agent/binding/slot counts) and per-operation counters
+    // were removed: they had no data source and always exported zero, which
+    // reads as a healthy-but-idle service. The task worker exposes the
+    // scheduler domain metrics (`sdkwork_agents_task_*`, `sdkwork_agents_outbox_*`)
+    // with real sources.
 }
 
 #[derive(Debug)]
@@ -225,7 +212,6 @@ impl AgentMetricsRegistry {
             http_requests_per_second,
             service_worker_rejections_total,
             provider_worker_rejections_total,
-            ..AgentServiceMetrics::default()
         }
     }
 }
@@ -271,77 +257,6 @@ impl AgentServiceMetrics {
             "sdkwork_agents_provider_worker_rejections_total {}\n",
             self.provider_worker_rejections_total
         ));
-
-        // Help and type declarations
-        output.push_str("# HELP sdkwork_agents_total Total number of agents\n");
-        output.push_str("# TYPE sdkwork_agents_total gauge\n");
-        output.push_str(&format!("sdkwork_agents_total {}\n", self.total_agents));
-
-        output.push_str("# HELP sdkwork_agents_active Number of active (non-deleted) agents\n");
-        output.push_str("# TYPE sdkwork_agents_active gauge\n");
-        output.push_str(&format!("sdkwork_agents_active {}\n", self.active_agents));
-
-        output.push_str("# HELP sdkwork_agents_deleted Number of soft-deleted agents\n");
-        output.push_str("# TYPE sdkwork_agents_deleted gauge\n");
-        output.push_str(&format!("sdkwork_agents_deleted {}\n", self.deleted_agents));
-
-        output.push_str(
-            "# HELP sdkwork_agents_provider_bindings_total Total number of provider bindings\n",
-        );
-        output.push_str("# TYPE sdkwork_agents_provider_bindings_total gauge\n");
-        output.push_str(&format!(
-            "sdkwork_agents_provider_bindings_total {}\n",
-            self.total_provider_bindings
-        ));
-
-        output.push_str(
-            "# HELP sdkwork_agents_provider_bindings_active Number of active provider bindings\n",
-        );
-        output.push_str("# TYPE sdkwork_agents_provider_bindings_active gauge\n");
-        output.push_str(&format!(
-            "sdkwork_agents_provider_bindings_active {}\n",
-            self.active_provider_bindings
-        ));
-
-        output.push_str(
-            "# HELP sdkwork_agents_composition_slots_total Total number of composition slots\n",
-        );
-        output.push_str("# TYPE sdkwork_agents_composition_slots_total gauge\n");
-        output.push_str(&format!(
-            "sdkwork_agents_composition_slots_total {}\n",
-            self.total_composition_slots
-        ));
-
-        output.push_str("# HELP sdkwork_agents_audit_events_total Total number of audit events\n");
-        output.push_str("# TYPE sdkwork_agents_audit_events_total counter\n");
-        output.push_str(&format!(
-            "sdkwork_agents_audit_events_total {}\n",
-            self.audit_events_count
-        ));
-
-        // Request counts by operation
-        output.push_str(
-            "# HELP sdkwork_agents_requests_by_operation_total Total requests by operation\n",
-        );
-        output.push_str("# TYPE sdkwork_agents_requests_by_operation_total counter\n");
-        for (operation, count) in &self.request_counts {
-            output.push_str(&format!(
-                "sdkwork_agents_requests_by_operation_total{{operation=\"{}\"}} {}\n",
-                operation, count
-            ));
-        }
-
-        // Error counts by operation
-        output.push_str(
-            "# HELP sdkwork_agents_errors_by_operation_total Total errors by operation\n",
-        );
-        output.push_str("# TYPE sdkwork_agents_errors_by_operation_total counter\n");
-        for (operation, count) in &self.error_counts {
-            output.push_str(&format!(
-                "sdkwork_agents_errors_by_operation_total{{operation=\"{}\"}} {}\n",
-                operation, count
-            ));
-        }
 
         output
     }
@@ -495,6 +410,7 @@ pub struct InMemoryAgentRepository {
     agent_versions: RwLock<HashMap<AgentVersionPrimaryKey, AgentVersionRecord>>,
     webhook_subscriptions: RwLock<HashMap<WebhookPrimaryKey, AgentWebhookRecord>>,
     webhook_deliveries: RwLock<HashMap<WebhookDeliveryPrimaryKey, AgentWebhookDeliveryRecord>>,
+    outbox_events: RwLock<Vec<crate::persistence::AgentOutboxEventRow>>,
 }
 
 /// Version history storage key: (tenant, organization, agent_id, version_id).
@@ -565,6 +481,7 @@ impl InMemoryAgentRepository {
             agent_versions: RwLock::new(HashMap::new()),
             webhook_subscriptions: RwLock::new(HashMap::new()),
             webhook_deliveries: RwLock::new(HashMap::new()),
+            outbox_events: RwLock::new(Vec::new()),
         }
     }
 
@@ -3778,6 +3695,140 @@ impl AgentRepository for InMemoryAgentRepository {
             return Ok(true);
         }
         Ok(false)
+    }
+
+    fn claim_pending_outbox_events(
+        &self,
+        worker_id: &str,
+        lease_token: &str,
+        now: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::persistence::AgentOutboxEventRow>> {
+        let mut events = self.outbox_events.recovering_write();
+        let mut claimed = Vec::new();
+        for event in events.iter_mut() {
+            if claimed.len() >= limit {
+                break;
+            }
+            let claimable = matches!(
+                event.status,
+                crate::persistence::OUTBOX_STATUS_PENDING
+                    | crate::persistence::OUTBOX_STATUS_PROCESSING
+            ) && event.attempt_count < event.max_attempts
+                && event.available_at.as_str() <= now
+                && event
+                    .lease_expires_at
+                    .as_deref()
+                    .map(|expires| expires < now)
+                    .unwrap_or(true);
+            if !claimable {
+                continue;
+            }
+            event.status = crate::persistence::OUTBOX_STATUS_PROCESSING;
+            event.lease_owner = Some(worker_id.to_string());
+            event.lease_token = Some(lease_token.to_string());
+            // The in-memory store has no clock: the far-future expiry models
+            // the dispatcher's lease window (tests simulate expiry by seeding
+            // rows with an already-stale lease timestamp).
+            event.lease_expires_at = Some("9999-12-31T23:59:59Z".to_string());
+            event.attempt_count += 1;
+            event.updated_at = now.to_string();
+            claimed.push(event.clone());
+        }
+        Ok(claimed)
+    }
+
+    fn complete_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        published_at: &str,
+    ) -> KernelResult<u64> {
+        let mut events = self.outbox_events.recovering_write();
+        let mut updated = 0u64;
+        for event in events.iter_mut() {
+            if event.id != id
+                || event.tenant_id != tenant_id
+                || event.organization_id != organization_id
+                || event.lease_token.as_deref() != Some(lease_token)
+            {
+                continue;
+            }
+            event.status = crate::persistence::OUTBOX_STATUS_PUBLISHED;
+            event.published_at = Some(published_at.to_string());
+            event.lease_owner = None;
+            event.lease_token = None;
+            event.lease_expires_at = None;
+            event.updated_at = published_at.to_string();
+            updated = 1;
+            break;
+        }
+        Ok(updated)
+    }
+
+    fn fail_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        next_available_at: &str,
+        error_code: &str,
+        error_detail: &str,
+        now: &str,
+    ) -> KernelResult<u64> {
+        let mut events = self.outbox_events.recovering_write();
+        let mut updated = 0u64;
+        for event in events.iter_mut() {
+            if event.id != id
+                || event.tenant_id != tenant_id
+                || event.organization_id != organization_id
+                || event.lease_token.as_deref() != Some(lease_token)
+            {
+                continue;
+            }
+            let exhausted = event.attempt_count >= event.max_attempts;
+            event.status = if exhausted {
+                crate::persistence::OUTBOX_STATUS_DEAD_LETTERED
+            } else {
+                crate::persistence::OUTBOX_STATUS_PENDING
+            };
+            if !exhausted {
+                event.available_at = next_available_at.to_string();
+            }
+            event.last_error_code = Some(error_code.to_string());
+            event.last_error_detail = Some(error_detail.to_string());
+            event.lease_owner = None;
+            event.lease_token = None;
+            event.lease_expires_at = None;
+            event.updated_at = now.to_string();
+            updated = 1;
+            break;
+        }
+        Ok(updated)
+    }
+
+    fn append_outbox_event(
+        &self,
+        event: crate::persistence::AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        self.outbox_events.recovering_write().push(event);
+        Ok(())
+    }
+
+    fn count_webhook_subscriptions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64> {
+        Ok(self
+            .webhook_subscriptions
+            .recovering_read()
+            .keys()
+            .filter(|(t, o, _)| *t == tenant_id && *o == organization_id)
+            .count() as u64)
     }
 
     fn clear_turn_streaming_content(

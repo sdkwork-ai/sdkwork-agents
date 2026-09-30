@@ -29,11 +29,16 @@ use crate::wire_protocol::{build_protocol_request_body, normalize_finish_reason,
 /// Long agent/coding completions legitimately stream for minutes; the prior
 /// 120-second total truncated healthy streams. Stream health is enforced by
 /// the gateway's own first-frame/idle timeouts (30s each): a stalled upstream
-/// is cut by the gateway within seconds and the SSE body then ends, so this
-/// total only prevents an unbounded lease on the turn worker. (The blocking
-/// reqwest client has no per-read timeout; async-only `read_timeout` cannot
-/// be used here.)
+/// is cut by the gateway within seconds and the SSE body then ends. (The
+/// blocking reqwest client exposes no per-read timeout, so process-side
+/// health is enforced by the total below plus the frame/byte sentinels,
+/// which also bound a slow-drip upstream that never trips an idle timeout.)
 const STREAM_REQUEST_TIMEOUT: Duration = Duration::from_secs(1800);
+/// Maximum raw SSE bytes one streaming response may deliver before the read
+/// loop fails closed: a slow-drip or runaway upstream cannot hold a turn
+/// worker past this bound even when every frame arrives before the idle
+/// timeout of the upstream gateway.
+const MAX_STREAM_BODY_BYTES: usize = 64 * 1024 * 1024;
 /// TCP connect bound for the gateway request.
 const STREAM_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -836,6 +841,7 @@ fn stream_gateway_body(
     let mut parser = frame_parser_for(protocol);
     let mut chunk_buf = [0u8; 8 * 1024];
 
+    let mut received_bytes: usize = 0;
     loop {
         let read = response
             .read(&mut chunk_buf)
@@ -845,6 +851,15 @@ fn stream_gateway_body(
             })?;
         if read == 0 {
             break;
+        }
+        received_bytes = received_bytes.saturating_add(read);
+        if received_bytes > MAX_STREAM_BODY_BYTES {
+            return Err(SdkworkError::HttpStatus {
+                status: status.as_u16(),
+                body: format!(
+                    "cloud router stream exceeded the maximum body size of {MAX_STREAM_BODY_BYTES} bytes"
+                ),
+            });
         }
         buffer.push_str(&String::from_utf8_lossy(&chunk_buf[..read]));
         accumulator.consume_sse_buffer(protocol, parser.as_mut(), &mut buffer);

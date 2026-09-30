@@ -123,8 +123,13 @@ default. Cloud topology uses a Kernel placement backed by an isolated Sandbox
 and approved opaque Workspace attachment capability. Agents never calls
 Sandbox directly and clients never write resolved placement facts.
 
-This scenario remains blocked under REQ-2026-0730. It is product scope, not a
-claim that the current runtime implements placement.
+Request-level execution routing is implemented: a Turn (or structured Call)
+may carry `executionRoute: in_process | sandbox` (OpenAPI `executionRoute`),
+with the deployment default resolved from `SDKWORK_AGENTS_TURN_EXECUTION_ROUTE`;
+`sandbox` fails closed when the deployment has not assembled the sandbox
+session port. Session-persisted placement targets and Task reviewed overrides
+remain blocked under REQ-2026-0730: that is product scope, not a claim that the
+runtime implements full placement orchestration.
 
 ## 6. Functional Requirements
 
@@ -148,7 +153,7 @@ claim that the current runtime implements placement.
 
 | Surface | Prefix | Operations | Credential mode | SDK |
 | --- | --- | ---: | --- | --- |
-| App API | `/app/v3/api` | 112 | dual token | `@sdkwork/agents-app-sdk`, `sdkwork_agents_app_sdk` |
+| App API | `/app/v3/api` | 127 | dual token | `@sdkwork/agents-app-sdk`, `sdkwork_agents_app_sdk` |
 | Backend API | `/backend/v3/api` | 60 | dual token/operator context | `@sdkwork/agents-backend-sdk` |
 | Open API | `/agent/v3/api` | 56 | `X-API-Key` | `@sdkwork/agents-sdk` |
 
@@ -157,7 +162,7 @@ The complete generated inventory is
 
 ## 8. Data Ownership
 
-Agents owns 26 PostgreSQL tables under prefix `ai_`. The canonical design is
+Agents owns 30 PostgreSQL tables under prefix `ai_`. The canonical design is
 [AGENTS_AI_COMPOSITION_DATABASE_SPEC.md](../../../crates/sdkwork-intelligence-agents-service/specs/AGENTS_AI_COMPOSITION_DATABASE_SPEC.md).
 
 All cross-domain links are identifiers validated through public contracts.
@@ -175,9 +180,15 @@ not alternate Agents aggregates or foreign-key targets.
   idempotency conflict detection, optimistic concurrency and fencing.
 - Performance: store-level pagination, bounded page size, indexed tenant scope,
   connection pooling and no in-process full-list slicing.
-- Reliability: transactional outbox facts, retry-safe commands, timeout
-  reconciliation, checkpoints, health and metrics. External event publication
-  requires the approved platform relay and separate delivery evidence.
+- Reliability: transactional outbox facts with an in-module dispatcher
+  (bounded retries, exponential backoff, dead-letter state), webhook delivery
+  with per-attempt delivery evidence, retry-safe commands, timeout
+  reconciliation, live turn leases with heartbeats, checkpoints, health and
+  metrics.
+- Capacity defaults (configurable per deployment): 128 synchronous service
+  workers, 32 concurrent provider executions, 4 concurrent media-tool
+  pipelines, 200 maximum page size, 90 s turn lease TTL with 30 s heartbeats,
+  100-event outbox dispatch batches.
 - Extensibility: provider manifests and composition slots extend the product
   without changing the Session aggregate.
 - Maintainability: generated SDKs, machine-readable component specs and

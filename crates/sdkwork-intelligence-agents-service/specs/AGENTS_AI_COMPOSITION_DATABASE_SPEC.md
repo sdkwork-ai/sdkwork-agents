@@ -33,7 +33,7 @@ and durable agent execution:
 AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem -> AgentInteraction
 ```
 
-The managed store uses PostgreSQL and owns exactly 26 tables. It has no
+The managed store uses PostgreSQL and owns exactly 30 tables. It has no
 derived read tables, shadow tables, compatibility tables, dual-write path, or
 second session aggregate. A consumer may render an Agent Session as a dialog,
 but that presentation does not create another persistence vocabulary.
@@ -337,7 +337,7 @@ partial indexes declared by the baseline.
 ## 11. Schema Lifecycle
 
 PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.2.0` authority and
-contains the complete 23-table model. The application is pre-launch, so every
+contains the complete 30-table model. The application is pre-launch, so every
 development, test, staging and release-candidate database must be created from
 that baseline. Importing or reinterpreting databases created from an earlier
 application contract is unsupported.

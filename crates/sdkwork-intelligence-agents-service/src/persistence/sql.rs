@@ -446,8 +446,20 @@ pub const SQL_LIST_RECONCILABLE_AGENT_TURNS: &str =
 pub const SQL_APPEND_TURN_STREAMING_CONTENT: &str =
     "UPDATE ai_agent_turn SET streaming_content = $4, updated_at = $5::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 AND status IN (0, 1)";
 #[cfg(feature = "postgres-sync")]
+pub const SQL_COUNT_WEBHOOK_SUBSCRIPTIONS: &str =
+    "SELECT COUNT(*)::bigint AS total_count FROM ai_agent_webhook_subscription WHERE tenant_id = $1 AND organization_id = $2";
+#[cfg(feature = "postgres-sync")]
 pub const SQL_EXTEND_AGENT_TURN_LEASE: &str =
-    "UPDATE ai_agent_turn SET lease_expires_at = $4::timestamptz, updated_at = $5::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 AND status IN (0, 1) AND lease_token = $6";#[cfg(feature = "postgres-sync")]
+    "UPDATE ai_agent_turn SET lease_expires_at = $4::timestamptz, updated_at = $5::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3 AND status IN (0, 1) AND lease_token = $6";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_CLAIM_PENDING_OUTBOX_EVENTS: &str =
+    "UPDATE ai_agent_outbox_event SET status = 1, lease_owner = $1, lease_token = $2, lease_expires_at = $3::timestamptz, updated_at = $3::timestamptz, attempt_count = attempt_count + 1 WHERE id IN (SELECT id FROM ai_agent_outbox_event WHERE status IN (0, 1) AND attempt_count < max_attempts AND available_at <= $3::timestamptz AND (lease_expires_at IS NULL OR lease_expires_at < $3::timestamptz) ORDER BY id ASC LIMIT $4 FOR UPDATE SKIP LOCKED) RETURNING id, tenant_id, organization_id, event_id, aggregate_type, aggregate_id, aggregate_version, event_type, payload_json::text AS payload_json, headers_json::text AS headers_json, dedupe_key, status, attempt_count, max_attempts, available_at::text AS available_at, lease_owner, lease_token, lease_expires_at::text AS lease_expires_at, fencing_token, published_at::text AS published_at, last_error_code, last_error_detail, created_at::text AS created_at, updated_at::text AS updated_at";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_COMPLETE_OUTBOX_EVENT: &str =
+    "UPDATE ai_agent_outbox_event SET status = 2, published_at = $5::timestamptz, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = $5::timestamptz WHERE id = $1 AND tenant_id = $2 AND organization_id = $3 AND lease_token = $4 AND status = 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_FAIL_OUTBOX_EVENT: &str =
+    "UPDATE ai_agent_outbox_event SET status = CASE WHEN attempt_count >= max_attempts THEN 3 ELSE 0 END, available_at = CASE WHEN attempt_count >= max_attempts THEN available_at ELSE $5::timestamptz END, last_error_code = $6, last_error_detail = $7, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = $8::timestamptz WHERE id = $1 AND tenant_id = $2 AND organization_id = $3 AND lease_token = $4 AND status = 1";#[cfg(feature = "postgres-sync")]
 pub const SQL_CLEAR_TURN_STREAMING_CONTENT: &str =
     "UPDATE ai_agent_turn SET streaming_content = NULL WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3";
 #[cfg(feature = "postgres-sync")]

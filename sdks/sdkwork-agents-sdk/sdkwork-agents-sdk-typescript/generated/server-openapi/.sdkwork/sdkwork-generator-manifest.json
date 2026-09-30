@@ -452,7 +452,7 @@
     },
     {
       "path": "src/types/create-agent-turn-request.ts",
-      "sha256": "dd6c5940af6c8a1e2b8b02524d3a8e2dc5ea58b4f03093f69aeb79f37c52716e"
+      "sha256": "905d8fabb462713f55559e31f5871de5f80c51b9104aa29cd4af573def4cb8ec"
     },
     {
       "path": "src/types/execute-agent-task-request.ts",

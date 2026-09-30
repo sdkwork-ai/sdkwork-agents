@@ -62,7 +62,7 @@ pub use application::{
     AgentCompositionSlotDeleteCommand, AgentCompositionSlotGetCommand,
     AgentCompositionSlotListCommand, AgentCompositionSlotUpdateCommand, AgentItemDriveRefInput,
     AgentPreviewResponseCommand, AgentPromptOptimizationCommand, AgentProviderBindingCommand,
-    AgentSessionItemWithDriveRefs, AgentsService, AnswerInteractionCommand,
+    AgentSessionItemWithDriveRefs, AgentsService, OutboxDispatchSummary, dispatch_pending_outbox_events, AnswerInteractionCommand,
     ApproveInteractionCommand, ArchiveSessionCommand, CancelTaskCommand, CancelTaskRunCommand,
     CancelTurnCommand, ChangeAgentStatusCommand, ChangeSessionCheckpointStatusCommand,
     ChangeSessionRuntimeBindingStatusCommand, ClaimInteractionCommand,
@@ -171,7 +171,8 @@ pub use http::testing;
 #[cfg(feature = "http-axum")]
 pub use http::{
     build_app_routes, build_backend_routes, build_combined_routes, build_open_routes,
-    serve_agents_metrics, AgentHttpState, AgentRequestContext, AgentTaskWorkerHandle,
+    serve_agents_metrics, signal_turn_reconciliation_shutdown, AgentHttpState,
+    AgentRequestContext, AgentTaskWorkerHandle,
 };
 pub use id::{AgentBusinessIdGenerator, AgentIdGenerator};
 pub use infrastructure::{

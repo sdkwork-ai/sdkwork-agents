@@ -210,9 +210,9 @@ class AiApi {
   /// Aggregate usage totals
   Future<AgentUsageSummaryResponse?> agentsUsageSummaryRetrieve([String? agentId, String? sessionId, String? modelId, String? from, String? to]) async {
     final query = buildQueryString([
-      QueryParameterSpec('agentId', agentId, 'form', true, false, null),
-      QueryParameterSpec('sessionId', sessionId, 'form', true, false, null),
-      QueryParameterSpec('modelId', modelId, 'form', true, false, null),
+      QueryParameterSpec('agent_id', agentId, 'form', true, false, null),
+      QueryParameterSpec('session_id', sessionId, 'form', true, false, null),
+      QueryParameterSpec('model_id', modelId, 'form', true, false, null),
       QueryParameterSpec('from', from, 'form', true, false, null),
       QueryParameterSpec('to', to, 'form', true, false, null)
     ]);
@@ -226,9 +226,9 @@ class AiApi {
   /// List usage records
   Future<AgentUsageRecordListResponse?> agentsUsageRecordsList([String? agentId, String? sessionId, String? modelId, String? from, String? to, String? cursor, int? pageSize]) async {
     final query = buildQueryString([
-      QueryParameterSpec('agentId', agentId, 'form', true, false, null),
-      QueryParameterSpec('sessionId', sessionId, 'form', true, false, null),
-      QueryParameterSpec('modelId', modelId, 'form', true, false, null),
+      QueryParameterSpec('agent_id', agentId, 'form', true, false, null),
+      QueryParameterSpec('session_id', sessionId, 'form', true, false, null),
+      QueryParameterSpec('model_id', modelId, 'form', true, false, null),
       QueryParameterSpec('from', from, 'form', true, false, null),
       QueryParameterSpec('to', to, 'form', true, false, null),
       QueryParameterSpec('cursor', cursor, 'form', true, false, null),
@@ -364,7 +364,7 @@ class AiApi {
     final query = buildQueryString([
       QueryParameterSpec('page', page, 'form', true, false, null),
       QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
-      QueryParameterSpec('workspaceId', workspaceId, 'form', true, false, null),
+      QueryParameterSpec('workspace_id', workspaceId, 'form', true, false, null),
       QueryParameterSpec('q', q, 'form', true, false, null),
       QueryParameterSpec('name_exact', nameExact, 'form', true, false, null),
       QueryParameterSpec('status', status, 'form', true, false, null),
@@ -1249,7 +1249,7 @@ class AiApi {
   /// List applied model configuration profiles
   Future<ModelConfigurationSummaryListResponse?> getAgentsModelConfigurationsList([String? engineId]) async {
     final query = buildQueryString([
-      QueryParameterSpec('engineId', engineId, 'form', true, false, null)
+      QueryParameterSpec('engine_id', engineId, 'form', true, false, null)
     ]);
     final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/model_configurations'), query));
     return (() {

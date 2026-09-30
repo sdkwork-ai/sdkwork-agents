@@ -1046,6 +1046,75 @@ impl AgentRepository for DynAgentRepository {
         )
     }
 
+    fn claim_pending_outbox_events(
+        &self,
+        worker_id: &str,
+        lease_token: &str,
+        now: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::persistence::AgentOutboxEventRow>> {
+        self.0
+            .claim_pending_outbox_events(worker_id, lease_token, now, limit)
+    }
+
+    fn complete_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        published_at: &str,
+    ) -> KernelResult<u64> {
+        self.0
+            .complete_outbox_event(id, tenant_id, organization_id, lease_token, published_at)
+    }
+
+    fn fail_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        next_available_at: &str,
+        error_code: &str,
+        error_detail: &str,
+        now: &str,
+    ) -> KernelResult<u64> {
+        self.0.fail_outbox_event(
+            id,
+            tenant_id,
+            organization_id,
+            lease_token,
+            next_available_at,
+            error_code,
+            error_detail,
+            now,
+        )
+    }
+
+    fn append_outbox_event(
+        &self,
+        event: crate::persistence::AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        self.0.append_outbox_event(event)
+    }
+
+    fn update_runtime_execution_with_outbox(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+        event: crate::persistence::AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        self.0.update_runtime_execution_with_outbox(record, event)
+    }
+
+    fn count_webhook_subscriptions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64> {
+        self.0.count_webhook_subscriptions(tenant_id, organization_id)
+    }
+
     fn clear_turn_streaming_content(
         &self,
         tenant_id: u64,
@@ -1538,12 +1607,25 @@ impl AgentHttpState {
         let stale_after_seconds = env_usize(ENV_TURN_STALE_AFTER_SECONDS, 300, 30, 86_400);
         let batch_size = env_usize(ENV_TURN_RECONCILIATION_BATCH_SIZE, 100, 1, 200);
         let service = self.service.clone();
+        let mut shutdown = turn_reconciliation_shutdown_sender().subscribe();
         Some(tokio::spawn(async move {
             let mut ticker =
                 tokio::time::interval(std::time::Duration::from_secs(interval_seconds as u64));
             ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
-                ticker.tick().await;
+                tokio::select! {
+                    biased;
+                    _ = shutdown.changed() => {
+                        if *shutdown.borrow() {
+                            tracing::info!(
+                                target: "sdkwork.agents.turn.reconciliation",
+                                "turn reconciliation worker stopping on shutdown signal"
+                            );
+                            return;
+                        }
+                    }
+                    _ = ticker.tick() => {}
+                }
                 let now = OffsetDateTime::now_utc();
                 let stale_before = now - time::Duration::seconds(stale_after_seconds as i64);
                 let occurred_at = format_utc_seconds(now);
@@ -1580,6 +1662,26 @@ impl AgentHttpState {
             }
         }))
     }
+}
+
+/// Process-level stop signal for the detached turn reconciliation worker.
+///
+/// The worker is spawned by composition roots that do not thread a shutdown
+/// channel down to this module, so the signal is process-scoped: the HTTP
+/// entrypoint calls [`signal_turn_reconciliation_shutdown`] when graceful
+/// draining begins, and the worker stops scheduling reconciliation rounds
+/// instead of competing with in-flight turns for blocking threads.
+static TURN_RECONCILIATION_SHUTDOWN: OnceLock<tokio::sync::watch::Sender<bool>> = OnceLock::new();
+
+fn turn_reconciliation_shutdown_sender() -> tokio::sync::watch::Sender<bool> {
+    TURN_RECONCILIATION_SHUTDOWN
+        .get_or_init(|| tokio::sync::watch::channel(false).0)
+        .clone()
+}
+
+/// Signals the turn reconciliation worker to stop after its current round.
+pub fn signal_turn_reconciliation_shutdown() {
+    let _ = turn_reconciliation_shutdown_sender().send(true);
 }
 
 impl AgentTaskWorkerHandle {
@@ -1631,6 +1733,20 @@ impl AgentTaskWorkerHandle {
     ) -> KernelResult<u64> {
         self.run(move |service| service.recover_timed_out_scheduled_task_runs(&now, limit))
             .await
+    }
+
+    /// Runs one transactional-outbox dispatch round (webhook delivery with
+    /// bounded retries plus agent-call recovery). Called periodically by the
+    /// task worker; safe to run on several replicas concurrently because
+    /// claiming is `FOR UPDATE SKIP LOCKED` + lease based.
+    pub async fn dispatch_outbox_events(
+        &self,
+        worker_id: String,
+    ) -> KernelResult<crate::OutboxDispatchSummary> {
+        self.run(move |service| {
+            crate::dispatch_pending_outbox_events(service, &worker_id)
+        })
+        .await
     }
 
     pub async fn scheduler_metrics_snapshot(
@@ -3331,9 +3447,16 @@ async fn app_apply_model_configuration(
     let result: ApiResult<ResourceData<AppliedAgentModelConfigurationResponse>> = async {
         let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
         let scope = RequestScope::from_context(context);
-        let item =
-            apply_agent_model_configuration(state, scope, web_ctx.request_id.0.as_str(), body)?;
-        Ok(ResourceData { item })
+        let request_id = web_ctx.request_id.0.clone();
+        // The apply path performs synchronous credential-store IO and joins a
+        // dedicated refresh thread; it must run on the blocking pool, never
+        // inline on an async runtime worker.
+        let applied = tokio::task::spawn_blocking(move || {
+            apply_agent_model_configuration(state, scope, request_id.as_str(), body)
+        })
+        .await
+        .map_err(|error| ApiProblem::internal(format!("model configuration apply failed: {error}")))??;
+        Ok(ResourceData { item: applied })
     }
     .await;
     finish_api_json(&web_ctx, result)
@@ -3725,7 +3848,7 @@ fn model_configuration_profile_id(
 // Model configuration read-back and lifecycle endpoints.
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[serde(deny_unknown_fields)]
 struct ListModelConfigurationsQuery {
     engine_id: Option<String>,
 }
@@ -4256,7 +4379,6 @@ struct AppListAgentsQueryParams {
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 struct AppListProjectsQueryParams {
-    #[serde(rename = "workspaceId", alias = "workspace_id")]
     workspace_id: Option<String>,
     q: Option<String>,
     name_exact: Option<String>,
@@ -4834,6 +4956,7 @@ struct AgentCallOutputBody {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentCallPolicyBody {
+    #[serde(default, with = "sdkwork_utils_rust::serde_uint64::option")]
     timeout_ms: Option<u64>,
 }
 
@@ -4923,6 +5046,7 @@ struct AgentCallValidationResponse {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentCallUsageResponse {
+    #[serde(with = "sdkwork_utils_rust::serde_uint64")]
     duration_ms: u64,
     attempts: usize,
     runtime_mode: String,
@@ -6361,7 +6485,7 @@ async fn app_get_agent_call(
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 struct AppUsageQueryParams {
     agent_id: Option<String>,
     session_id: Option<String>,
@@ -6371,7 +6495,7 @@ struct AppUsageQueryParams {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
 struct AppUsageRecordsQueryParams {
     agent_id: Option<String>,
     session_id: Option<String>,
@@ -6729,7 +6853,14 @@ async fn app_list_webhooks(
             )
         })
         .await?;
-        let has_more = items.items.len() == page_size;
+        // API_SPEC §16.2: offset-mode pageInfo carries the real total, not a
+        // placeholder. The subscription set is a low-volume config list, so
+        // the count query is cheap; has_more stays derived from the page.
+        let total_count = with_service(&state, move |service| {
+            service.count_webhook_subscriptions(tenant_id, organization_id)
+        })
+        .await?;
+        let has_more = (page as u64 * page_size as u64) < total_count;
         let mapped = items
             .items
             .iter()
@@ -6737,7 +6868,7 @@ async fn app_list_webhooks(
             .collect::<Vec<_>>();
         Ok(PageData {
             items: mapped,
-            page_info: offset_page_info(page, page_size, 0, has_more),
+            page_info: offset_page_info(page, page_size, total_count, has_more),
         })
     }
     .await;
@@ -13411,7 +13542,23 @@ fn spawn_queued_agent_call_execution(
 ) {
     let service = Arc::clone(&state.service);
     tokio::spawn(async move {
+        // The detached executor holds the same global worker permit as every
+        // other synchronous service work: without it a burst of async
+        // `agents.calls.create` requests floods Tokio's blocking pool and
+        // starves request handling. A full gate defers the execution to the
+        // outbox dispatch round's agent-call recovery (the call record stays
+        // `queued`).
+        let Ok(permit) = SERVICE_WORKER_LIMIT.clone().try_acquire_owned() else {
+            tracing::warn!(
+                execution_id = %execution_id,
+                "service worker gate is full; queued agent call execution deferred to recovery"
+            );
+            return;
+        };
+        let service = Arc::clone(&service);
+        let agent_id = agent_id.clone();
         let result = tokio::task::spawn_blocking(move || {
+            let _permit = permit;
             service.execute_queued_agent_call(
                 tenant_id,
                 agent_id.as_str(),
@@ -13713,25 +13860,28 @@ pub(crate) fn normalized_pagination(
     page: Option<usize>,
     page_size: Option<usize>,
 ) -> Result<(usize, usize), ApiProblem> {
+    // Pagination parameter violations carry the INVALID_PARAMETER code
+    // (40003) per PAGINATION_SPEC §3 / API_SPEC §16.2, not the generic
+    // validation envelope.
     if page == Some(0) {
-        return Err(ApiProblem::validation(
+        return Err(ApiProblem::invalid_parameter(
             "page must be greater than or equal to 1",
         ));
     }
     if page_size == Some(0) {
-        return Err(ApiProblem::validation(
+        return Err(ApiProblem::invalid_parameter(
             "page_size must be greater than or equal to 1",
         ));
     }
     if let Some(size) = page_size {
         if size > MAX_PAGE_SIZE {
-            return Err(ApiProblem::validation(format!(
+            return Err(ApiProblem::invalid_parameter(format!(
                 "page_size must be less than or equal to {MAX_PAGE_SIZE}"
             )));
         }
     }
     if page.is_some_and(|value| value as i64 > sdkwork_utils_rust::http_api::MAX_LIST_PAGE) {
-        return Err(ApiProblem::validation(format!(
+        return Err(ApiProblem::invalid_parameter(format!(
             "page must be less than or equal to {}",
             sdkwork_utils_rust::http_api::MAX_LIST_PAGE
         )));
@@ -15156,14 +15306,13 @@ mod tests {
         // succeed without a saved configuration and without an API key.
         let response =
             post_model_selection(&app, model_selection_body("codex", "gpt-5.4", None)).await;
-        assert_eq!(response.status(), StatusCode::OK);
-        let payload: Value = serde_json::from_slice(
-            &to_bytes(response.into_body(), usize::MAX)
-                .await
-                .expect("selection response should be readable")
-                .to_vec(),
-        )
-        .expect("selection response should be JSON");
+        let status = response.status();
+        let response_bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        if status != StatusCode::OK {
+            eprintln!("model selection failure body: {}", String::from_utf8_lossy(&response_bytes));
+        }
+        assert_eq!(status, StatusCode::OK);
+        let payload: Value = serde_json::from_slice(&response_bytes).expect("selection response should be JSON");
         assert_eq!(payload["data"]["item"]["modelId"], "gpt-5.4");
     }
 
@@ -15944,7 +16093,7 @@ mod tests {
         let request = Request::builder()
             .method("GET")
             .uri(format!(
-                "/app/v3/api/ai/projects?workspaceId={workspace_id}&name_exact=alpha%20project&page=1&page_size=20"
+                "/app/v3/api/ai/projects?workspace_id={workspace_id}&name_exact=alpha%20project&page=1&page_size=20"
             ))
             .body(Body::empty())
             .unwrap();

@@ -21,7 +21,7 @@ sdkwork-database-drift.workspace = true
 sdkwork-utils-rust.workspace = true
 tracing.workspace = true
 dotenvy.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
 sqlx.workspace = true
-tokio.workspace = true

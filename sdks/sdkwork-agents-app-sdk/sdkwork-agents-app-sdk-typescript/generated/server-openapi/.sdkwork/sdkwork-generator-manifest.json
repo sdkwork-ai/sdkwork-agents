@@ -52,7 +52,7 @@
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "f070f62f3e60f379fa0b8c8cb8332a3ae37d6d0fe5328dcec9f3df2554d7f492"
+      "sha256": "c41a34a747a3afc76bdc81c9abffc950d8a68b9d3529a5416d07f444ce61e05c"
     },
     {
       "path": "src/api/base.ts",
@@ -764,7 +764,7 @@
     },
     {
       "path": "src/types/create-agent-turn-request.ts",
-      "sha256": "5b79055572618236c7c597e3cbf75931862be208c3f1be1028050f540f26ea97"
+      "sha256": "68c7b5cdf8638292f036995e351a02cc962674b43e1dcd9ed06fafbb7ac208c2"
     },
     {
       "path": "src/types/create-agent-version-request.ts",
@@ -804,7 +804,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "360e08ab0f832dcebf2c5decee0e1ef540f2d1a8bd2f299145a71f45bfe40fbd"
+      "sha256": "e2ef753a89b018ec78c140af9dd140da01cb387c16ce6d4e217cf850cc8fe637"
     },
     {
       "path": "src/types/int64-string.ts",
@@ -825,10 +825,6 @@
     {
       "path": "src/types/mcp-server-marketplace-record.ts",
       "sha256": "7e0e392e764f3971a8f0b2d60615590fad83c57e20d826cddfceca8ad4973f2e"
-    },
-    {
-      "path": "src/types/media-tool-configuration-body.ts",
-      "sha256": "88adde9a2949190487350676d363034a425b56d2d1e8c94e6a1f3227b93fe446"
     },
     {
       "path": "src/types/media-tool-directory-entry.ts",

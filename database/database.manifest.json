@@ -13,7 +13,7 @@
   "tablePrefix": "ai_",
   "contractVersion": "7.2.0",
   "baselineStrategy": "baseline-plus-migrations",
-  "baselineAnchorTable": "ai_agent_outbox_event",
+  "baselineAnchorTable": "ai_agent_tool_asset",
   "modules": [],
   "lifecycle": {
     "autoMigrate": false,

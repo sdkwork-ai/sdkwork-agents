@@ -36,3 +36,10 @@ pub async fn bootstrap_kernel_database_from_env() -> anyhow::Result<()> {
 pub fn assembly_route_count() -> usize {
     generated::ROUTE_CRATE_COUNT
 }
+
+/// Forwards the process-level stop signal to Agents background workers
+/// (turn reconciliation) on behalf of HTTP entrypoints that cannot depend on
+/// the service crate directly.
+pub fn signal_agents_background_shutdown() {
+    sdkwork_intelligence_agents_service::signal_turn_reconciliation_shutdown();
+}

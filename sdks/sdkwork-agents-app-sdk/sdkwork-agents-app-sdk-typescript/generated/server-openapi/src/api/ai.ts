@@ -96,7 +96,7 @@ export class AiAgentsModelConfigurationsApi {
 /** List applied model configuration profiles */
   async list(params?: AiAgentsModelConfigurationsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: ModelConfigurationSummaryRecord[]; pageInfo: PageInfo; }> {
     const query = buildQueryString([
-      { name: 'engineId', value: params?.engineId, style: 'form', explode: true, allowReserved: false },
+      { name: 'engine_id', value: params?.engineId, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.request<SdkWorkPageData & { items: ModelConfigurationSummaryRecord[]; pageInfo: PageInfo; }>(appendQueryString(appApiPath(`/ai/model_configurations`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
   }
@@ -899,7 +899,7 @@ export class AiAgentsProjectsApi {
     const query = buildQueryString([
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
-      { name: 'workspaceId', value: params?.workspaceId, style: 'form', explode: true, allowReserved: false },
+      { name: 'workspace_id', value: params?.workspaceId, style: 'form', explode: true, allowReserved: false },
       { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
       { name: 'name_exact', value: params?.nameExact, style: 'form', explode: true, allowReserved: false },
       { name: 'status', value: params?.status, style: 'form', explode: true, allowReserved: false },
@@ -1078,9 +1078,9 @@ export class AiAgentsUsageRecordsApi {
 /** List usage records */
   async list(params?: AiAgentsUsageRecordsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: AgentUsageRecord[]; }> {
     const query = buildQueryString([
-      { name: 'agentId', value: params?.agentId, style: 'form', explode: true, allowReserved: false },
-      { name: 'sessionId', value: params?.sessionId, style: 'form', explode: true, allowReserved: false },
-      { name: 'modelId', value: params?.modelId, style: 'form', explode: true, allowReserved: false },
+      { name: 'agent_id', value: params?.agentId, style: 'form', explode: true, allowReserved: false },
+      { name: 'session_id', value: params?.sessionId, style: 'form', explode: true, allowReserved: false },
+      { name: 'model_id', value: params?.modelId, style: 'form', explode: true, allowReserved: false },
       { name: 'from', value: params?.from_, style: 'form', explode: true, allowReserved: false },
       { name: 'to', value: params?.to, style: 'form', explode: true, allowReserved: false },
       { name: 'cursor', value: params?.cursor, style: 'form', explode: true, allowReserved: false },
@@ -1109,9 +1109,9 @@ export class AiAgentsUsageSummaryApi {
 /** Aggregate usage totals */
   async retrieve(params?: AiAgentsUsageSummaryRetrieveParams, requestOptions?: ApiRequestOptions): Promise<AgentUsageSummary> {
     const query = buildQueryString([
-      { name: 'agentId', value: params?.agentId, style: 'form', explode: true, allowReserved: false },
-      { name: 'sessionId', value: params?.sessionId, style: 'form', explode: true, allowReserved: false },
-      { name: 'modelId', value: params?.modelId, style: 'form', explode: true, allowReserved: false },
+      { name: 'agent_id', value: params?.agentId, style: 'form', explode: true, allowReserved: false },
+      { name: 'session_id', value: params?.sessionId, style: 'form', explode: true, allowReserved: false },
+      { name: 'model_id', value: params?.modelId, style: 'form', explode: true, allowReserved: false },
       { name: 'from', value: params?.from_, style: 'form', explode: true, allowReserved: false },
       { name: 'to', value: params?.to, style: 'form', explode: true, allowReserved: false },
     ]);

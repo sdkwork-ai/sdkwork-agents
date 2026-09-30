@@ -17,7 +17,7 @@ remain authoritative under `../sdkwork-kernel/specs/`.
 | [AGENTS_KERNEL_SPI_GAP_ANALYSIS.md](./AGENTS_KERNEL_SPI_GAP_ANALYSIS.md) | Kernel capability closure and commercial readiness gates |
 | [AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md](./AGENTS_IM_DEPENDENCY_BOUNDARY_SPEC.md) | Mandatory `sdkwork-im -> sdkwork-agents` dependency direction and database ownership boundary |
 | [AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md](./AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md) | Mandatory `sdkwork-appstore -> sdkwork-agents` consumer direction, SDK consumption surface, and storefront/runtime ownership boundary |
-| [AGENTS_AI_COMPOSITION_DATABASE_SPEC.md](../crates/sdkwork-intelligence-agents-service/specs/AGENTS_AI_COMPOSITION_DATABASE_SPEC.md) | Canonical 23-table Agents PostgreSQL contract |
+| [AGENTS_AI_COMPOSITION_DATABASE_SPEC.md](../crates/sdkwork-intelligence-agents-service/specs/AGENTS_AI_COMPOSITION_DATABASE_SPEC.md) | Canonical 30-table Agents PostgreSQL contract |
 | [agent-task-scheduling.contract.json](./agent-task-scheduling.contract.json) | Machine-readable Task scheduling invariants and review authority |
 | [agent-interaction-envelope.contract.json](./agent-interaction-envelope.contract.json) | Machine-readable typed Interaction request, resolution, compatibility, and review authority |
 | [agents-birdcoder-alignment.spec.json](./agents-birdcoder-alignment.spec.json) | Machine-readable cross-repo alignment tracker |

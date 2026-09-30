@@ -64,7 +64,9 @@ pub struct TurnToolDescriptor {
     pub requires_approval: bool,
     /// Primary policy category driving authorization/audit.
     pub policy_category: Option<String>,
-    /// Execution budget in milliseconds.
+    /// Execution budget in milliseconds (wire: int64-as-string per
+    /// API_SPEC §13.6).
+    #[serde(with = "sdkwork_utils_rust::serde_uint64")]
     pub timeout_ms: u64,
     /// Owning executor origin.
     pub origin: TurnToolOrigin,

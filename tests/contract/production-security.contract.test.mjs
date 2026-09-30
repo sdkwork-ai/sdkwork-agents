@@ -36,13 +36,13 @@ test("runtime environment helpers fail closed for production-like profiles", () 
 
   assert.match(
     source,
-    /pub fn agents_allow_contract_runtime_fallback\(\) -> bool\s*\{\s*!agents_is_production_like_environment\(\)\s*\}/,
-    "contract runtime fallback must be disabled in production-like environments",
+    /pub fn agents_allow_contract_runtime_fallback\(\) -> bool\s*\{\s*agents_environment_is_explicitly_configured\(\) && !agents_is_production_like_environment\(\)\s*\}/,
+    "contract runtime fallback must be disabled in production-like environments and when the environment is not configured",
   );
   assert.match(
     source,
-    /pub fn agents_use_dev_inline_auth_resolver\(\) -> bool\s*\{\s*!agents_is_production_like_environment\(\) && agents_dev_auth_bypass_enabled\(\)\s*\}/,
-    "dev inline auth resolver must require both non-production and explicit bypass",
+    /pub fn agents_use_dev_inline_auth_resolver\(\) -> bool\s*\{\s*agents_environment_is_explicitly_configured\(\)\s*&& !agents_is_production_like_environment\(\)\s*&& agents_dev_auth_bypass_enabled\(\)\s*\}/,
+    "dev inline auth resolver must require a configured non-production environment and an explicit bypass",
   );
   assert.match(
     source,
@@ -120,7 +120,7 @@ test("production HTTP bootstrap uses IAM, Postgres, and runtime facade completio
   );
   assert.match(
     source,
-    /if agents_use_dev_inline_auth_resolver\(\)\s*\{[\s\S]*return dev_agent_http_state\(\);[\s\S]*\}\s*production_postgres_agent_http_state\(\)/,
+    /if agents_use_dev_inline_auth_resolver\(\)\s*\{[\s\S]*return dev_agent_http_state\([\s\S]*\);[\s\S]*\}\s*production_postgres_agent_http_state\([\s\S]*\)/,
     "production bootstrap must fall through to Postgres state when dev inline auth is unavailable",
   );
   assert.match(
@@ -130,12 +130,12 @@ test("production HTTP bootstrap uses IAM, Postgres, and runtime facade completio
   );
   assert.match(
     source,
-    /fn dev_agent_http_state\(\) -> Result<AgentHttpState>\s*\{[\s\S]*AgentHttpState::with_turn_executor\([\s\S]*InMemoryAgentRepository::try_new[\s\S]*AllowAllPolicyProvider::try_allow\("policy\.agents\.dev"\)[\s\S]*RuntimeFacadeTurnExecutor/,
-    "dev state must keep disposable storage and dev auth while executing turns through the runtime facade",
+    /fn dev_agent_http_state\(\s*sandbox_port[\s\S]*AgentHttpState::with_turn_executor\([\s\S]*InMemoryAgentRepository::try_new[\s\S]*AllowAllPolicyProvider::try_allow\("policy\.agents\.dev"\)[\s\S]*build_routed_turn_executor\(/,
+    "dev state must keep disposable storage and dev auth while executing turns through the route-aware runtime facade executor",
   );
   assert.match(
     source,
-    /fn production_postgres_agent_http_state\(\) -> Result<AgentHttpState>\s*\{[\s\S]*SqlAgentRepository::new[\s\S]*SqlAgentAuditSink::new_global[\s\S]*IamGatedPolicyProvider::default\(\)[\s\S]*RuntimeFacadeTurnExecutor/,
+    /fn production_postgres_agent_http_state\(\s*sandbox_port[\s\S]*SqlAgentRepository::new[\s\S]*SqlAgentAuditSink::new_global[\s\S]*IamGatedPolicyProvider::default\(\)[\s\S]*build_routed_turn_executor\(/,
     "production state must use Postgres repository, Postgres audit, IAM policy, and RuntimeFacadeTurnExecutor",
   );
   assert.match(

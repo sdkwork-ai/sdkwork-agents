@@ -10,7 +10,11 @@
     "domain": "intelligence",
     "capability": "agents",
     "surface": "backend-service",
-    "languages": ["rust", "typescript", "dart"],
+    "languages": [
+      "rust",
+      "typescript",
+      "dart"
+    ],
     "generated": false,
     "status": "active",
     "manifests": [
@@ -271,6 +275,91 @@
           "typescript": "@sdkwork/drive-app-sdk",
           "rust": "sdkwork-kernel-plugin-drive"
         }
+      },
+      {
+        "workspace": "sdkwork-kernel",
+        "role": "agent-runtime-kernel",
+        "required": true,
+        "dependencyMode": "platform-kernel",
+        "generatedTransportImportPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-memory-app-sdk",
+        "role": "independent capability module (memory)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "memory",
+        "targetModule": "memory",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-knowledgebase-app-sdk",
+        "role": "independent capability module (knowledge)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "knowledge",
+        "targetModule": "knowledgebase",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-skills-app-sdk",
+        "role": "independent capability module (skill)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "skill",
+        "targetModule": "skills",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-prompts-app-sdk",
+        "role": "independent capability module (prompt)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "prompt",
+        "targetModule": "prompts",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-documents-app-sdk",
+        "role": "independent capability module (document)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "document",
+        "targetModule": "documents",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-mcp-app-sdk",
+        "role": "independent capability module (mcp)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "mcp",
+        "targetModule": "mcp",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-llm-app-sdk",
+        "role": "independent capability module (llm)",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "runtime-binding-provider-profile",
+        "reverseDependencyPolicy": "forbidden"
+      },
+      {
+        "workspace": "sdkwork-drive-app-sdk",
+        "role": "drive upload integration",
+        "required": true,
+        "dependencyMode": "independent-capability-module",
+        "integrationMode": "composition-slot",
+        "slotKind": "drive",
+        "targetModule": "drive",
+        "reverseDependencyPolicy": "forbidden"
       }
     ],
     "dependencyApiExports": [],

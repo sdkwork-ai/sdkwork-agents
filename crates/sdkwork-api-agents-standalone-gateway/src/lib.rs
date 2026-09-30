@@ -9,3 +9,4 @@ pub use bootstrap::{
 };
 pub use observability::init_tracing;
 pub use shutdown::shutdown_signal;
+pub use sdkwork_api_agents_assembly::signal_agents_background_shutdown;

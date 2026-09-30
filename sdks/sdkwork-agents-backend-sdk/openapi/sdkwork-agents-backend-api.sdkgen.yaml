@@ -22,6 +22,7 @@ paths:
       - ai
       summary: List managed agents for backend administration
       operationId: agents.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -504,6 +505,7 @@ paths:
       - ai
       summary: List provider bindings for one managed agent
       operationId: agents.providerBindings.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -1322,6 +1324,7 @@ paths:
       - ai
       summary: List resumable checkpoints for one agent session
       operationId: agents.checkpoints.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -1502,6 +1505,7 @@ paths:
       - ai
       summary: List runtime bindings for one agent session
       operationId: agents.sessionRuntimeBindings.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -1719,6 +1723,7 @@ paths:
       - ai
       summary: List scheduled tasks for one managed agent
       operationId: agents.tasks.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -2017,6 +2022,7 @@ paths:
       - ai
       summary: List Runs for one scheduled task using opaque keyset pagination
       operationId: agents.taskRuns.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -2184,6 +2190,7 @@ paths:
       - ai
       summary: List execution Attempts for one scheduled task Run
       operationId: agents.taskRunAttempts.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -5380,6 +5387,12 @@ components:
         requestedModelId:
           type: string
           maxLength: 128
+        executionRoute:
+          type: string
+          enum:
+          - in_process
+          - sandbox
+          description: Optional execution placement override for this turn. `in_process` executes on the receiving replica's agent engines; `sandbox` requires the deployment to assemble the sandbox session port and fails closed otherwise. Omitted resolves through the deployment default (SDKWORK_AGENTS_TURN_EXECUTION_ROUTE).
         idempotencyKey:
           type: string
           minLength: 1
@@ -6802,71 +6815,6 @@ components:
           type: boolean
         configured:
           type: boolean
-    MediaToolInvokeBody:
-      type: object
-      required:
-      - arguments
-      properties:
-        arguments:
-          type: object
-        saveToDrive:
-          type: boolean
-    MediaToolInvokeResponse:
-      type: object
-      required:
-      - toolCallId
-      - status
-      - output
-      properties:
-        toolCallId:
-          type: string
-        status:
-          type: string
-        output:
-          type: object
-        error:
-          type: string
-        driveAsset:
-          $ref: '#/components/schemas/DriveAssetView'
-    DriveAssetView:
-      type: object
-      required:
-      - spaceId
-      - nodeId
-      - driveUri
-      properties:
-        spaceId:
-          type: string
-        nodeId:
-          type: string
-        driveUri:
-          type: string
-    ToolAssetView:
-      type: object
-      required:
-      - toolId
-      - toolCallId
-      - mediaKind
-      - driveSpaceId
-      - driveNodeId
-      - driveUri
-      properties:
-        toolId:
-          type: string
-        toolCallId:
-          type: string
-        mediaKind:
-          type: string
-        driveSpaceId:
-          type: string
-        driveNodeId:
-          type: string
-        driveUri:
-          type: string
-        sourceUrl:
-          type: string
-        createdAt:
-          type: string
     MediaToolConfigurationBody:
       type: object
       required:

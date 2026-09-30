@@ -164,8 +164,11 @@ pub use sql::{
 #[cfg(feature = "postgres-sync")]
 pub use sql::{
     SQL_ACTIVATE_AGENT_SESSION_RUNTIME_BINDING, SQL_APPEND_TURN_STREAMING_CONTENT,
-    SQL_CLEAR_TURN_STREAMING_CONTENT, SQL_COMPLETE_AGENT_TURN_STATE, SQL_COUNT_AGENT_INTERACTIONS,
-    SQL_COUNT_AGENT_ITEM_FEEDBACK, SQL_COUNT_AGENT_PROJECTS, SQL_EXTEND_AGENT_TURN_LEASE,
+    SQL_CLAIM_PENDING_OUTBOX_EVENTS, SQL_CLEAR_TURN_STREAMING_CONTENT,
+    SQL_COMPLETE_AGENT_TURN_STATE, SQL_COMPLETE_OUTBOX_EVENT, SQL_COUNT_AGENT_INTERACTIONS,
+    SQL_COUNT_AGENT_ITEM_FEEDBACK, SQL_COUNT_AGENT_PROJECTS, SQL_COUNT_WEBHOOK_SUBSCRIPTIONS,
+    SQL_EXTEND_AGENT_TURN_LEASE,
+    SQL_FAIL_OUTBOX_EVENT,
     SQL_COUNT_AGENT_PROJECT_COMPOSITION_SLOTS, SQL_COUNT_AGENT_RESOURCE_USER_STATES,
     SQL_COUNT_AGENT_SESSIONS, SQL_COUNT_AGENT_SESSION_CHECKPOINTS, SQL_COUNT_AGENT_SESSION_ITEMS,
     SQL_COUNT_AGENT_SESSION_RUNTIME_BINDINGS, SQL_COUNT_AGENT_TURNS, SQL_COUNT_AGENT_WORKSPACES,
@@ -1728,6 +1731,45 @@ impl AgentWebhookDeliveryRow {
     }
 }
 
+/// Durable outbox event row: the broker-independent record written inside the
+/// same transaction as the business write it announces, consumed by the
+/// outbox dispatcher (`crate::outbox_dispatch`) that delivers webhook
+/// payloads and marks internal events published.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentOutboxEventRow {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub event_id: String,
+    pub aggregate_type: String,
+    pub aggregate_id: String,
+    pub aggregate_version: u64,
+    pub event_type: String,
+    pub payload_json: String,
+    pub headers_json: String,
+    pub dedupe_key: String,
+    /// 0 pending, 1 processing, 2 published, 3 dead-lettered.
+    pub status: i16,
+    pub attempt_count: i32,
+    pub max_attempts: i32,
+    pub available_at: String,
+    pub lease_owner: Option<String>,
+    pub lease_token: Option<String>,
+    pub lease_expires_at: Option<String>,
+    pub fencing_token: u64,
+    pub published_at: Option<String>,
+    pub last_error_code: Option<String>,
+    pub last_error_detail: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Outbox status codes (mirrors `ck_ai_agent_outbox_event_status`).
+pub const OUTBOX_STATUS_PENDING: i16 = 0;
+pub const OUTBOX_STATUS_PROCESSING: i16 = 1;
+pub const OUTBOX_STATUS_PUBLISHED: i16 = 2;
+pub const OUTBOX_STATUS_DEAD_LETTERED: i16 = 3;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentTurnRow {
     pub id: u64,
@@ -2603,6 +2645,51 @@ pub trait AgentRepositoryAdapter: Send + Sync {
         completed_at: &str,
     ) -> KernelResult<u64>;
 
+    /// Atomically claims pending outbox events (FOR UPDATE SKIP LOCKED).
+    fn claim_pending_outbox_events(
+        &self,
+        worker_id: &str,
+        lease_token: &str,
+        now: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentOutboxEventRow>>;
+
+    fn complete_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        published_at: &str,
+    ) -> KernelResult<u64>;
+
+    #[allow(clippy::too_many_arguments)]
+    fn fail_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        next_available_at: &str,
+        error_code: &str,
+        error_detail: &str,
+        now: &str,
+    ) -> KernelResult<u64>;
+
+    /// Persists one outbox event row in its own transaction.
+    fn append_outbox_event_row(&self, row: AgentOutboxEventRow) -> KernelResult<()>;
+
+    /// Persists a runtime-execution transition and its announcing outbox
+    /// event in one transaction.
+    fn update_runtime_execution_row_with_outbox(
+        &self,
+        row: AgentRuntimeExecutionRow,
+        event: AgentOutboxEventRow,
+    ) -> KernelResult<()>;
+
+    fn count_webhook_subscription_rows(&self, tenant_id: u64, organization_id: u64)
+        -> KernelResult<u64>;
+
     fn check_readiness(&self) -> KernelResult<()>;
     fn next_id(&self) -> KernelResult<u64>;
     fn insert_row(&self, row: AgentBusinessRow) -> KernelResult<()>;
@@ -3439,6 +3526,79 @@ where
             .ok_or_else(|| {
                 KernelError::not_found(format!("webhook delivery not found: {delivery_id}"))
             })
+    }
+
+    fn claim_pending_outbox_events(
+        &self,
+        worker_id: &str,
+        lease_token: &str,
+        now: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentOutboxEventRow>> {
+        self.adapter
+            .claim_pending_outbox_events(worker_id, lease_token, now, limit)
+    }
+
+    fn complete_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        published_at: &str,
+    ) -> KernelResult<u64> {
+        self.adapter
+            .complete_outbox_event(id, tenant_id, organization_id, lease_token, published_at)
+    }
+
+    fn fail_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        next_available_at: &str,
+        error_code: &str,
+        error_detail: &str,
+        now: &str,
+    ) -> KernelResult<u64> {
+        self.adapter.fail_outbox_event(
+            id,
+            tenant_id,
+            organization_id,
+            lease_token,
+            next_available_at,
+            error_code,
+            error_detail,
+            now,
+        )
+    }
+
+    fn append_outbox_event(
+        &self,
+        event: AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        self.adapter.append_outbox_event_row(event)
+    }
+
+    fn count_webhook_subscriptions(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64> {
+        self.adapter
+            .count_webhook_subscription_rows(tenant_id, organization_id)
+    }
+
+    fn update_runtime_execution_with_outbox(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+        event: AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        self.adapter.update_runtime_execution_row_with_outbox(
+            AgentRuntimeExecutionRow::from_record(&record),
+            event,
+        )
     }
 
     fn insert_workspace(&self, record: AgentWorkspaceRecord) -> KernelResult<()> {
@@ -6086,6 +6246,193 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 completed_at,
                 delivery_id
             )
+        })
+    }
+
+    fn claim_pending_outbox_events(
+        &self,
+        worker_id: &str,
+        lease_token: &str,
+        now: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentOutboxEventRow>> {
+        let limit = i64::try_from(limit)
+            .map_err(|_| KernelError::validation("outbox claim limit overflow"))?;
+        self.with_pool(|pool| {
+            pg_query!(
+                pool,
+                SQL_CLAIM_PENDING_OUTBOX_EVENTS,
+                worker_id,
+                lease_token,
+                now,
+                limit
+            )?
+            .into_iter()
+            .map(pg_row_to_outbox_event_row)
+            .collect()
+        })
+    }
+
+    fn complete_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        published_at: &str,
+    ) -> KernelResult<u64> {
+        let id = u64_to_i64(id, "id")?;
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_COMPLETE_OUTBOX_EVENT,
+                id,
+                tenant_id,
+                organization_id,
+                lease_token,
+                published_at
+            )
+        })
+    }
+
+    fn fail_outbox_event(
+        &self,
+        id: u64,
+        tenant_id: u64,
+        organization_id: u64,
+        lease_token: &str,
+        next_available_at: &str,
+        error_code: &str,
+        error_detail: &str,
+        now: &str,
+    ) -> KernelResult<u64> {
+        let id = u64_to_i64(id, "id")?;
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_FAIL_OUTBOX_EVENT,
+                id,
+                tenant_id,
+                organization_id,
+                lease_token,
+                next_available_at,
+                error_code,
+                error_detail,
+                now
+            )
+        })
+    }
+
+    fn count_webhook_subscription_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_COUNT_WEBHOOK_SUBSCRIPTIONS,
+                tenant_id,
+                organization_id
+            )?;
+            let row = row.ok_or_else(|| {
+                KernelError::Internal {
+                    message: "webhook subscription count query returned no row".to_string(),
+                }
+            })?;
+            let total: i64 = row.try_get("total_count").map_err(map_sqlx_error)?;
+            Ok(total.max(0) as u64)
+        })
+    }
+
+    fn append_outbox_event_row(&self, row: AgentOutboxEventRow) -> KernelResult<()> {
+        let payload: serde_json::Value =
+            serde_json::from_str(&row.payload_json).map_err(|_| {
+                KernelError::Internal {
+                    message: "outbox payload is not valid JSON".to_string(),
+                }
+            })?;
+        self.with_pool(|pool| {
+            let pg_pool = pool.pool().clone();
+            pool.run_kernel(async move {
+                let mut tx = pg_pool.begin().await?;
+                insert_agent_outbox_event(
+                    self,
+                    &mut tx,
+                    row.tenant_id,
+                    row.organization_id,
+                    &row.aggregate_type,
+                    &row.aggregate_id,
+                    row.aggregate_version,
+                    &row.event_type,
+                    &payload,
+                    &row.dedupe_key,
+                    &row.created_at,
+                )
+                .await?;
+                tx.commit().await?;
+                Ok(())
+            })
+        })
+    }
+
+    fn update_runtime_execution_row_with_outbox(
+        &self,
+        row: AgentRuntimeExecutionRow,
+        event: AgentOutboxEventRow,
+    ) -> KernelResult<()> {
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let payload: serde_json::Value =
+            serde_json::from_str(&event.payload_json).map_err(|_| {
+                KernelError::Internal {
+                    message: "outbox payload is not valid JSON".to_string(),
+                }
+            })?;
+        self.with_pool(|pool| {
+            let pg_pool = pool.pool().clone();
+            pool.run_kernel(async move {
+                retry_postgres_transaction(|| async {
+                    let mut tx = pg_pool.begin().await?;
+                    let updated = sqlx::query(SQL_UPDATE_RUNTIME_EXECUTION)
+                        .bind(row.status.clone())
+                        .bind(row.output_payload_json.clone())
+                        .bind(row.completed_at.clone())
+                        .bind(tenant_id)
+                        .bind(&row.agent_id)
+                        .bind(&row.execution_id)
+                        .execute(&mut *tx)
+                        .await?
+                        .rows_affected();
+                    if updated == 0 {
+                        return Err(sqlx::Error::Protocol(
+                            "sdkwork-domain-not-found:runtime execution not found".to_string(),
+                        ));
+                    }
+                    insert_agent_outbox_event(
+                        self,
+                        &mut tx,
+                        event.tenant_id,
+                        event.organization_id,
+                        &event.aggregate_type,
+                        &event.aggregate_id,
+                        event.aggregate_version,
+                        &event.event_type,
+                        &payload,
+                        &event.dedupe_key,
+                        &event.created_at,
+                    )
+                    .await?;
+                    tx.commit().await?;
+                    Ok(())
+                })
+                .await
+            })
         })
     }
 
@@ -9978,18 +10325,23 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
         let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
         let organization_id = u64_to_i64(organization_id, "organization_id")?;
         self.with_pool(|pool| {
-            Ok(pg_query_optional!(
+            pg_query_optional!(
                 pool,
                 SQL_SELECT_TURN_STREAMING_CONTENT,
                 tenant_id,
                 organization_id,
                 turn_id
-            )?
-            .and_then(|row| {
-                row.try_get::<Option<String>, _>("streaming_content")
-                    .ok()
-                    .flatten()
-            }))
+            )
+            .map(|row| {
+                // The column is already nullable: a SQL NULL and an absent row
+                // both mean "no checkpoint"; a decode error propagates.
+                row.and_then(|row| {
+                    row.try_get::<Option<String>, _>("streaming_content")
+                        .map_err(map_sqlx_error)
+                })
+            })
+            .transpose()
+            .map(|decoded| decoded.flatten())
         })
     }
 
@@ -11421,7 +11773,19 @@ WHERE tenant_id = $5 AND organization_id = $6 AND task_id = $7
             let mut tx = pool.begin().await?;
             let mut rows = sqlx::query(
                 r#"
-WITH ranked AS MATERIALIZED (
+WITH active_per_task AS MATERIALIZED (
+    SELECT tenant_id, organization_id, task_id, COUNT(*)::integer AS active_count
+    FROM ai_agent_task_run
+    WHERE status IN (1, 2)
+    GROUP BY tenant_id, organization_id, task_id
+),
+active_per_tenant AS MATERIALIZED (
+    SELECT tenant_id, COUNT(*)::bigint AS active_count
+    FROM ai_agent_task_run
+    WHERE status IN (1, 2)
+    GROUP BY tenant_id
+),
+ranked AS MATERIALIZED (
     SELECT r.id, r.priority, r.available_at, r.scheduled_for,
            ROW_NUMBER() OVER (
                PARTITION BY r.tenant_id, r.organization_id, r.task_id
@@ -11432,23 +11796,11 @@ WITH ranked AS MATERIALIZED (
                ORDER BY r.priority DESC, r.available_at, r.scheduled_for, r.id
            ) AS tenant_rank,
            GREATEST(
-               t.max_concurrent_runs - (
-                   SELECT COUNT(*)::integer
-                   FROM ai_agent_task_run active
-                   WHERE active.tenant_id = r.tenant_id
-                     AND active.organization_id = r.organization_id
-                     AND active.task_id = r.task_id
-                     AND active.status IN (1, 2)
-               ),
+               t.max_concurrent_runs - COALESCE(task_active.active_count, 0),
                0
            ) AS available_slots,
            GREATEST(
-               $3::bigint - (
-                   SELECT COUNT(*)::bigint
-                   FROM ai_agent_task_run tenant_active
-                   WHERE tenant_active.tenant_id = r.tenant_id
-                     AND tenant_active.status IN (1, 2)
-               ),
+               $3::bigint - COALESCE(tenant_active.active_count, 0),
                0
            ) AS tenant_available_slots
     FROM ai_agent_task_run r
@@ -11456,6 +11808,12 @@ WITH ranked AS MATERIALIZED (
       ON t.tenant_id = r.tenant_id
      AND t.organization_id = r.organization_id
      AND t.task_id = r.task_id
+    LEFT JOIN active_per_task task_active
+      ON task_active.tenant_id = r.tenant_id
+     AND task_active.organization_id = r.organization_id
+     AND task_active.task_id = r.task_id
+    LEFT JOIN active_per_tenant tenant_active
+      ON tenant_active.tenant_id = r.tenant_id
     WHERE r.status = 0 AND r.available_at <= $1::timestamptz
       AND r.schedule_generation = t.generation
 ), eligible AS (
@@ -14062,6 +14420,47 @@ fn pg_row_to_webhook_delivery_row(row: &PgRow) -> KernelResult<AgentWebhookDeliv
         error_detail: row.try_get("error_detail").map_err(map_sqlx_error)?,
         created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
         completed_at: row.try_get("completed_at").map_err(map_sqlx_error)?,
+    })
+}
+
+fn pg_row_to_outbox_event_row(row: PgRow) -> KernelResult<AgentOutboxEventRow> {
+    Ok(AgentOutboxEventRow {
+        id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
+        tenant_id: int64_to_u64(
+            row.try_get("tenant_id").map_err(map_sqlx_error)?,
+            "tenant_id",
+        )?,
+        organization_id: int64_to_u64(
+            row.try_get("organization_id").map_err(map_sqlx_error)?,
+            "organization_id",
+        )?,
+        event_id: row.try_get("event_id").map_err(map_sqlx_error)?,
+        aggregate_type: row.try_get("aggregate_type").map_err(map_sqlx_error)?,
+        aggregate_id: row.try_get("aggregate_id").map_err(map_sqlx_error)?,
+        aggregate_version: int64_to_u64(
+            row.try_get("aggregate_version").map_err(map_sqlx_error)?,
+            "aggregate_version",
+        )?,
+        event_type: row.try_get("event_type").map_err(map_sqlx_error)?,
+        payload_json: row.try_get("payload_json").map_err(map_sqlx_error)?,
+        headers_json: row.try_get("headers_json").map_err(map_sqlx_error)?,
+        dedupe_key: row.try_get("dedupe_key").map_err(map_sqlx_error)?,
+        status: row.try_get("status").map_err(map_sqlx_error)?,
+        attempt_count: row.try_get("attempt_count").map_err(map_sqlx_error)?,
+        max_attempts: row.try_get("max_attempts").map_err(map_sqlx_error)?,
+        available_at: row.try_get("available_at").map_err(map_sqlx_error)?,
+        lease_owner: row.try_get("lease_owner").map_err(map_sqlx_error)?,
+        lease_token: row.try_get("lease_token").map_err(map_sqlx_error)?,
+        lease_expires_at: row.try_get("lease_expires_at").map_err(map_sqlx_error)?,
+        fencing_token: int64_to_u64(
+            row.try_get("fencing_token").map_err(map_sqlx_error)?,
+            "fencing_token",
+        )?,
+        published_at: row.try_get("published_at").map_err(map_sqlx_error)?,
+        last_error_code: row.try_get("last_error_code").map_err(map_sqlx_error)?,
+        last_error_detail: row.try_get("last_error_detail").map_err(map_sqlx_error)?,
+        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+        updated_at: row.try_get("updated_at").map_err(map_sqlx_error)?,
     })
 }
 

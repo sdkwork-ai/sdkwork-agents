@@ -57,7 +57,7 @@ struct ProviderItemLifecycle {
 
 /// Collapse provider item lifecycle events and project only terminal snapshots.
 ///
-/// Provider-native ids remain correlation fields, while durable Agents item ids
+/// Provider-side ids remain correlation fields, while durable Agents item ids
 /// are deterministic hashes over the provider Session and item identity.
 ///
 /// Note: event kinds such as `item.started` / `item.completed` are provider

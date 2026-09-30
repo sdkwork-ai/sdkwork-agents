@@ -43,6 +43,26 @@ tables:
     lifecycle_status: active
     owner: agents-platform
     description: Immutable, sanitized Agents aggregate audit facts.
+  - name: ai_agent_runtime_execution
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Durable structured agent-call execution records (request payload, output payload, terminal status).
+  - name: ai_agent_version
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Immutable agent version snapshots with activation markers.
+  - name: ai_agent_webhook_subscription
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: HTTPS webhook endpoints bound to agent event types, with HMAC signing secrets.
+  - name: ai_agent_webhook_delivery
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Per-attempt webhook delivery ledger (payload, signature, response code, terminal status).
   - name: ai_agent_workspace
     profile: tenant_entity
     lifecycle_status: active

@@ -22,6 +22,7 @@ paths:
       - ai
       summary: List managed agents
       operationId: agents.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -493,6 +494,7 @@ paths:
       - ai
       summary: List provider bindings for one managed agent
       operationId: agents.providerBindings.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -772,6 +774,7 @@ paths:
         Keyset-paginated list of durable structured agent call records for
         one managed agent, ordered by (requestedAt, executionId) descending.
       operationId: agents.calls.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -922,6 +925,7 @@ paths:
         the agent definition; the currently active version carries
         activatedAt.
       operationId: agents.versions.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -1074,19 +1078,19 @@ paths:
       x-sdkwork-permission: ai.agents.read
       x-sdkwork-tenant-scope: tenant
       parameters:
-      - name: agentId
+      - name: agent_id
         in: query
         required: false
         schema:
           type: string
           minLength: 1
-      - name: sessionId
+      - name: session_id
         in: query
         required: false
         schema:
           type: string
           minLength: 1
-      - name: modelId
+      - name: model_id
         in: query
         required: false
         schema:
@@ -1129,6 +1133,7 @@ paths:
         opaque scope-bound cursor. Supports the same filters as the summary
         aggregation.
       operationId: agents.usage.records.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -1137,19 +1142,19 @@ paths:
       x-sdkwork-permission: ai.agents.read
       x-sdkwork-tenant-scope: tenant
       parameters:
-      - name: agentId
+      - name: agent_id
         in: query
         required: false
         schema:
           type: string
           minLength: 1
-      - name: sessionId
+      - name: session_id
         in: query
         required: false
         schema:
           type: string
           minLength: 1
-      - name: modelId
+      - name: model_id
         in: query
         required: false
         schema:
@@ -1230,6 +1235,7 @@ paths:
         Offset-paginated list of the tenant's webhook subscriptions (a
         low-volume configuration set). Signing secrets are never included.
       operationId: agents.webhooks.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -1356,6 +1362,7 @@ paths:
       - ai
       summary: List Workspaces for the current user
       operationId: agents.workspaces.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -1596,6 +1603,7 @@ paths:
       - ai
       summary: List agent projects for the current user
       operationId: agents.projects.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -1606,7 +1614,7 @@ paths:
       parameters:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
-      - name: workspaceId
+      - name: workspace_id
         in: query
         schema:
           type: string
@@ -1852,6 +1860,7 @@ paths:
       - ai
       summary: List composition slots for an agent project
       operationId: agents.projectCompositionSlots.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -2028,6 +2037,7 @@ paths:
       - ai
       summary: List agent sessions for one workspace
       operationId: agents.workspaceSessions.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -2071,6 +2081,7 @@ paths:
       - ai
       summary: List agent sessions for one project
       operationId: agents.projectSessions.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -2391,6 +2402,7 @@ paths:
       - ai
       summary: List per-user state for agent sessions owned by the authenticated user
       operationId: agents.sessionUserStates.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -3001,6 +3013,7 @@ paths:
       - ai
       summary: List durable queued Turn inputs for one Session
       operationId: agents.turnInputQueueEntries.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -3321,6 +3334,7 @@ paths:
       description: P1 interactive offset list. Supports kind and status filters and
         uses createdAt descending with the interaction id as a stable tie-breaker.
       operationId: agents.interactions.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -3588,6 +3602,7 @@ paths:
       - ai
       summary: List resumable checkpoints for one agent session
       operationId: agents.checkpoints.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -3768,6 +3783,7 @@ paths:
       - ai
       summary: List runtime bindings for one agent session
       operationId: agents.sessionRuntimeBindings.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -3985,6 +4001,7 @@ paths:
       - ai
       summary: List scheduled tasks for one managed agent
       operationId: agents.tasks.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -4283,6 +4300,7 @@ paths:
       - ai
       summary: List Runs for one scheduled task using opaque keyset pagination
       operationId: agents.taskRuns.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -4450,6 +4468,7 @@ paths:
       - ai
       summary: List execution Attempts for one scheduled task Run
       operationId: agents.taskRunAttempts.list
+      x-sdkwork-pagination-mode: cursor
       security:
       - AuthToken: []
         AccessToken: []
@@ -4484,6 +4503,7 @@ paths:
       - ai
       summary: List composition slots for one managed agent
       operationId: agents.compositionSlots.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -4856,7 +4876,7 @@ paths:
       x-sdkwork-tenant-scope: tenant
       x-sdkwork-audit-event: agent.model_configuration.listed
       parameters:
-      - name: engineId
+      - name: engine_id
         in: query
         required: false
         schema:
@@ -5084,6 +5104,7 @@ paths:
       - ai
       summary: List MCP marketplace entries from agent composition slots
       operationId: agents.mcpServers.list
+      x-sdkwork-pagination-mode: offset
       security:
       - AuthToken: []
         AccessToken: []
@@ -5851,8 +5872,10 @@ components:
           type: string
           nullable: true
         timeoutMs:
-          type: integer
+          type: string
           format: int64
+          pattern: ^-?[0-9]+$
+          x-sdkwork-int64-string: true
         origin:
           type: string
           enum:
@@ -6505,11 +6528,13 @@ components:
       additionalProperties: false
       properties:
         timeoutMs:
-          type: integer
+          type: string
           format: int64
+          pattern: ^-?[0-9]+$
+          x-sdkwork-int64-string: true
           minimum: 1
           maximum: 300000
-          default: 60000
+          default: "60000"
     AgentCallResponse:
       description: Structured agent call response following SdkWorkApiResponse envelope.
       allOf:
@@ -7078,8 +7103,10 @@ components:
       - runtimeMode
       properties:
         durationMs:
-          type: integer
+          type: string
           format: int64
+          pattern: ^-?[0-9]+$
+          x-sdkwork-int64-string: true
         attempts:
           type: integer
           format: int32
@@ -11152,6 +11179,12 @@ components:
           - openai_responses
           default: chat_completions
           description: Optional LLM wire protocol for the cloudrouter gateway invocation (chat completions, Anthropic messages, Google content, or OpenAI responses).
+        executionRoute:
+          type: string
+          enum:
+          - in_process
+          - sandbox
+          description: Optional execution placement override for this turn. `in_process` executes on the receiving replica's agent engines; `sandbox` requires the deployment to assemble the sandbox session port and fails closed otherwise. Omitted resolves through the deployment default (SDKWORK_AGENTS_TURN_EXECUTION_ROUTE).
         idempotencyKey:
           type: string
           minLength: 1
@@ -12685,21 +12718,6 @@ components:
           type: string
         createdAt:
           type: string
-    MediaToolConfigurationBody:
-      type: object
-      required:
-      - enabled
-      properties:
-        enabled:
-          type: boolean
-        saveToDriveDefault:
-          type: boolean
-        defaultArguments:
-          type: object
-        expectedVersion:
-          type: string
-          format: int64
-          x-sdkwork-int64-string: true
     FieldError:
       type: object
       additionalProperties: false

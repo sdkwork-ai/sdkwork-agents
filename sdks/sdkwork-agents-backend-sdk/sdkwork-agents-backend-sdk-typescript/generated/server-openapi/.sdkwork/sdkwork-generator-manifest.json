@@ -452,11 +452,7 @@
     },
     {
       "path": "src/types/create-agent-turn-request.ts",
-      "sha256": "dd6c5940af6c8a1e2b8b02524d3a8e2dc5ea58b4f03093f69aeb79f37c52716e"
-    },
-    {
-      "path": "src/types/drive-asset-view.ts",
-      "sha256": "741107feaf60b88feedd8e12b723543dc2763411636940dc92d1043df96f37d5"
+      "sha256": "905d8fabb462713f55559e31f5871de5f80c51b9104aa29cd4af573def4cb8ec"
     },
     {
       "path": "src/types/execute-agent-task-request.ts",
@@ -468,7 +464,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "77683879bbdc90f70bfa36939fe765b4d19add3cb18d7e4d71e0fe010588508a"
+      "sha256": "1c34e53f017e69e9f1d4aea9e7fc101f5e2576ebf82c8dec2d5956f795de75f3"
     },
     {
       "path": "src/types/int64-string.ts",
@@ -493,14 +489,6 @@
     {
       "path": "src/types/media-tool-directory-response.ts",
       "sha256": "a20575e25f9a565390b33489392bb7581751addb4bc229ee5d180b43fd6b9505"
-    },
-    {
-      "path": "src/types/media-tool-invoke-body.ts",
-      "sha256": "4ec0b803504ef6b4f7708f2f6f73fad1c7c7ea727cbb8e4bfc0342f5cb90accd"
-    },
-    {
-      "path": "src/types/media-tool-invoke-response.ts",
-      "sha256": "b381dec5d6ab83aeb11b55d3deed8062f2bc19f91e76ec55700d36e7a6058051"
     },
     {
       "path": "src/types/page-info.ts",
@@ -545,10 +533,6 @@
     {
       "path": "src/types/sdk-work-resource-data.ts",
       "sha256": "1a516bad32e93d6190a6cf44fd406181a0d21f5f5adb8be0d31dd8054914975a"
-    },
-    {
-      "path": "src/types/tool-asset-view.ts",
-      "sha256": "af7e2dfbcf8fec2e20ed5508e21fb32eb19b81e2b2f038e2f26ebb6eafefb875"
     },
     {
       "path": "src/types/tool-directory-entry-api-response.ts",

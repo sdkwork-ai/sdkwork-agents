@@ -2013,3 +2013,19 @@ CREATE TABLE IF NOT EXISTS ai_agent_tool_asset (
 
 CREATE INDEX IF NOT EXISTS idx_ai_agent_tool_asset_tenant_user
     ON ai_agent_tool_asset (tenant_id, organization_id, user_id, created_at DESC);
+
+-- Foreign-key lookup indexes: RESTRICT parent deletes and tenant-scoped child
+-- lookups otherwise scan these child tables. Folded into the baseline per the
+-- pre-launch baseline-plus-fold discipline (DATABASE_SPEC §schema lifecycle).
+CREATE INDEX IF NOT EXISTS idx_ai_agent_audit_event_agent_internal
+    ON ai_agent_audit_event (agent_internal_id, id);
+CREATE INDEX IF NOT EXISTS idx_ai_agent_task_run_session
+    ON ai_agent_task_run (tenant_id, organization_id, session_id, id);
+CREATE INDEX IF NOT EXISTS idx_ai_agent_interaction_turn
+    ON ai_agent_interaction (tenant_id, organization_id, turn_id, id);
+CREATE INDEX IF NOT EXISTS idx_ai_agent_interaction_runtime_binding
+    ON ai_agent_interaction (tenant_id, organization_id, runtime_binding_id, id);
+CREATE INDEX IF NOT EXISTS idx_ai_agent_turn_request_item
+    ON ai_agent_turn (tenant_id, organization_id, request_item_id, id);
+CREATE INDEX IF NOT EXISTS idx_ai_agent_turn_response_item
+    ON ai_agent_turn (tenant_id, organization_id, response_item_id, id);

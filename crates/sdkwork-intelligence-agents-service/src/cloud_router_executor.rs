@@ -31,6 +31,13 @@ use crate::turn_runtime::{
 /// the loop then terminates with the accumulated answer.
 const MAX_TOOL_ROUNDS: usize = 8;
 
+/// Maximum streamed delta chunks buffered for replay, aligned with the
+/// facade engine path (`MAX_AGENT_ENGINE_STREAM_CHUNKS`).
+const MAX_CLOUDROUTER_STREAM_CHUNKS: usize = 8_192;
+/// Maximum aggregated streamed output buffered for replay (4 MiB), aligned
+/// with the facade engine path (`MAX_AGENT_ENGINE_STREAM_OUTPUT_BYTES`).
+const MAX_CLOUDROUTER_STREAM_OUTPUT_BYTES: usize = 4_194_304;
+
 /// Runtime mode label recorded on turns executed through the cloudrouter gateway.
 pub const RUNTIME_MODE_CLOUDROUTER: &str = "cloudrouter-account-pool";
 
@@ -345,6 +352,7 @@ fn run_cloud_router_turn(
     let mut reasoning_events: Vec<sdkwork_agent_kernel::KernelEvent> = Vec::new();
     let mut content_rounds: Vec<String> = Vec::new();
     let mut stream_deltas: Vec<String> = Vec::new();
+    let mut replay_bytes: usize = 0;
     let mut model_id: Option<String> = None;
     let mut finish_reason: Option<String> = None;
 
@@ -374,7 +382,15 @@ fn run_cloud_router_turn(
                 if let Some(sink) = sink {
                     let _ = sink.push_event(&event);
                 }
+                // The replay buffer is bounded like the facade engine path:
+                // live subscribers already received the event above, so an
+                // over-limit replay buffer drops the oldest events instead of
+                // growing with the turn output.
                 reasoning_events.push(event);
+                if reasoning_events.len() > MAX_CLOUDROUTER_STREAM_CHUNKS {
+                    let excess = reasoning_events.len() - MAX_CLOUDROUTER_STREAM_CHUNKS;
+                    reasoning_events.drain(..excess);
+                }
             }
             if !delta.content.is_empty() {
                 if let Some(sink) = sink {
@@ -397,9 +413,26 @@ fn run_cloud_router_turn(
 
         model_id = streamed.model.clone().or(model_id);
         finish_reason = streamed.finish_reason.clone().or(finish_reason);
-        stream_deltas.extend(streamed.stream_deltas.clone());
+        // The replay buffers are bounded like the facade engine path: an
+        // over-limit buffer sheds its oldest chunks (live subscribers already
+        // received them; the durable reply keeps its own size cap downstream).
+        for chunk in streamed.stream_deltas {
+            replay_bytes = replay_bytes.saturating_add(chunk.len());
+            stream_deltas.push(chunk);
+        }
         if !streamed.content.is_empty() {
+            replay_bytes = replay_bytes.saturating_add(streamed.content.len());
             content_rounds.push(streamed.content.clone());
+        }
+        while replay_bytes > MAX_CLOUDROUTER_STREAM_OUTPUT_BYTES
+            && (stream_deltas.len() + content_rounds.len()) > 1
+        {
+            let dropped = if stream_deltas.is_empty() {
+                content_rounds.remove(0)
+            } else {
+                stream_deltas.remove(0)
+            };
+            replay_bytes = replay_bytes.saturating_sub(dropped.len());
         }
 
         let tool_round = !streamed.tool_calls.is_empty()

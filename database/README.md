@@ -30,7 +30,7 @@ remain owned by their respective modules.
 ## Engine And Lifecycle
 
 PostgreSQL is the only managed-store engine. The `7.2.0` greenfield baseline
-contains the complete 23-table Session execution and Task scheduling model. It
+contains the complete 30-table Session execution and Task scheduling model. It
 is the only database state supported before the first release.
 `baseline-plus-migrations` remains the lifecycle strategy. New installations
 use the complete baseline; the post-baseline migration set is empty while the
@@ -54,7 +54,7 @@ PostgreSQL sequences and identity columns are not used for business IDs.
 This module is in **initialization state** for greenfield deployments:
 
 1. **Baseline** — `database/ddl/baseline/{engine}/0001_agents_baseline.sql` contains the full DDL snapshot.
-2. **Migrations** — `database/migrations/{engine}/` is reserved for post-GA incremental schema changes only. It is intentionally empty at initialization.
+2. **Migrations** — `database/migrations/{engine}/` is reserved for incremental schema changes after the application has shipped. It is intentionally empty while the application is pre-launch.
 3. **Drift** — run `pnpm db:drift:check` before release.
 
 ## Commands

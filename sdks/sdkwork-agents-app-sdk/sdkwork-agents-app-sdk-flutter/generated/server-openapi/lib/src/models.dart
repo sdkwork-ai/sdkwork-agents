@@ -723,7 +723,7 @@ class TurnToolDescriptor {
   final Map<String, dynamic>? inputSchema;
   final bool? requiresApproval;
   final String? policyCategory;
-  final int timeoutMs;
+  final String timeoutMs;
   final String origin;
 
   TurnToolDescriptor({
@@ -764,8 +764,8 @@ class TurnToolDescriptor {
       requiresApproval: json['requiresApproval'] is bool ? json['requiresApproval'] : null,
       policyCategory: json['policyCategory']?.toString(),
       timeoutMs: (() {
-        final value = json['timeoutMs'];
-        if (value is! int) {
+        final value = json['timeoutMs']?.toString();
+        if (value == null) {
           throw FormatException('TurnToolDescriptor.timeoutMs is required');
         }
         return value;
@@ -2109,7 +2109,7 @@ class AgentCallOutputSpec {
 }
 
 class AgentCallPolicySpec {
-  final int? timeoutMs;
+  final String? timeoutMs;
 
   AgentCallPolicySpec({
     this.timeoutMs
@@ -2117,7 +2117,7 @@ class AgentCallPolicySpec {
 
   factory AgentCallPolicySpec.fromJson(Map<String, dynamic> json) {
     return AgentCallPolicySpec(
-      timeoutMs: json['timeoutMs'] is int ? json['timeoutMs'] : null
+      timeoutMs: json['timeoutMs']?.toString()
     );
   }
 
@@ -3393,7 +3393,7 @@ class AgentCallValidation {
 }
 
 class AgentCallUsage {
-  final int durationMs;
+  final String durationMs;
   final int attempts;
   final String runtimeMode;
 
@@ -3406,8 +3406,8 @@ class AgentCallUsage {
   factory AgentCallUsage.fromJson(Map<String, dynamic> json) {
     return AgentCallUsage(
       durationMs: (() {
-        final value = json['durationMs'];
-        if (value is! int) {
+        final value = json['durationMs']?.toString();
+        if (value == null) {
           throw FormatException('AgentCallUsage.durationMs is required');
         }
         return value;
@@ -11969,6 +11969,7 @@ class CreateAgentTurnRequest {
   final String? requestedModelId;
   final String? accessModeId;
   final String? wireProtocol;
+  final String? executionRoute;
   final String idempotencyKey;
   final String payloadHash;
   final String? clientRequestId;
@@ -11985,6 +11986,7 @@ class CreateAgentTurnRequest {
     this.requestedModelId,
     this.accessModeId,
     this.wireProtocol,
+    this.executionRoute,
     required this.idempotencyKey,
     required this.payloadHash,
     this.clientRequestId,
@@ -12015,6 +12017,7 @@ class CreateAgentTurnRequest {
       requestedModelId: json['requestedModelId']?.toString(),
       accessModeId: json['accessModeId']?.toString(),
       wireProtocol: json['wireProtocol']?.toString(),
+      executionRoute: json['executionRoute']?.toString(),
       idempotencyKey: (() {
         final value = json['idempotencyKey']?.toString();
         if (value == null) {
@@ -12061,6 +12064,7 @@ class CreateAgentTurnRequest {
       'requestedModelId': requestedModelId,
       'accessModeId': accessModeId,
       'wireProtocol': wireProtocol,
+      'executionRoute': executionRoute,
       'idempotencyKey': idempotencyKey,
       'payloadHash': payloadHash,
       'clientRequestId': clientRequestId,
@@ -15163,44 +15167,6 @@ class ToolAssetView {
       'driveUri': driveUri,
       'sourceUrl': sourceUrl,
       'createdAt': createdAt,
-    };
-  }
-}
-
-class MediaToolConfigurationBody {
-  final bool enabled;
-  final bool? saveToDriveDefault;
-  final Map<String, dynamic>? defaultArguments;
-  final String? expectedVersion;
-
-  MediaToolConfigurationBody({
-    required this.enabled,
-    this.saveToDriveDefault,
-    this.defaultArguments,
-    this.expectedVersion
-  });
-
-  factory MediaToolConfigurationBody.fromJson(Map<String, dynamic> json) {
-    return MediaToolConfigurationBody(
-      enabled: (() {
-        final value = json['enabled'];
-        if (value is! bool) {
-          throw FormatException('MediaToolConfigurationBody.enabled is required');
-        }
-        return value;
-      })(),
-      saveToDriveDefault: json['saveToDriveDefault'] is bool ? json['saveToDriveDefault'] : null,
-      defaultArguments: _sdkworkAsMap(json['defaultArguments']),
-      expectedVersion: json['expectedVersion']?.toString()
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'enabled': enabled,
-      'saveToDriveDefault': saveToDriveDefault,
-      'defaultArguments': defaultArguments,
-      'expectedVersion': expectedVersion,
     };
   }
 }

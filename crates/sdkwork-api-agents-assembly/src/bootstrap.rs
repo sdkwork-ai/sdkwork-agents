@@ -62,6 +62,9 @@ pub async fn assemble_api_router_with_pool(pool: DatabasePool) -> Result<ApiAsse
         .map_err(|error| format!("agents state bootstrap worker failed: {error}"))?
         .map_err(|error| format!("{error:#}"))?;
     drop(state.spawn_turn_reconciliation_worker());
+    // Process-lifetime monitor on its own two-connection pool: detached by
+    // design, fails loud without taking the replicas down mid-incident.
+    drop(sdkwork_agents_database_host::spawn_schema_drift_monitor_standalone());
     let readiness: Arc<dyn ReadinessCheck> = Arc::new(CompositeReadinessCheck::new(vec![
         Arc::new(AgentHttpReadinessCheck::new(state.clone())),
         Arc::new(DatabasePoolReadinessCheck::new(pool)),

@@ -230,19 +230,19 @@ assert(
   !depIds.some((workspace) => /^sdkwork-im(?:$|-)/u.test(workspace)),
   'component.spec.json must not declare sdkwork-im; sdkwork-im is an Agents consumer',
 );
-const driveDep = sdkDeps.find((entry) => entry.workspace === 'sdkwork-drive');
+const driveDep = sdkDeps.find((entry) => entry.workspace === 'sdkwork-drive-app-sdk');
 assert(driveDep, 'component.spec.json must declare sdkwork-drive for upload integration');
 assert(!depIds.includes('sdkwork-discovery'), 'component.spec.json must not require sdkwork-discovery yet');
 
 const independentCapabilityModules = [
-  ['sdkwork-memory', 'composition-slot', 'memory', 'memory'],
-  ['sdkwork-knowledgebase', 'composition-slot', 'knowledge', 'knowledgebase'],
-  ['sdkwork-skills', 'composition-slot', 'skill', 'skills'],
-  ['sdkwork-prompts', 'composition-slot', 'prompt', 'prompts'],
-  ['sdkwork-documents', 'composition-slot', 'document', 'documents'],
-  ['sdkwork-mcp', 'composition-slot', 'mcp', 'mcp'],
-  ['sdkwork-llm', 'runtime-binding-provider-profile', null, null],
-  ['sdkwork-drive', 'composition-slot', 'drive', 'drive'],
+  ['sdkwork-memory-app-sdk', 'composition-slot', 'memory', 'memory'],
+  ['sdkwork-knowledgebase-app-sdk', 'composition-slot', 'knowledge', 'knowledgebase'],
+  ['sdkwork-skills-app-sdk', 'composition-slot', 'skill', 'skills'],
+  ['sdkwork-prompts-app-sdk', 'composition-slot', 'prompt', 'prompts'],
+  ['sdkwork-documents-app-sdk', 'composition-slot', 'document', 'documents'],
+  ['sdkwork-mcp-app-sdk', 'composition-slot', 'mcp', 'mcp'],
+  ['sdkwork-llm-app-sdk', 'runtime-binding-provider-profile', null, null],
+  ['sdkwork-drive-app-sdk', 'composition-slot', 'drive', 'drive'],
 ];
 for (const [workspace, integrationMode, slotKind, targetModule] of independentCapabilityModules) {
   const dep = sdkDeps.find((entry) => entry.workspace === workspace);
@@ -337,10 +337,10 @@ for (const targetTable of [
   );
 }
 assert(
-  agentsTableRegistry.contractVersion === '7.0.0'
-    && agentTableNames.length === 23
-    && agentsDatabaseSpec.includes('owns exactly 23 tables'),
-  'Agents database contract 7.0 must declare the active 23-table inventory',
+  agentsTableRegistry.contractVersion === '7.2.0'
+    && agentTableNames.length === 30
+    && agentsDatabaseSpec.includes('owns exactly 30 tables'),
+  'Agents database contract must declare the active 30-table inventory',
 );
 for (const retiredTable of [
   'ai_agent_chat_turn',

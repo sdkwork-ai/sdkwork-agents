@@ -1514,7 +1514,7 @@ mod tests {
             session_id: "session.test".to_string(),
             binding_id: None,
             provider_has_model_chat: true,
-            tenant_id: 1,
+            tenant_id: 4211,
             agent_id: "agent.test".to_string(),
         };
         let correlated = KernelModelTurnExecutor::new(Arc::new(FakeKernelModelProvider::default()))

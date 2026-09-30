@@ -26,7 +26,7 @@ model.
 | Flutter SDK | `sdkwork_agents_app_sdk` package root | closed |
 | Typed streaming | `AgentTurnStreamEvent` delta and completion events | closed |
 | Human pause points | `AgentInteraction` claim and resolution | closed |
-| Persistence | 23-table PostgreSQL Agents module, including Task/Run/Attempt scheduling | closed |
+| Persistence | 30-table PostgreSQL Agents module, including Task/Run/Attempt scheduling | closed |
 | IM boundary | IM-owned opaque Session/Turn correlation | closed |
 
 ## 2. Provider Capability Policy

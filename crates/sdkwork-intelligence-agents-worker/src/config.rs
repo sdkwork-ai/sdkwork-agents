@@ -19,6 +19,8 @@ const ENV_RECONCILIATION_INTERVAL_SECONDS: &str =
     "SDKWORK_AGENTS_TASK_RECONCILIATION_INTERVAL_SECONDS";
 const ENV_RECONCILIATION_MIN_AGE_SECONDS: &str =
     "SDKWORK_AGENTS_TASK_RECONCILIATION_MIN_AGE_SECONDS";
+pub const ENV_OUTBOX_DISPATCH_INTERVAL_MILLIS: &str =
+    "SDKWORK_AGENTS_OUTBOX_DISPATCH_INTERVAL_MILLIS";
 const ENV_MATERIALIZE_BATCH_SIZE: &str = "SDKWORK_AGENTS_TASK_MATERIALIZE_BATCH_SIZE";
 const ENV_CLAIM_BATCH_SIZE: &str = "SDKWORK_AGENTS_TASK_CLAIM_BATCH_SIZE";
 const ENV_LEASE_SECONDS: &str = "SDKWORK_AGENTS_TASK_LEASE_SECONDS";
@@ -38,6 +40,7 @@ pub struct SchedulerWorkerConfig {
     pub recovery_interval: Duration,
     pub metrics_snapshot_interval: Duration,
     pub reconciliation_interval: Duration,
+    pub outbox_dispatch_interval: Duration,
     pub reconciliation_min_age: Duration,
     pub heartbeat_interval: Duration,
     pub drain_timeout: Duration,
@@ -115,6 +118,12 @@ impl SchedulerWorkerConfig {
                 30_u64,
                 1,
                 3_600,
+            )?),
+            outbox_dispatch_interval: Duration::from_millis(env_number(
+                ENV_OUTBOX_DISPATCH_INTERVAL_MILLIS,
+                1_000_u64,
+                100,
+                60_000,
             )?),
             reconciliation_min_age: Duration::from_secs(env_number(
                 ENV_RECONCILIATION_MIN_AGE_SECONDS,
