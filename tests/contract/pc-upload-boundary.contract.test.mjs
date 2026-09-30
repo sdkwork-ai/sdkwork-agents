@@ -65,7 +65,9 @@ test('PC production composition exposes every SDK-backed workbench package', () 
   const workspace = read('src/agents/AgentWorkspace.tsx');
   const agentsHomeEntry = read('packages/sdkwork-agents-pc-agents/src/home.ts');
   const agentsHomePage = read('packages/sdkwork-agents-pc-agents/src/pages/AgentsHomePage.tsx');
-  const homeConversation = read('packages/sdkwork-agents-pc-agents/src/pages/HomeAgentConversation.tsx');
+  // The home conversation is rendered inline through the shared chat package,
+  // whose ChatService owns the composed Drive upload path.
+  const agentsChatView = read('packages/sdkwork-agents-pc-agents/src/pages/AgentChatView.tsx');
   const homeRuntime = read('packages/sdkwork-agents-pc-agents/src/services/AgentsHomeRuntime.ts');
 
   for (const packageName of [
@@ -86,9 +88,9 @@ test('PC production composition exposes every SDK-backed workbench package', () 
   assert.match(workspace, /AgentsHomePage/u);
   assert.match(workspace, /@sdkwork\/agents-pc-agents\/home/u);
   assert.match(agentsHomeEntry, /AgentsHomeRuntime/u);
-  assert.match(agentsHomePage, /HomeAgentConversation/u);
+  assert.match(agentsHomePage, /AgentChatView/u);
   assert.match(agentsHomePage, /\.\.\/services\/AgentService/u);
-  assert.match(homeConversation, /\.\.\/services\/AgentChatService/u);
+  assert.match(agentsChatView, /@sdkwork\/agents-pc-chat\/ChatView/u);
   assert.match(homeRuntime, /@sdkwork\/agents-pc-core\/sdk\/agentsAppSdkClient/u);
   assert.match(homeRuntime, /@sdkwork\/agents-pc-core\/sdk\/driveAppSdkClient/u);
 });
