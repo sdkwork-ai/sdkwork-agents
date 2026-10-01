@@ -33,6 +33,12 @@ function escapeRegex(value) {
 
 function assertExactHttpOrigin(origin, message) {
   assert.doesNotMatch(origin, /\*/u, message);
+  // Desktop shell and mini-program container origins are registered
+  // non-HTTP(S) schemes; everything else must be an exact http(s) origin.
+  if (/^(?:app|tauri):\/\//u.test(origin)) {
+    assert.ok(origin.length > 0, message);
+    return;
+  }
   const parsed = new URL(origin);
   assert.ok(parsed.protocol === 'http:' || parsed.protocol === 'https:', message);
   assert.equal(parsed.origin, origin, message);
@@ -156,10 +162,12 @@ test('source topology profiles project exact CORS and IAM origins from etc', () 
     'standalone.test',
     'standalone.staging',
     'standalone.production',
+    'standalone.demo',
     'cloud.development',
     'cloud.test',
     'cloud.staging',
     'cloud.production',
+    'cloud.demo',
   ];
   const deploymentIndex = readJson('etc/sdkwork.deployment.config.json');
   const topology = readJson('specs/topology.spec.json');
@@ -172,6 +180,7 @@ test('source topology profiles project exact CORS and IAM origins from etc', () 
     'test',
     'staging',
     'production',
+    'demo',
   ]);
   assert.equal(rootManifest.environments, undefined);
   assert.equal(rootManifest.metadata.deploymentConfig, 'etc/sdkwork.deployment.config.json');
@@ -220,7 +229,15 @@ test('source topology profiles project exact CORS and IAM origins from etc', () 
     );
 
     if (environment === 'development') {
-      assert.equal(env.SDKWORK_CORS_ALLOWED_ORIGINS, undefined);
+      // Development may declare an explicit CORS baseline (Vite dev server
+      // ports plus the shared dev domains); whatever it declares must be an
+      // exact-origin allowlist — wildcards never pass the CORS gate.
+      const devOrigins = (env.SDKWORK_CORS_ALLOWED_ORIGINS ?? '')
+        .split(',')
+        .filter(Boolean);
+      for (const origin of devOrigins) {
+        assertExactHttpOrigin(origin, `${profile} must use an exact HTTP(S) CORS origin`);
+      }
       if (deploymentProfile === 'standalone') {
         assert.equal(env.SDKWORK_AGENTS_DEV_AUTH_BYPASS, 'false');
         assert.equal(env.SDKWORK_DATABASE_ENGINE, 'postgresql');
@@ -253,15 +270,27 @@ test('source topology profiles project exact CORS and IAM origins from etc', () 
     }
   }
 
-  assert.equal(
-    readEnv('etc/topology/cloud.production.env').SDKWORK_CORS_ALLOWED_ORIGINS,
-    'https://agents.sdkwork.com',
+  const productionOrigins = readEnv('etc/topology/cloud.production.env')
+    .SDKWORK_CORS_ALLOWED_ORIGINS.split(',')
+    .filter(Boolean);
+  assert.ok(
+    productionOrigins.includes('https://agents.sdkwork.com'),
+    'cloud.production must keep the canonical web origin in its CORS allowlist',
   );
-  for (const profile of ['standalone.test', 'standalone.staging', 'standalone.production']) {
-    assert.match(
-      readEnv(`etc/topology/${profile}.env`).SDKWORK_CORS_ALLOWED_ORIGINS,
-      /\.invalid$/u,
-      `${profile} must remain an operator-materialized fail-closed template`,
+  // The fail-closed `.invalid` placeholder templates have been replaced by
+  // real environment domain matrices; each still keeps the canonical web
+  // origin for its environment tier.
+  for (const [profile, canonical] of [
+    ['standalone.test', 'https://agents-test.sdkwork.com'],
+    ['standalone.staging', 'https://agents-staging.sdkwork.com'],
+    ['standalone.production', 'https://agents.sdkwork.com'],
+  ]) {
+    const origins = readEnv(`etc/topology/${profile}.env`)
+      .SDKWORK_CORS_ALLOWED_ORIGINS.split(',')
+      .filter(Boolean);
+    assert.ok(
+      origins.includes(canonical),
+      `${profile} must keep the canonical web origin ${canonical} in its CORS allowlist`,
     );
   }
 

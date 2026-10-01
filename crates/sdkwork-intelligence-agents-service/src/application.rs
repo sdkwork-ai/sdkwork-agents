@@ -12265,6 +12265,9 @@ mod task_tests {
 
     #[test]
     fn task_operations_are_isolated_by_organization_within_a_tenant() {
+        // Named constant keeps the fixture value single-sourced (the legacy
+        // literal `10` is a forbidden identity-alignment fixture).
+        const ORGANIZATION_ONE: u64 = 4210;
         let repository = InMemoryAgentRepository::new();
         let audit_sink = InMemoryAgentAuditSink::default();
         let policy_provider = test_policy_provider();
@@ -12274,7 +12277,7 @@ mod task_tests {
             .create_agent(create_agent_cmd(
                 "agent.tasks.org-one",
                 100_001,
-                10,
+                ORGANIZATION_ONE,
                 100,
                 "tasks-org-one",
                 "Tasks Org One",
@@ -12314,7 +12317,7 @@ mod task_tests {
         let mut organization_one_command = create_task_cmd(
             &service,
             100_001,
-            10,
+            ORGANIZATION_ONE,
             &organization_one_agent.agent_id,
             100,
             "Organization one work",
@@ -12344,14 +12347,14 @@ mod task_tests {
 
         let organization_one_tasks = service
             .list_tasks(ListTasksCommand {
-                query: TaskListQuery::for_organization(100_001, 10),
+                query: TaskListQuery::for_organization(100_001, ORGANIZATION_ONE),
                 requested_by: sample_subject(),
             })
             .expect("list organization one tasks");
         assert_eq!(organization_one_tasks.total_count, None);
         assert!(!organization_one_tasks.has_more);
         assert!(organization_one_tasks.next_page_token.is_none());
-        assert_eq!(organization_one_tasks.items[0].organization_id, 10);
+        assert_eq!(organization_one_tasks.items[0].organization_id, ORGANIZATION_ONE);
         let organization_two_tasks = service
             .list_tasks(ListTasksCommand {
                 query: TaskListQuery::for_organization(100_001, 20),
@@ -12366,7 +12369,7 @@ mod task_tests {
         let organization_one_read = service
             .get_task(GetTaskCommand {
                 tenant_id: 100_001,
-                organization_id: 4210,
+                organization_id: ORGANIZATION_ONE,
                 path_agent_id: organization_one_agent.agent_id.clone(),
                 task_id: organization_one_task.task_id.clone(),
                 owner_scope: None,
@@ -12389,7 +12392,7 @@ mod task_tests {
         let mut organization_one_only_command = create_task_cmd(
             &service,
             100_001,
-            10,
+            ORGANIZATION_ONE,
             &organization_one_agent.agent_id,
             100,
             "Organization one private work",
@@ -12444,7 +12447,7 @@ mod task_tests {
         let unchanged = service
             .get_task(GetTaskCommand {
                 tenant_id: 100_001,
-                organization_id: 4210,
+                organization_id: ORGANIZATION_ONE,
                 path_agent_id: organization_one_agent.agent_id,
                 task_id: organization_one_only_task.task_id,
                 owner_scope: None,

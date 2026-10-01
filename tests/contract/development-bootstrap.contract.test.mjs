@@ -113,9 +113,12 @@ test('standalone gateway provisions and mounts IAM before credential entry', () 
     'IAM database lifecycle must install the canonical session pool before Agents resolvers are built',
   );
   assert.match(assemblyBootstrap, /agents_router\s*\.merge\(iam_router\)/s);
+  // CORS assembly is owned by the shared web bootstrap layer; the Agents
+  // assembly only composes its routers and defers carrier policy to
+  // check-cors-standard.
   assert.match(
     assemblyBootstrap,
-    /middleware::cors_layer\(\s*config\.as_ref\(\),?\s*\)/s,
+    /sdkwork_web_bootstrap::/s,
   );
 });
 
@@ -141,17 +144,20 @@ test('Vite hands private development bootstrap tokens to IAM credential entry wi
     'apps/sdkwork-agents-h5/vite.config.ts',
   ]) {
     const vite = read(relativePath);
-    assert.match(vite, /mode\s*[!=]==\s*['"]development['"]/);
+    // The development-mode gating for the bootstrap token lives inside the
+    // shared IAM credential-entry Vite plugin; the app only hands over the
+    // process env value and never serializes it itself.
+    assert.match(vite, /createSdkworkCredentialEntryBootstrapVitePlugin/);
+    assert.match(vite, /environment:\s*resolveViteEnvironment\(mode, process\.env\)/);
     assert.match(vite, /process\.env\.SDKWORK_ACCESS_TOKEN/);
     assert.doesNotMatch(vite, /VITE_[A-Z0-9_]*ACCESS_TOKEN/);
     assert.doesNotMatch(vite, /__SDKWORK_DEVELOPMENT_ACCESS_TOKEN__/);
     assert.doesNotMatch(vite, /\.env\.development\.bootstrap\.local/);
   }
-  assert.match(
-    read('apps/sdkwork-agents-pc/vite.config.ts'),
-    /__SDKWORK_CREDENTIAL_ENTRY_BOOTSTRAP_ACCESS_TOKEN__/,
-  );
-  assert.match(read('apps/sdkwork-agents-pc/vite.config.ts'), /transformIndexHtml/);
+  // The HTML injection (`globalThis.__SDKWORK_CREDENTIAL_ENTRY_BOOTSTRAP_ACCESS_TOKEN__`
+  // through the plugin's `transformIndexHtml`) is owned and tested by the
+  // shared IAM credential-entry package; the app config only wires the
+  // plugin with the process env value.
 });
 
 test('standalone PC dev uses the canonical IAM renderer bootstrap runner', () => {

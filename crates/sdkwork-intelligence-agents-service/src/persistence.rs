@@ -10325,23 +10325,22 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
         let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
         let organization_id = u64_to_i64(organization_id, "organization_id")?;
         self.with_pool(|pool| {
-            pg_query_optional!(
+            // The column is already nullable: a SQL NULL and an absent row
+            // both mean "no checkpoint"; a decode error propagates instead of
+            // masquerading as an empty checkpoint.
+            let decoded = pg_query_optional!(
                 pool,
                 SQL_SELECT_TURN_STREAMING_CONTENT,
                 tenant_id,
                 organization_id,
                 turn_id
-            )
+            )?
             .map(|row| {
-                // The column is already nullable: a SQL NULL and an absent row
-                // both mean "no checkpoint"; a decode error propagates.
-                row.and_then(|row| {
-                    row.try_get::<Option<String>, _>("streaming_content")
-                        .map_err(map_sqlx_error)
-                })
+                row.try_get::<Option<String>, _>("streaming_content")
+                    .map_err(map_sqlx_error)
             })
-            .transpose()
-            .map(|decoded| decoded.flatten())
+            .transpose()?;
+            Ok(decoded.flatten())
         })
     }
 
