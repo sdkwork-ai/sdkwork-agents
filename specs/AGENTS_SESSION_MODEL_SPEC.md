@@ -1,6 +1,6 @@
 # SDKWork Agents Session Model Specification
 
-- Version: `5.2.0`
+- Version: `5.3.0`
 - Status: active
 - Owner: `agents-platform`
 - Authority: `AGENTS_DOMAIN_SPEC.md`
@@ -69,6 +69,41 @@ provider metadata.
 
 Only one current binding may be active for a session. Runtime-location details
 remain owned by the product or runtime-location module.
+
+### 3.1 Execution Placement
+
+Where a session executes is resolved per turn as an execution target:
+`in_process` (the current service process), `cloud` (kernel-coordinated cloud
+execution; the legacy `sandbox` route code is an accepted alias), or `host`
+(a registered dedicated execution host). Resolution order is request override,
+deployment default, built-in `in_process`; an unknown code fails closed. The
+vocabulary lives in `sdkwork-agents-runtime-facade` `execution_route`.
+
+The durable placement facts are session-owned rows, never fields on the
+runtime binding (the combined runtime binding must not gain physical fields):
+
+- `ai_agent_execution_host` is the dispatchable host registry. One row per
+  docker daemon, micro VM, bare-metal box, or kernel cloud-sandbox pool
+  member, with host kind, opaque dispatch endpoint, region, capacity and
+  lifecycle status. `tenant_id`/`organization_id` use the platform sentinel
+  `0` for platform-shared hosts. Host selection is placement-owned and never
+  client-writable.
+- `ai_agent_session_execution_placement` is the durable placement binding.
+  At most one current placement per session records the requested and
+  effective target, the pinned host (host target only), the opaque kernel
+  placement reference, the placement lifecycle state
+  (`requested`/`allocating`/`ready`/`active`/`releasing`/`released`/`failed`/`expired`)
+  and bounded lease evidence (`lease_owner`, `lease_expires_at`,
+  `fencing_generation`). Lease credentials stay kernel-owned and are never
+  persisted.
+
+Scheduling reads these surfaces: the host registry answers which hosts of a
+kind are eligible, the placement binding answers which session runs where
+(session affinity, per-host drain, reconciliation of stale placements).
+Lease and fencing transitions follow
+`agent-execution-placement-orchestration.contract.json`; the runtime
+lifecycle implementation (kernel placement port, automatic recording at turn
+claim) remains gated there and lands as a separate reviewed change.
 
 ## 4. Turn
 

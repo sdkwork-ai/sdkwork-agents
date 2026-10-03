@@ -64,9 +64,9 @@ use crate::task_scheduling::{AgentTaskRunRecord, AgentTaskRunStatus};
 use crate::toolkit::{resolve_effective_toolkit, TurnToolkitConfig};
 use crate::turn_runtime::{
     complete_with_timeout, complete_with_timeout_and_sink, is_capacity_error, is_funding_error,
-    is_inference_error, is_sandbox_unavailable_error, is_transport_error, turn_model_request_id,
-    ContractTurnExecutor, TurnCancellationInput, TurnExecutionInput, TurnExecutionStreamSink,
-    TurnExecutor, TURN_EXECUTION_TIMEOUT,
+    is_host_unavailable_error, is_inference_error, is_sandbox_unavailable_error,
+    is_transport_error, turn_model_request_id, ContractTurnExecutor, TurnCancellationInput,
+    TurnExecutionInput, TurnExecutionStreamSink, TurnExecutor, TURN_EXECUTION_TIMEOUT,
 };
 use crate::validation::{
     default_json_array_if_blank, default_json_object_if_blank, default_plain_text_if_blank,
@@ -9035,11 +9035,13 @@ where
             || is_funding_error(completion.runtime_mode)
             || is_transport_error(completion.runtime_mode)
             || is_sandbox_unavailable_error(completion.runtime_mode)
+            || is_host_unavailable_error(completion.runtime_mode)
         {
             let capacity_exhausted = is_capacity_error(completion.runtime_mode);
             let funding_shortfall = is_funding_error(completion.runtime_mode);
             let transport_unavailable = is_transport_error(completion.runtime_mode);
             let sandbox_unavailable = is_sandbox_unavailable_error(completion.runtime_mode);
+            let host_unavailable = is_host_unavailable_error(completion.runtime_mode);
             let (error_code, error_detail) = if capacity_exhausted {
                 (
                     "turn_provider_capacity_exhausted",
@@ -9070,6 +9072,16 @@ where
                 (
                     "turn_sandbox_unavailable",
                     "the sandbox execution route is unavailable for this deployment",
+                )
+            } else if host_unavailable {
+                // Same assembly-defect category: the host route was requested
+                // (per request or deployment default) but no host dispatch
+                // port is assembled. Its own code keeps the placement defect
+                // diagnosable and retry-meaningless until the kernel host
+                // dispatch port lands and the composition wires it.
+                (
+                    "turn_host_unavailable",
+                    "the host execution route is unavailable for this deployment",
                 )
             } else {
                 ("turn_inference_failed", "managed turn inference failed")

@@ -67,7 +67,7 @@ Counts are derived from the three authored OpenAPI documents. The Open API uses
 
 ## 4. Persistence Boundary
 
-The Agents managed PostgreSQL store contains 23 Agents-owned `ai_*` tables. Its
+The Agents managed PostgreSQL store contains 32 Agents-owned `ai_*` tables. Its
 authority is
 [`AGENTS_AI_COMPOSITION_DATABASE_SPEC.md`](../crates/sdkwork-intelligence-agents-service/specs/AGENTS_AI_COMPOSITION_DATABASE_SPEC.md).
 

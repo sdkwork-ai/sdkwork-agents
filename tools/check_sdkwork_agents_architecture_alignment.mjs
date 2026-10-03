@@ -330,6 +330,8 @@ for (const targetTable of [
   'ai_agent_project_member',
   'ai_agent_share_link',
   'ai_agent_outbox_event',
+  'ai_agent_execution_host',
+  'ai_agent_session_execution_placement',
 ]) {
   assert(
     agentsDatabaseSpec.includes(`\`${targetTable}\``) && agentTableNames.includes(targetTable),
@@ -337,10 +339,10 @@ for (const targetTable of [
   );
 }
 assert(
-  agentsTableRegistry.contractVersion === '7.2.0'
-    && agentTableNames.length === 30
-    && agentsDatabaseSpec.includes('owns exactly 30 tables'),
-  'Agents database contract must declare the active 30-table inventory',
+  agentsTableRegistry.contractVersion === '7.3.0'
+    && agentTableNames.length === 32
+    && agentsDatabaseSpec.includes('owns exactly 32 tables'),
+  'Agents database contract must declare the active 32-table inventory',
 );
 for (const retiredTable of [
   'ai_agent_chat_turn',

@@ -2,22 +2,26 @@
 
 Status: active pre-launch baseline consolidation
 
-Updated: 2026-08-04
+Updated: 2026-10-03
 
 ## Current Contract
 
-- Contract version: `7.2.0`
+- Contract version: `7.3.0`
 - Managed engine: PostgreSQL
 - Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
-- Lifecycle strategy: `baseline-plus-migrations` (empty post-baseline migration set)
-- Development migrations: none (pre-launch consolidation on the baseline)
-- Active tables: 23
+- Lifecycle strategy: `baseline-plus-migrations`
+- Development migrations: catch-up set `0001`..`0003` aligning
+  previously initialized shared development schemas with the folded baseline
+- Active tables: 32
 
 The full current schema is installed from one baseline on an empty schema and
-tracked in `ops_database_installation_state`. The pre-launch forward
+tracked in `ops_database_installation_state`. The original pre-launch forward
 development migrations (`0001`..`0007`) were removed when the baseline was
-folded to the complete `7.2.0` schema; no pending or applied migration rows
-are expected for the `agents` module in shared development schemas. There is
+folded to the complete schema; the restored catch-up migrations
+(`0001` tool configuration/asset tables, `0002` `organization_id`
+standardization, `0003` execution host registry and session execution
+placement) re-align databases that were initialized from an older baseline and
+no-op on fresh baseline installs via `IF NOT EXISTS`. There is
 no dual-write path, derived read store, legacy Session table, or runtime
 compatibility branch.
 

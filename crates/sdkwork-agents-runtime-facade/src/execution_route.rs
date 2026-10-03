@@ -1,11 +1,13 @@
-//! Execution-route model for agent conversations (`REQ-2026-0730` intent plane).
+//! Execution-target model for agent conversations (`REQ-2026-0730` intent plane).
 //!
-//! A conversation turn runs either **in this process** (the agent-engine
-//! facade slots execute locally) or **inside an SDKWork Sandbox session**
-//! (lifecycle-coordinated through the kernel `SandboxedExecutionCoordinator`).
-//! The route is an *intent*: it names where the conversation runtime should
-//! execute, never which sandbox instance, node, lease, or fencing token serves
-//! it — those stay kernel/sandbox-owned (`agent-execution-placement-orchestration.contract.json`
+//! A conversation turn runs **in this process** (the agent-engine facade
+//! slots execute locally), **in the cloud** (lifecycle-coordinated through
+//! the kernel `SandboxedExecutionCoordinator`), or **on a dedicated
+//! execution host** (a registered docker daemon, micro VM, bare-metal box,
+//! or kernel cloud-sandbox pool member). The target is an *intent*: it names
+//! where the conversation runtime should execute, never which sandbox
+//! instance, host, node, lease, or fencing token serves it — those stay
+//! kernel/placement-owned (`agent-execution-placement-orchestration.contract.json`
 //! `forbiddenClientFields`).
 //!
 //! Resolution is a three-level chain, first match wins:
@@ -13,12 +15,21 @@
 //! 1. per-request override (the caller-supplied `executionRoute` parameter),
 //! 2. deployment default (composition-time configuration),
 //! 3. built-in default ([`AgentConversationExecutionRoute::InProcess`]).
+//!
+//! The legacy `sandbox` code remains an accepted alias for the cloud target:
+//! the kernel sandbox lifecycle is the current cloud execution mechanism.
 
 use sdkwork_utils_rust::string::is_blank;
 
 /// Route code accepted by request parameters and deployment configuration.
 pub const EXECUTION_ROUTE_IN_PROCESS: &str = "in_process";
-/// Route code selecting sandboxed conversation execution.
+/// Route code selecting cloud execution through the kernel sandbox lifecycle.
+pub const EXECUTION_ROUTE_CLOUD: &str = "cloud";
+/// Route code selecting execution on a registered dedicated host.
+pub const EXECUTION_ROUTE_HOST: &str = "host";
+/// Legacy route code for cloud execution; accepted as an alias of
+/// [`EXECUTION_ROUTE_CLOUD`] so pre-existing request parameters and
+/// deployment defaults keep resolving to the sandbox lifecycle.
 pub const EXECUTION_ROUTE_SANDBOX: &str = "sandbox";
 
 /// Where an agent conversation turn executes.
@@ -26,24 +37,30 @@ pub const EXECUTION_ROUTE_SANDBOX: &str = "sandbox";
 pub enum AgentConversationExecutionRoute {
     /// Execute in the current process through the agent-engine facade.
     InProcess,
-    /// Execute inside an SDKWork Sandbox session lifecycle.
-    Sandbox,
+    /// Execute in the cloud through the kernel sandbox session lifecycle.
+    Cloud,
+    /// Execute on a registered dedicated execution host (docker, micro VM,
+    /// bare metal, or a kernel cloud-sandbox pool member).
+    Host,
 }
 
 impl AgentConversationExecutionRoute {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::InProcess => EXECUTION_ROUTE_IN_PROCESS,
-            Self::Sandbox => EXECUTION_ROUTE_SANDBOX,
+            Self::Cloud => EXECUTION_ROUTE_CLOUD,
+            Self::Host => EXECUTION_ROUTE_HOST,
         }
     }
 
     /// Parses the canonical route code; blank input yields `None` so callers
-    /// can fall through to the next resolution level.
+    /// can fall through to the next resolution level. The legacy `sandbox`
+    /// code parses as [`AgentConversationExecutionRoute::Cloud`].
     pub fn parse(code: Option<&str>) -> Option<Self> {
         match code.map(str::trim).filter(|value| !is_blank(Some(value)))? {
             EXECUTION_ROUTE_IN_PROCESS => Some(Self::InProcess),
-            EXECUTION_ROUTE_SANDBOX => Some(Self::Sandbox),
+            EXECUTION_ROUTE_CLOUD | EXECUTION_ROUTE_SANDBOX => Some(Self::Cloud),
+            EXECUTION_ROUTE_HOST => Some(Self::Host),
             _ => None,
         }
     }
@@ -96,7 +113,7 @@ impl std::fmt::Display for InvalidExecutionRouteError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "invalid execution route \"{}\": must be one of {EXECUTION_ROUTE_IN_PROCESS}, {EXECUTION_ROUTE_SANDBOX}",
+            "invalid execution route \"{}\": must be one of {EXECUTION_ROUTE_IN_PROCESS}, {EXECUTION_ROUTE_CLOUD}, {EXECUTION_ROUTE_HOST} (legacy alias: {EXECUTION_ROUTE_SANDBOX})",
             self.code
         )
     }
@@ -158,14 +175,23 @@ mod tests {
             Some(AgentConversationExecutionRoute::InProcess)
         );
         assert_eq!(
+            AgentConversationExecutionRoute::parse(Some("cloud")),
+            Some(AgentConversationExecutionRoute::Cloud)
+        );
+        assert_eq!(
+            AgentConversationExecutionRoute::parse(Some("host")),
+            Some(AgentConversationExecutionRoute::Host)
+        );
+        assert_eq!(
             AgentConversationExecutionRoute::parse(Some("sandbox")),
-            Some(AgentConversationExecutionRoute::Sandbox)
+            Some(AgentConversationExecutionRoute::Cloud)
         );
         assert_eq!(
             AgentConversationExecutionRoute::InProcess.as_str(),
             "in_process"
         );
-        assert_eq!(AgentConversationExecutionRoute::Sandbox.as_str(), "sandbox");
+        assert_eq!(AgentConversationExecutionRoute::Cloud.as_str(), "cloud");
+        assert_eq!(AgentConversationExecutionRoute::Host.as_str(), "host");
     }
 
     #[test]
@@ -178,19 +204,36 @@ mod tests {
     #[test]
     fn unknown_codes_never_parse() {
         assert_eq!(AgentConversationExecutionRoute::parse(Some("local")), None);
-        assert_eq!(AgentConversationExecutionRoute::parse(Some("cloud")), None);
+        assert_eq!(
+            AgentConversationExecutionRoute::parse(Some("cluster")),
+            None
+        );
         assert_eq!(
             AgentConversationExecutionRoute::parse(Some("In_Process")),
             None
+        );
+        assert_eq!(AgentConversationExecutionRoute::parse(Some("HOST")), None);
+    }
+
+    #[test]
+    fn deployment_default_accepts_every_target_code() {
+        let decision = resolve_agent_conversation_execution_route(None, Some("host"))
+            .expect("host default resolves");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Host);
+        let decision = resolve_agent_conversation_execution_route(None, Some("sandbox"))
+            .expect("legacy sandbox default resolves as cloud");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Cloud);
+        assert_eq!(
+            decision.source,
+            AgentConversationExecutionRouteSource::DeploymentDefault
         );
     }
 
     #[test]
     fn request_override_wins_over_deployment_default() {
-        let decision =
-            resolve_agent_conversation_execution_route(Some("sandbox"), Some("in_process"))
-                .expect("override resolves");
-        assert_eq!(decision.route, AgentConversationExecutionRoute::Sandbox);
+        let decision = resolve_agent_conversation_execution_route(Some("host"), Some("in_process"))
+            .expect("override resolves");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Host);
         assert_eq!(
             decision.source,
             AgentConversationExecutionRouteSource::RequestOverride
@@ -201,7 +244,7 @@ mod tests {
     fn deployment_default_applies_without_override() {
         let decision = resolve_agent_conversation_execution_route(None, Some("sandbox"))
             .expect("default resolves");
-        assert_eq!(decision.route, AgentConversationExecutionRoute::Sandbox);
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Cloud);
         assert_eq!(
             decision.source,
             AgentConversationExecutionRouteSource::DeploymentDefault
@@ -212,7 +255,7 @@ mod tests {
     fn blank_override_falls_through_to_deployment_default() {
         let decision = resolve_agent_conversation_execution_route(Some("  "), Some("sandbox"))
             .expect("blank override falls through");
-        assert_eq!(decision.route, AgentConversationExecutionRoute::Sandbox);
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Cloud);
         assert_eq!(
             decision.source,
             AgentConversationExecutionRouteSource::DeploymentDefault

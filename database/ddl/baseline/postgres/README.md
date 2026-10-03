@@ -1,6 +1,6 @@
 # PostgreSQL Baseline
 
-`0001_agents_baseline.sql` is the complete `7.2.0` greenfield authority for the
+`0001_agents_baseline.sql` is the complete `7.3.0` greenfield authority for the
 Agents managed store. Apply it only to an empty installation through the
 database lifecycle orchestrator. The application is pre-launch, so this
 baseline is the complete initial state and contains the complete Turn input

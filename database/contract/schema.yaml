@@ -2,7 +2,7 @@ schema_version: 1
 kind: sdkwork.database.schema
 database_role: authoritative-server
 module_id: agents
-contract_version: 7.2.0
+contract_version: 7.3.0
 owner_team: agents-platform
 compliance_level: L2
 engines:
@@ -100,6 +100,16 @@ tables:
     lifecycle_status: active
     owner: agents-platform
     description: Selected runtime, owner-scoped provider Session lineage, provider directory snapshot for title and provider-native ordering, and runtime-location reference for a session.
+  - name: ai_agent_execution_host
+    profile: operational_state
+    lifecycle_status: active
+    owner: agents-platform
+    description: Dispatchable execution host registry (docker, micro VM, bare metal, kernel cloud-sandbox pool) with host kind, opaque dispatch endpoint, region, capacity, and lifecycle status for scheduler eligibility.
+  - name: ai_agent_session_execution_placement
+    profile: operational_state
+    lifecycle_status: active
+    owner: agents-platform
+    description: Durable per-session execution placement binding with requested/effective execution target, pinned host, opaque kernel placement reference, placement lifecycle state, and bounded lease/fencing evidence.
   - name: ai_agent_turn
     profile: operational_state
     lifecycle_status: active

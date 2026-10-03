@@ -2,7 +2,7 @@
 
 Owner: `agents-platform`
 
-Canonical contract: `database/contract/schema.yaml` (`7.2.0`)
+Canonical contract: `database/contract/schema.yaml` (`7.3.0`)
 
 Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
 
@@ -17,7 +17,10 @@ AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem 
 AgentTask -> AgentTaskRun -> AgentTaskRunAttempt
 ```
 
-The Session aggregate also owns one current runtime binding, resumable
+The Session aggregate also owns one current runtime binding, one current
+execution placement (requested/effective execution target, pinned execution
+host, placement lifecycle and lease evidence), the execution host registry
+(docker, micro VM, bare metal, kernel cloud-sandbox pools), resumable
 checkpoint references, typed Drive relations, durable Turn input queues,
 Task/Run/Attempt scheduling state, retry/lease/fencing state, audit facts, and
 transactional outbox facts. External outbox delivery remains a release gate
@@ -29,14 +32,16 @@ remain owned by their respective modules.
 
 ## Engine And Lifecycle
 
-PostgreSQL is the only managed-store engine. The `7.2.0` greenfield baseline
-contains the complete 30-table Session execution and Task scheduling model. It
-is the only database state supported before the first release.
-`baseline-plus-migrations` remains the lifecycle strategy. New installations
-use the complete baseline; the post-baseline migration set is empty while the
-app is pre-launch (the baseline is folded to the full current contract), so
-shared development schemas converge by resetting the agents state to the
-baseline instead of replaying forward-only migrations.
+PostgreSQL is the only managed-store engine. The `7.3.0` greenfield baseline
+contains the complete 32-table Session execution, Task scheduling, and
+execution-placement model. It is the only database state supported before the
+first release. `baseline-plus-migrations` remains the lifecycle strategy. New
+installations use the complete baseline; the post-baseline migration set brings
+already-initialized shared development schemas up to the folded baseline
+(`0001` tool configuration/asset tables, `0002` `organization_id`
+standardization, `0003` execution host registry and session execution
+placement), so shared development schemas converge on the baseline without
+replaying from an empty schema.
 
 Lifecycle `init` atomically materializes the consolidated baseline only when the
 completion anchor is absent. Automatic pending-migration execution defaults to
@@ -54,7 +59,9 @@ PostgreSQL sequences and identity columns are not used for business IDs.
 This module is in **initialization state** for greenfield deployments:
 
 1. **Baseline** — `database/ddl/baseline/{engine}/0001_agents_baseline.sql` contains the full DDL snapshot.
-2. **Migrations** — `database/migrations/{engine}/` is reserved for incremental schema changes after the application has shipped. It is intentionally empty while the application is pre-launch.
+2. **Migrations** — `database/migrations/{engine}/` carries the ordered
+   catch-up migrations that align previously initialized schemas with the
+   folded baseline. Fresh baseline installs no-op them via `IF NOT EXISTS`.
 3. **Drift** — run `pnpm db:drift:check` before release.
 
 ## Commands

@@ -53,6 +53,19 @@ pub const RUNTIME_MODE_SANDBOX_UNAVAILABLE: &str = "managed-agent-sandbox-unavai
 /// boundary can render an operator-actionable problem instead of a generic
 /// provider failure.
 pub const SANDBOX_ROUTE_UNAVAILABLE_DETAIL_KEY: &str = "sandbox_route_unavailable";
+/// Runtime mode when the host execution route was selected but dedicated-host
+/// execution could not start. The placement contract keeps the kernel host
+/// dispatch port unauthorized for implementation
+/// (`agent-execution-placement-orchestration.contract.json`
+/// `x-sdkwork-no-kernel-port-implementation`), so no composition can assemble
+/// a host route executor yet and the route fails closed until that port
+/// lands. Same fail-closed semantics as
+/// [`RUNTIME_MODE_SANDBOX_UNAVAILABLE`], including the shared
+/// [`SandboxRoutePolicy::allow_in_process_fallback`] knob.
+pub const RUNTIME_MODE_HOST_UNAVAILABLE: &str = "managed-agent-host-unavailable";
+/// Kernel error detail key tagging a host-route refusal (same operator
+/// contract as [`SANDBOX_ROUTE_UNAVAILABLE_DETAIL_KEY`]).
+pub const HOST_ROUTE_UNAVAILABLE_DETAIL_KEY: &str = "host_route_unavailable";
 /// Runtime mode when the CloudRouter transport itself could not be resolved —
 /// the composition root never wired the in-process port, or a split deployment
 /// resolved no HTTP base URL.
@@ -75,6 +88,14 @@ pub fn is_inference_error(runtime_mode: &str) -> bool {
 /// defect) instead of a generic upstream provider failure.
 pub fn is_sandbox_unavailable_error(runtime_mode: &str) -> bool {
     runtime_mode == RUNTIME_MODE_SANDBOX_UNAVAILABLE
+}
+
+/// Whether the turn failed because the host execution route could not be
+/// honored. Distinct from [`RUNTIME_MODE_INFERENCE_ERROR`] so the application
+/// boundary answers `turn_host_unavailable` (a placement/configuration
+/// defect) instead of a generic upstream provider failure.
+pub fn is_host_unavailable_error(runtime_mode: &str) -> bool {
+    runtime_mode == RUNTIME_MODE_HOST_UNAVAILABLE
 }
 
 pub fn is_capacity_error(runtime_mode: &str) -> bool {
@@ -663,10 +684,36 @@ impl<T: TurnExecutor> RoutedTurnExecutor<T> {
         let decision = self.resolve_decision(input);
         match decision.route {
             AgentConversationExecutionRoute::InProcess => execute_inner(self, input),
-            AgentConversationExecutionRoute::Sandbox => {
+            // The kernel sandbox session lifecycle is the cloud execution
+            // mechanism; the legacy `sandbox` route code resolves to the same
+            // cloud target (see `AgentConversationExecutionRoute::parse`).
+            AgentConversationExecutionRoute::Cloud => {
                 self.execute_sandboxed(input, decision, execute_inner)
             }
+            AgentConversationExecutionRoute::Host => self.execute_hosted(input, execute_inner),
         }
+    }
+
+    /// Dedicated-host execution. The durable host registry and session
+    /// placement binding exist (`ai_agent_execution_host`,
+    /// `ai_agent_session_execution_placement`), but the kernel host dispatch
+    /// port is not authorized for implementation yet
+    /// (`agent-execution-placement-orchestration.contract.json`
+    /// `x-sdkwork-no-kernel-port-implementation`), so no composition can
+    /// assemble a host executor and the route fails closed through the same
+    /// refusal policy as the sandbox route.
+    fn execute_hosted(
+        &self,
+        input: &TurnExecutionInput,
+        execute_inner: impl Fn(&Self, &TurnExecutionInput) -> TurnExecutionOutput,
+    ) -> TurnExecutionOutput {
+        self.route_start_refused(
+            input,
+            execute_inner,
+            "host",
+            RUNTIME_MODE_HOST_UNAVAILABLE,
+            "the host execution route is not assembled in this deployment; the kernel host dispatch port is not available yet",
+        )
     }
 
     fn execute_sandboxed(
@@ -785,31 +832,55 @@ impl<T: TurnExecutor> RoutedTurnExecutor<T> {
         execute_inner: impl Fn(&Self, &TurnExecutionInput) -> TurnExecutionOutput,
         reason: &str,
     ) -> TurnExecutionOutput {
+        self.route_start_refused(
+            input,
+            execute_inner,
+            "sandbox",
+            RUNTIME_MODE_SANDBOX_UNAVAILABLE,
+            reason,
+        )
+    }
+
+    /// Applies the shared non-in-process-route refusal policy: degrade to
+    /// in-process when explicitly configured, otherwise fail closed with a
+    /// distinct runtime mode the application boundary maps to a
+    /// route-specific problem code (`turn_sandbox_unavailable`,
+    /// `turn_host_unavailable`).
+    fn route_start_refused(
+        &self,
+        input: &TurnExecutionInput,
+        execute_inner: impl Fn(&Self, &TurnExecutionInput) -> TurnExecutionOutput,
+        route_label: &str,
+        runtime_mode: &'static str,
+        reason: &str,
+    ) -> TurnExecutionOutput {
         if self.sandbox_policy.allow_in_process_fallback {
             tracing::warn!(
                 session_id = %input.session.session_id,
                 turn_id = %input.turn_id,
+                route = %route_label,
                 reason = %reason,
-                "sandbox route unavailable; degrading to in-process execution"
+                "execution route unavailable; degrading to in-process execution"
             );
             return execute_inner(self, input);
         }
         tracing::warn!(
             session_id = %input.session.session_id,
             turn_id = %input.turn_id,
+            route = %route_label,
             reason = %reason,
-            "sandbox route unavailable; failing the turn closed"
+            "execution route unavailable; failing the turn closed"
         );
         TurnExecutionOutput {
             model_request_id: None,
             finish_reason: None,
-            content: format!("sandbox execution route is unavailable: {reason}"),
+            content: format!("{route_label} execution route is unavailable: {reason}"),
             model_id: None,
             provider_id: None,
             provider_session_id: None,
             input_tokens: 0,
             output_tokens: 0,
-            runtime_mode: RUNTIME_MODE_SANDBOX_UNAVAILABLE,
+            runtime_mode,
             stream_deltas: Vec::new(),
             stream_events: Vec::new(),
             tool_events: Vec::new(),
@@ -2034,12 +2105,12 @@ mod tests {
     }
 
     #[test]
-    fn request_override_beats_a_sandbox_deployment_default() {
+    fn request_override_beats_a_cloud_deployment_default() {
         let inner = CountingInnerExecutor::default();
         let port = RecordingSandboxPort::running();
         let executor = RoutedTurnExecutor::new(inner)
             .with_sandbox_port(port.clone())
-            .with_deployment_default_route(Some(AgentConversationExecutionRoute::Sandbox));
+            .with_deployment_default_route(Some(AgentConversationExecutionRoute::Cloud));
 
         let output = executor.complete(&routed_test_input(Some("in_process")));
 
@@ -2054,7 +2125,7 @@ mod tests {
             let port = RecordingSandboxPort::running();
             let executor = RoutedTurnExecutor::new(inner)
                 .with_sandbox_port(port.clone())
-                .with_deployment_default_route(Some(AgentConversationExecutionRoute::Sandbox));
+                .with_deployment_default_route(Some(AgentConversationExecutionRoute::Cloud));
 
             let output = executor.complete(&routed_test_input(None));
 
@@ -2063,6 +2134,81 @@ mod tests {
                 port.gets.load(std::sync::atomic::Ordering::SeqCst),
                 1,
                 "the deployment default applies when no override is present"
+            );
+        });
+    }
+
+    #[test]
+    fn cloud_route_code_executes_through_the_sandbox_lifecycle() {
+        // The kernel sandbox session lifecycle is the cloud execution
+        // mechanism; the canonical `cloud` code and the legacy `sandbox`
+        // alias must behave identically.
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = RecordingSandboxPort::running();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+            let output = executor.complete(&routed_test_input(Some("cloud")));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(executor.inner.calls(), 1);
+            assert_eq!(
+                port.gets.load(std::sync::atomic::Ordering::SeqCst),
+                1,
+                "the cloud route resolves the bound sandbox session"
+            );
+        });
+    }
+
+    #[test]
+    fn host_route_fails_closed_without_a_host_executor() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = RecordingSandboxPort::running();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+
+            let output = executor.complete(&routed_test_input(Some("host")));
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_HOST_UNAVAILABLE);
+            assert!(
+                output
+                    .content
+                    .contains("host execution route is unavailable"),
+                "the refusal names the unavailable route: {}",
+                output.content
+            );
+            assert_eq!(
+                executor.inner.calls(),
+                0,
+                "a requested host route never silently executes in-process"
+            );
+            assert_eq!(
+                port.gets.load(std::sync::atomic::Ordering::SeqCst),
+                0,
+                "the host route must not touch the sandbox lifecycle"
+            );
+        });
+    }
+
+    #[test]
+    fn host_route_can_degrade_to_in_process_only_when_explicitly_configured() {
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_policy(SandboxRoutePolicy {
+                allow_in_process_fallback: true,
+                ..SandboxRoutePolicy::default()
+            });
+
+            let output = executor.complete(&routed_test_input(Some("host")));
+
+            assert_eq!(
+                executor.inner.calls(),
+                1,
+                "fallback executes in-process exactly once"
+            );
+            assert_eq!(
+                output.runtime_mode, RUNTIME_MODE_FACADE,
+                "a degraded execution is not reported as a host execution"
             );
         });
     }

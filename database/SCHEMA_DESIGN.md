@@ -2,13 +2,13 @@
 
 Status: active
 
-Contract: `7.2.0`
+Contract: `7.3.0`
 
 Managed engine: PostgreSQL
 
 ## Ownership
 
-All 26 tables are authored and written by `sdkwork-intelligence-agents-service`.
+All 32 tables are authored and written by `sdkwork-intelligence-agents-service`.
 There are no imported tables, derived read stores, shadow copies, compatibility tables,
 or cross-module foreign keys. External capabilities are represented only by
 stable reference columns.
@@ -26,6 +26,8 @@ stable reference columns.
 | `ai_agent_project_composition_slot` | Project references to sibling-owned capabilities |
 | `ai_agent_session` | Single durable execution session authority |
 | `ai_agent_session_runtime_binding` | Session runtime selection, provider Session lineage, and provider directory metadata |
+| `ai_agent_execution_host` | Dispatchable execution host registry (docker, micro VM, bare metal, cloud-sandbox pool) |
+| `ai_agent_session_execution_placement` | Durable per-session execution placement: requested/effective target, pinned host, lifecycle state, lease evidence |
 | `ai_agent_turn` | Idempotent turn, retry, lease, fencing, usage, and terminal state |
 | `ai_agent_turn_input_queue_entry` | Durable owner-scoped FIFO input awaiting Turn execution |
 | `ai_agent_session_item` | Ordered typed transcript or execution item |

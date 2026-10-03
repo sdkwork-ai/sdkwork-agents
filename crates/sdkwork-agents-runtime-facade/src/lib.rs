@@ -7,6 +7,7 @@ mod agent_engine_catalog;
 mod agent_engine_config;
 mod agent_engines;
 mod error;
+mod execution_host;
 mod execution_route;
 mod live_interaction;
 mod provider_sessions;
@@ -35,10 +36,16 @@ pub use agent_engines::{
     CANONICAL_AGENT_ENGINE_KEYS,
 };
 pub use error::{RuntimeFacadeError, RuntimeFacadeResult};
+pub use execution_host::{
+    parse_agent_execution_host_kind, AgentExecutionHostKind, AgentExecutionPlacementState,
+    InvalidExecutionHostKindError, EXECUTION_HOST_KIND_BARE_METAL,
+    EXECUTION_HOST_KIND_CLOUD_SANDBOX, EXECUTION_HOST_KIND_DOCKER, EXECUTION_HOST_KIND_MICRO_VM,
+};
 pub use execution_route::{
     resolve_agent_conversation_execution_route, AgentConversationExecutionDecision,
     AgentConversationExecutionRoute, AgentConversationExecutionRouteSource,
-    InvalidExecutionRouteError, EXECUTION_ROUTE_IN_PROCESS, EXECUTION_ROUTE_SANDBOX,
+    InvalidExecutionRouteError, EXECUTION_ROUTE_CLOUD, EXECUTION_ROUTE_HOST,
+    EXECUTION_ROUTE_IN_PROCESS, EXECUTION_ROUTE_SANDBOX,
 };
 pub use live_interaction::{
     ApprovalDecision, EngineLiveInteraction, LiveInteractionRegistry, UserQuestionAnswer,

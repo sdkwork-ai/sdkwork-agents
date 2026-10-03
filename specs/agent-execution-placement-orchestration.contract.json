@@ -8,7 +8,7 @@
   "implementationAuthorized": false,
   "x-sdkwork-no-public-api-change": true,
   "x-sdkwork-no-sdk-generation": true,
-  "x-sdkwork-no-database-migration": true,
+  "x-sdkwork-no-database-migration": false,
   "x-sdkwork-no-kernel-port-implementation": true,
   "ownership": {
     "executionIntentAndProductLifecycle": "sdkwork-agents",
@@ -23,8 +23,14 @@
     "typeName": "ExecutionTarget",
     "values": [
       "LOCAL",
-      "CLOUD"
+      "CLOUD",
+      "HOST"
     ],
+    "valueSemantics": {
+      "LOCAL": "in_process: the turn executes in the current service process through the agent-engine facade (route code `in_process`)",
+      "CLOUD": "cloud execution coordinated through the kernel sandbox session lifecycle (route code `cloud`; legacy route code `sandbox` remains an accepted alias)",
+      "HOST": "dedicated execution host: a registered docker daemon, micro VM, bare-metal box, or kernel cloud-sandbox pool member (route code `host`)"
+    },
     "sessionCreateRequired": true,
     "taskOverrideField": "executionTargetOverride",
     "taskOverrideRequired": false,
@@ -33,6 +39,62 @@
     "hostModeInferenceAllowed": false,
     "deploymentProfileInferenceAllowed": false,
     "coordinationModeInferenceAllowed": false
+  },
+  "executionRouteResolution": {
+    "order": [
+      "requestOverride",
+      "deploymentDefault",
+      "builtInDefaultInProcess"
+    ],
+    "unknownCodeFailsClosed": true,
+    "owner": "sdkwork-agents-runtime-facade execution_route"
+  },
+  "hostRegistryCandidate": {
+    "typeName": "AgentExecutionHost",
+    "owner": "sdkwork-agents",
+    "store": "ai_agent_execution_host",
+    "clientWritable": false,
+    "hostKinds": [
+      "docker",
+      "micro_vm",
+      "bare_metal",
+      "cloud_sandbox"
+    ],
+    "platformSentinelScope": "tenant_id=0 and organization_id=0 denote platform-shared hosts",
+    "endpointPolicy": "opaque server-owned dispatch reference; never credentials",
+    "schedulerEligibility": "status active, host kind, and capacity headroom are the scheduling inputs"
+  },
+  "sessionPlacementPersistence": {
+    "typeName": "AgentSessionExecutionPlacement",
+    "owner": "sdkwork-agents",
+    "store": "ai_agent_session_execution_placement",
+    "databaseContractVersion": "7.3.0",
+    "authorization": "repository-owner instruction 2026-10-03: persist execution hosts and session placement facts; runtime lifecycle implementation remains gated below",
+    "oneCurrentPerSession": true,
+    "fields": [
+      "placementId",
+      "executionKind",
+      "executionId",
+      "requestedTarget",
+      "effectiveTarget",
+      "hostId",
+      "hostKind",
+      "kernelPlacementRef",
+      "placementState",
+      "leaseOwner",
+      "leaseExpiresAt",
+      "fencingGeneration",
+      "status",
+      "isCurrent",
+      "version"
+    ],
+    "hostPinOnlyForHostTarget": true,
+    "leaseCredentialNeverPersisted": true,
+    "schedulingIndexes": [
+      "uk_ai_agent_session_execution_placement_current",
+      "idx_ai_agent_session_execution_placement_host",
+      "idx_ai_agent_session_execution_placement_reconcile"
+    ]
   },
   "canonicalTaskRule": {
     "persistedSessionReferenceRequired": true,
