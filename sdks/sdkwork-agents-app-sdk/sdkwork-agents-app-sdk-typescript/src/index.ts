@@ -1,5 +1,5 @@
 import {
-  SdkworkAppClient as GeneratedSdkworkAppClient,
+  SdkworkBackendClient as GeneratedSdkworkAppClient,
 } from '../generated/server-openapi/src/index.ts';
 import { APP_API_PREFIX } from '../generated/server-openapi/src/api/paths.ts';
 import type { SdkworkAppConfig } from '../generated/server-openapi/src/types/common.ts';
