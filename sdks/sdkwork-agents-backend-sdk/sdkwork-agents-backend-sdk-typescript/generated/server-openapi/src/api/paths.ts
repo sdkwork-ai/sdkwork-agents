@@ -1,4 +1,4 @@
-export const BACKEND_API_PREFIX = '/backend/v3/api';
+export const BACKEND_API_PREFIX = '';
 
 export function backendApiPath(path: string): string {
   if (!path) {

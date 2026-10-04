@@ -7,25 +7,30 @@ use crate::agent_turn_input_queue::{
 };
 use crate::domain::{
     AgentBusinessRecord, AgentBusinessStatus, AgentCompositionSlotKind, AgentCompositionSlotRecord,
-    AgentCompositionTargetModule, AgentImplementationKind, AgentImplementationType,
-    AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentItemDriveRefRecord,
-    AgentItemFeedbackRating, AgentItemFeedbackRecord, AgentItemResourceRole,
-    AgentProviderBindingRecord, AgentResourceType, AgentResourceUserStateRecord,
-    AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord, AgentRuntimeExecutionStatus,
-    AgentSessionCheckpointRecord, AgentSessionCheckpointStatus, AgentSessionEntrySurface,
-    AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionKind,
-    AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentSessionRuntimeBindingStatus,
-    AgentSessionStatus, AgentSessionTitleSource, AgentTaskRecord, AgentTaskStatus,
-    AgentToolAssetRecord, AgentToolConfigurationRecord, AgentVersionRecord, AgentVisibility,
+    AgentCompositionTargetModule, AgentExecutionHostKind, AgentExecutionHostRecord,
+    AgentExecutionHostStatus, AgentExecutionPlacementKind, AgentExecutionPlacementLifecycle,
+    AgentExecutionPlacementRecord, AgentExecutionPlacementStatus, AgentExecutionPlacementTarget,
+    AgentImplementationKind, AgentImplementationType, AgentInteractionKind, AgentInteractionRecord,
+    AgentInteractionStatus, AgentItemDriveRefRecord, AgentItemFeedbackRating,
+    AgentItemFeedbackRecord, AgentItemResourceRole, AgentProviderBindingRecord, AgentResourceType,
+    AgentResourceUserStateRecord, AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord,
+    AgentRuntimeExecutionStatus, AgentSessionCheckpointRecord, AgentSessionCheckpointStatus,
+    AgentSessionEntrySurface, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus,
+    AgentSessionKind, AgentSessionRecord, AgentSessionRuntimeBindingRecord,
+    AgentSessionRuntimeBindingStatus, AgentSessionStatus, AgentSessionTitleSource, AgentTaskRecord,
+    AgentTaskStatus, AgentToolAssetRecord, AgentToolConfigurationRecord, AgentVersionRecord,
+    AgentVisibility,
 };
 use crate::ports::{
     validate_completed_turn_items, AgentAuditSink, AgentListQuery, AgentRepository,
-    AuditEventListQuery, CompositionSlotListQuery, InteractionListQuery, ItemFeedbackListQuery,
-    McpMarketplaceListQuery, ProjectCompositionSlotListQuery, ProjectListQuery,
-    ProviderBindingListQuery, ResourceUserStateListQuery, RuntimeExecutionListQuery,
-    SessionActivitySummaryListQuery, SessionCheckpointListQuery, SessionItemListQuery,
-    SessionItemListSort, SessionListQuery, SessionRuntimeBindingListQuery, TaskListQuery,
-    TurnListQuery, TurnRequestWriteOutcome, WorkspaceListQuery,
+    AuditEventListQuery, CompositionSlotListQuery, ExecutionHostListQuery,
+    ExecutionPlacementListQuery,
+    InteractionListQuery, ItemFeedbackListQuery, McpMarketplaceListQuery,
+    ProjectCompositionSlotListQuery, ProjectListQuery, ProviderBindingListQuery,
+    ResourceUserStateListQuery, RuntimeExecutionListQuery, SessionActivitySummaryListQuery,
+    SessionCheckpointListQuery, SessionItemListQuery, SessionItemListSort, SessionListQuery,
+    SessionRuntimeBindingListQuery, TaskListQuery, TurnListQuery, TurnRequestWriteOutcome,
+    WorkspaceListQuery,
 };
 #[cfg(feature = "postgres-sync")]
 use crate::postgres_sync_pool::{BlockingPostgresPool, PgRow};
@@ -163,51 +168,57 @@ pub use sql::{
 };
 #[cfg(feature = "postgres-sync")]
 pub use sql::{
-    SQL_ACTIVATE_AGENT_SESSION_RUNTIME_BINDING, SQL_APPEND_TURN_STREAMING_CONTENT,
-    SQL_CLAIM_PENDING_OUTBOX_EVENTS, SQL_CLEAR_TURN_STREAMING_CONTENT,
-    SQL_COMPLETE_AGENT_TURN_STATE, SQL_COMPLETE_OUTBOX_EVENT, SQL_COUNT_AGENT_INTERACTIONS,
-    SQL_COUNT_AGENT_ITEM_FEEDBACK, SQL_COUNT_AGENT_PROJECTS, SQL_COUNT_WEBHOOK_SUBSCRIPTIONS,
-    SQL_EXTEND_AGENT_TURN_LEASE,
-    SQL_FAIL_OUTBOX_EVENT,
+    SQL_ACTIVATE_AGENT_SESSION_EXECUTION_PLACEMENT, SQL_ACTIVATE_AGENT_SESSION_RUNTIME_BINDING,
+    SQL_APPEND_TURN_STREAMING_CONTENT, SQL_CLAIM_PENDING_OUTBOX_EVENTS,
+    SQL_CLEAR_TURN_STREAMING_CONTENT, SQL_COMPLETE_AGENT_TURN_STATE, SQL_COMPLETE_OUTBOX_EVENT,
+    SQL_COUNT_AGENT_INTERACTIONS, SQL_COUNT_AGENT_ITEM_FEEDBACK, SQL_COUNT_AGENT_PROJECTS,
     SQL_COUNT_AGENT_PROJECT_COMPOSITION_SLOTS, SQL_COUNT_AGENT_RESOURCE_USER_STATES,
     SQL_COUNT_AGENT_SESSIONS, SQL_COUNT_AGENT_SESSION_CHECKPOINTS, SQL_COUNT_AGENT_SESSION_ITEMS,
     SQL_COUNT_AGENT_SESSION_RUNTIME_BINDINGS, SQL_COUNT_AGENT_TURNS, SQL_COUNT_AGENT_WORKSPACES,
-    SQL_COUNT_TURN_INPUT_QUEUE_ENTRIES, SQL_DEACTIVATE_CURRENT_AGENT_SESSION_RUNTIME_BINDINGS,
-    SQL_INSERT_AGENT_INTERACTION, SQL_INSERT_AGENT_ITEM_DRIVE_REF, SQL_INSERT_AGENT_PROJECT,
-    SQL_INSERT_AGENT_PROJECT_COMPOSITION_SLOT, SQL_INSERT_AGENT_SESSION,
-    SQL_INSERT_AGENT_SESSION_CHECKPOINT, SQL_INSERT_AGENT_SESSION_ITEM,
-    SQL_INSERT_AGENT_SESSION_RUNTIME_BINDING, SQL_INSERT_AGENT_TASK, SQL_INSERT_AGENT_TOOL_ASSET,
-    SQL_INSERT_AGENT_TURN, SQL_INSERT_AGENT_WORKSPACE, SQL_LIST_AGENT_INTERACTIONS,
-    SQL_LIST_AGENT_ITEM_DRIVE_REFS, SQL_LIST_AGENT_ITEM_DRIVE_REFS_BATCH,
-    SQL_LIST_AGENT_ITEM_FEEDBACK, SQL_LIST_AGENT_PROJECTS,
+    SQL_COUNT_TURN_INPUT_QUEUE_ENTRIES, SQL_COUNT_WEBHOOK_SUBSCRIPTIONS,
+    SQL_DEACTIVATE_CURRENT_AGENT_SESSION_RUNTIME_BINDINGS,
+    SQL_DEACTIVATE_OTHER_AGENT_SESSION_EXECUTION_PLACEMENTS, SQL_EXTEND_AGENT_TURN_LEASE,
+    SQL_FAIL_OUTBOX_EVENT, SQL_INSERT_AGENT_INTERACTION, SQL_INSERT_AGENT_ITEM_DRIVE_REF,
+    SQL_INSERT_AGENT_PROJECT, SQL_INSERT_AGENT_PROJECT_COMPOSITION_SLOT, SQL_INSERT_AGENT_SESSION,
+    SQL_INSERT_AGENT_SESSION_CHECKPOINT, SQL_INSERT_AGENT_SESSION_EXECUTION_PLACEMENT,
+    SQL_INSERT_AGENT_SESSION_ITEM, SQL_INSERT_AGENT_SESSION_RUNTIME_BINDING, SQL_INSERT_AGENT_TASK,
+    SQL_INSERT_AGENT_TOOL_ASSET, SQL_INSERT_AGENT_TURN, SQL_INSERT_AGENT_WORKSPACE,
+    SQL_LIST_AGENT_INTERACTIONS, SQL_LIST_AGENT_ITEM_DRIVE_REFS,
+    SQL_LIST_AGENT_ITEM_DRIVE_REFS_BATCH, SQL_LIST_AGENT_ITEM_FEEDBACK, SQL_LIST_AGENT_PROJECTS,
     SQL_LIST_AGENT_PROJECT_COMPOSITION_SLOTS, SQL_LIST_AGENT_RESOURCE_USER_STATES,
     SQL_LIST_AGENT_SESSIONS, SQL_LIST_AGENT_SESSION_ACTIVITY_HEADS,
-    SQL_LIST_AGENT_SESSION_CHECKPOINTS, SQL_LIST_AGENT_SESSION_ITEMS,
-    SQL_LIST_AGENT_SESSION_ITEMS_BY_TURN, SQL_LIST_AGENT_SESSION_ITEMS_CURSOR_ASC,
-    SQL_LIST_AGENT_SESSION_ITEMS_CURSOR_DESC, SQL_LIST_AGENT_SESSION_ITEMS_DESC,
-    SQL_LIST_AGENT_SESSION_ITEMS_RECENT_CONTEXT, SQL_LIST_AGENT_SESSION_RUNTIME_BINDINGS,
-    SQL_LIST_AGENT_TASKS, SQL_LIST_AGENT_TOOL_ASSETS, SQL_LIST_AGENT_TOOL_CONFIGURATIONS,
-    SQL_LIST_AGENT_TURNS, SQL_LIST_AGENT_WORKSPACES, SQL_LIST_AUDIT_EVENTS_BY_TENANT_AND_AGENT_ID,
+    SQL_LIST_AGENT_SESSION_CHECKPOINTS, SQL_LIST_AGENT_SESSION_EXECUTION_PLACEMENTS,
+    SQL_LIST_AGENT_SESSION_ITEMS, SQL_LIST_AGENT_SESSION_ITEMS_BY_TURN,
+    SQL_LIST_AGENT_SESSION_ITEMS_CURSOR_ASC, SQL_LIST_AGENT_SESSION_ITEMS_CURSOR_DESC,
+    SQL_LIST_AGENT_SESSION_ITEMS_DESC, SQL_LIST_AGENT_SESSION_ITEMS_RECENT_CONTEXT,
+    SQL_LIST_AGENT_SESSION_RUNTIME_BINDINGS, SQL_LIST_AGENT_TASKS, SQL_LIST_AGENT_TOOL_ASSETS,
+    SQL_LIST_AGENT_TOOL_CONFIGURATIONS, SQL_LIST_AGENT_TURNS, SQL_LIST_AGENT_WORKSPACES,
+    SQL_COUNT_AGENT_EXECUTION_HOSTS, SQL_LIST_AGENT_EXECUTION_HOSTS,
+    SQL_LIST_AUDIT_EVENTS_BY_TENANT_AND_AGENT_ID, SQL_LIST_ELIGIBLE_AGENT_EXECUTION_HOSTS,
     SQL_LIST_RECONCILABLE_AGENT_TURNS, SQL_LIST_TURN_INPUT_QUEUE_ENTRIES,
     SQL_LOCK_AGENT_PROJECT_WORKSPACE_NAME, SQL_LOCK_AGENT_SESSION_RUNTIME_BINDING,
-    SQL_RECORD_AGENT_SESSION_ITEM, SQL_SELECT_AGENT_INTERACTION, SQL_SELECT_AGENT_ITEM_FEEDBACK,
-    SQL_SELECT_AGENT_PROJECT, SQL_SELECT_AGENT_PROJECT_BY_IMPORT_SOURCE,
-    SQL_SELECT_AGENT_PROJECT_BY_WORKSPACE_NAME, SQL_SELECT_AGENT_PROJECT_COMPOSITION_SLOT,
-    SQL_SELECT_AGENT_RESOURCE_USER_STATE, SQL_SELECT_AGENT_SESSION,
-    SQL_SELECT_AGENT_SESSION_BY_CREATE_IDEMPOTENCY, SQL_SELECT_AGENT_SESSION_CHECKPOINT,
+    SQL_RECORD_AGENT_SESSION_ITEM, SQL_SELECT_AGENT_EXECUTION_HOST, SQL_SELECT_AGENT_INTERACTION,
+    SQL_SELECT_AGENT_ITEM_FEEDBACK, SQL_SELECT_AGENT_PROJECT,
+    SQL_SELECT_AGENT_PROJECT_BY_IMPORT_SOURCE, SQL_SELECT_AGENT_PROJECT_BY_WORKSPACE_NAME,
+    SQL_SELECT_AGENT_PROJECT_COMPOSITION_SLOT, SQL_SELECT_AGENT_RESOURCE_USER_STATE,
+    SQL_SELECT_AGENT_SESSION, SQL_SELECT_AGENT_SESSION_BY_CREATE_IDEMPOTENCY,
+    SQL_SELECT_AGENT_SESSION_CHECKPOINT, SQL_SELECT_AGENT_SESSION_EXECUTION_PLACEMENT,
     SQL_SELECT_AGENT_SESSION_ITEM, SQL_SELECT_AGENT_SESSION_ITEM_ID_BY_TURN_AND_KIND,
     SQL_SELECT_AGENT_SESSION_RUNTIME_BINDING,
     SQL_SELECT_AGENT_SESSION_RUNTIME_BINDING_BY_PROVIDER_SESSION, SQL_SELECT_AGENT_TASK,
     SQL_SELECT_AGENT_TOOL_CONFIGURATION, SQL_SELECT_AGENT_TURN,
     SQL_SELECT_AGENT_TURN_BY_IDEMPOTENCY, SQL_SELECT_AGENT_TURN_FOR_UPDATE,
-    SQL_SELECT_AGENT_WORKSPACE, SQL_SELECT_CURRENT_AGENT_SESSION_RUNTIME_BINDING,
-    SQL_SELECT_DEFAULT_AGENT_WORKSPACE, SQL_SELECT_TASK_SCHEDULER_METRICS_SNAPSHOT,
-    SQL_SELECT_TURN_INPUT_QUEUE_ENTRY, SQL_SELECT_TURN_STREAMING_CONTENT,
-    SQL_UPDATE_AGENT_INTERACTION, SQL_UPDATE_AGENT_PROJECT,
+    SQL_SELECT_AGENT_WORKSPACE, SQL_SELECT_CURRENT_AGENT_SESSION_EXECUTION_PLACEMENT,
+    SQL_SELECT_CURRENT_AGENT_SESSION_RUNTIME_BINDING, SQL_SELECT_DEFAULT_AGENT_WORKSPACE,
+    SQL_SELECT_LIVE_AGENT_SESSION_EXECUTION_PLACEMENTS_FOR_RECONCILIATION,
+    SQL_SELECT_LIVE_AGENT_SESSION_EXECUTION_PLACEMENTS_FOR_RECONCILIATION_ALL_TENANTS,
+    SQL_SELECT_TASK_SCHEDULER_METRICS_SNAPSHOT, SQL_SELECT_TURN_INPUT_QUEUE_ENTRY,
+    SQL_SELECT_TURN_STREAMING_CONTENT, SQL_UPDATE_AGENT_INTERACTION, SQL_UPDATE_AGENT_PROJECT,
     SQL_UPDATE_AGENT_PROJECT_COMPOSITION_SLOT, SQL_UPDATE_AGENT_SESSION,
-    SQL_UPDATE_AGENT_SESSION_CHECKPOINT, SQL_UPDATE_AGENT_SESSION_ITEM,
-    SQL_UPDATE_AGENT_SESSION_RUNTIME_BINDING, SQL_UPDATE_AGENT_TASK, SQL_UPDATE_AGENT_TURN_STATE,
-    SQL_UPDATE_AGENT_WORKSPACE, SQL_UPDATE_TURN_INPUT_QUEUE_ENTRY, SQL_UPSERT_AGENT_ITEM_FEEDBACK,
+    SQL_UPDATE_AGENT_SESSION_CHECKPOINT, SQL_UPDATE_AGENT_SESSION_EXECUTION_PLACEMENT,
+    SQL_UPDATE_AGENT_SESSION_ITEM, SQL_UPDATE_AGENT_SESSION_RUNTIME_BINDING, SQL_UPDATE_AGENT_TASK,
+    SQL_UPDATE_AGENT_TURN_STATE, SQL_UPDATE_AGENT_WORKSPACE, SQL_UPDATE_TURN_INPUT_QUEUE_ENTRY,
+    SQL_UPSERT_AGENT_EXECUTION_HOST, SQL_UPSERT_AGENT_ITEM_FEEDBACK,
     SQL_UPSERT_AGENT_RESOURCE_USER_STATE, SQL_UPSERT_AGENT_TOOL_CONFIGURATION,
 };
 
@@ -1014,6 +1025,188 @@ impl AgentSessionRuntimeBindingRow {
             updated_at: self.updated_at,
             activated_at: self.activated_at,
             deactivated_at: self.deactivated_at,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentExecutionPlacementRow {
+    pub id: u64,
+    pub uuid: String,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub owner_user_id: u64,
+    pub session_id: String,
+    pub agent_id: String,
+    pub placement_id: String,
+    pub execution_kind: String,
+    pub execution_id: String,
+    pub requested_target: Option<String>,
+    pub effective_target: String,
+    pub host_id: Option<String>,
+    pub host_kind: Option<String>,
+    pub kernel_placement_ref: Option<String>,
+    pub placement_state: i16,
+    pub lease_owner: Option<String>,
+    pub lease_expires_at: Option<String>,
+    pub status: i16,
+    pub is_current: bool,
+    pub version: u64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub activated_at: Option<String>,
+    pub deactivated_at: Option<String>,
+}
+
+impl AgentExecutionPlacementRow {
+    pub fn from_record(record: &AgentExecutionPlacementRecord) -> Self {
+        Self {
+            id: record.id,
+            uuid: build_execution_placement_uuid(
+                record.tenant_id,
+                record.organization_id,
+                &record.session_id,
+                &record.placement_id,
+            ),
+            tenant_id: record.tenant_id,
+            organization_id: record.organization_id,
+            owner_user_id: record.owner_user_id,
+            session_id: record.session_id.clone(),
+            agent_id: record.agent_id.clone(),
+            placement_id: record.placement_id.clone(),
+            execution_kind: record.execution_kind.as_str().to_string(),
+            execution_id: record.execution_id.clone(),
+            requested_target: record.requested_target.map(|t| t.as_str().to_string()),
+            effective_target: record.effective_target.as_str().to_string(),
+            host_id: record.host_id.clone(),
+            host_kind: record.host_kind.map(|k| k.as_str().to_string()),
+            kernel_placement_ref: record.kernel_placement_ref.clone(),
+            placement_state: record.placement_state.as_db_code(),
+            lease_owner: record.lease_owner.clone(),
+            lease_expires_at: record.lease_expires_at.clone(),
+            status: record.status.as_db_code(),
+            is_current: record.is_current,
+            version: record.version,
+            created_at: record.created_at.clone(),
+            updated_at: record.updated_at.clone(),
+            activated_at: record.activated_at.clone(),
+            deactivated_at: record.deactivated_at.clone(),
+        }
+    }
+
+    pub fn into_record(self) -> KernelResult<AgentExecutionPlacementRecord> {
+        Ok(AgentExecutionPlacementRecord {
+            id: self.id,
+            tenant_id: self.tenant_id,
+            organization_id: self.organization_id,
+            owner_user_id: self.owner_user_id,
+            session_id: self.session_id,
+            agent_id: self.agent_id,
+            placement_id: self.placement_id,
+            execution_kind: AgentExecutionPlacementKind::parse(Some(&self.execution_kind))
+                .ok_or_else(|| KernelError::validation("invalid execution placement kind"))?,
+            execution_id: self.execution_id,
+            requested_target: AgentExecutionPlacementTarget::parse(
+                self.requested_target.as_deref(),
+            ),
+            effective_target: AgentExecutionPlacementTarget::parse(Some(&self.effective_target))
+                .ok_or_else(|| KernelError::validation("invalid execution placement target"))?,
+            host_id: self.host_id,
+            host_kind: AgentExecutionHostKind::parse(self.host_kind.as_deref()),
+            kernel_placement_ref: self.kernel_placement_ref,
+            placement_state: AgentExecutionPlacementLifecycle::from_db_code(self.placement_state)
+                .ok_or_else(|| {
+                KernelError::validation("invalid execution placement state")
+            })?,
+            lease_owner: self.lease_owner,
+            lease_expires_at: self.lease_expires_at,
+            status: AgentExecutionPlacementStatus::from_db_code(self.status)
+                .ok_or_else(|| KernelError::validation("invalid execution placement status"))?,
+            is_current: self.is_current,
+            version: self.version,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            activated_at: self.activated_at,
+            deactivated_at: self.deactivated_at,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentExecutionHostRow {
+    pub id: u64,
+    pub uuid: String,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub host_id: String,
+    pub display_name: Option<String>,
+    pub host_kind: String,
+    pub endpoint: String,
+    pub region: Option<String>,
+    pub max_concurrent_sessions: u32,
+    pub capabilities_json: String,
+    pub status: i16,
+    pub created_by: u64,
+    pub updated_by: u64,
+    pub version: u64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub deleted_at: Option<String>,
+    pub deleted_by: Option<u64>,
+}
+
+impl AgentExecutionHostRow {
+    pub fn from_record(record: &AgentExecutionHostRecord) -> Self {
+        Self {
+            id: record.id,
+            uuid: build_execution_host_uuid(
+                record.tenant_id,
+                record.organization_id,
+                &record.host_id,
+            ),
+            tenant_id: record.tenant_id,
+            organization_id: record.organization_id,
+            host_id: record.host_id.clone(),
+            display_name: record.display_name.clone(),
+            host_kind: record.host_kind.as_str().to_string(),
+            endpoint: record.endpoint.clone(),
+            region: record.region.clone(),
+            max_concurrent_sessions: record.max_concurrent_sessions,
+            capabilities_json: record.capabilities_json.clone(),
+            status: record.status.as_db_code(),
+            created_by: record.created_by,
+            updated_by: record.updated_by,
+            version: record.version,
+            created_at: record.created_at.clone(),
+            updated_at: record.updated_at.clone(),
+            deleted_at: record.deleted_at.clone(),
+            deleted_by: record.deleted_by,
+        }
+    }
+
+    pub fn into_record(self) -> KernelResult<AgentExecutionHostRecord> {
+        Ok(AgentExecutionHostRecord {
+            id: self.id,
+            tenant_id: self.tenant_id,
+            organization_id: self.organization_id,
+            host_id: self.host_id,
+            display_name: self.display_name,
+            host_kind: AgentExecutionHostKind::parse(Some(&self.host_kind))
+                .ok_or_else(|| KernelError::validation("invalid execution host kind"))?,
+            endpoint: self.endpoint,
+            region: self.region,
+            max_concurrent_sessions: u32::try_from(self.max_concurrent_sessions)
+                .map_err(|_| KernelError::validation("invalid execution host capacity"))?,
+            capabilities_json: self.capabilities_json,
+            status: AgentExecutionHostStatus::from_db_code(self.status)
+                .ok_or_else(|| KernelError::validation("invalid execution host status"))?,
+            created_by: self.created_by,
+            updated_by: self.updated_by,
+            version: self.version,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+            deleted_at: self.deleted_at,
+            deleted_by: self.deleted_by,
         })
     }
 }
@@ -2182,6 +2375,27 @@ fn build_session_checkpoint_uuid(
     )
 }
 
+fn build_execution_placement_uuid(
+    tenant_id: u64,
+    organization_id: u64,
+    session_id: &str,
+    placement_id: &str,
+) -> String {
+    build_storage_uuid(
+        "session-execution-placement",
+        tenant_id,
+        &[&organization_id.to_string(), session_id, placement_id],
+    )
+}
+
+fn build_execution_host_uuid(tenant_id: u64, organization_id: u64, host_id: &str) -> String {
+    build_storage_uuid(
+        "execution-host",
+        tenant_id,
+        &[&organization_id.to_string(), host_id],
+    )
+}
+
 fn build_session_item_uuid(tenant_id: u64, session_id: &str, item_id: &str) -> String {
     build_storage_uuid("session-item", tenant_id, &[session_id, item_id])
 }
@@ -2687,8 +2901,11 @@ pub trait AgentRepositoryAdapter: Send + Sync {
         event: AgentOutboxEventRow,
     ) -> KernelResult<()>;
 
-    fn count_webhook_subscription_rows(&self, tenant_id: u64, organization_id: u64)
-        -> KernelResult<u64>;
+    fn count_webhook_subscription_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<u64>;
 
     fn check_readiness(&self) -> KernelResult<()>;
     fn next_id(&self) -> KernelResult<u64>;
@@ -2892,6 +3109,88 @@ pub trait AgentRepositoryAdapter: Send + Sync {
         expected_version: u64,
         updated_at: String,
     ) -> KernelResult<AgentSessionRuntimeBindingRow>;
+    fn insert_execution_placement_row(&self, row: AgentExecutionPlacementRow) -> KernelResult<()>;
+    fn update_execution_placement_row(
+        &self,
+        row: AgentExecutionPlacementRow,
+        expected_version: u64,
+    ) -> KernelResult<()>;
+    fn get_execution_placement_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRow>>;
+    fn get_current_execution_placement_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRow>>;
+    fn list_execution_placement_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        current_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRow>>;
+    fn switch_current_execution_placement_row_atomic(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+        expected_version: u64,
+        updated_at: String,
+    ) -> KernelResult<AgentExecutionPlacementRow>;
+    fn list_expired_execution_placement_rows(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: i64,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRow>>;
+    fn list_expired_execution_placement_rows_across_tenants(
+        &self,
+        as_of: &str,
+        limit: i64,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRow>>;
+    fn upsert_execution_host_row(
+        &self,
+        row: AgentExecutionHostRow,
+        expected_version: u64,
+    ) -> KernelResult<AgentExecutionHostRow>;
+    fn get_execution_host_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+    ) -> KernelResult<Option<AgentExecutionHostRow>>;
+    fn list_eligible_execution_host_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: &str,
+    ) -> KernelResult<Vec<AgentExecutionHostRow>>;
+    fn list_execution_host_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: Option<String>,
+        status: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> KernelResult<Vec<AgentExecutionHostRow>>;
+
+    fn count_execution_host_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: Option<String>,
+        status: Option<i16>,
+    ) -> KernelResult<u64>;
     fn insert_session_checkpoint_row(&self, row: AgentSessionCheckpointRow) -> KernelResult<()>;
     fn update_session_checkpoint_row(&self, row: AgentSessionCheckpointRow) -> KernelResult<()>;
     fn get_session_checkpoint_row(
@@ -3547,8 +3846,13 @@ where
         lease_token: &str,
         published_at: &str,
     ) -> KernelResult<u64> {
-        self.adapter
-            .complete_outbox_event(id, tenant_id, organization_id, lease_token, published_at)
+        self.adapter.complete_outbox_event(
+            id,
+            tenant_id,
+            organization_id,
+            lease_token,
+            published_at,
+        )
     }
 
     fn fail_outbox_event(
@@ -3574,10 +3878,7 @@ where
         )
     }
 
-    fn append_outbox_event(
-        &self,
-        event: AgentOutboxEventRow,
-    ) -> KernelResult<()> {
+    fn append_outbox_event(&self, event: AgentOutboxEventRow) -> KernelResult<()> {
         self.adapter.append_outbox_event_row(event)
     }
 
@@ -4123,6 +4424,183 @@ where
                 updated_at,
             )?
             .into_record()
+    }
+
+    fn insert_execution_placement(
+        &self,
+        record: AgentExecutionPlacementRecord,
+    ) -> KernelResult<()> {
+        self.adapter
+            .insert_execution_placement_row(AgentExecutionPlacementRow::from_record(&record))
+    }
+
+    fn update_execution_placement(
+        &self,
+        record: AgentExecutionPlacementRecord,
+        expected_version: u64,
+    ) -> KernelResult<()> {
+        self.adapter.update_execution_placement_row(
+            AgentExecutionPlacementRow::from_record(&record),
+            expected_version,
+        )
+    }
+
+    fn get_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRecord>> {
+        self.adapter
+            .get_execution_placement_row(tenant_id, organization_id, session_id, placement_id)?
+            .map(AgentExecutionPlacementRow::into_record)
+            .transpose()
+    }
+
+    fn get_current_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRecord>> {
+        self.adapter
+            .get_current_execution_placement_row(tenant_id, organization_id, session_id)?
+            .map(AgentExecutionPlacementRow::into_record)
+            .transpose()
+    }
+
+    fn list_execution_placements(
+        &self,
+        query: &ExecutionPlacementListQuery,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>> {
+        let page_size = query.pagination.page_size as i64;
+        let offset = query.pagination.offset as i64;
+        self.adapter
+            .list_execution_placement_rows(
+                query.tenant_id,
+                query.organization_id,
+                &query.session_id,
+                query.current_only,
+                page_size,
+                offset,
+            )?
+            .into_iter()
+            .map(AgentExecutionPlacementRow::into_record)
+            .collect()
+    }
+
+    fn switch_current_execution_placement_atomic(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+        expected_version: u64,
+        updated_at: String,
+    ) -> KernelResult<AgentExecutionPlacementRecord> {
+        self.adapter
+            .switch_current_execution_placement_row_atomic(
+                tenant_id,
+                organization_id,
+                session_id,
+                placement_id,
+                expected_version,
+                updated_at,
+            )?
+            .into_record()
+    }
+
+    fn list_expired_execution_placements(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>> {
+        self.adapter
+            .list_expired_execution_placement_rows(tenant_id, as_of, limit as i64)?
+            .into_iter()
+            .map(AgentExecutionPlacementRow::into_record)
+            .collect()
+    }
+
+    fn list_expired_execution_placements_across_tenants(
+        &self,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>> {
+        self.adapter
+            .list_expired_execution_placement_rows_across_tenants(as_of, limit as i64)?
+            .into_iter()
+            .map(AgentExecutionPlacementRow::into_record)
+            .collect()
+    }
+
+    fn upsert_execution_host(
+        &self,
+        record: AgentExecutionHostRecord,
+        expected_version: u64,
+    ) -> KernelResult<AgentExecutionHostRecord> {
+        self.adapter
+            .upsert_execution_host_row(
+                AgentExecutionHostRow::from_record(&record),
+                expected_version,
+            )?
+            .into_record()
+    }
+
+    fn get_execution_host(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+    ) -> KernelResult<Option<AgentExecutionHostRecord>> {
+        self.adapter
+            .get_execution_host_row(tenant_id, organization_id, host_id)?
+            .map(AgentExecutionHostRow::into_record)
+            .transpose()
+    }
+
+    fn list_eligible_execution_hosts(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: AgentExecutionHostKind,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>> {
+        self.adapter
+            .list_eligible_execution_host_rows(tenant_id, organization_id, host_kind.as_str())?
+            .into_iter()
+            .map(AgentExecutionHostRow::into_record)
+            .collect()
+    }
+
+    fn list_execution_hosts(
+        &self,
+        query: &ExecutionHostListQuery,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>> {
+        let page_size = query.pagination.page_size as i64;
+        let offset = query.pagination.offset as i64;
+        self.adapter
+            .list_execution_host_rows(
+                query.tenant_id,
+                query.organization_id,
+                query.host_kind.map(|kind| kind.as_str().to_string()),
+                query.status.map(|status| status.as_db_code()),
+                page_size,
+                offset,
+            )?
+            .into_iter()
+            .map(AgentExecutionHostRow::into_record)
+            .collect()
+    }
+
+    fn count_execution_hosts(&self, query: &ExecutionHostListQuery) -> KernelResult<u64> {
+        self.adapter.count_execution_host_rows(
+            query.tenant_id,
+            query.organization_id,
+            query.host_kind.map(|kind| kind.as_str().to_string()),
+            query.status.map(|status| status.as_db_code()),
+        )
     }
 
     fn insert_session_checkpoint(&self, record: AgentSessionCheckpointRecord) -> KernelResult<()> {
@@ -6341,10 +6819,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 tenant_id,
                 organization_id
             )?;
-            let row = row.ok_or_else(|| {
-                KernelError::Internal {
-                    message: "webhook subscription count query returned no row".to_string(),
-                }
+            let row = row.ok_or_else(|| KernelError::Internal {
+                message: "webhook subscription count query returned no row".to_string(),
             })?;
             let total: i64 = row.try_get("total_count").map_err(map_sqlx_error)?;
             Ok(total.max(0) as u64)
@@ -6353,10 +6829,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
 
     fn append_outbox_event_row(&self, row: AgentOutboxEventRow) -> KernelResult<()> {
         let payload: serde_json::Value =
-            serde_json::from_str(&row.payload_json).map_err(|_| {
-                KernelError::Internal {
-                    message: "outbox payload is not valid JSON".to_string(),
-                }
+            serde_json::from_str(&row.payload_json).map_err(|_| KernelError::Internal {
+                message: "outbox payload is not valid JSON".to_string(),
             })?;
         self.with_pool(|pool| {
             let pg_pool = pool.pool().clone();
@@ -6389,10 +6863,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
     ) -> KernelResult<()> {
         let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
         let payload: serde_json::Value =
-            serde_json::from_str(&event.payload_json).map_err(|_| {
-                KernelError::Internal {
-                    message: "outbox payload is not valid JSON".to_string(),
-                }
+            serde_json::from_str(&event.payload_json).map_err(|_| KernelError::Internal {
+                message: "outbox payload is not valid JSON".to_string(),
             })?;
         self.with_pool(|pool| {
             let pg_pool = pool.pool().clone();
@@ -8572,6 +9044,423 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 })
                 .await
             })
+        })
+    }
+
+    fn insert_execution_placement_row(&self, row: AgentExecutionPlacementRow) -> KernelResult<()> {
+        let id = u64_to_i64(row.id, "id")?;
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(row.organization_id, "organization_id")?;
+        let owner_user_id = u64_to_i64(row.owner_user_id, "owner_user_id")?;
+        let next_version =
+            i64::try_from(row.version).map_err(|_| KernelError::validation("invalid version"))?;
+        self.with_pool(|pool| {
+            pg_execute!(
+                pool,
+                SQL_INSERT_AGENT_SESSION_EXECUTION_PLACEMENT,
+                id,
+                row.uuid,
+                tenant_id,
+                organization_id,
+                owner_user_id,
+                row.session_id,
+                row.agent_id,
+                row.placement_id,
+                row.execution_kind,
+                row.execution_id,
+                row.requested_target,
+                row.effective_target,
+                row.host_id,
+                row.host_kind,
+                row.kernel_placement_ref,
+                row.placement_state,
+                row.lease_owner,
+                row.lease_expires_at,
+                row.status,
+                row.is_current,
+                next_version,
+                row.created_at,
+                row.updated_at,
+                row.activated_at,
+                row.deactivated_at
+            )?;
+            Ok(())
+        })
+    }
+
+    fn update_execution_placement_row(
+        &self,
+        row: AgentExecutionPlacementRow,
+        expected_version: u64,
+    ) -> KernelResult<()> {
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(row.organization_id, "organization_id")?;
+        let expected_version = u64_to_i64(expected_version, "expected_version")?;
+        let next_version =
+            i64::try_from(row.version).map_err(|_| KernelError::validation("invalid version"))?;
+        self.with_pool(|pool| {
+            let affected = pg_execute!(
+                pool,
+                SQL_UPDATE_AGENT_SESSION_EXECUTION_PLACEMENT,
+                row.execution_kind,
+                row.execution_id,
+                row.requested_target,
+                row.effective_target,
+                row.host_id,
+                row.host_kind,
+                row.kernel_placement_ref,
+                row.placement_state,
+                row.lease_owner,
+                row.lease_expires_at,
+                row.status,
+                row.is_current,
+                next_version,
+                row.updated_at,
+                row.activated_at,
+                row.deactivated_at,
+                tenant_id,
+                organization_id,
+                row.session_id,
+                row.placement_id,
+                expected_version
+            )?;
+            if affected == 0 {
+                return Err(KernelError::conflict(
+                    "execution placement version mismatch",
+                ));
+            }
+            Ok(())
+        })
+    }
+
+    fn get_execution_placement_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_query_optional!(
+                pool,
+                SQL_SELECT_AGENT_SESSION_EXECUTION_PLACEMENT,
+                tenant_id,
+                organization_id,
+                session_id,
+                placement_id
+            )?
+            .map(pg_row_to_agent_execution_placement_row)
+            .transpose()
+        })
+    }
+
+    fn get_current_execution_placement_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_query_optional!(
+                pool,
+                SQL_SELECT_CURRENT_AGENT_SESSION_EXECUTION_PLACEMENT,
+                tenant_id,
+                organization_id,
+                session_id
+            )?
+            .map(pg_row_to_agent_execution_placement_row)
+            .transpose()
+        })
+    }
+
+    fn list_execution_placement_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        current_only: bool,
+        limit: i64,
+        offset: i64,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_query!(
+                pool,
+                SQL_LIST_AGENT_SESSION_EXECUTION_PLACEMENTS,
+                tenant_id,
+                organization_id,
+                session_id,
+                current_only,
+                limit,
+                offset
+            )?
+            .into_iter()
+            .map(pg_row_to_agent_execution_placement_row)
+            .collect()
+        })
+    }
+
+    fn switch_current_execution_placement_row_atomic(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+        expected_version: u64,
+        updated_at: String,
+    ) -> KernelResult<AgentExecutionPlacementRow> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        let expected_version = u64_to_i64(expected_version, "expected_version")?;
+
+        fn kernel_err(error: KernelError) -> sqlx::Error {
+            sqlx::Error::Protocol(error.to_string())
+        }
+
+        self.with_pool(|pool| {
+            let pg_pool = pool.pool().clone();
+            let session_id = session_id.to_string();
+            let placement_id = placement_id.to_string();
+            pool.run_kernel(async move {
+                retry_postgres_transaction(|| async {
+                    let session_id = session_id.clone();
+                    let placement_id = placement_id.clone();
+                    let updated_at = updated_at.clone();
+                    let mut tx = pg_pool.begin().await?;
+                    // Retire every other current placement first, then
+                    // activate the target under its expected version; the
+                    // partial unique index keeps at most one current row.
+                    sqlx::query(SQL_DEACTIVATE_OTHER_AGENT_SESSION_EXECUTION_PLACEMENTS)
+                        .bind(tenant_id)
+                        .bind(organization_id)
+                        .bind(&session_id)
+                        .bind(&placement_id)
+                        .bind(&updated_at)
+                        .execute(&mut *tx)
+                        .await?;
+                    let activated_row = sqlx::query(SQL_ACTIVATE_AGENT_SESSION_EXECUTION_PLACEMENT)
+                        .bind(tenant_id)
+                        .bind(organization_id)
+                        .bind(&session_id)
+                        .bind(&placement_id)
+                        .bind(expected_version)
+                        .bind(&updated_at)
+                        .fetch_optional(&mut *tx)
+                        .await?;
+                    let Some(activated_row) = activated_row else {
+                        // Either the placement does not exist or the
+                        // optimistic version raced: surface which.
+                        let existing = sqlx::query(SQL_SELECT_AGENT_SESSION_EXECUTION_PLACEMENT)
+                            .bind(tenant_id)
+                            .bind(organization_id)
+                            .bind(&session_id)
+                            .bind(&placement_id)
+                            .fetch_optional(&mut *tx)
+                            .await?;
+                        tx.commit().await?;
+                        return Err(existing
+                            .map(|_| {
+                                kernel_err(KernelError::conflict(
+                                    "execution placement version mismatch",
+                                ))
+                            })
+                            .unwrap_or_else(|| {
+                                kernel_err(KernelError::not_found(
+                                    "session execution placement not found",
+                                ))
+                            }));
+                    };
+                    let activated = pg_row_to_agent_execution_placement_row(activated_row)
+                        .map_err(kernel_err)?;
+                    tx.commit().await?;
+                    Ok(activated)
+                })
+                .await
+            })
+        })
+    }
+
+    fn list_expired_execution_placement_rows(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: i64,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        self.with_pool(|pool| {
+            pg_query!(
+                pool,
+                SQL_SELECT_LIVE_AGENT_SESSION_EXECUTION_PLACEMENTS_FOR_RECONCILIATION,
+                tenant_id,
+                as_of,
+                limit
+            )?
+            .into_iter()
+            .map(pg_row_to_agent_execution_placement_row)
+            .collect()
+        })
+    }
+
+    fn list_expired_execution_placement_rows_across_tenants(
+        &self,
+        as_of: &str,
+        limit: i64,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRow>> {
+        self.with_pool(|pool| {
+            pg_query!(
+                pool,
+                SQL_SELECT_LIVE_AGENT_SESSION_EXECUTION_PLACEMENTS_FOR_RECONCILIATION_ALL_TENANTS,
+                as_of,
+                limit
+            )?
+            .into_iter()
+            .map(pg_row_to_agent_execution_placement_row)
+            .collect()
+        })
+    }
+
+    fn upsert_execution_host_row(
+        &self,
+        row: AgentExecutionHostRow,
+        expected_version: u64,
+    ) -> KernelResult<AgentExecutionHostRow> {
+        let id = u64_to_i64(row.id, "id")?;
+        let tenant_id = u64_to_i64(row.tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(row.organization_id, "organization_id")?;
+        let created_by = u64_to_i64(row.created_by, "created_by")?;
+        let updated_by = u64_to_i64(row.updated_by, "updated_by")?;
+        let expected_version = u64_to_i64(expected_version, "expected_version")?;
+        let max_concurrent_sessions = i32::try_from(row.max_concurrent_sessions)
+            .map_err(|_| KernelError::validation("invalid execution host capacity"))?;
+        let deleted_by = row
+            .deleted_by
+            .map(|value| u64_to_i64(value, "deleted_by"))
+            .transpose()?;
+        self.with_pool(|pool| {
+            let updated = pg_query_optional!(
+                pool,
+                SQL_UPSERT_AGENT_EXECUTION_HOST,
+                id,
+                row.uuid,
+                tenant_id,
+                organization_id,
+                row.host_id,
+                row.display_name,
+                row.host_kind,
+                row.endpoint,
+                row.region,
+                max_concurrent_sessions,
+                row.capabilities_json,
+                row.status,
+                created_by,
+                updated_by,
+                expected_version,
+                row.created_at,
+                row.updated_at,
+                row.deleted_at,
+                deleted_by
+            )?
+            .ok_or_else(|| KernelError::conflict("execution host version mismatch"))?;
+            pg_row_to_agent_execution_host_row(updated)
+        })
+    }
+
+    fn get_execution_host_row(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+    ) -> KernelResult<Option<AgentExecutionHostRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_query_optional!(
+                pool,
+                SQL_SELECT_AGENT_EXECUTION_HOST,
+                tenant_id,
+                organization_id,
+                host_id
+            )?
+            .map(pg_row_to_agent_execution_host_row)
+            .transpose()
+        })
+    }
+
+    fn list_eligible_execution_host_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: &str,
+    ) -> KernelResult<Vec<AgentExecutionHostRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_query!(
+                pool,
+                SQL_LIST_ELIGIBLE_AGENT_EXECUTION_HOSTS,
+                tenant_id,
+                organization_id,
+                host_kind
+            )?
+            .into_iter()
+            .map(pg_row_to_agent_execution_host_row)
+            .collect()
+        })
+    }
+
+    fn list_execution_host_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: Option<String>,
+        status: Option<i16>,
+        limit: i64,
+        offset: i64,
+    ) -> KernelResult<Vec<AgentExecutionHostRow>> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            pg_query!(
+                pool,
+                SQL_LIST_AGENT_EXECUTION_HOSTS,
+                tenant_id,
+                organization_id,
+                host_kind,
+                status,
+                limit,
+                offset
+            )?
+            .into_iter()
+            .map(pg_row_to_agent_execution_host_row)
+            .collect()
+        })
+    }
+
+    fn count_execution_host_rows(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: Option<String>,
+        status: Option<i16>,
+    ) -> KernelResult<u64> {
+        let tenant_id = u64_to_i64(tenant_id, "tenant_id")?;
+        let organization_id = u64_to_i64(organization_id, "organization_id")?;
+        self.with_pool(|pool| {
+            let row = pg_query_optional!(
+                pool,
+                SQL_COUNT_AGENT_EXECUTION_HOSTS,
+                tenant_id,
+                organization_id,
+                host_kind,
+                status
+            )?
+            .ok_or_else(|| KernelError::provider_error("host count query failed", "no row"))?;
+            int64_to_u64(row.try_get("total_count").map_err(map_sqlx_error)?, "total_count")
         })
     }
 
@@ -14103,6 +14992,93 @@ fn pg_row_to_agent_session_checkpoint_row(row: PgRow) -> KernelResult<AgentSessi
 }
 
 #[cfg(feature = "postgres-sync")]
+fn pg_row_to_agent_execution_placement_row(row: PgRow) -> KernelResult<AgentExecutionPlacementRow> {
+    Ok(AgentExecutionPlacementRow {
+        id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
+        uuid: row.try_get("uuid").map_err(map_sqlx_error)?,
+        tenant_id: int64_to_u64(
+            row.try_get("tenant_id").map_err(map_sqlx_error)?,
+            "tenant_id",
+        )?,
+        organization_id: int64_to_u64(
+            row.try_get("organization_id").map_err(map_sqlx_error)?,
+            "organization_id",
+        )?,
+        owner_user_id: int64_to_u64(
+            row.try_get("owner_user_id").map_err(map_sqlx_error)?,
+            "owner_user_id",
+        )?,
+        session_id: row.try_get("session_id").map_err(map_sqlx_error)?,
+        agent_id: row.try_get("agent_id").map_err(map_sqlx_error)?,
+        placement_id: row.try_get("placement_id").map_err(map_sqlx_error)?,
+        execution_kind: row.try_get("execution_kind").map_err(map_sqlx_error)?,
+        execution_id: row.try_get("execution_id").map_err(map_sqlx_error)?,
+        requested_target: row.try_get("requested_target").map_err(map_sqlx_error)?,
+        effective_target: row.try_get("effective_target").map_err(map_sqlx_error)?,
+        host_id: row.try_get("host_id").map_err(map_sqlx_error)?,
+        host_kind: row.try_get("host_kind").map_err(map_sqlx_error)?,
+        kernel_placement_ref: row
+            .try_get("kernel_placement_ref")
+            .map_err(map_sqlx_error)?,
+        placement_state: row.try_get("placement_state").map_err(map_sqlx_error)?,
+        lease_owner: row.try_get("lease_owner").map_err(map_sqlx_error)?,
+        lease_expires_at: row.try_get("lease_expires_at").map_err(map_sqlx_error)?,
+        status: row.try_get("status").map_err(map_sqlx_error)?,
+        is_current: row.try_get("is_current").map_err(map_sqlx_error)?,
+        version: int64_to_u64(row.try_get("version").map_err(map_sqlx_error)?, "version")?,
+        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+        updated_at: row.try_get("updated_at").map_err(map_sqlx_error)?,
+        activated_at: row.try_get("activated_at").map_err(map_sqlx_error)?,
+        deactivated_at: row.try_get("deactivated_at").map_err(map_sqlx_error)?,
+    })
+}
+
+#[cfg(feature = "postgres-sync")]
+fn pg_row_to_agent_execution_host_row(row: PgRow) -> KernelResult<AgentExecutionHostRow> {
+    Ok(AgentExecutionHostRow {
+        id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
+        uuid: row.try_get("uuid").map_err(map_sqlx_error)?,
+        tenant_id: int64_to_u64(
+            row.try_get("tenant_id").map_err(map_sqlx_error)?,
+            "tenant_id",
+        )?,
+        organization_id: int64_to_u64(
+            row.try_get("organization_id").map_err(map_sqlx_error)?,
+            "organization_id",
+        )?,
+        host_id: row.try_get("host_id").map_err(map_sqlx_error)?,
+        display_name: row.try_get("display_name").map_err(map_sqlx_error)?,
+        host_kind: row.try_get("host_kind").map_err(map_sqlx_error)?,
+        endpoint: row.try_get("endpoint").map_err(map_sqlx_error)?,
+        region: row.try_get("region").map_err(map_sqlx_error)?,
+        max_concurrent_sessions: i32_to_u32(
+            row.try_get("max_concurrent_sessions")
+                .map_err(map_sqlx_error)?,
+            "max_concurrent_sessions",
+        )?,
+        capabilities_json: row.try_get("capabilities_json").map_err(map_sqlx_error)?,
+        status: row.try_get("status").map_err(map_sqlx_error)?,
+        created_by: int64_to_u64(
+            row.try_get("created_by").map_err(map_sqlx_error)?,
+            "created_by",
+        )?,
+        updated_by: int64_to_u64(
+            row.try_get("updated_by").map_err(map_sqlx_error)?,
+            "updated_by",
+        )?,
+        version: int64_to_u64(row.try_get("version").map_err(map_sqlx_error)?, "version")?,
+        created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
+        updated_at: row.try_get("updated_at").map_err(map_sqlx_error)?,
+        deleted_at: row.try_get("deleted_at").map_err(map_sqlx_error)?,
+        deleted_by: row
+            .try_get::<Option<i64>, _>("deleted_by")
+            .map_err(map_sqlx_error)?
+            .map(|value| int64_to_u64(value, "deleted_by"))
+            .transpose()?,
+    })
+}
+
+#[cfg(feature = "postgres-sync")]
 fn pg_row_to_agent_resource_user_state_row(row: PgRow) -> KernelResult<AgentResourceUserStateRow> {
     Ok(AgentResourceUserStateRow {
         id: int64_to_u64(row.try_get("id").map_err(map_sqlx_error)?, "id")?,
@@ -14771,7 +15747,7 @@ mod tests {
         audit_actor_from_subject_id, build_agent_business_uuid, build_agent_provider_binding_uuid,
         build_composition_slot_uuid, build_interaction_uuid, build_session_item_uuid,
         build_session_uuid, build_task_uuid, extract_event_context, AgentAuditEventRow,
-        AgentProjectCompositionSlotRow,
+        AgentExecutionHostRow, AgentExecutionPlacementRow, AgentProjectCompositionSlotRow,
     };
     #[cfg(feature = "postgres-sync")]
     use crate::session_activity::{
@@ -15158,5 +16134,122 @@ mod tests {
             extract_event_context(payload, "subject_id"),
             Some("user.42".to_string())
         );
+    }
+
+    fn sample_execution_placement_record() -> crate::domain::AgentExecutionPlacementRecord {
+        crate::domain::AgentExecutionPlacementRecord {
+            id: 91,
+            tenant_id: 10,
+            organization_id: 20,
+            owner_user_id: 30,
+            session_id: "session.alpha".to_string(),
+            agent_id: "agent.alpha".to_string(),
+            placement_id: "placement.alpha".to_string(),
+            execution_kind: crate::domain::AgentExecutionPlacementKind::Turn,
+            execution_id: "turn.alpha".to_string(),
+            requested_target: Some(crate::domain::AgentExecutionPlacementTarget::Host),
+            effective_target: crate::domain::AgentExecutionPlacementTarget::Host,
+            host_id: Some("host.docker-01".to_string()),
+            host_kind: Some(crate::domain::AgentExecutionHostKind::Docker),
+            kernel_placement_ref: Some("kernel-placement.1".to_string()),
+            placement_state: crate::domain::AgentExecutionPlacementLifecycle::Active,
+            lease_owner: Some("worker-1".to_string()),
+            lease_expires_at: Some("2026-10-04T00:00:00Z".to_string()),
+            status: crate::domain::AgentExecutionPlacementStatus::Active,
+            is_current: true,
+            version: 3,
+            created_at: "2026-10-03T00:00:00Z".to_string(),
+            updated_at: "2026-10-04T00:00:00Z".to_string(),
+            activated_at: Some("2026-10-03T00:10:00Z".to_string()),
+            deactivated_at: None,
+        }
+    }
+
+    #[test]
+    fn execution_placement_roundtrips_through_postgres_row_mapping() {
+        let record = sample_execution_placement_record();
+        let row = AgentExecutionPlacementRow::from_record(&record);
+        assert_eq!(row.uuid.len(), 64);
+        assert_eq!(
+            row.uuid,
+            super::build_execution_placement_uuid(10, 20, "session.alpha", "placement.alpha")
+        );
+
+        let roundtripped = row.clone().into_record().expect("row converts back");
+        assert_eq!(roundtripped, record);
+
+        // Unknown lifecycle and target codes fail closed instead of
+        // projecting onto a different placement phase.
+        let mut poisoned = row;
+        poisoned.placement_state = 9;
+        assert!(poisoned.into_record().is_err());
+    }
+
+    #[test]
+    fn execution_placement_lifecycle_matches_facade_vocabulary() {
+        use crate::domain::AgentExecutionPlacementLifecycle;
+
+        let states = [
+            AgentExecutionPlacementLifecycle::Requested,
+            AgentExecutionPlacementLifecycle::Allocating,
+            AgentExecutionPlacementLifecycle::Ready,
+            AgentExecutionPlacementLifecycle::Active,
+            AgentExecutionPlacementLifecycle::Releasing,
+            AgentExecutionPlacementLifecycle::Released,
+            AgentExecutionPlacementLifecycle::Failed,
+            AgentExecutionPlacementLifecycle::Expired,
+        ];
+        for (index, state) in states.iter().enumerate() {
+            assert_eq!(state.as_db_code(), index as i16);
+        }
+        assert!(AgentExecutionPlacementLifecycle::Released.is_terminal());
+        assert!(AgentExecutionPlacementLifecycle::Active.occupies_capacity());
+
+        // Lifecycle transitions advance the optimistic version.
+        let mut record = sample_execution_placement_record();
+        let version_before = record.version;
+        record.transition_state(
+            AgentExecutionPlacementLifecycle::Releasing,
+            "2026-10-04T01:00:00Z",
+        );
+        assert_eq!(
+            record.placement_state,
+            AgentExecutionPlacementLifecycle::Releasing
+        );
+        assert_eq!(record.version, version_before + 1);
+    }
+
+    #[test]
+    fn execution_host_roundtrips_through_postgres_row_mapping() {
+        let record = crate::domain::AgentExecutionHostRecord {
+            id: 17,
+            tenant_id: 10,
+            organization_id: 20,
+            host_id: "host.microvm-01".to_string(),
+            display_name: Some("Micro VM pool member".to_string()),
+            host_kind: crate::domain::AgentExecutionHostKind::MicroVm,
+            endpoint: "unix:///run/sdkwork/hosts/microvm-01".to_string(),
+            region: Some("cn-east-1".to_string()),
+            max_concurrent_sessions: 8,
+            capabilities_json: "{}".to_string(),
+            status: crate::domain::AgentExecutionHostStatus::Active,
+            created_by: 0,
+            updated_by: 0,
+            version: 2,
+            created_at: "2026-10-03T00:00:00Z".to_string(),
+            updated_at: "2026-10-03T12:00:00Z".to_string(),
+            deleted_at: None,
+            deleted_by: None,
+        };
+
+        let row = super::AgentExecutionHostRow::from_record(&record);
+        assert_eq!(row.uuid.len(), 64);
+        assert_eq!(
+            row.uuid,
+            super::build_execution_host_uuid(10, 20, "host.microvm-01")
+        );
+        let roundtripped = row.into_record().expect("row converts back");
+        assert_eq!(roundtripped, record);
+        assert!(record.is_scheduler_eligible());
     }
 }

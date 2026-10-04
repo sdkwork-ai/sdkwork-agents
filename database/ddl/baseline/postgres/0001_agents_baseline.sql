@@ -820,8 +820,9 @@ CREATE TABLE IF NOT EXISTS ai_agent_execution_host (
         host_kind IN ('docker', 'micro_vm', 'bare_metal', 'cloud_sandbox')
     ),
     CONSTRAINT ck_ai_agent_execution_host_status CHECK (status IN (0, 1, 2)),
-    CONSTRAINT ck_ai_agent_execution_host_capacity CHECK (max_concurrent_sessions > 0),
+    CONSTRAINT ck_ai_agent_execution_host_capacity CHECK (max_concurrent_sessions > 0 AND max_concurrent_sessions <= 4096),
     CONSTRAINT ck_ai_agent_execution_host_endpoint CHECK (char_length(BTRIM(endpoint)) > 0),
+    CONSTRAINT ck_ai_agent_execution_host_capabilities_size CHECK (jsonb_typeof(capabilities_json) = 'object'),
     CONSTRAINT ck_ai_agent_execution_host_version CHECK (version >= 0)
 );
 

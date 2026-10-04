@@ -71,6 +71,12 @@ impl AgentConversationExecutionRoute {
 pub enum AgentConversationExecutionRouteSource {
     /// The per-request `executionRoute` parameter decided the route.
     RequestOverride,
+    /// The session's current execution placement decided the route
+    /// (session affinity; contract `taskWithoutOverrideInheritsSession`).
+    SessionInherited,
+    /// The agent's configured default decided the route (management profile
+    /// `executionRoute`).
+    AgentDefault,
     /// The deployment default decided the route.
     DeploymentDefault,
     /// No override and no deployment default: the built-in default applies.
@@ -81,6 +87,8 @@ impl AgentConversationExecutionRouteSource {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::RequestOverride => "request_override",
+            Self::SessionInherited => "session_inherited",
+            Self::AgentDefault => "agent_default",
             Self::DeploymentDefault => "deployment_default",
             Self::BuiltInDefault => "built_in_default",
         }
@@ -132,12 +140,63 @@ pub fn resolve_agent_conversation_execution_route(
     request_override: Option<&str>,
     deployment_default: Option<&str>,
 ) -> Result<AgentConversationExecutionDecision, InvalidExecutionRouteError> {
+    resolve_agent_conversation_execution_route_with_defaults(
+        request_override,
+        None,
+        None,
+        deployment_default,
+    )
+}
+
+/// Four-level resolution: per-request override, then the route the session's
+/// current execution placement established (session affinity — a session that
+/// ran in the cloud or on a host keeps running there unless the caller
+/// overrides), then the deployment default, then the built-in in-process
+/// default. Every supplied level is validated even when an earlier level
+/// wins, so a broken default surfaces instead of hiding.
+pub fn resolve_agent_conversation_execution_route_with_default(
+    request_override: Option<&str>,
+    session_inherited: Option<&str>,
+    deployment_default: Option<&str>,
+) -> Result<AgentConversationExecutionDecision, InvalidExecutionRouteError> {
+    resolve_agent_conversation_execution_route_with_defaults(
+        request_override,
+        session_inherited,
+        None,
+        deployment_default,
+    )
+}
+
+/// Full five-level resolution: per-request override, session placement
+/// affinity, agent-level configured default (management profile), deployment
+/// default, built-in in-process default. Every supplied level is validated
+/// even when an earlier level wins.
+pub fn resolve_agent_conversation_execution_route_with_defaults(
+    request_override: Option<&str>,
+    session_inherited: Option<&str>,
+    agent_default: Option<&str>,
+    deployment_default: Option<&str>,
+) -> Result<AgentConversationExecutionDecision, InvalidExecutionRouteError> {
     let parsed_override = parse_level(request_override)?;
+    let parsed_inherited = parse_level(session_inherited)?;
+    let parsed_agent = parse_level(agent_default)?;
     let parsed_default = parse_level(deployment_default)?;
     if let Some(route) = parsed_override {
         return Ok(AgentConversationExecutionDecision {
             route,
             source: AgentConversationExecutionRouteSource::RequestOverride,
+        });
+    }
+    if let Some(route) = parsed_inherited {
+        return Ok(AgentConversationExecutionDecision {
+            route,
+            source: AgentConversationExecutionRouteSource::SessionInherited,
+        });
+    }
+    if let Some(route) = parsed_agent {
+        return Ok(AgentConversationExecutionDecision {
+            route,
+            source: AgentConversationExecutionRouteSource::AgentDefault,
         });
     }
     if let Some(route) = parsed_default {
@@ -260,6 +319,81 @@ mod tests {
             decision.source,
             AgentConversationExecutionRouteSource::DeploymentDefault
         );
+    }
+
+    #[test]
+    fn session_inherited_route_wins_between_override_and_deployment_default() {
+        let decision = resolve_agent_conversation_execution_route_with_default(
+            None,
+            Some("cloud"),
+            Some("host"),
+        )
+        .expect("inherited resolves");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Cloud);
+        assert_eq!(
+            decision.source,
+            AgentConversationExecutionRouteSource::SessionInherited
+        );
+
+        // A per-request override still beats the session's established
+        // placement (the caller may move a session explicitly).
+        let decision = resolve_agent_conversation_execution_route_with_default(
+            Some("host"),
+            Some("cloud"),
+            None,
+        )
+        .expect("override beats inherited");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Host);
+        assert_eq!(
+            decision.source,
+            AgentConversationExecutionRouteSource::RequestOverride
+        );
+
+        // A broken inherited code fails closed, never silently downgrades.
+        let error =
+            resolve_agent_conversation_execution_route_with_default(None, Some("集群"), None)
+                .expect_err("unknown inherited code fails closed");
+        assert_eq!(error.code, "集群");
+    }
+
+    #[test]
+    fn agent_default_sits_between_session_and_deployment() {
+        let decision = resolve_agent_conversation_execution_route_with_defaults(
+            None,
+            None,
+            Some("cloud"),
+            Some("host"),
+        )
+        .expect("agent default resolves");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Cloud);
+        assert_eq!(
+            decision.source,
+            AgentConversationExecutionRouteSource::AgentDefault
+        );
+
+        // Session affinity outranks the static agent configuration.
+        let decision = resolve_agent_conversation_execution_route_with_defaults(
+            None,
+            Some("host"),
+            Some("cloud"),
+            None,
+        )
+        .expect("session outranks agent");
+        assert_eq!(decision.route, AgentConversationExecutionRoute::Host);
+        assert_eq!(
+            decision.source,
+            AgentConversationExecutionRouteSource::SessionInherited
+        );
+
+        // A broken agent default fails closed even with later levels present.
+        let error = resolve_agent_conversation_execution_route_with_defaults(
+            None,
+            None,
+            Some("集群"),
+            Some("in_process"),
+        )
+        .expect_err("unknown agent default fails closed");
+        assert_eq!(error.code, "集群");
     }
 
     #[test]

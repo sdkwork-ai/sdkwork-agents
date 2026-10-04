@@ -5483,6 +5483,15 @@ components:
           maxLength: 32
         debugMode:
           type: boolean
+        executionRoute:
+          type: string
+          enum:
+          - in_process
+          - cloud
+          - host
+          description: Agent-level default execution target. Resolution order
+            is request override, session placement affinity, this default,
+            deployment default, built-in in-process.
         iconName:
           type: string
           minLength: 1

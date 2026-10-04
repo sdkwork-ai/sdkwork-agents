@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-sdk",
-    "version": "0.1.0",
+    "version": "0.1.2",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
+      "sha256": "302335f8e95321d635aeff72da1e6146414c1f1cf4514b2dd5ddd4f5672eb73b"
     },
     {
       "path": "LICENSE",
@@ -40,15 +40,15 @@
     },
     {
       "path": "package.json",
-      "sha256": "bf1f923dee94c08f8fde7dfb5c4adb0a844055ee3f84e6b19f6b6a3419a4fb33"
+      "sha256": "aca1ffb4ca8583c187b89dbdd39f9bdf6cddb915bac8c552477dd68311241445"
     },
     {
       "path": "README.md",
-      "sha256": "99fbf7c2f138be026939f8fe9f11482d19c0b85e3de17c72f9c83cffbb1d2a03"
+      "sha256": "3683fc11f9259857ede346d1eec68d9c018419c8ea6e140f6dc2569e39ad1c37"
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "639c91788f41bfffc27951d510122ebe5672edcfa85b4639ebb3e27627827f3b"
+      "sha256": "45128c958024503bc5fe54e2d0a68c0fb97a05f5a49f59f8ad32274d396f222f"
     },
     {
       "path": "src/api/ai.ts",
@@ -80,11 +80,11 @@
     },
     {
       "path": "src/index.ts",
-      "sha256": "be1ba971d7c153f90af599aff97d71c8047fbb6b97a0adb57c2fceaaca4a4749"
+      "sha256": "1c073c7412f3659715b6d82d79ac4da8e36e210af658036fd513f0e2b3bb39e1"
     },
     {
       "path": "src/sdk.ts",
-      "sha256": "5aa6faacf6372378fd8f4afc801854beb047812d1de24b6c2979071def920afe"
+      "sha256": "4d25db920a01a80296fb740e8ce336fbf9c7ba9c4f7ab05a9dabb8ab5a11a37b"
     },
     {
       "path": "src/types/activate-agent-provider-binding-request.ts",
@@ -192,7 +192,7 @@
     },
     {
       "path": "src/types/agent-management-profile.ts",
-      "sha256": "9cd403b8eeaa7fb06b0cbf907f27d6013f8861de5be45de0d27fcd0193207dd2"
+      "sha256": "d482dd54babfbfbc400d3d4570d64df6e3fd52fdb782e6a098127642e67300ba"
     },
     {
       "path": "src/types/agent-provider-binding-list-response.ts",

@@ -1,6 +1,6 @@
 {
   "name": "sdkwork-agents-app-sdk-generated-typescript",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": true,
   "sdkworkRole": "transport",
   "description": "Generator-owned TypeScript transport SDK for sdkwork-agents-app-sdk.",
@@ -26,7 +26,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@sdkwork/sdk-common": "^1.0.4",
+    "@sdkwork/sdk-common": "^1.0.5",
     "@sdkwork/utils": "^0.11.0"
   },
   "devDependencies": {

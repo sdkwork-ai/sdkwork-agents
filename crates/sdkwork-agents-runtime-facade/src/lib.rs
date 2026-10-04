@@ -42,7 +42,10 @@ pub use execution_host::{
     EXECUTION_HOST_KIND_CLOUD_SANDBOX, EXECUTION_HOST_KIND_DOCKER, EXECUTION_HOST_KIND_MICRO_VM,
 };
 pub use execution_route::{
-    resolve_agent_conversation_execution_route, AgentConversationExecutionDecision,
+    resolve_agent_conversation_execution_route,
+    resolve_agent_conversation_execution_route_with_default,
+    resolve_agent_conversation_execution_route_with_defaults,
+    AgentConversationExecutionDecision,
     AgentConversationExecutionRoute, AgentConversationExecutionRouteSource,
     InvalidExecutionRouteError, EXECUTION_ROUTE_CLOUD, EXECUTION_ROUTE_HOST,
     EXECUTION_ROUTE_IN_PROCESS, EXECUTION_ROUTE_SANDBOX,

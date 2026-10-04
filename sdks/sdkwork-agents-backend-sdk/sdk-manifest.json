@@ -55,7 +55,7 @@
   "metadata": {
     "managedBy": "sdks/_shared/agent-sdk-ownership.mjs",
     "standardVersion": "2026-06-26",
-    "ownerOnlyOperationCount": 60
+    "ownerOnlyOperationCount": 63
   },
   "schemaVersion": 1,
   "sdkName": "sdkwork-agents-backend-sdk",
@@ -73,7 +73,7 @@
     "transportRoot": "sdkwork-agents-backend-sdk-typescript/generated/server-openapi",
     "transportEntry": "sdkwork-agents-backend-sdk-typescript/generated/server-openapi/src/index.ts"
   },
-  "ownerOnlyOperationCount": 60,
+  "ownerOnlyOperationCount": 63,
   "standardVersion": "2026-06-26",
   "managedBy": "sdks/_shared/agent-sdk-ownership.mjs"
 }

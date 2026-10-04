@@ -54,6 +54,17 @@ pub trait TaskWorkerClient: Clone + Send + Sync + 'static {
         limit: usize,
     ) -> KernelResult<TaskRunReconciliationResult>;
 
+    /// Expires execution placements whose lease evidence lapsed before
+    /// `now` (across every tenant). Default no-op for test clients.
+    async fn reconcile_expired_execution_placements(
+        &self,
+        _now: String,
+        limit: usize,
+    ) -> KernelResult<usize> {
+        let _ = limit;
+        Ok(0)
+    }
+
     /// Runs one transactional-outbox dispatch round (webhook delivery +
     /// agent-call recovery). The default is a no-op for test clients.
     async fn dispatch_outbox_events(
@@ -126,6 +137,14 @@ impl TaskWorkerClient for AgentTaskWorkerHandle {
         limit: usize,
     ) -> KernelResult<TaskRunReconciliationResult> {
         AgentTaskWorkerHandle::reconcile_task_runs(self, updated_before, occurred_at, limit).await
+    }
+
+    async fn reconcile_expired_execution_placements(
+        &self,
+        now: String,
+        limit: usize,
+    ) -> KernelResult<usize> {
+        AgentTaskWorkerHandle::reconcile_expired_execution_placements(self, now, limit).await
     }
 
     async fn execute_task_run_claim(
@@ -295,8 +314,10 @@ pub async fn run_scheduler_worker<C>(
                     config.reconciliation_min_age,
                 );
                 let client = client.clone();
+                let placement_client = client.clone();
                 let metrics = metrics.clone();
                 let limit = config.reconciliation_batch_size;
+                let placement_now = occurred_at.clone();
                 reconciliations.spawn(async move {
                     match client
                         .reconcile_task_runs(updated_before, occurred_at, limit)
@@ -306,6 +327,25 @@ pub async fn run_scheduler_worker<C>(
                         Err(error) => {
                             metrics.record_operation_error();
                             tracing::error!(error = %error, "task run reconciliation failed");
+                        }
+                    }
+                });
+                // Execution-placement lifecycle sweep rides the same
+                // reconciliation tick: expire placements whose lease
+                // evidence lapsed (kernel release arrives with the
+                // placement port).
+                reconciliations.spawn(async move {
+                    match placement_client
+                        .reconcile_expired_execution_placements(placement_now, limit)
+                        .await
+                    {
+                        Ok(0) => {}
+                        Ok(reconciled) => tracing::info!(
+                            reconciled,
+                            "execution placement reconciliation completed"
+                        ),
+                        Err(error) => {
+                            tracing::error!(error = %error, "execution placement reconciliation failed");
                         }
                     }
                 });

@@ -76,6 +76,8 @@ use crate::list_cursors::{
 };
 use crate::mcp_marketplace::McpServerMarketplaceRecord;
 use crate::ports::{
+    ExecutionHostListQuery,
+    ExecutionPlacementListQuery,
     AgentAuditSink, AgentRepository, AuditEventListQuery, CompositionSlotListQuery,
     ItemFeedbackListQuery, McpMarketplaceListQuery, PaginationParams,
     ProjectCompositionSlotListQuery, ProjectListQuery, ProviderBindingListQuery,
@@ -637,6 +639,124 @@ impl AgentRepository for DynAgentRepository {
             expected_version,
             updated_at,
         )
+    }
+
+    fn insert_execution_placement(
+        &self,
+        record: crate::domain::AgentExecutionPlacementRecord,
+    ) -> KernelResult<()> {
+        self.0.insert_execution_placement(record)
+    }
+
+    fn update_execution_placement(
+        &self,
+        record: crate::domain::AgentExecutionPlacementRecord,
+        expected_version: u64,
+    ) -> KernelResult<()> {
+        self.0.update_execution_placement(record, expected_version)
+    }
+
+    fn get_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentExecutionPlacementRecord>> {
+        self.0
+            .get_execution_placement(tenant_id, organization_id, session_id, placement_id)
+    }
+
+    fn get_current_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentExecutionPlacementRecord>> {
+        self.0
+            .get_current_execution_placement(tenant_id, organization_id, session_id)
+    }
+
+    fn list_execution_placements(
+        &self,
+        query: &ExecutionPlacementListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentExecutionPlacementRecord>> {
+        self.0.list_execution_placements(query)
+    }
+
+    fn switch_current_execution_placement_atomic(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+        expected_version: u64,
+        updated_at: String,
+    ) -> KernelResult<crate::domain::AgentExecutionPlacementRecord> {
+        self.0.switch_current_execution_placement_atomic(
+            tenant_id,
+            organization_id,
+            session_id,
+            placement_id,
+            expected_version,
+            updated_at,
+        )
+    }
+
+    fn list_expired_execution_placements(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::domain::AgentExecutionPlacementRecord>> {
+        self.0.list_expired_execution_placements(tenant_id, as_of, limit)
+    }
+
+    fn list_expired_execution_placements_across_tenants(
+        &self,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::domain::AgentExecutionPlacementRecord>> {
+        self.0
+            .list_expired_execution_placements_across_tenants(as_of, limit)
+    }
+
+    fn upsert_execution_host(
+        &self,
+        record: crate::domain::AgentExecutionHostRecord,
+        expected_version: u64,
+    ) -> KernelResult<crate::domain::AgentExecutionHostRecord> {
+        self.0.upsert_execution_host(record, expected_version)
+    }
+
+    fn get_execution_host(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentExecutionHostRecord>> {
+        self.0.get_execution_host(tenant_id, organization_id, host_id)
+    }
+
+    fn list_eligible_execution_hosts(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: crate::domain::AgentExecutionHostKind,
+    ) -> KernelResult<Vec<crate::domain::AgentExecutionHostRecord>> {
+        self.0
+            .list_eligible_execution_hosts(tenant_id, organization_id, host_kind)
+    }
+
+    fn list_execution_hosts(
+        &self,
+        query: &ExecutionHostListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentExecutionHostRecord>> {
+        self.0.list_execution_hosts(query)
+    }
+
+    fn count_execution_hosts(&self, query: &ExecutionHostListQuery) -> KernelResult<u64> {
+        self.0.count_execution_hosts(query)
     }
 
     fn insert_session_checkpoint(
@@ -1630,9 +1750,14 @@ impl AgentHttpState {
                 let stale_before = now - time::Duration::seconds(stale_after_seconds as i64);
                 let occurred_at = format_utc_seconds(now);
                 let stale_before = format_utc_seconds(stale_before);
-                let service = service.clone();
+                let turn_service = service.clone();
+                let occurred_at_for_turns = occurred_at.clone();
                 let result = tokio::task::spawn_blocking(move || {
-                    service.reconcile_stale_turns(&stale_before, &occurred_at, batch_size)
+                    turn_service.reconcile_stale_turns(
+                        &stale_before,
+                        &occurred_at_for_turns,
+                        batch_size,
+                    )
                 })
                 .await;
                 match result {
@@ -1657,6 +1782,37 @@ impl AgentHttpState {
                         target: "sdkwork.agents.turn.reconciliation",
                         error = %error,
                         "turn reconciliation worker join failed"
+                    ),
+                }
+                // Execution-placement lifecycle sweep rides the same tick:
+                // expire placements whose lease evidence lapsed (contract:
+                // failed/expired placements require release or
+                // reconciliation; kernel release arrives with the placement
+                // port).
+                let placement_service = service.clone();
+                let placement_result = tokio::task::spawn_blocking(move || {
+                    placement_service.reconcile_expired_execution_placements_across_tenants(
+                        &occurred_at,
+                        batch_size,
+                    )
+                })
+                .await;
+                match placement_result {
+                    Ok(Ok(0)) => {}
+                    Ok(Ok(reconciled)) => tracing::info!(
+                        target: "sdkwork.agents.execution.placement",
+                        reconciled,
+                        "execution placement reconciliation completed"
+                    ),
+                    Ok(Err(error)) => tracing::error!(
+                        target: "sdkwork.agents.execution.placement",
+                        error = %error,
+                        "execution placement reconciliation failed"
+                    ),
+                    Err(error) => tracing::error!(
+                        target: "sdkwork.agents.execution.placement",
+                        error = %error,
+                        "execution placement reconciliation worker join failed"
                     ),
                 }
             }
@@ -1765,6 +1921,17 @@ impl AgentTaskWorkerHandle {
     ) -> KernelResult<crate::TaskRunReconciliationResult> {
         self.run(move |service| {
             service.reconcile_scheduled_task_runs(&updated_before, &occurred_at, limit)
+        })
+        .await
+    }
+
+    pub async fn reconcile_expired_execution_placements(
+        &self,
+        now: String,
+        limit: usize,
+    ) -> KernelResult<usize> {
+        self.run(move |service| {
+            service.reconcile_expired_execution_placements_across_tenants(&now, limit)
         })
         .await
     }
@@ -3342,6 +3509,14 @@ pub fn build_backend_routes() -> Router<AgentHttpState> {
         .route(
             "/backend/v3/api/ai/tools/{toolId}/configuration",
             put(backend_update_media_tool_configuration),
+        )
+        .route(
+            "/backend/v3/api/ai/execution_hosts",
+            get(backend_list_execution_hosts),
+        )
+        .route(
+            "/backend/v3/api/ai/execution_hosts/{hostId}",
+            get(backend_get_execution_host).put(backend_update_execution_host),
         )
         .layer(axum::middleware::from_fn(
             middleware::reject_client_scope_selectors,
@@ -5231,6 +5406,8 @@ struct AgentManagementProfileResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     debug_mode: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    execution_route: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     icon_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     json_mode: Option<bool>,
@@ -5291,6 +5468,8 @@ struct AgentManagementProfileBody {
     category_id: Option<String>,
     color: Option<String>,
     debug_mode: Option<bool>,
+    #[serde(default)]
+    execution_route: Option<String>,
     icon_name: Option<String>,
     json_mode: Option<bool>,
     knowledge_base_ids: Option<Vec<String>>,
@@ -5601,6 +5780,7 @@ impl From<AgentManagementProfileBody> for AgentManagementProfileDto {
             category_id: value.category_id,
             color: value.color,
             debug_mode: value.debug_mode,
+            execution_route: value.execution_route,
             icon_name: value.icon_name,
             json_mode: value.json_mode,
             knowledge_base_ids: value.knowledge_base_ids.unwrap_or_default(),
@@ -5918,6 +6098,208 @@ async fn backend_list_agents(
     let result: ApiResult<PageData<AgentRecordResponse>> = async {
         let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
         execute_list(state, query, RequestScope::from_context(context), false).await
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ListExecutionHostsQueryParams {
+    page: Option<usize>,
+    page_size: Option<usize>,
+    host_kind: Option<String>,
+    status: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExecutionHostRecordResponse {
+    id: String,
+    host_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    display_name: Option<String>,
+    host_kind: String,
+    endpoint: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    region: Option<String>,
+    max_concurrent_sessions: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    capabilities_json: Option<String>,
+    status: String,
+    version: String,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ExecutionHostUpsertBody {
+    #[serde(default)]
+    display_name: Option<String>,
+    host_kind: String,
+    endpoint: String,
+    #[serde(default)]
+    region: Option<String>,
+    max_concurrent_sessions: u32,
+    #[serde(default)]
+    capabilities_json: Option<String>,
+    #[serde(default)]
+    status: Option<String>,
+    #[serde(default)]
+    expected_version: Option<u64>,
+}
+
+fn map_execution_host_record(
+    record: &crate::domain::AgentExecutionHostRecord,
+) -> ExecutionHostRecordResponse {
+    ExecutionHostRecordResponse {
+        id: record.id.to_string(),
+        host_id: record.host_id.clone(),
+        display_name: record.display_name.clone(),
+        host_kind: record.host_kind.as_str().to_string(),
+        endpoint: record.endpoint.clone(),
+        region: record.region.clone(),
+        max_concurrent_sessions: i64::from(record.max_concurrent_sessions),
+        capabilities_json: Some(record.capabilities_json.clone()),
+        status: record.status.as_str().to_string(),
+        version: record.version.to_string(),
+        created_at: record.created_at.clone(),
+        updated_at: record.updated_at.clone(),
+    }
+}
+
+async fn backend_list_execution_hosts(
+    State(state): State<AgentHttpState>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    query: Result<Query<ListExecutionHostsQueryParams>, QueryRejection>,
+    Extension(context): Extension<AgentRequestContext>,
+) -> Response {
+    let result: ApiResult<PageData<ExecutionHostRecordResponse>> = async {
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let (page, page_size) = normalized_pagination(query.page, query.page_size)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let subject = scope.subject.clone();
+        let mut command =
+            crate::ExecutionHostListQuery::for_scope(tenant_id, scope.organization_id_u64()?)
+                .with_pagination(
+                    PaginationParams::default()
+                        .with_page_size(page_size)
+                        .with_page(page),
+                );
+        if let Some(kind) = query.host_kind.as_deref() {
+            let kind = crate::domain::AgentExecutionHostKind::parse(Some(kind))
+                .ok_or_else(|| ApiProblem::validation("unknown hostKind"))?;
+            command = command.with_host_kind(kind);
+        }
+        if let Some(status) = query.status.as_deref() {
+            let status = crate::domain::AgentExecutionHostStatus::parse(Some(status))
+                .ok_or_else(|| ApiProblem::validation("unknown status"))?;
+            command = command.with_status(status);
+        }
+        let subject_for_list = subject.clone();
+        let result = with_service(&state, move |service| {
+            service.list_execution_hosts(command, subject_for_list)
+        })
+        .await?;
+        let items: Vec<ExecutionHostRecordResponse> =
+            result.items.iter().map(map_execution_host_record).collect();
+        let total_items = result.total_count.unwrap_or(0) as usize;
+        Ok(PageData {
+            items,
+            page_info: PageInfo {
+                mode: PageMode::Offset,
+                page: Some(page as i32),
+                page_size: Some(page_size as i32),
+                total_items: Some(total_items.to_string()),
+                total_pages: Some(total_pages(total_items, page_size) as i32),
+                next_cursor: None,
+                has_more: Some(result.has_more),
+            },
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn backend_get_execution_host(
+    State(state): State<AgentHttpState>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    Extension(context): Extension<AgentRequestContext>,
+    Path(host_id): Path<String>,
+) -> Response {
+    let result: ApiResult<ResourceData<ExecutionHostRecordResponse>> = async {
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let subject = scope.subject.clone();
+        let organization_id = scope.organization_id_u64()?;
+        let record = with_service(&state, move |service| {
+            service.get_execution_host(tenant_id, organization_id, &host_id, subject)
+        })
+        .await?
+        .ok_or_else(|| ApiProblem::not_found("execution host not found"))?;
+        Ok(ResourceData {
+            item: map_execution_host_record(&record),
+        })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+async fn backend_update_execution_host(
+    State(state): State<AgentHttpState>,
+    Extension(web_ctx): Extension<sdkwork_web_core::WebRequestContext>,
+    Extension(context): Extension<AgentRequestContext>,
+    Path(host_id): Path<String>,
+    body: Result<Json<ExecutionHostUpsertBody>, JsonRejection>,
+) -> Response {
+    let result: ApiResult<ResourceData<ExecutionHostRecordResponse>> = async {
+        let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let subject = scope.subject.clone();
+        let host_kind = crate::domain::AgentExecutionHostKind::parse(Some(body.host_kind.as_str()))
+            .ok_or_else(|| ApiProblem::validation("unknown hostKind"))?;
+        let status = match body.status.as_deref() {
+            Some(code) => crate::domain::AgentExecutionHostStatus::parse(Some(code))
+                .ok_or_else(|| ApiProblem::validation("unknown status"))?,
+            None => crate::domain::AgentExecutionHostStatus::Active,
+        };
+        let (record_version, expected_version) = match body.expected_version {
+            Some(existing) => (existing.saturating_add(1), existing),
+            None => (1, 1),
+        };
+        let record = crate::domain::AgentExecutionHostRecord {
+            id: 0,
+            tenant_id,
+            organization_id: scope.organization_id_u64()?,
+            host_id: host_id.clone(),
+            display_name: body.display_name.clone(),
+            host_kind,
+            endpoint: body.endpoint.clone(),
+            region: body.region.clone(),
+            max_concurrent_sessions: body.max_concurrent_sessions,
+            capabilities_json: body
+                .capabilities_json
+                .clone()
+                .unwrap_or_else(|| "{}".to_string()),
+            status,
+            created_by: 0,
+            updated_by: 0,
+            version: record_version,
+            created_at: String::new(),
+            updated_at: String::new(),
+            deleted_at: None,
+            deleted_by: None,
+        };
+        let registered = with_service(&state, move |service| {
+            service.register_execution_host(record, expected_version, subject)
+        })
+        .await?;
+        Ok(ResourceData {
+            item: map_execution_host_record(&registered),
+        })
     }
     .await;
     finish_api_json(&web_ctx, result)
@@ -13698,6 +14080,7 @@ fn map_agent_management_profile(
         category_id: profile.category_id.clone(),
         color: profile.color.clone(),
         debug_mode: profile.debug_mode,
+        execution_route: profile.execution_route.clone(),
         icon_name: profile.icon_name.clone(),
         json_mode: profile.json_mode,
         knowledge_base_ids: profile.knowledge_base_ids.clone(),
@@ -15810,6 +16193,141 @@ mod tests {
             .await
             .expect("response body should be readable");
         assert!(body_bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn execution_host_registry_end_to_end_contract() {
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let app = build_test_router(state);
+
+        // PUT upsert registers the host (version 1).
+        let upsert = json!({
+            "displayName": "Docker host 01",
+            "hostKind": "docker",
+            "endpoint": "unix:///run/sdkwork/hosts/docker-01",
+            "region": "cn-east-1",
+            "maxConcurrentSessions": 4,
+            "status": "active"
+        });
+        let request = Request::builder()
+            .method("PUT")
+            .uri("/backend/v3/api/ai/execution_hosts/host.docker-01")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(upsert.to_string()))
+            .expect("upsert request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("upsert should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let registered: serde_json::Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .expect("upsert body");
+        assert_eq!(registered["data"]["item"]["hostId"], "host.docker-01");
+        assert_eq!(registered["data"]["item"]["version"], "1");
+        assert_eq!(registered["data"]["item"]["hostKind"], "docker");
+        assert_eq!(registered["data"]["item"]["maxConcurrentSessions"], 4);
+
+        // GET one returns the registered host.
+        let request = Request::builder()
+            .method("GET")
+            .uri("/backend/v3/api/ai/execution_hosts/host.docker-01")
+            .body(Body::empty())
+            .expect("get request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("get should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let fetched: serde_json::Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .expect("get body");
+        assert_eq!(
+            fetched["data"]["item"]["endpoint"],
+            "unix:///run/sdkwork/hosts/docker-01"
+        );
+
+        // List (unfiltered) contains exactly the registered host.
+        let request = Request::builder()
+            .method("GET")
+            .uri("/backend/v3/api/ai/execution_hosts")
+            .body(Body::empty())
+            .expect("list request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("list should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let listed: serde_json::Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .expect("list body");
+        assert_eq!(listed["data"]["items"].as_array().expect("items").len(), 1);
+        assert_eq!(listed["data"]["pageInfo"]["mode"], "offset");
+
+        // Draining the host removes it from the active-only list, while the
+        // unfiltered admin list keeps it visible with the bumped version.
+        let drain = json!({
+            "displayName": "Docker host 01",
+            "hostKind": "docker",
+            "endpoint": "unix:///run/sdkwork/hosts/docker-01",
+            "region": "cn-east-1",
+            "maxConcurrentSessions": 4,
+            "status": "draining",
+            "expectedVersion": 1
+        });
+        let request = Request::builder()
+            .method("PUT")
+            .uri("/backend/v3/api/ai/execution_hosts/host.docker-01")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(drain.to_string()))
+            .expect("drain request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("drain should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let drained: serde_json::Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .expect("drain body");
+        assert_eq!(drained["data"]["item"]["status"], "draining");
+        assert_eq!(drained["data"]["item"]["version"], "2");
+
+        let request = Request::builder()
+            .method("GET")
+            .uri("/backend/v3/api/ai/execution_hosts?status=active")
+            .body(Body::empty())
+            .expect("active list should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("active list should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let active: serde_json::Value =
+            serde_json::from_slice(&to_bytes(response.into_body(), usize::MAX).await.unwrap())
+                .expect("active list body");
+        assert_eq!(active["data"]["items"].as_array().expect("items").len(), 0);
+
+        // Unknown host ids read as a 404 problem detail.
+        let request = Request::builder()
+            .method("GET")
+            .uri("/backend/v3/api/ai/execution_hosts/host.missing")
+            .body(Body::empty())
+            .expect("missing get should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("missing get should succeed");
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]

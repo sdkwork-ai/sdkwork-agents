@@ -463,6 +463,10 @@ pub struct AgentManagementProfileDto {
     pub category_id: Option<String>,
     pub color: Option<String>,
     pub debug_mode: Option<bool>,
+    /// Agent-level default execution target (`in_process` | `cloud` | `host`).
+    /// Sits between session affinity and the deployment default in the
+    /// route resolution order.
+    pub execution_route: Option<String>,
     pub icon_name: Option<String>,
     pub json_mode: Option<bool>,
     pub knowledge_base_ids: Vec<String>,
@@ -560,6 +564,7 @@ impl AgentManagementProfileDto {
             category_id: optional_object_string(object.get("categoryId")),
             color: optional_object_string(object.get("color")),
             debug_mode: optional_object_bool(object.get("debugMode")),
+            execution_route: optional_object_string(object.get("executionRoute")),
             icon_name: optional_object_string(object.get("iconName")),
             json_mode: optional_object_bool(object.get("jsonMode")),
             knowledge_base_ids: object_string_array(object.get("knowledgeBaseIds")),
@@ -590,6 +595,7 @@ impl AgentManagementProfileDto {
         insert_optional_string(&mut object, "categoryId", self.category_id.as_ref());
         insert_optional_string(&mut object, "color", self.color.as_ref());
         insert_optional_bool(&mut object, "debugMode", self.debug_mode);
+        insert_optional_string(&mut object, "executionRoute", self.execution_route.as_ref());
         insert_optional_string(&mut object, "iconName", self.icon_name.as_ref());
         insert_optional_bool(&mut object, "jsonMode", self.json_mode);
         insert_string_array(&mut object, "knowledgeBaseIds", &self.knowledge_base_ids);
@@ -613,6 +619,7 @@ impl AgentManagementProfileDto {
             && self.category_id.is_none()
             && self.color.is_none()
             && self.debug_mode.is_none()
+            && self.execution_route.is_none()
             && self.icon_name.is_none()
             && self.json_mode.is_none()
             && self.knowledge_base_ids.is_empty()

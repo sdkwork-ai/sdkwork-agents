@@ -29,7 +29,7 @@ const surfaces = [
     name: 'Backend API',
     key: 'backend',
     prefix: '/backend/v3/api',
-    expectedCount: 60,
+    expectedCount: 63,
     auth: '`Authorization` and `Access-Token` for operator context',
     sdk: '`@sdkwork/agents-backend-sdk`',
     source:

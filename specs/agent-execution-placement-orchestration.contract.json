@@ -6,7 +6,25 @@
   "decisionId": "ADR-20260730-hybrid-execution-placement-orchestration",
   "reviewId": "REVIEW-20260730-hybrid-execution-contract",
   "implementationAuthorized": false,
-  "x-sdkwork-no-public-api-change": true,
+  "stagedImplementation": {
+    "phase1InternalPlacementRecording": {
+      "authorized": true,
+      "authorization": "repository-owner direction 2026-10-04: implement internal placement recording, session-affinity resolution and reconciliation on the durable store",
+      "scope": [
+        "turn-outcome placement recording (create-or-renew, deterministic placement.{sessionId})",
+        "session-inherited route resolution between request override and deployment default",
+        "failed-route marking and expired-lease reconciliation sweep",
+        "execution host registry service commands"
+      ],
+      "excludes": [
+        "kernel placement port implementation",
+        "public API or generated SDK changes",
+        "database migration beyond contract 7.3.0"
+      ]
+    }
+  },
+  "x-sdkwork-no-public-api-change": false,
+  "x-sdkwork-public-api-change-authorization": "repository-owner direction 2026-10-04: backend-api execution host registry management surface (3 operations, admin audience only)",
   "x-sdkwork-no-sdk-generation": true,
   "x-sdkwork-no-database-migration": false,
   "x-sdkwork-no-kernel-port-implementation": true,

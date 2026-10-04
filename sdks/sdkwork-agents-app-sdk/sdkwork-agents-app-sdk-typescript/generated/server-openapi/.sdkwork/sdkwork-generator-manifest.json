@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-app-sdk",
-    "version": "0.1.0",
+    "version": "0.1.4",
     "language": "typescript",
     "sdkType": "app",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
+      "sha256": "680d63aa50e7d5ce598c70b5efd54b7238d83d46d9858eefba28e5bdf8774283"
     },
     {
       "path": "LICENSE",
@@ -40,19 +40,19 @@
     },
     {
       "path": "package.json",
-      "sha256": "79d189b425df3ce503cac376b52061e83493dccb369d24c77397b60b076de371"
+      "sha256": "cee1ad25b144b3e2752ba8dc55958f2e375382be0ce17e1e8c360538d7148f60"
     },
     {
       "path": "README.md",
-      "sha256": "faf5e002ba742d2bb374cb5f2ec462e3d4568cb993e801d00fe0b46e7b68f1f4"
+      "sha256": "475b85627a85d24664f3811f8ccc17c64692d125acf8d636cea0b802d07aec47"
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "e509ebd5e9eeda95e2f15e8efb1ccb08d3a22e2d0fc41c22844b64f2754bbc82"
+      "sha256": "d1a9577b0fa4f2f6b3b7f9c3e5474cf6fcb99647dfc4f72dd326bf7a5a4af5b3"
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "c41a34a747a3afc76bdc81c9abffc950d8a68b9d3529a5416d07f444ce61e05c"
+      "sha256": "1f5504fd3fb771daa027236a6056ab69ddbad457345927126b7958c399f865ac"
     },
     {
       "path": "src/api/base.ts",
@@ -64,7 +64,7 @@
     },
     {
       "path": "src/api/paths.ts",
-      "sha256": "4ffed7b7d576dc11081bf6b43511465d3a5db410bd25c425ef47b69b154981ad"
+      "sha256": "ed938eff098d6d91e8bb2e447cda882fcc2105c54922d70cafdb8e38327a882d"
     },
     {
       "path": "src/auth/index.ts",
@@ -80,11 +80,11 @@
     },
     {
       "path": "src/index.ts",
-      "sha256": "1b72e156546dff1aa4a094a8fb926ab543ccd7e320d3aacef790509f4df5f48b"
+      "sha256": "3a4a3f9c5ce1c5bf55baf261e7b648091cbef7ba2c30ea402dd15f3f37820956"
     },
     {
       "path": "src/sdk.ts",
-      "sha256": "b6ab2e9fe170114dbef41c55f0d62fe8eb24b69555e9c96793c0a0c5edd77520"
+      "sha256": "bafa5fc8770257a3a6d87e6e771f171e3e6db884845a3fa7021472e4b730f75c"
     },
     {
       "path": "src/types/activate-agent-provider-binding-request.ts",
@@ -264,7 +264,7 @@
     },
     {
       "path": "src/types/agent-management-profile.ts",
-      "sha256": "9cd403b8eeaa7fb06b0cbf907f27d6013f8861de5be45de0d27fcd0193207dd2"
+      "sha256": "561aa8411c0164ae31e6fa8a0ddab6dccb9b6d7e8ed2381165da90a4bcbe8c6d"
     },
     {
       "path": "src/types/agent-model-provider-id.ts",

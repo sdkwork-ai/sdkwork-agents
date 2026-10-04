@@ -7,6 +7,8 @@ use crate::agent_turn_input_queue::{
 };
 use crate::domain::{
     AgentBusinessRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord,
+    AgentExecutionHostKind, AgentExecutionHostRecord, AgentExecutionPlacementLifecycle,
+    AgentExecutionPlacementRecord, AgentExecutionPlacementStatus, AgentExecutionPlacementTarget,
     AgentInteractionKind, AgentInteractionRecord, AgentItemDriveRefRecord, AgentItemFeedbackRecord,
     AgentProviderBindingRecord, AgentResourceType, AgentResourceUserStateRecord,
     AgentRuntimeExecutionRecord, AgentRuntimeExecutionStatus, AgentSessionCheckpointRecord,
@@ -18,13 +20,14 @@ use crate::id::{AgentBusinessIdGenerator, AgentIdGenerator};
 use crate::in_memory_pagination::{count_iterator, paginate_items, paginate_iterator};
 use crate::ports::{
     validate_completed_turn_items, AgentAuditSink, AgentListQuery, AgentRepository,
-    AgentVersionListQuery, AuditEventListQuery, CompositionSlotListQuery, InteractionListQuery,
-    ItemFeedbackListQuery, McpMarketplaceListQuery, ProjectCompositionSlotListQuery,
-    ProjectListQuery, ProviderBindingListQuery, ResourceUserStateListQuery,
-    RuntimeExecutionListQuery, SessionActivitySummaryListQuery, SessionCheckpointListQuery,
-    SessionItemListQuery, SessionItemListSort, SessionListQuery, SessionRuntimeBindingListQuery,
-    TaskListQuery, TurnListQuery, TurnRequestWriteOutcome, WebhookSubscriptionListQuery,
-    WorkspaceListQuery,
+    AgentVersionListQuery, AuditEventListQuery, CompositionSlotListQuery,
+    ExecutionHostListQuery, ExecutionPlacementListQuery, InteractionListQuery,
+    ItemFeedbackListQuery,
+    McpMarketplaceListQuery, ProjectCompositionSlotListQuery, ProjectListQuery,
+    ProviderBindingListQuery, ResourceUserStateListQuery, RuntimeExecutionListQuery,
+    SessionActivitySummaryListQuery, SessionCheckpointListQuery, SessionItemListQuery,
+    SessionItemListSort, SessionListQuery, SessionRuntimeBindingListQuery, TaskListQuery,
+    TurnListQuery, TurnRequestWriteOutcome, WebhookSubscriptionListQuery, WorkspaceListQuery,
 };
 use crate::project::{
     project_names_equal, AgentProjectCompositionSlotRecord, AgentProjectRecord, AgentProjectStatus,
@@ -385,6 +388,10 @@ pub struct InMemoryAgentRepository {
         RwLock<HashMap<SessionRuntimeBindingPrimaryKey, AgentSessionRuntimeBindingRecord>>,
     current_session_runtime_bindings:
         RwLock<HashMap<SessionPrimaryKey, SessionRuntimeBindingPrimaryKey>>,
+    execution_placements:
+        RwLock<HashMap<(u64, u64, String, String), AgentExecutionPlacementRecord>>,
+    current_execution_placements: RwLock<HashMap<(u64, u64, String), String>>,
+    execution_hosts: RwLock<HashMap<(u64, u64, String), AgentExecutionHostRecord>>,
     session_checkpoints: RwLock<HashMap<SessionCheckpointPrimaryKey, AgentSessionCheckpointRecord>>,
     resource_user_states:
         RwLock<HashMap<ResourceUserStatePrimaryKey, AgentResourceUserStateRecord>>,
@@ -457,6 +464,9 @@ impl InMemoryAgentRepository {
             session_idempotency: RwLock::new(HashMap::new()),
             session_runtime_bindings: RwLock::new(HashMap::new()),
             current_session_runtime_bindings: RwLock::new(HashMap::new()),
+            execution_placements: RwLock::new(HashMap::new()),
+            current_execution_placements: RwLock::new(HashMap::new()),
+            execution_hosts: RwLock::new(HashMap::new()),
             session_checkpoints: RwLock::new(HashMap::new()),
             resource_user_states: RwLock::new(HashMap::new()),
             tool_configurations: RwLock::new(HashMap::new()),
@@ -2382,6 +2392,357 @@ impl AgentRepository for InMemoryAgentRepository {
             );
         }
         Ok(target)
+    }
+
+    fn insert_execution_placement(
+        &self,
+        record: AgentExecutionPlacementRecord,
+    ) -> KernelResult<()> {
+        let session_key = (
+            record.tenant_id,
+            record.organization_id,
+            record.session_id.clone(),
+        );
+        let key = (
+            record.tenant_id,
+            record.organization_id,
+            record.session_id.clone(),
+            record.placement_id.clone(),
+        );
+        let mut placements = self.execution_placements.recovering_write();
+        if placements.contains_key(&key) {
+            return Err(KernelError::conflict("execution placement already exists"));
+        }
+        if record.is_current {
+            let mut current = self.current_execution_placements.recovering_write();
+            if current.contains_key(&session_key) {
+                return Err(KernelError::conflict(
+                    "session already has a current execution placement",
+                ));
+            }
+            current.insert(session_key, record.placement_id.clone());
+        }
+        placements.insert(key, record);
+        Ok(())
+    }
+
+    fn update_execution_placement(
+        &self,
+        record: AgentExecutionPlacementRecord,
+        expected_version: u64,
+    ) -> KernelResult<()> {
+        let key = (
+            record.tenant_id,
+            record.organization_id,
+            record.session_id.clone(),
+            record.placement_id.clone(),
+        );
+        let mut placements = self.execution_placements.recovering_write();
+        let existing = placements
+            .get_mut(&key)
+            .ok_or_else(|| KernelError::not_found("execution placement not found"))?;
+        if existing.version != expected_version {
+            return Err(KernelError::conflict(
+                "execution placement version mismatch",
+            ));
+        }
+        // Keep the current-placement index in sync with the row's
+        // `is_current` marker (PostgreSQL derives current from the flag).
+        let session_key = (
+            record.tenant_id,
+            record.organization_id,
+            record.session_id.clone(),
+        );
+        {
+            let mut current = self.current_execution_placements.recovering_write();
+            if record.is_current {
+                current.insert(session_key, record.placement_id.clone());
+            } else if current
+                .get(&session_key)
+                .is_some_and(|current_id| *current_id == record.placement_id)
+            {
+                current.remove(&session_key);
+            }
+        }
+        *existing = record;
+        Ok(())
+    }
+
+    fn get_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRecord>> {
+        let placements = self.execution_placements.recovering_read();
+        Ok(placements
+            .get(&(
+                tenant_id,
+                organization_id,
+                session_id.to_string(),
+                placement_id.to_string(),
+            ))
+            .cloned())
+    }
+
+    fn get_current_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRecord>> {
+        let session_key = (tenant_id, organization_id, session_id.to_string());
+        let current = self.current_execution_placements.recovering_read();
+        let Some(placement_id) = current.get(&session_key) else {
+            return Ok(None);
+        };
+        let placements = self.execution_placements.recovering_read();
+        Ok(placements
+            .get(&(
+                tenant_id,
+                organization_id,
+                session_id.to_string(),
+                placement_id.clone(),
+            ))
+            .cloned())
+    }
+
+    fn list_execution_placements(
+        &self,
+        query: &ExecutionPlacementListQuery,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>> {
+        let placements = self.execution_placements.recovering_read();
+        let mut rows: Vec<AgentExecutionPlacementRecord> = placements
+            .iter()
+            .filter(|((tenant, org, session, _), record)| {
+                *tenant == query.tenant_id
+                    && *org == query.organization_id
+                    && session == &query.session_id
+                    && (!query.current_only || record.is_current)
+            })
+            .map(|(_, record)| record.clone())
+            .collect();
+        rows.sort_by(|a, b| b.updated_at.cmp(&a.updated_at).then(b.id.cmp(&a.id)));
+        Ok(rows
+            .into_iter()
+            .skip(query.pagination.offset)
+            .take(query.pagination.page_size)
+            .collect())
+    }
+
+    fn switch_current_execution_placement_atomic(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+        expected_version: u64,
+        updated_at: String,
+    ) -> KernelResult<AgentExecutionPlacementRecord> {
+        let session_key = (tenant_id, organization_id, session_id.to_string());
+        let key = (
+            tenant_id,
+            organization_id,
+            session_id.to_string(),
+            placement_id.to_string(),
+        );
+        let mut placements = self.execution_placements.recovering_write();
+        let version_conflict = placements
+            .get(&key)
+            .map(|existing| existing.version != expected_version);
+        match version_conflict {
+            Some(true) => {
+                return Err(KernelError::conflict(
+                    "execution placement version mismatch",
+                ));
+            }
+            Some(false) => {}
+            None => return Err(KernelError::not_found("execution placement not found")),
+        }
+        let mut current = self.current_execution_placements.recovering_write();
+        let retired_id = current
+            .get(&session_key)
+            .cloned()
+            .filter(|current_placement| *current_placement != placement_id);
+        if let Some(retired_placement_id) = retired_id {
+            let retired_key = (
+                tenant_id,
+                organization_id,
+                session_id.to_string(),
+                retired_placement_id,
+            );
+            if let Some(retired) = placements.get_mut(&retired_key) {
+                retired.is_current = false;
+                retired.status = AgentExecutionPlacementStatus::Deactivated;
+                retired.deactivated_at = Some(updated_at.clone());
+                retired.updated_at = updated_at.clone();
+                retired.version = retired.version.saturating_add(1);
+            }
+        }
+        current.insert(session_key, placement_id.to_string());
+        let target = placements
+            .get_mut(&key)
+            .ok_or_else(|| KernelError::not_found("execution placement not found"))?;
+        target.is_current = true;
+        target.status = AgentExecutionPlacementStatus::Active;
+        target.activated_at = Some(updated_at.clone());
+        target.deactivated_at = None;
+        target.updated_at = updated_at;
+        target.version = target.version.saturating_add(1);
+        Ok(target.clone())
+    }
+
+    fn list_expired_execution_placements(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>> {
+        let placements = self.execution_placements.recovering_read();
+        let mut rows: Vec<AgentExecutionPlacementRecord> = placements
+            .iter()
+            .filter(|((tenant, ..), record)| {
+                *tenant == tenant_id
+                    && record.placement_state.occupies_capacity()
+                    && record
+                        .lease_expires_at
+                        .as_deref()
+                        .is_some_and(|expires| expires < as_of)
+            })
+            .map(|(_, record)| record.clone())
+            .collect();
+        rows.sort_by(|a, b| a.lease_expires_at.cmp(&b.lease_expires_at));
+        rows.truncate(limit);
+        Ok(rows)
+    }
+
+    fn list_expired_execution_placements_across_tenants(
+        &self,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>> {
+        let placements = self.execution_placements.recovering_read();
+        let mut rows: Vec<AgentExecutionPlacementRecord> = placements
+            .iter()
+            .filter(|(_, record)| {
+                record.placement_state.occupies_capacity()
+                    && record
+                        .lease_expires_at
+                        .as_deref()
+                        .is_some_and(|expires| expires < as_of)
+            })
+            .map(|(_, record)| record.clone())
+            .collect();
+        rows.sort_by(|a, b| a.lease_expires_at.cmp(&b.lease_expires_at));
+        rows.truncate(limit);
+        Ok(rows)
+    }
+
+    fn upsert_execution_host(
+        &self,
+        record: AgentExecutionHostRecord,
+        expected_version: u64,
+    ) -> KernelResult<AgentExecutionHostRecord> {
+        let key = (
+            record.tenant_id,
+            record.organization_id,
+            record.host_id.clone(),
+        );
+        let mut hosts = self.execution_hosts.recovering_write();
+        match hosts.get_mut(&key) {
+            Some(existing) => {
+                if existing.version != expected_version {
+                    return Err(KernelError::conflict("execution host version mismatch"));
+                }
+                let mut updated = record;
+                updated.version = existing.version.saturating_add(1);
+                updated.created_at = existing.created_at.clone();
+                *existing = updated.clone();
+                Ok(updated)
+            }
+            None => {
+                let mut created = record;
+                created.version = created.version.max(1);
+                hosts.insert(key, created.clone());
+                Ok(created)
+            }
+        }
+    }
+
+    fn get_execution_host(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+    ) -> KernelResult<Option<AgentExecutionHostRecord>> {
+        let hosts = self.execution_hosts.recovering_read();
+        Ok(hosts
+            .get(&(tenant_id, organization_id, host_id.to_string()))
+            .cloned())
+    }
+
+    fn list_eligible_execution_hosts(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: AgentExecutionHostKind,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>> {
+        let hosts = self.execution_hosts.recovering_read();
+        let mut rows: Vec<AgentExecutionHostRecord> = hosts
+            .iter()
+            .filter(|((tenant, org, _), record)| {
+                *tenant == tenant_id
+                    && *org == organization_id
+                    && record.host_kind == host_kind
+                    && record.is_scheduler_eligible()
+            })
+            .map(|(_, record)| record.clone())
+            .collect();
+        rows.sort_by(|a, b| b.max_concurrent_sessions.cmp(&a.max_concurrent_sessions));
+        Ok(rows)
+    }
+
+    fn list_execution_hosts(
+        &self,
+        query: &ExecutionHostListQuery,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>> {
+        let hosts = self.execution_hosts.recovering_read();
+        let mut rows: Vec<AgentExecutionHostRecord> = hosts
+            .iter()
+            .filter(|((tenant, org, _), record)| {
+                *tenant == query.tenant_id
+                    && *org == query.organization_id
+                    && query.host_kind.is_none_or(|kind| record.host_kind == kind)
+                    && query
+                        .status
+                        .is_none_or(|status| record.status == status)
+                    && record.deleted_at.is_none()
+            })
+            .map(|(_, record)| record.clone())
+            .collect();
+        rows.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.id.cmp(&a.id)));
+        Ok(rows
+            .into_iter()
+            .skip(query.pagination.offset)
+            .take(query.pagination.page_size)
+            .collect())
+    }
+
+    fn count_execution_hosts(&self, query: &ExecutionHostListQuery) -> KernelResult<u64> {
+        let hosts = self.execution_hosts.recovering_read();
+        Ok(hosts
+            .iter()
+            .filter(|((tenant, org, _), record)| {
+                *tenant == query.tenant_id
+                    && *org == query.organization_id
+                    && query.host_kind.is_none_or(|kind| record.host_kind == kind)
+                    && query
+                        .status
+                        .is_none_or(|status| record.status == status)
+                    && record.deleted_at.is_none()
+            })
+            .count() as u64)
     }
 
     fn insert_session_checkpoint(&self, record: AgentSessionCheckpointRecord) -> KernelResult<()> {

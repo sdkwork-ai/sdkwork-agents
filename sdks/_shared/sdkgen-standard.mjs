@@ -6,7 +6,7 @@ export const SDKWORK_SDKGEN_STANDARD = Object.freeze({
   standardProfile: 'sdkwork-v3',
   typescriptCommonPackage: Object.freeze({
     name: '@sdkwork/sdk-common',
-    version: '^1.0.4',
+    version: '^1.0.5',
   }),
   canonicalRootWin: String.raw`..\sdkwork-sdk-generator`,
   canonicalEntrypointWin: String.raw`..\sdkwork-sdk-generator\bin\sdkgen.js`,

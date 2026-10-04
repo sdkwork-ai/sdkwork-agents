@@ -4,7 +4,7 @@ import type { AuthTokenManager } from '@sdkwork/sdk-common';
 
 import { AiApi, createAiApi } from './api/ai';
 
-export class SdkworkAppClient {
+export class SdkworkBackendClient {
   private httpClient: HttpClient;
 
   public readonly ai: AiApi;
@@ -33,8 +33,8 @@ export class SdkworkAppClient {
   }
 }
 
-export function createClient(config: SdkworkAppConfig): SdkworkAppClient {
-  return new SdkworkAppClient(config);
+export function createClient(config: SdkworkAppConfig): SdkworkBackendClient {
+  return new SdkworkBackendClient(config);
 }
 
-export default SdkworkAppClient;
+export default SdkworkBackendClient;

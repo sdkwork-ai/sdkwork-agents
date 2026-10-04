@@ -1122,6 +1122,24 @@ pub const AGENT_BACKEND_API_OPERATIONS: &[ApiOperation] = &[
         operation_id: "agents.list",
     },
     ApiOperation {
+        method: "GET",
+        path: "/backend/v3/api/ai/execution_hosts",
+        tag: "ai",
+        operation_id: "executionHosts.list",
+    },
+    ApiOperation {
+        method: "PUT",
+        path: "/backend/v3/api/ai/execution_hosts",
+        tag: "ai",
+        operation_id: "executionHosts.update",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/backend/v3/api/ai/execution_hosts/{hostId}",
+        tag: "ai",
+        operation_id: "executionHosts.retrieve",
+    },
+    ApiOperation {
         method: "POST",
         path: "/backend/v3/api/ai/agents",
         tag: "ai",
@@ -1899,7 +1917,7 @@ mod tests {
 
         assert_eq!(AGENT_OPEN_API_OPERATIONS.len(), 56);
         assert_eq!(AGENT_APP_API_OPERATIONS.len(), 127);
-        assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 60);
+        assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 63);
 
         assert_eq!(
             AGENT_OPEN_API_OPERATIONS.len(),

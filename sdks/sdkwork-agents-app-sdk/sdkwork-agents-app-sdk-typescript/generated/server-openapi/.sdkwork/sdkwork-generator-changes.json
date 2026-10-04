@@ -3,17 +3,19 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-app-sdk",
-    "version": "0.1.0",
+    "version": "0.1.4",
     "language": "typescript",
     "sdkType": "app",
     "protocol": "http",
     "packageName": "@sdkwork/agents-app-sdk"
   },
-  "changeFingerprint": "6f069e537c0e681889876a40ec7a6acb83806d9f48c5b3f98b65c5db784af7ac",
+  "changeFingerprint": "47fd0fa92a6097de18a94ec8a28d46c77b0b71739d2fe34923f5d117a2332408",
   "changes": {
     "createdGeneratedFiles": [],
     "updatedGeneratedFiles": [
-      "src/types/index.ts"
+      "CHANGELOG.md",
+      "package.json",
+      "sdkwork-sdk.json"
     ],
     "unchangedGeneratedFiles": [
       "bin/publish-core.mjs",
@@ -21,11 +23,8 @@
       "bin/publish.sh",
       "bin/sdk-gen.bat",
       "bin/sdk-gen.sh",
-      "CHANGELOG.md",
       "LICENSE",
-      "package.json",
       "README.md",
-      "sdkwork-sdk.json",
       "src/api/ai.ts",
       "src/api/base.ts",
       "src/api/index.ts",
@@ -214,6 +213,7 @@
       "src/types/fail-agent-turn-input-queue-entry-request.ts",
       "src/types/field-error.ts",
       "src/types/import-agent-project-request.ts",
+      "src/types/index.ts",
       "src/types/int64-string.ts",
       "src/types/invalidate-agent-session-checkpoint-request.ts",
       "src/types/legacy-agent-interaction-resolution.ts",
@@ -270,42 +270,67 @@
       "tsconfig.json"
     ],
     "deletedGeneratedFiles": [
-      "src/types/media-tool-configuration-body.ts"
+      "src/api/paths.d.ts",
+      "src/types/agent-management-profile.d.ts"
     ],
     "scaffoldedFiles": [],
     "preservedScaffoldFiles": [
       "custom/build-runtime.mjs",
       "custom/README.md"
     ],
-    "backedUpFiles": []
+    "backedUpFiles": [
+      "src/api/paths.d.ts",
+      "src/types/agent-management-profile.d.ts"
+    ]
   },
   "impact": {
     "schemaVersion": 1,
     "areas": [
-      "models"
+      "api-surface",
+      "models",
+      "build-metadata",
+      "documentation"
     ],
     "details": [
       {
+        "area": "api-surface",
+        "paths": [
+          "src/api/paths.d.ts"
+        ]
+      },
+      {
         "area": "models",
         "paths": [
-          "src/types/index.ts",
-          "src/types/media-tool-configuration-body.ts"
+          "src/types/agent-management-profile.d.ts"
+        ]
+      },
+      {
+        "area": "build-metadata",
+        "paths": [
+          "package.json",
+          "sdkwork-sdk.json"
+        ]
+      },
+      {
+        "area": "documentation",
+        "paths": [
+          "CHANGELOG.md"
         ]
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: models. Verification is required."
+    "summary": "Detected impact areas: api-surface, models, build-metadata, documentation. Verification is required."
   },
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: models. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: api-surface, models, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: models.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, build-metadata, documentation.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -323,7 +348,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, build-metadata, documentation.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -347,6 +372,7 @@
     "applyRequiresExpectedFingerprint": false,
     "summary": "Changes have been applied. Run the required verification plan now.",
     "reasons": [
+      "backed-up-generated-files",
       "deleted-generated-files",
       "manual-review-required",
       "verification-required"

@@ -1,5 +1,5 @@
 use crate::response::ApiProblem;
-use crate::validation::{parse_owner_user_id, parse_tenant_id};
+use crate::validation::{parse_organization_id, parse_owner_user_id, parse_tenant_id};
 use sdkwork_agent_kernel::PolicySubject;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,6 +112,6 @@ impl RequestScope {
     /// Parsed organization scope; contexts without an explicit organization
     /// resolve to the platform sentinel `0`.
     pub(crate) fn organization_id_u64(&self) -> Result<u64, ApiProblem> {
-        parse_tenant_id(self.organization_id.as_str()).map_err(ApiProblem::from_kernel_error)
+        parse_organization_id(self.organization_id.as_str()).map_err(ApiProblem::from_kernel_error)
     }
 }

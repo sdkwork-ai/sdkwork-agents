@@ -361,6 +361,53 @@ pub const SQL_DEACTIVATE_CURRENT_AGENT_SESSION_RUNTIME_BINDINGS: &str =
 pub const SQL_ACTIVATE_AGENT_SESSION_RUNTIME_BINDING: &str =
     "UPDATE ai_agent_session_runtime_binding SET status = 0, is_current = TRUE, version = version + 1, updated_at = $6::timestamptz, activated_at = $6::timestamptz, deactivated_at = NULL WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND runtime_binding_id = $4 AND version = $5";
 
+// Session execution placement (`ai_agent_session_execution_placement`):
+// durable per-session execution target, pinned host, lifecycle and bounded
+// lease evidence. Lease credentials stay kernel-owned and are never bound.
+#[cfg(feature = "postgres-sync")]
+pub const SQL_INSERT_AGENT_SESSION_EXECUTION_PLACEMENT: &str =
+    "INSERT INTO ai_agent_session_execution_placement (id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at, status, is_current, version, created_at, updated_at, activated_at, deactivated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::timestamptz, $19, $20, $21, $22::timestamptz, $23::timestamptz, $24::timestamptz, $25::timestamptz)";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_UPDATE_AGENT_SESSION_EXECUTION_PLACEMENT: &str =
+    "UPDATE ai_agent_session_execution_placement SET execution_kind = $1, execution_id = $2, requested_target = $3, effective_target = $4, host_id = $5, host_kind = $6, kernel_placement_ref = $7, placement_state = $8, lease_owner = $9, lease_expires_at = $10::timestamptz, status = $11, is_current = $12, version = $13, updated_at = $14::timestamptz, activated_at = $15::timestamptz, deactivated_at = $16::timestamptz WHERE tenant_id = $17 AND organization_id = $18 AND session_id = $19 AND placement_id = $20 AND version = $21";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_AGENT_SESSION_EXECUTION_PLACEMENT: &str =
+    "SELECT id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at::text AS lease_expires_at, status, is_current, version, created_at::text AS created_at, updated_at::text AS updated_at, activated_at::text AS activated_at, deactivated_at::text AS deactivated_at FROM ai_agent_session_execution_placement WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND placement_id = $4 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_CURRENT_AGENT_SESSION_EXECUTION_PLACEMENT: &str =
+    "SELECT id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at::text AS lease_expires_at, status, is_current, version, created_at::text AS created_at, updated_at::text AS updated_at, activated_at::text AS activated_at, deactivated_at::text AS deactivated_at FROM ai_agent_session_execution_placement WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND is_current = TRUE AND status = 0 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_AGENT_SESSION_EXECUTION_PLACEMENTS: &str =
+    "SELECT id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at::text AS lease_expires_at, status, is_current, version, created_at::text AS created_at, updated_at::text AS updated_at, activated_at::text AS activated_at, deactivated_at::text AS deactivated_at FROM ai_agent_session_execution_placement WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND ($4::bool = FALSE OR is_current = TRUE) ORDER BY is_current DESC, updated_at DESC, id DESC LIMIT $5 OFFSET $6";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_DEACTIVATE_OTHER_AGENT_SESSION_EXECUTION_PLACEMENTS: &str =
+    "UPDATE ai_agent_session_execution_placement SET status = 1, is_current = FALSE, version = version + 1, updated_at = $5::timestamptz, deactivated_at = $5::timestamptz WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND placement_id <> $4 AND is_current = TRUE";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_ACTIVATE_AGENT_SESSION_EXECUTION_PLACEMENT: &str =
+    "UPDATE ai_agent_session_execution_placement SET status = 0, is_current = TRUE, version = version + 1, updated_at = $6::timestamptz, activated_at = $6::timestamptz, deactivated_at = NULL WHERE tenant_id = $1 AND organization_id = $2 AND session_id = $3 AND placement_id = $4 AND version = $5 RETURNING id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at::text AS lease_expires_at, status, is_current, version, created_at::text AS created_at, updated_at::text AS updated_at, activated_at::text AS activated_at, deactivated_at::text AS deactivated_at";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_LIVE_AGENT_SESSION_EXECUTION_PLACEMENTS_FOR_RECONCILIATION_ALL_TENANTS: &str =
+    "SELECT id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at::text AS lease_expires_at, status, is_current, version, created_at::text AS created_at, updated_at::text AS updated_at, activated_at::text AS activated_at, deactivated_at::text AS deactivated_at FROM ai_agent_session_execution_placement WHERE placement_state IN (0, 1, 2, 3) AND lease_expires_at IS NOT NULL AND lease_expires_at < $1::timestamptz ORDER BY lease_expires_at ASC, id ASC LIMIT $2";
+pub const SQL_SELECT_LIVE_AGENT_SESSION_EXECUTION_PLACEMENTS_FOR_RECONCILIATION: &str =
+    "SELECT id, uuid, tenant_id, organization_id, owner_user_id, session_id, agent_id, placement_id, execution_kind, execution_id, requested_target, effective_target, host_id, host_kind, kernel_placement_ref, placement_state, lease_owner, lease_expires_at::text AS lease_expires_at, status, is_current, version, created_at::text AS created_at, updated_at::text AS updated_at, activated_at::text AS activated_at, deactivated_at::text AS deactivated_at FROM ai_agent_session_execution_placement WHERE tenant_id = $1 AND placement_state IN (0, 1, 2, 3) AND lease_expires_at IS NOT NULL AND lease_expires_at < $2::timestamptz ORDER BY lease_expires_at ASC, id ASC LIMIT $3";
+
+// Execution host registry (`ai_agent_execution_host`): dispatchable hosts
+// (docker, micro VM, bare metal, kernel cloud-sandbox pools) for scheduler
+// eligibility. Endpoints are opaque dispatch references, never credentials.
+#[cfg(feature = "postgres-sync")]
+pub const SQL_UPSERT_AGENT_EXECUTION_HOST: &str =
+    "INSERT INTO ai_agent_execution_host (id, uuid, tenant_id, organization_id, host_id, display_name, host_kind, endpoint, region, max_concurrent_sessions, capabilities_json, status, created_by, updated_by, version, created_at, updated_at, deleted_at, deleted_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, $16::timestamptz, $17::timestamptz, $18::timestamptz, $19) ON CONFLICT (tenant_id, organization_id, host_id) DO UPDATE SET display_name = EXCLUDED.display_name, host_kind = EXCLUDED.host_kind, endpoint = EXCLUDED.endpoint, region = EXCLUDED.region, max_concurrent_sessions = EXCLUDED.max_concurrent_sessions, capabilities_json = EXCLUDED.capabilities_json, status = EXCLUDED.status, updated_by = EXCLUDED.updated_by, version = ai_agent_execution_host.version + 1, updated_at = EXCLUDED.updated_at, deleted_at = EXCLUDED.deleted_at, deleted_by = EXCLUDED.deleted_by WHERE ai_agent_execution_host.version = $15 RETURNING id, uuid, tenant_id, organization_id, host_id, display_name, host_kind, endpoint, region, max_concurrent_sessions, capabilities_json::text AS capabilities_json, status, created_by, updated_by, version, created_at::text AS created_at, updated_at::text AS updated_at, deleted_at::text AS deleted_at, deleted_by::text AS deleted_by";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_SELECT_AGENT_EXECUTION_HOST: &str =
+    "SELECT id, uuid, tenant_id, organization_id, host_id, display_name, host_kind, endpoint, region, max_concurrent_sessions, capabilities_json::text AS capabilities_json, status, created_by, updated_by, version, created_at::text AS created_at, updated_at::text AS updated_at, deleted_at::text AS deleted_at, deleted_by::text AS deleted_by FROM ai_agent_execution_host WHERE tenant_id = $1 AND organization_id = $2 AND host_id = $3 LIMIT 1";
+#[cfg(feature = "postgres-sync")]
+pub const SQL_LIST_AGENT_EXECUTION_HOSTS: &str =
+    "SELECT id, uuid, tenant_id, organization_id, host_id, display_name, host_kind, endpoint, region, max_concurrent_sessions, capabilities_json::text AS capabilities_json, status, created_by, updated_by, version, created_at::text AS created_at, updated_at::text AS updated_at, deleted_at::text AS deleted_at, deleted_by::text AS deleted_by FROM ai_agent_execution_host WHERE tenant_id = $1 AND organization_id = $2 AND ($3::text IS NULL OR host_kind = $3) AND ($4::smallint IS NULL OR status = $4) AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT $5 OFFSET $6";
+pub const SQL_COUNT_AGENT_EXECUTION_HOSTS: &str =
+    "SELECT COUNT(*)::bigint AS total_count FROM ai_agent_execution_host WHERE tenant_id = $1 AND organization_id = $2 AND ($3::text IS NULL OR host_kind = $3) AND ($4::smallint IS NULL OR status = $4) AND deleted_at IS NULL";
+pub const SQL_LIST_ELIGIBLE_AGENT_EXECUTION_HOSTS: &str =
+    "SELECT id, uuid, tenant_id, organization_id, host_id, display_name, host_kind, endpoint, region, max_concurrent_sessions, capabilities_json::text AS capabilities_json, status, created_by, updated_by, version, created_at::text AS created_at, updated_at::text AS updated_at, deleted_at::text AS deleted_at, deleted_by::text AS deleted_by FROM ai_agent_execution_host WHERE tenant_id = $1 AND organization_id = $2 AND host_kind = $3 AND status = 0 AND deleted_at IS NULL ORDER BY max_concurrent_sessions DESC, id ASC";
+
 #[cfg(feature = "postgres-sync")]
 pub const SQL_INSERT_AGENT_SESSION_CHECKPOINT: &str =
     "INSERT INTO ai_agent_session_checkpoint (id, uuid, tenant_id, organization_id, session_id, checkpoint_id, turn_id, runtime_binding_id, checkpoint_kind, provider_checkpoint_ref, drive_space_id, drive_node_id, resumable, status, created_by, version, created_at, updated_at, restored_at, invalidated_at, retention_until) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::timestamptz, $18::timestamptz, $19::timestamptz, $20::timestamptz, $21::timestamptz)";
@@ -459,7 +506,8 @@ pub const SQL_COMPLETE_OUTBOX_EVENT: &str =
     "UPDATE ai_agent_outbox_event SET status = 2, published_at = $5::timestamptz, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = $5::timestamptz WHERE id = $1 AND tenant_id = $2 AND organization_id = $3 AND lease_token = $4 AND status = 1";
 #[cfg(feature = "postgres-sync")]
 pub const SQL_FAIL_OUTBOX_EVENT: &str =
-    "UPDATE ai_agent_outbox_event SET status = CASE WHEN attempt_count >= max_attempts THEN 3 ELSE 0 END, available_at = CASE WHEN attempt_count >= max_attempts THEN available_at ELSE $5::timestamptz END, last_error_code = $6, last_error_detail = $7, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = $8::timestamptz WHERE id = $1 AND tenant_id = $2 AND organization_id = $3 AND lease_token = $4 AND status = 1";#[cfg(feature = "postgres-sync")]
+    "UPDATE ai_agent_outbox_event SET status = CASE WHEN attempt_count >= max_attempts THEN 3 ELSE 0 END, available_at = CASE WHEN attempt_count >= max_attempts THEN available_at ELSE $5::timestamptz END, last_error_code = $6, last_error_detail = $7, lease_owner = NULL, lease_token = NULL, lease_expires_at = NULL, updated_at = $8::timestamptz WHERE id = $1 AND tenant_id = $2 AND organization_id = $3 AND lease_token = $4 AND status = 1";
+#[cfg(feature = "postgres-sync")]
 pub const SQL_CLEAR_TURN_STREAMING_CONTENT: &str =
     "UPDATE ai_agent_turn SET streaming_content = NULL WHERE tenant_id = $1 AND organization_id = $2 AND turn_id = $3";
 #[cfg(feature = "postgres-sync")]

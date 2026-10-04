@@ -2551,6 +2551,136 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+  /backend/v3/api/ai/execution_hosts:
+    get:
+      x-sdkwork-owner: sdkwork-agents
+      x-sdkwork-api-authority: sdkwork-agents-backend-api
+      tags:
+      - ai
+      summary: List execution hosts for scheduler administration
+      operationId: executionHosts.list
+      x-sdkwork-pagination-mode: offset
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: executionHosts
+      x-sdkwork-permission: agent.executionHost.list
+      x-sdkwork-tenant-scope: tenant
+      x-sdkwork-audit-event: agent.executionHost.listed
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: hostKind
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ExecutionHostKind'
+      - name: status
+        in: query
+        required: false
+        schema:
+          $ref: '#/components/schemas/ExecutionHostStatus'
+      responses:
+        '200':
+          description: Execution host list response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionHostListResponse'
+        default:
+          description: RFC 9457 problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /backend/v3/api/ai/execution_hosts/{hostId}:
+    get:
+      x-sdkwork-owner: sdkwork-agents
+      x-sdkwork-api-authority: sdkwork-agents-backend-api
+      tags:
+      - ai
+      summary: Read one execution host
+      operationId: executionHosts.retrieve
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: executionHosts
+      x-sdkwork-permission: agent.executionHost.retrieve
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - $ref: '#/components/parameters/ExecutionHostIdPath'
+      responses:
+        '200':
+          description: Execution host response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionHostResponse'
+        '404':
+          description: Execution host not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        default:
+          description: RFC 9457 problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+    put:
+      x-sdkwork-owner: sdkwork-agents
+      x-sdkwork-api-authority: sdkwork-agents-backend-api
+      tags:
+      - ai
+      summary: Register or update one execution host
+      description: Idempotent registry upsert. The first call registers the
+        host, later calls update it under the optimistic version supplied in
+        the body (`expectedVersion` omitted or null registers a new host).
+      operationId: executionHosts.update
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: executionHosts
+      x-sdkwork-permission: agent.executionHost.manage
+      x-sdkwork-tenant-scope: tenant
+      x-sdkwork-audit-event: agent.executionHost.updated
+      parameters:
+      - $ref: '#/components/parameters/ExecutionHostIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionHostUpsertRequest'
+      responses:
+        '200':
+          description: Registered execution host response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionHostResponse'
+        '403':
+          description: Permission denied
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        '409':
+          description: Optimistic concurrency conflict (stale expectedVersion)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        default:
+          description: RFC 9457 problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
   /backend/v3/api/ai/tools:
     get:
       x-sdkwork-owner: sdkwork-agents
@@ -2703,6 +2833,15 @@ components:
         minLength: 1
         maxLength: 128
         pattern: ^agent\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+    ExecutionHostIdPath:
+      name: hostId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: ^host\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
     SlotIdPath:
       name: slotId
       in: path
@@ -2988,6 +3127,160 @@ components:
       - autogen
       - semantic-kernel
       - custom
+    ExecutionHostKind:
+      type: string
+      enum:
+      - docker
+      - micro_vm
+      - bare_metal
+      - cloud_sandbox
+      description: Technology backing a registered execution host.
+    ExecutionHostStatus:
+      type: string
+      enum:
+      - active
+      - draining
+      - disabled
+      description: Registry lifecycle of an execution host. Only `active`
+        hosts are scheduler-eligible.
+    ExecutionHostRecord:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - hostId
+      - hostKind
+      - endpoint
+      - maxConcurrentSessions
+      - status
+      - version
+      - createdAt
+      - updatedAt
+      properties:
+        id:
+          $ref: '#/components/schemas/Int64String'
+        hostId:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: ^host\.[a-z0-9_-]+(\.[a-z0-9_-]+)*$
+        displayName:
+          type:
+          - string
+          - 'null'
+          maxLength: 256
+        hostKind:
+          $ref: '#/components/schemas/ExecutionHostKind'
+        endpoint:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Opaque server-owned dispatch reference; never carries
+            credentials.
+        region:
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+        maxConcurrentSessions:
+          type: integer
+          minimum: 1
+          maximum: 4096
+        capabilitiesJson:
+          type:
+          - string
+          - 'null'
+          maxLength: 4096
+          description: Bounded JSON capability document.
+        status:
+          $ref: '#/components/schemas/ExecutionHostStatus'
+        version:
+          $ref: '#/components/schemas/Int64String'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ExecutionHostUpsertRequest:
+      type: object
+      additionalProperties: false
+      required:
+      - hostKind
+      - endpoint
+      - maxConcurrentSessions
+      properties:
+        displayName:
+          type:
+          - string
+          - 'null'
+          maxLength: 256
+        hostKind:
+          $ref: '#/components/schemas/ExecutionHostKind'
+        endpoint:
+          type: string
+          minLength: 1
+          maxLength: 512
+        region:
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+        maxConcurrentSessions:
+          type: integer
+          minimum: 1
+          maximum: 4096
+        capabilitiesJson:
+          type:
+          - string
+          - 'null'
+          maxLength: 4096
+        status:
+          $ref: '#/components/schemas/ExecutionHostStatus'
+        expectedVersion:
+          oneOf:
+          - $ref: '#/components/schemas/Int64String'
+          - type: 'null'
+          description: Optimistic version of the existing row; omit or null
+            to register a new host.
+    ExecutionHostResponse:
+      description: Single execution host response following SdkWorkApiResponse
+        envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkResourceData'
+            - type: object
+              required:
+              - item
+              properties:
+                item:
+                  $ref: '#/components/schemas/ExecutionHostRecord'
+    ExecutionHostListResponse:
+      description: Paginated execution host list response following
+        SdkWorkApiResponse envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkPageData'
+            - type: object
+              required:
+              - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExecutionHostRecord'
     PageInfo:
       type: object
       additionalProperties: false
@@ -3140,6 +3433,15 @@ components:
           maxLength: 32
         debugMode:
           type: boolean
+        executionRoute:
+          type: string
+          enum:
+          - in_process
+          - cloud
+          - host
+          description: Agent-level default execution target. Resolution order
+            is request override, session placement affinity, this default,
+            deployment default, built-in in-process.
         iconName:
           type: string
           minLength: 1

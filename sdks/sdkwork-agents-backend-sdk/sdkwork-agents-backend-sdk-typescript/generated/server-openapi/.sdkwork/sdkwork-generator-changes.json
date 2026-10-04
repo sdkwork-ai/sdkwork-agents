@@ -3,17 +3,19 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-backend-sdk",
-    "version": "0.1.0",
+    "version": "0.1.6",
     "language": "typescript",
     "sdkType": "backend",
     "protocol": "http",
     "packageName": "@sdkwork/agents-backend-sdk"
   },
-  "changeFingerprint": "1783984a1d2be5bd3c2e23e9e47db44899855d6eb71823afe71d9b57fad4e4ad",
+  "changeFingerprint": "c1ab8bdbb291e3af7666526cafb1321f86742e27916f69ca6826040df841c216",
   "changes": {
     "createdGeneratedFiles": [],
     "updatedGeneratedFiles": [
-      "src/types/index.ts"
+      "CHANGELOG.md",
+      "package.json",
+      "sdkwork-sdk.json"
     ],
     "unchangedGeneratedFiles": [
       "bin/publish-core.mjs",
@@ -21,11 +23,8 @@
       "bin/publish.sh",
       "bin/sdk-gen.bat",
       "bin/sdk-gen.sh",
-      "CHANGELOG.md",
       "LICENSE",
-      "package.json",
       "README.md",
-      "sdkwork-sdk.json",
       "src/api/ai.ts",
       "src/api/base.ts",
       "src/api/index.ts",
@@ -128,7 +127,14 @@
       "src/types/create-agent-task-request.ts",
       "src/types/create-agent-turn-request.ts",
       "src/types/execute-agent-task-request.ts",
+      "src/types/execution-host-kind.ts",
+      "src/types/execution-host-list-response.ts",
+      "src/types/execution-host-record.ts",
+      "src/types/execution-host-response.ts",
+      "src/types/execution-host-status.ts",
+      "src/types/execution-host-upsert-request.ts",
       "src/types/field-error.ts",
+      "src/types/index.ts",
       "src/types/int64-string.ts",
       "src/types/invalidate-agent-session-checkpoint-request.ts",
       "src/types/legacy-agent-interaction-resolution.ts",
@@ -155,48 +161,91 @@
       "tsconfig.json"
     ],
     "deletedGeneratedFiles": [
-      "src/types/drive-asset-view.ts",
-      "src/types/media-tool-invoke-body.ts",
-      "src/types/media-tool-invoke-response.ts",
-      "src/types/tool-asset-view.ts"
+      "src/api/ai.d.ts",
+      "src/api/paths.d.ts",
+      "src/types/agent-management-profile.d.ts",
+      "src/types/execution-host-kind.d.ts",
+      "src/types/execution-host-list-response.d.ts",
+      "src/types/execution-host-record.d.ts",
+      "src/types/execution-host-response.d.ts",
+      "src/types/execution-host-status.d.ts",
+      "src/types/execution-host-upsert-request.d.ts",
+      "src/types/index.d.ts"
     ],
     "scaffoldedFiles": [],
     "preservedScaffoldFiles": [
       "custom/build-runtime.mjs",
       "custom/README.md"
     ],
-    "backedUpFiles": []
+    "backedUpFiles": [
+      "src/api/ai.d.ts",
+      "src/api/paths.d.ts",
+      "src/types/agent-management-profile.d.ts",
+      "src/types/execution-host-kind.d.ts",
+      "src/types/execution-host-list-response.d.ts",
+      "src/types/execution-host-record.d.ts",
+      "src/types/execution-host-response.d.ts",
+      "src/types/execution-host-status.d.ts",
+      "src/types/execution-host-upsert-request.d.ts",
+      "src/types/index.d.ts"
+    ]
   },
   "impact": {
     "schemaVersion": 1,
     "areas": [
-      "models"
+      "api-surface",
+      "models",
+      "build-metadata",
+      "documentation"
     ],
     "details": [
       {
+        "area": "api-surface",
+        "paths": [
+          "src/api/ai.d.ts",
+          "src/api/paths.d.ts"
+        ]
+      },
+      {
         "area": "models",
         "paths": [
-          "src/types/drive-asset-view.ts",
-          "src/types/index.ts",
-          "src/types/media-tool-invoke-body.ts",
-          "src/types/media-tool-invoke-response.ts",
-          "src/types/tool-asset-view.ts"
+          "src/types/agent-management-profile.d.ts",
+          "src/types/execution-host-kind.d.ts",
+          "src/types/execution-host-list-response.d.ts",
+          "src/types/execution-host-record.d.ts",
+          "src/types/execution-host-response.d.ts",
+          "src/types/execution-host-status.d.ts",
+          "src/types/execution-host-upsert-request.d.ts",
+          "src/types/index.d.ts"
+        ]
+      },
+      {
+        "area": "build-metadata",
+        "paths": [
+          "package.json",
+          "sdkwork-sdk.json"
+        ]
+      },
+      {
+        "area": "documentation",
+        "paths": [
+          "CHANGELOG.md"
         ]
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: models. Verification is required."
+    "summary": "Detected impact areas: api-surface, models, build-metadata, documentation. Verification is required."
   },
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: models. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: api-surface, models, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: models.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, build-metadata, documentation.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -214,7 +263,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, build-metadata, documentation.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -238,6 +287,7 @@
     "applyRequiresExpectedFingerprint": false,
     "summary": "Changes have been applied. Run the required verification plan now.",
     "reasons": [
+      "backed-up-generated-files",
       "deleted-generated-files",
       "manual-review-required",
       "verification-required"

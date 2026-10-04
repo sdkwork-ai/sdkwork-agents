@@ -1404,6 +1404,367 @@ impl AgentSessionRuntimeBindingRecord {
     }
 }
 
+/// Where an agent session execution is requested to run. The vocabulary and
+/// resolution order live in `sdkwork-agents-runtime-facade` `execution_route`;
+/// these are the durable mirror codes stored on placement rows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentExecutionPlacementTarget {
+    /// The current service process (`in_process`).
+    InProcess,
+    /// Cloud execution through the kernel sandbox lifecycle (`cloud`).
+    Cloud,
+    /// A registered dedicated execution host (`host`).
+    Host,
+}
+
+impl AgentExecutionPlacementTarget {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::InProcess => "in_process",
+            Self::Cloud => "cloud",
+            Self::Host => "host",
+        }
+    }
+
+    /// Parses a durable target code; unknown codes fail closed so a placement
+    /// row can never carry a target the runtime facade cannot route.
+    pub fn parse(code: Option<&str>) -> Option<Self> {
+        match code? {
+            "in_process" => Some(Self::InProcess),
+            "cloud" => Some(Self::Cloud),
+            "host" => Some(Self::Host),
+            _ => None,
+        }
+    }
+}
+
+/// The attempt kind that established or last renewed a placement
+/// (`execution_kind` on the durable row).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentExecutionPlacementKind {
+    Turn,
+    TaskRunAttempt,
+}
+
+impl AgentExecutionPlacementKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Turn => "turn",
+            Self::TaskRunAttempt => "task_run_attempt",
+        }
+    }
+
+    pub fn parse(code: Option<&str>) -> Option<Self> {
+        match code? {
+            "turn" => Some(Self::Turn),
+            "task_run_attempt" => Some(Self::TaskRunAttempt),
+            _ => None,
+        }
+    }
+}
+
+/// Placement lifecycle (`placement_state` smallints 0..7), mirroring
+/// `agent-execution-placement-orchestration.contract.json`
+/// `placementLifecycleCandidate`. Lease and fencing transitions stay
+/// kernel-owned; this enum is the durable projection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentExecutionPlacementLifecycle {
+    Requested,
+    Allocating,
+    Ready,
+    Active,
+    Releasing,
+    Released,
+    Failed,
+    Expired,
+}
+
+impl AgentExecutionPlacementLifecycle {
+    pub const fn as_db_code(self) -> i16 {
+        match self {
+            Self::Requested => 0,
+            Self::Allocating => 1,
+            Self::Ready => 2,
+            Self::Active => 3,
+            Self::Releasing => 4,
+            Self::Released => 5,
+            Self::Failed => 6,
+            Self::Expired => 7,
+        }
+    }
+
+    /// Unknown codes fail closed so a poisoned row surfaces instead of
+    /// silently projecting to a different lifecycle phase.
+    pub fn from_db_code(code: i16) -> Option<Self> {
+        match code {
+            0 => Some(Self::Requested),
+            1 => Some(Self::Allocating),
+            2 => Some(Self::Ready),
+            3 => Some(Self::Active),
+            4 => Some(Self::Releasing),
+            5 => Some(Self::Released),
+            6 => Some(Self::Failed),
+            7 => Some(Self::Expired),
+            _ => None,
+        }
+    }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Requested => "requested",
+            Self::Allocating => "allocating",
+            Self::Ready => "ready",
+            Self::Active => "active",
+            Self::Releasing => "releasing",
+            Self::Released => "released",
+            Self::Failed => "failed",
+            Self::Expired => "expired",
+        }
+    }
+
+    /// `released` is the only terminal state; failed and expired placements
+    /// require an explicit release or reconciliation transition.
+    pub const fn is_terminal(self) -> bool {
+        matches!(self, Self::Released)
+    }
+
+    /// States a scheduler treats as occupying placement capacity.
+    pub const fn occupies_capacity(self) -> bool {
+        matches!(
+            self,
+            Self::Requested | Self::Allocating | Self::Ready | Self::Active
+        )
+    }
+}
+
+/// The technology backing a registered execution host (`host_kind`),
+/// mirroring the runtime-facade execution-host vocabulary.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentExecutionHostKind {
+    Docker,
+    MicroVm,
+    BareMetal,
+    CloudSandbox,
+}
+
+impl AgentExecutionHostKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Docker => "docker",
+            Self::MicroVm => "micro_vm",
+            Self::BareMetal => "bare_metal",
+            Self::CloudSandbox => "cloud_sandbox",
+        }
+    }
+
+    pub fn parse(code: Option<&str>) -> Option<Self> {
+        match code? {
+            "docker" => Some(Self::Docker),
+            "micro_vm" => Some(Self::MicroVm),
+            "bare_metal" => Some(Self::BareMetal),
+            "cloud_sandbox" => Some(Self::CloudSandbox),
+            _ => None,
+        }
+    }
+}
+
+/// Registry lifecycle for an execution host (`status` smallints 0..2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentExecutionHostStatus {
+    /// Dispatchable: the scheduler may place sessions here.
+    Active,
+    /// Draining: existing placements continue, no new ones.
+    Draining,
+    /// Disabled: not eligible for any new placement.
+    Disabled,
+}
+
+impl AgentExecutionHostStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Draining => "draining",
+            Self::Disabled => "disabled",
+        }
+    }
+
+    pub const fn as_db_code(self) -> i16 {
+        match self {
+            Self::Active => 0,
+            Self::Draining => 1,
+            Self::Disabled => 2,
+        }
+    }
+
+    pub fn from_db_code(code: i16) -> Option<Self> {
+        match code {
+            0 => Some(Self::Active),
+            1 => Some(Self::Draining),
+            2 => Some(Self::Disabled),
+            _ => None,
+        }
+    }
+
+    pub fn parse(code: Option<&str>) -> Option<Self> {
+        match code? {
+            "active" => Some(Self::Active),
+            "draining" => Some(Self::Draining),
+            "disabled" => Some(Self::Disabled),
+            _ => None,
+        }
+    }
+}
+
+/// Durable execution placement for one agent session
+/// (`ai_agent_session_execution_placement`). At most one current placement
+/// per session records where the conversation runtime executes; lease
+/// credentials stay kernel-owned and are never persisted, only the bounded
+/// lease evidence (`lease_owner`, `lease_expires_at`) and the fencing
+/// generation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentExecutionPlacementRecord {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub owner_user_id: u64,
+    pub session_id: String,
+    pub agent_id: String,
+    pub placement_id: String,
+    pub execution_kind: AgentExecutionPlacementKind,
+    pub execution_id: String,
+    pub requested_target: Option<AgentExecutionPlacementTarget>,
+    pub effective_target: AgentExecutionPlacementTarget,
+    /// Pinned execution host; present only when `effective_target` is `host`.
+    pub host_id: Option<String>,
+    pub host_kind: Option<AgentExecutionHostKind>,
+    /// Opaque kernel placement reference; never a lease credential.
+    pub kernel_placement_ref: Option<String>,
+    pub placement_state: AgentExecutionPlacementLifecycle,
+    pub lease_owner: Option<String>,
+    pub lease_expires_at: Option<String>,
+    pub status: AgentExecutionPlacementStatus,
+    pub is_current: bool,
+    pub version: u64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub activated_at: Option<String>,
+    pub deactivated_at: Option<String>,
+}
+
+impl AgentExecutionPlacementRecord {
+    /// Advances the optimistic version after a successful mutation.
+    pub fn mark_updated(&mut self, occurred_at: impl Into<String>) {
+        self.updated_at = occurred_at.into();
+        self.version = self.version.saturating_add(1);
+    }
+
+    /// Moves the placement to a new lifecycle phase and bumps the version.
+    pub fn transition_state(
+        &mut self,
+        state: AgentExecutionPlacementLifecycle,
+        occurred_at: impl Into<String>,
+    ) {
+        self.placement_state = state;
+        self.mark_updated(occurred_at);
+    }
+
+    /// Marks the placement active-current (status `active`, `is_current`).
+    pub fn activate(&mut self, occurred_at: impl Into<String>) {
+        let occurred_at = occurred_at.into();
+        self.status = AgentExecutionPlacementStatus::Active;
+        self.is_current = true;
+        self.activated_at = Some(occurred_at.clone());
+        self.deactivated_at = None;
+        self.updated_at = occurred_at;
+        self.version = self.version.saturating_add(1);
+    }
+
+    /// Retires the placement-current marker with the given terminal status.
+    pub fn deactivate(
+        &mut self,
+        status: AgentExecutionPlacementStatus,
+        occurred_at: impl Into<String>,
+    ) {
+        let occurred_at = occurred_at.into();
+        self.status = status;
+        self.is_current = false;
+        self.deactivated_at = Some(occurred_at.clone());
+        self.updated_at = occurred_at;
+        self.version = self.version.saturating_add(1);
+    }
+}
+
+/// Placement-row lifecycle status (`status` smallints 0..3), aligned with the
+/// runtime-binding status codes: one active current row per session, retired
+/// rows keep history.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AgentExecutionPlacementStatus {
+    Active,
+    Deactivated,
+    Failed,
+    Deleted,
+}
+
+impl AgentExecutionPlacementStatus {
+    pub const fn as_db_code(self) -> i16 {
+        match self {
+            Self::Active => 0,
+            Self::Deactivated => 1,
+            Self::Failed => 2,
+            Self::Deleted => 3,
+        }
+    }
+
+    pub fn from_db_code(code: i16) -> Option<Self> {
+        match code {
+            0 => Some(Self::Active),
+            1 => Some(Self::Deactivated),
+            2 => Some(Self::Failed),
+            3 => Some(Self::Deleted),
+            _ => None,
+        }
+    }
+}
+
+/// One dispatchable execution host in the durable registry
+/// (`ai_agent_execution_host`). The endpoint is an opaque server-owned
+/// dispatch reference and never carries credentials; host selection is
+/// placement-owned and never client-writable.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentExecutionHostRecord {
+    pub id: u64,
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub host_id: String,
+    pub display_name: Option<String>,
+    pub host_kind: AgentExecutionHostKind,
+    pub endpoint: String,
+    pub region: Option<String>,
+    pub max_concurrent_sessions: u32,
+    pub capabilities_json: String,
+    pub status: AgentExecutionHostStatus,
+    pub created_by: u64,
+    pub updated_by: u64,
+    pub version: u64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub deleted_at: Option<String>,
+    pub deleted_by: Option<u64>,
+}
+
+impl AgentExecutionHostRecord {
+    /// Advances the optimistic version after a successful mutation.
+    pub fn mark_updated(&mut self, occurred_at: impl Into<String>) {
+        self.updated_at = occurred_at.into();
+        self.version = self.version.saturating_add(1);
+    }
+
+    /// A draining or disabled host is never scheduler-eligible.
+    pub fn is_scheduler_eligible(&self) -> bool {
+        self.deleted_at.is_none() && self.status == AgentExecutionHostStatus::Active
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AgentSessionCheckpointStatus {
     Active,

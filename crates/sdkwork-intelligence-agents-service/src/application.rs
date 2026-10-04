@@ -13,12 +13,15 @@ use crate::agent_turn::{AgentTurnRecord, AgentTurnStatus};
 use crate::domain::{
     AgentAuditAction, AgentAuditPayload, AgentBusinessRecord, AgentBusinessStatus,
     AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentCompositionTargetModule,
-    AgentImplementationKind, AgentImplementationType, AgentInteractionKind, AgentInteractionRecord,
-    AgentInteractionStatus, AgentItemDriveRefRecord, AgentItemFeedbackRecord,
-    AgentItemResourceRole, AgentProviderBindingRecord, AgentResourceType,
-    AgentResourceUserStateRecord, AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord,
-    AgentRuntimeExecutionStatus, AgentSessionCheckpointRecord, AgentSessionCheckpointStatus,
-    AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord,
+    AgentExecutionHostKind, AgentExecutionHostRecord, AgentExecutionHostStatus,
+    AgentExecutionPlacementKind, AgentExecutionPlacementLifecycle, AgentExecutionPlacementRecord,
+    AgentExecutionPlacementStatus, AgentExecutionPlacementTarget, AgentImplementationKind,
+    AgentImplementationType, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus,
+    AgentItemDriveRefRecord, AgentItemFeedbackRecord, AgentItemResourceRole,
+    AgentProviderBindingRecord, AgentResourceType, AgentResourceUserStateRecord,
+    AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord, AgentRuntimeExecutionStatus,
+    AgentSessionCheckpointRecord, AgentSessionCheckpointStatus, AgentSessionItemKind,
+    AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord,
     AgentSessionRuntimeBindingRecord, AgentSessionRuntimeBindingStatus, AgentSessionStatus,
     AgentSessionTitleSource, AgentTaskRecord, AgentTaskStatus, AgentVisibility,
     MarketplaceAuditPayload, ProviderBindingAuditPayload, RuntimeExecutionAuditPayload,
@@ -31,7 +34,8 @@ use crate::list_cursors::{
 };
 use crate::ports::{
     offset_paginated_result, AgentAuditSink, AgentRepository, PaginatedResult, PaginationParams,
-    ProviderBindingListQuery, SessionItemListQuery, TurnRequestWriteOutcome, MAX_PAGE_SIZE,
+    ExecutionHostListQuery, ProviderBindingListQuery, SessionItemListQuery,
+    TurnRequestWriteOutcome, MAX_PAGE_SIZE,
     MAX_TURN_INPUT_CONTENT_BYTES, TURN_CONTEXT_ITEM_LIMIT,
 };
 use crate::project::{
@@ -8889,6 +8893,232 @@ where
         Ok(())
     }
 
+    /// Creates or renews the session's durable execution placement
+    /// (`agents.execution-placement` binding plane). v1 keeps exactly one
+    /// placement record per session (deterministic `placement.{sessionId}`):
+    /// successful turns activate and renew it, a route that could not be
+    /// honored marks it failed, reconciliation expires lapsed leases. The row
+    /// is both the session-affinity source for the next unrouted turn and the
+    /// durable host fact scheduling reads. Lease credentials stay transient;
+    /// only the bounded owner/expiry evidence persists. Kernel placement
+    /// leases and fencing arrive with the kernel placement port
+    /// (`agent-execution-placement-orchestration.contract.json`, gated).
+    fn record_execution_placement_outcome(
+        &self,
+        session: &AgentSessionRecord,
+        agent_id: &str,
+        turn_id: &str,
+        target: AgentExecutionPlacementTarget,
+        state: AgentExecutionPlacementLifecycle,
+        lease_owner: Option<&str>,
+        lease_expires_at: Option<String>,
+        occurred_at: &str,
+    ) -> KernelResult<()> {
+        let placement_id = format!("placement.{}", session.session_id);
+        let existing = self
+            .repository
+            .get_execution_placement(
+                session.tenant_id,
+                session.organization_id,
+                &session.session_id,
+                &placement_id,
+            )?
+            .or_else(|| {
+                self.repository
+                    .get_current_execution_placement(
+                        session.tenant_id,
+                        session.organization_id,
+                        &session.session_id,
+                    )
+                    .ok()
+                    .flatten()
+            });
+        match existing {
+            Some(existing) => {
+                let expected_version = existing.version;
+                let mut record = existing;
+                record.execution_kind = AgentExecutionPlacementKind::Turn;
+                record.execution_id = turn_id.to_string();
+                record.requested_target = Some(target);
+                record.effective_target = target;
+                record.placement_state = state;
+                record.lease_owner = lease_owner.map(str::to_string);
+                record.lease_expires_at = lease_expires_at;
+                record.activate(occurred_at);
+                self.repository
+                    .update_execution_placement(record, expected_version)
+            }
+            None => {
+                let mut record = AgentExecutionPlacementRecord {
+                    id: self.repository.next_id()?,
+                    tenant_id: session.tenant_id,
+                    organization_id: session.organization_id,
+                    owner_user_id: session.owner_user_id,
+                    session_id: session.session_id.clone(),
+                    agent_id: agent_id.to_string(),
+                    placement_id,
+                    execution_kind: AgentExecutionPlacementKind::Turn,
+                    execution_id: turn_id.to_string(),
+                    requested_target: Some(target),
+                    effective_target: target,
+                    host_id: None,
+                    host_kind: None,
+                    kernel_placement_ref: None,
+                    placement_state: state,
+                    lease_owner: lease_owner.map(str::to_string),
+                    lease_expires_at,
+                    status: AgentExecutionPlacementStatus::Active,
+                    is_current: true,
+                    version: 1,
+                    created_at: occurred_at.to_string(),
+                    updated_at: occurred_at.to_string(),
+                    activated_at: Some(occurred_at.to_string()),
+                    deactivated_at: None,
+                };
+                if state == AgentExecutionPlacementLifecycle::Failed {
+                    // A failed first attempt stays durable as operator
+                    // evidence but does not pin the session: the current
+                    // marker stays off so affinity falls through to the
+                    // deployment default on the next turn.
+                    record.is_current = false;
+                    record.status = AgentExecutionPlacementStatus::Failed;
+                    record.activated_at = None;
+                }
+                self.repository.insert_execution_placement(record)
+            }
+        }
+    }
+
+    /// Scheduler reconciliation: expires live placements whose lease
+    /// evidence lapsed before `as_of`. Contract: failed and expired
+    /// placements require release or reconciliation; the product-side sweep
+    /// marks them expired and leaves kernel release to the placement port
+    /// when it lands. Returns the number of placements transitioned.
+    /// Worker sweep across every tenant of the deployment: expires live
+    /// placements whose lease evidence lapsed before `as_of`. Returned count
+    /// is the number of placements transitioned this round.
+    pub fn reconcile_expired_execution_placements_across_tenants(
+        &self,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<usize> {
+        let expired = self
+            .repository
+            .list_expired_execution_placements_across_tenants(as_of, limit)?;
+        let mut reconciled = 0;
+        for placement in expired {
+            let expected_version = placement.version;
+            let mut record = placement;
+            record.transition_state(AgentExecutionPlacementLifecycle::Expired, as_of.to_string());
+            if self
+                .repository
+                .update_execution_placement(record, expected_version)
+                .is_ok()
+            {
+                reconciled += 1;
+            }
+        }
+        Ok(reconciled)
+    }
+
+    pub fn reconcile_expired_execution_placements(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<usize> {
+        let expired = self
+            .repository
+            .list_expired_execution_placements(tenant_id, as_of, limit)?;
+        let mut reconciled = 0;
+        for placement in expired {
+            let expected_version = placement.version;
+            let mut record = placement;
+            record.transition_state(AgentExecutionPlacementLifecycle::Expired, as_of.to_string());
+            // A version conflict means another worker already reconciled
+            // this row; skip it and let the remaining rows proceed.
+            if self
+                .repository
+                .update_execution_placement(record, expected_version)
+                .is_ok()
+            {
+                reconciled += 1;
+            }
+        }
+        Ok(reconciled)
+    }
+
+    /// Registers or updates one dispatchable execution host
+    /// (`ai_agent_execution_host`). Endpoints are opaque server-owned
+    /// dispatch references and never carry credentials. v1 substrate for the
+    /// sandbox instance-management surface; the HTTP admin layer arrives
+    /// with the reviewed public API change.
+    pub fn register_execution_host(
+        &self,
+        record: AgentExecutionHostRecord,
+        expected_version: u64,
+        requested_by: PolicySubject,
+    ) -> KernelResult<AgentExecutionHostRecord> {
+        self.authorize(
+            "agent.executionHost.manage",
+            requested_by,
+            "agent.executionHosts",
+            "manage",
+        )?;
+        self.repository
+            .upsert_execution_host(record, expected_version)
+    }
+
+    pub fn get_execution_host(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+        requested_by: PolicySubject,
+    ) -> KernelResult<Option<AgentExecutionHostRecord>> {
+        self.authorize(
+            "agent.executionHost.retrieve",
+            requested_by,
+            "agent.executionHosts",
+            "retrieve",
+        )?;
+        self.repository
+            .get_execution_host(tenant_id, organization_id, host_id)
+    }
+
+    /// Admin list over the execution host registry (all lifecycle states).
+    pub fn list_execution_hosts(
+        &self,
+        query: ExecutionHostListQuery,
+        requested_by: PolicySubject,
+    ) -> KernelResult<PaginatedResult<AgentExecutionHostRecord>> {
+        self.authorize(
+            "agent.executionHost.list",
+            requested_by,
+            "agent.executionHosts",
+            "list",
+        )?;
+        let total_count = self.repository.count_execution_hosts(&query)?;
+        let items = self.repository.list_execution_hosts(&query)?;
+        Ok(offset_paginated_result(
+            items,
+            &query.pagination,
+            total_count,
+        ))
+    }
+
+    /// Scheduler eligibility scan: active, non-deleted hosts of one kind in
+    /// the given scope, ordered by capacity headroom.
+    pub fn list_eligible_execution_hosts(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: AgentExecutionHostKind,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>> {
+        self.repository
+            .list_eligible_execution_hosts(tenant_id, organization_id, host_kind)
+    }
+
     /// Executes a committed Turn request through the provider and persists
     /// the authoritative outcome.
     ///
@@ -8936,10 +9166,31 @@ where
         let stored_version = turn.version.saturating_sub(1);
         turn = self.repository.update_turn_state(turn, stored_version)?;
 
-        let welcome_message = AgentManagementProfileDto::from_default_code_task_intent(
+        let management_profile = AgentManagementProfileDto::from_default_code_task_intent(
             agent.default_code_task_intent.as_ref(),
-        )
-        .and_then(|profile| profile.welcome_message);
+        );
+        let welcome_message = management_profile
+            .as_ref()
+            .and_then(|profile| profile.welcome_message.clone());
+        // Agent-level configured default target (management profile). An
+        // unknown configured code degrades to unset with an operator-visible
+        // warning instead of failing every future turn.
+        let agent_default_route = management_profile
+            .as_ref()
+            .and_then(|profile| profile.execution_route.clone())
+            .and_then(|code| {
+                let parsed = sdkwork_agents_runtime_facade::AgentConversationExecutionRoute::parse(
+                    Some(code.as_str()),
+                );
+                if parsed.is_none() {
+                    tracing::warn!(
+                        agent_id = %agent.agent_id,
+                        route = %code,
+                        "management profile executionRoute is not a canonical target; ignoring"
+                    );
+                }
+                parsed.map(|route| route.as_str().to_string())
+            });
         let provider_has_model_chat = provider_binding.as_ref().is_some_and(|binding| {
             binding
                 .capabilities
@@ -8952,7 +9203,31 @@ where
         // Resolved per turn so configuration changes apply on the next turn.
         let toolkit = self.resolve_turn_toolkit(&agent)?;
 
+        // Session affinity: a turn without an explicit route override inherits
+        // the target of the session's live execution placement, so a session
+        // that ran in the cloud or on a dedicated host keeps running there
+        // (contract `taskWithoutOverrideInheritsSession`). Failed or expired
+        // placements do not pin the session; the resolution falls through to
+        // the deployment default.
+        let session_inherited_route = if command.execution_route.is_none() {
+            self.repository
+                .get_current_execution_placement(
+                    command.tenant_id,
+                    command.organization_id,
+                    &command.session_id,
+                )?
+                .filter(|placement| {
+                    placement.status == AgentExecutionPlacementStatus::Active
+                        && placement.placement_state == AgentExecutionPlacementLifecycle::Active
+                })
+                .map(|placement| placement.effective_target.as_str().to_string())
+        } else {
+            None
+        };
+
         let execution_input = TurnExecutionInput {
+            session_inherited_route,
+            agent_default_route,
             effective_tools: toolkit.tools,
             assembled_system_prompt: toolkit.assembled_system_prompt,
             mcp_connections: toolkit.connections,
@@ -9097,6 +9372,25 @@ where
                 command.requested_by.clone(),
                 command.requested_at.clone(),
             )?;
+            // A route that could not be honored marks the session's
+            // placement failed: the fact stays durable for operators and the
+            // next successful turn re-activates the placement.
+            if sandbox_unavailable || host_unavailable {
+                self.record_execution_placement_outcome(
+                    &session,
+                    &agent.agent_id,
+                    &turn_id,
+                    if host_unavailable {
+                        AgentExecutionPlacementTarget::Host
+                    } else {
+                        AgentExecutionPlacementTarget::Cloud
+                    },
+                    AgentExecutionPlacementLifecycle::Failed,
+                    None,
+                    None,
+                    &command.requested_at,
+                )?;
+            }
             // A funding shortfall must not be reported as a provider failure:
             // it is tagged so the HTTP boundary answers 402/`40201` with a
             // recharge action the user can act on.
@@ -9157,6 +9451,29 @@ where
                 "Turn executor returned an uncorrelated model request identity",
             ));
         }
+
+        // Record (or renew) where this turn actually executed. The durable
+        // placement is the session-affinity source for the next unrouted turn
+        // and the host fact scheduling reads (`agents.execution-placement`).
+        let success_target = if completion.runtime_mode == crate::turn_runtime::RUNTIME_MODE_SANDBOX
+        {
+            AgentExecutionPlacementTarget::Cloud
+        } else {
+            AgentExecutionPlacementTarget::InProcess
+        };
+        let placement_lease_expires_at = format_utc_seconds(
+            OffsetDateTime::now_utc() + time::Duration::seconds(lease.ttl_seconds as i64),
+        );
+        self.record_execution_placement_outcome(
+            &session,
+            &agent.agent_id,
+            &turn_id,
+            success_target,
+            AgentExecutionPlacementLifecycle::Active,
+            Some(&lease.owner),
+            Some(placement_lease_expires_at),
+            &command.requested_at,
+        )?;
 
         let session_runtime_binding = match session_runtime_binding.as_ref() {
             Some(binding) => Some(self.persist_turn_provider_session_identity(
@@ -11645,6 +11962,7 @@ mod task_tests {
     use crate::infrastructure::{
         IamGatedPolicyProvider, InMemoryAgentAuditSink, InMemoryAgentRepository,
     };
+    use crate::ports::ExecutionPlacementListQuery;
     use crate::ports::TaskListQuery;
     use crate::turn_runtime::{execute_agent_turn, inference_error, TurnExecutionInput};
     use crate::turn_runtime::{TurnCancellationOutput, TurnExecutionOutput};
@@ -11915,6 +12233,318 @@ mod task_tests {
             .expect("canonical provider binding");
         assert!(binding.active);
         assert_eq!(binding.provider_id, "provider.codex");
+    }
+
+    fn execution_host_subject(role: &str) -> sdkwork_agent_kernel::PolicySubject {
+        sdkwork_agent_kernel::PolicySubject {
+            subject_id: "user.100".to_string(),
+            tenant_id: "10".to_string(),
+            roles: vec![role.to_string()],
+        }
+    }
+
+    fn placement_test_session(tenant_id: u64, session_id: &str) -> AgentSessionRecord {
+        AgentSessionRecord {
+            id: 42,
+            session_id: session_id.to_string(),
+            tenant_id,
+            organization_id: 0,
+            agent_id: "agent.alpha".to_string(),
+            owner_user_id: 100,
+            project_id: None,
+            session_kind: AgentSessionKind::Assistant,
+            entry_surface: AgentSessionEntrySurface::Api,
+            source_module: None,
+            source_context_kind: None,
+            source_context_id: None,
+            parent_session_id: None,
+            forked_from_turn_id: None,
+            title: Some("placement test".to_string()),
+            title_source: AgentSessionTitleSource::User,
+            status: AgentSessionStatus::Active,
+            item_count: 0,
+            last_item_sequence: 0,
+            total_input_tokens: 0,
+            total_output_tokens: 0,
+            idempotency_key: None,
+            payload_hash: None,
+            created_by: 100,
+            updated_by: 100,
+            version: 1,
+            created_at: "2026-10-04T00:00:00Z".to_string(),
+            updated_at: "2026-10-04T00:00:00Z".to_string(),
+            last_item_at: None,
+            closed_at: None,
+            archived_at: None,
+            archived_by: None,
+            deleted_at: None,
+            deleted_by: None,
+            retention_until: None,
+        }
+    }
+
+    #[test]
+    fn placement_recording_creates_and_renews_session_affinity() {
+        let repository = InMemoryAgentRepository::new();
+        let service = AgentsService::new(
+            repository,
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let session = placement_test_session(10, "session.alpha");
+
+        // First cloud-routed success creates the session's current placement.
+        service
+            .record_execution_placement_outcome(
+                &session,
+                "agent.alpha",
+                "turn.1",
+                AgentExecutionPlacementTarget::Cloud,
+                AgentExecutionPlacementLifecycle::Active,
+                Some("worker-1"),
+                Some("2026-10-04T01:00:00Z".to_string()),
+                "2026-10-04T00:00:00Z",
+            )
+            .expect("first placement recorded");
+
+        let current = service
+            .repository
+            .get_current_execution_placement(10, 0, "session.alpha")
+            .expect("current placement query")
+            .expect("placement is current");
+        assert_eq!(
+            current.effective_target,
+            AgentExecutionPlacementTarget::Cloud
+        );
+        assert_eq!(
+            current.placement_state,
+            AgentExecutionPlacementLifecycle::Active
+        );
+        assert!(current.is_current);
+        assert_eq!(current.lease_owner.as_deref(), Some("worker-1"));
+
+        // A second success renews the same deterministic placement row.
+        service
+            .record_execution_placement_outcome(
+                &session,
+                "agent.alpha",
+                "turn.2",
+                AgentExecutionPlacementTarget::Cloud,
+                AgentExecutionPlacementLifecycle::Active,
+                Some("worker-2"),
+                Some("2026-10-04T02:00:00Z".to_string()),
+                "2026-10-04T01:30:00Z",
+            )
+            .expect("placement renewed");
+
+        let renewed = service
+            .repository
+            .list_execution_placements(&ExecutionPlacementListQuery::for_session(
+                10,
+                0,
+                "session.alpha",
+            ))
+            .expect("placement list");
+        assert_eq!(renewed.len(), 1, "one placement row per session (v1)");
+        assert_eq!(renewed[0].execution_id, "turn.2");
+        assert_eq!(renewed[0].version, 2, "renew bumps the optimistic version");
+    }
+
+    #[test]
+    fn failed_route_marks_the_placement_without_pinning_the_session() {
+        let repository = InMemoryAgentRepository::new();
+        let service = AgentsService::new(
+            repository,
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let session = placement_test_session(10, "session.alpha");
+
+        service
+            .record_execution_placement_outcome(
+                &session,
+                "agent.alpha",
+                "turn.1",
+                AgentExecutionPlacementTarget::Host,
+                AgentExecutionPlacementLifecycle::Failed,
+                None,
+                None,
+                "2026-10-04T00:00:00Z",
+            )
+            .expect("failed placement recorded");
+
+        // The failure stays durable as operator evidence...
+        let placements = service
+            .repository
+            .list_execution_placements(&ExecutionPlacementListQuery::for_session(
+                10,
+                0,
+                "session.alpha",
+            ))
+            .expect("placement list");
+        assert_eq!(placements.len(), 1);
+        assert_eq!(
+            placements[0].placement_state,
+            AgentExecutionPlacementLifecycle::Failed
+        );
+        assert!(!placements[0].is_current);
+        assert_eq!(placements[0].status, AgentExecutionPlacementStatus::Failed);
+
+        // ...but the session is not pinned: no current placement means the
+        // next unrouted turn falls through to the deployment default.
+        assert!(service
+            .repository
+            .get_current_execution_placement(10, 0, "session.alpha")
+            .expect("current query")
+            .is_none());
+
+        // A later success re-activates the same placement row.
+        service
+            .record_execution_placement_outcome(
+                &session,
+                "agent.alpha",
+                "turn.2",
+                AgentExecutionPlacementTarget::Cloud,
+                AgentExecutionPlacementLifecycle::Active,
+                Some("worker-1"),
+                Some("2026-10-04T02:00:00Z".to_string()),
+                "2026-10-04T01:00:00Z",
+            )
+            .expect("placement re-activated");
+        let current = service
+            .repository
+            .get_current_execution_placement(10, 0, "session.alpha")
+            .expect("current query")
+            .expect("placement pinned after success");
+        assert_eq!(
+            current.placement_state,
+            AgentExecutionPlacementLifecycle::Active
+        );
+        assert_eq!(
+            current.effective_target,
+            AgentExecutionPlacementTarget::Cloud
+        );
+    }
+
+    #[test]
+    fn reconciliation_expires_placements_with_lapsed_leases() {
+        let repository = InMemoryAgentRepository::new();
+        let service = AgentsService::new(
+            repository,
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let session = placement_test_session(10, "session.alpha");
+
+        service
+            .record_execution_placement_outcome(
+                &session,
+                "agent.alpha",
+                "turn.1",
+                AgentExecutionPlacementTarget::Cloud,
+                AgentExecutionPlacementLifecycle::Active,
+                Some("worker-1"),
+                Some("2026-10-03T00:00:00Z".to_string()),
+                "2026-10-02T00:00:00Z",
+            )
+            .expect("placement recorded");
+
+        let reconciled = service
+            .reconcile_expired_execution_placements(10, "2026-10-04T00:00:00Z", 10)
+            .expect("reconcile sweep");
+        assert_eq!(reconciled, 1);
+
+        let placements = service
+            .repository
+            .list_execution_placements(&ExecutionPlacementListQuery::for_session(
+                10,
+                0,
+                "session.alpha",
+            ))
+            .expect("placement list");
+        assert_eq!(
+            placements[0].placement_state,
+            AgentExecutionPlacementLifecycle::Expired
+        );
+
+        // A settled sweep finds nothing more to do.
+        let reconciled_again = service
+            .reconcile_expired_execution_placements(10, "2026-10-04T00:00:00Z", 10)
+            .expect("second sweep");
+        assert_eq!(reconciled_again, 0);
+    }
+
+    #[test]
+    fn execution_host_registry_supports_scheduler_eligibility() {
+        let repository = InMemoryAgentRepository::new();
+        let service = AgentsService::new(
+            repository,
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+
+        let host = AgentExecutionHostRecord {
+            id: 71,
+            tenant_id: 10,
+            organization_id: 0,
+            host_id: "host.docker-01".to_string(),
+            display_name: Some("Docker host 01".to_string()),
+            host_kind: AgentExecutionHostKind::Docker,
+            endpoint: "unix:///run/sdkwork/hosts/docker-01".to_string(),
+            region: Some("cn-east-1".to_string()),
+            max_concurrent_sessions: 4,
+            capabilities_json: "{}".to_string(),
+            status: AgentExecutionHostStatus::Active,
+            created_by: 0,
+            updated_by: 0,
+            version: 1,
+            created_at: "2026-10-04T00:00:00Z".to_string(),
+            updated_at: "2026-10-04T00:00:00Z".to_string(),
+            deleted_at: None,
+            deleted_by: None,
+        };
+
+        let created = service
+            .register_execution_host(host.clone(), 1, execution_host_subject("ai.agents.manage"))
+            .expect("host registered");
+        assert_eq!(created.version, 1);
+
+        // A drained host drops out of the eligibility scan.
+        let mut drained = created.clone();
+        drained.status = AgentExecutionHostStatus::Draining;
+        drained.updated_at = "2026-10-04T01:00:00Z".to_string();
+        let updated = service
+            .register_execution_host(drained, 1, execution_host_subject("ai.agents.manage"))
+            .expect("host updated");
+        assert_eq!(updated.version, 2);
+
+        assert!(service
+            .list_eligible_execution_hosts(10, 0, AgentExecutionHostKind::Docker)
+            .expect("eligibility scan")
+            .is_empty());
+
+        // Re-activating restores eligibility.
+        let mut reactivated = updated;
+        reactivated.status = AgentExecutionHostStatus::Active;
+        reactivated.updated_at = "2026-10-04T02:00:00Z".to_string();
+        service
+            .register_execution_host(reactivated, 2, execution_host_subject("ai.agents.manage"))
+            .expect("host re-activated");
+        let eligible = service
+            .list_eligible_execution_hosts(10, 0, AgentExecutionHostKind::Docker)
+            .expect("eligibility scan");
+        assert_eq!(eligible.len(), 1);
+        assert_eq!(eligible[0].host_id, "host.docker-01");
+
+        // Admin list sees the re-activated host too.
+        let admin_list = service
+            .list_execution_hosts(
+                ExecutionHostListQuery::for_scope(10, 0),
+                execution_host_subject("ai.agents.read"),
+            )
+            .expect("admin list");
+        assert_eq!(admin_list.items.len(), 1);
+        assert_eq!(admin_list.total_count, Some(1));
     }
 
     #[test]

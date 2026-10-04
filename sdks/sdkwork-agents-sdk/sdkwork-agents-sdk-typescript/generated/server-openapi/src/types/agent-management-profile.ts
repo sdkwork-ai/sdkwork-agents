@@ -4,6 +4,8 @@ export interface AgentManagementProfile {
   categoryId?: string;
   color?: string;
   debugMode?: boolean;
+  /** Agent-level default execution target. */
+  executionRoute?: 'in_process' | 'cloud' | 'host';
   iconName?: string;
   jsonMode?: boolean;
   knowledgeBaseIds?: string[];

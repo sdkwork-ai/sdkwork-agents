@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "sdkwork-agents-backend-sdk",
-  "version": "0.1.0",
+  "version": "0.1.6",
   "language": "typescript",
   "sdkType": "backend",
   "packageName": "sdkwork-agents-backend-sdk-generated-typescript",

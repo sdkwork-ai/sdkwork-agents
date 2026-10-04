@@ -18,8 +18,8 @@ use sdkwork_agents_runtime_facade::{
     AgentEngineTurnInput,
 };
 use sdkwork_agents_runtime_facade::{
-    resolve_agent_conversation_execution_route, AgentConversationExecutionDecision,
-    AgentConversationExecutionRoute,
+    resolve_agent_conversation_execution_route_with_defaults,
+    AgentConversationExecutionDecision, AgentConversationExecutionRoute,
 };
 use sdkwork_utils_rust::string::is_blank;
 use std::collections::HashMap;
@@ -166,6 +166,17 @@ pub struct TurnExecutionInput {
     /// in-process default. Validated by the caller before reaching the
     /// executor; the executor fails closed on unknown codes anyway.
     pub execution_route: Option<String>,
+    /// Route established by the session's current execution placement
+    /// (session affinity). Resolved by the application layer from the durable
+    /// placement binding before the executor runs; sits between the
+    /// per-request override and the deployment default in the resolution
+    /// order. Transient — never persisted here.
+    pub session_inherited_route: Option<String>,
+    /// Agent-level configured default execution target (management profile
+    /// `executionRoute`). Resolved by the application layer from the agent's
+    /// durable profile; sits between session affinity and the deployment
+    /// default. Transient — never persisted here.
+    pub agent_default_route: Option<String>,
     /// Effective tool set the model may call this turn (function calling).
     /// Resolved per turn from the agent's default toolkit plus composition
     /// slot overrides; empty disables the tool-calling loop.
@@ -661,8 +672,10 @@ impl<T: TurnExecutor> RoutedTurnExecutor<T> {
     }
 
     fn resolve_decision(&self, input: &TurnExecutionInput) -> AgentConversationExecutionDecision {
-        resolve_agent_conversation_execution_route(
+        resolve_agent_conversation_execution_route_with_defaults(
             input.execution_route.as_deref(),
+            input.session_inherited_route.as_deref(),
+            input.agent_default_route.as_deref(),
             self.deployment_default
                 .map(AgentConversationExecutionRoute::as_str),
         )
@@ -1462,6 +1475,8 @@ mod tests {
             access_token: None,
             wire_protocol: None,
             execution_route: None,
+            session_inherited_route: None,
+            agent_default_route: None,
         });
         assert!(output.content.contains("Hello"));
         assert!(output.content.contains("Welcome"));
@@ -1493,6 +1508,8 @@ mod tests {
             access_token: None,
             wire_protocol: None,
             execution_route: None,
+            session_inherited_route: None,
+            agent_default_route: None,
         });
         assert_eq!(output.runtime_mode, "managed-agent-provider-bound-v1");
         assert!(output.content.contains("canonical agent-engine"));
@@ -1566,6 +1583,8 @@ mod tests {
             access_token: None,
             wire_protocol: None,
             execution_route: None,
+            session_inherited_route: None,
+            agent_default_route: None,
         });
         assert_eq!(output.content, "kernel reply");
         assert_eq!(output.runtime_mode, "managed-agent-kernel-model-v1");
@@ -1672,6 +1691,8 @@ mod tests {
             access_token: None,
             wire_protocol: None,
             execution_route: None,
+            session_inherited_route: None,
+            agent_default_route: None,
         }
     }
 
@@ -1946,6 +1967,8 @@ mod tests {
     fn routed_test_input(execution_route: Option<&str>) -> TurnExecutionInput {
         TurnExecutionInput {
             execution_route: execution_route.map(str::to_string),
+            session_inherited_route: None,
+            agent_default_route: None,
             ..sample_turn_execution_input()
         }
     }
@@ -2157,6 +2180,41 @@ mod tests {
                 1,
                 "the cloud route resolves the bound sandbox session"
             );
+        });
+    }
+
+    #[test]
+    fn agent_default_route_resolves_through_the_executor() {
+        // Agent-level configured default applies when neither the request nor
+        // the session pins a route, and it routes exactly like an explicit
+        // deployment default would.
+        with_test_runtime(|| {
+            let inner = CountingInnerExecutor::default();
+            let port = RecordingSandboxPort::running();
+            let executor = RoutedTurnExecutor::new(inner).with_sandbox_port(port.clone());
+            let mut input = routed_test_input(None);
+            input.agent_default_route = Some("cloud".to_string());
+
+            let output = executor.complete(&input);
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_SANDBOX);
+            assert_eq!(executor.inner.calls(), 1);
+            assert_eq!(
+                port.gets.load(std::sync::atomic::Ordering::SeqCst),
+                1,
+                "the agent default resolves through the sandbox lifecycle"
+            );
+
+            // A host-configured agent fails closed (no host dispatch port).
+            let inner = CountingInnerExecutor::default();
+            let executor = RoutedTurnExecutor::new(inner);
+            let mut input = routed_test_input(None);
+            input.agent_default_route = Some("host".to_string());
+
+            let output = executor.complete(&input);
+
+            assert_eq!(output.runtime_mode, RUNTIME_MODE_HOST_UNAVAILABLE);
+            assert_eq!(executor.inner.calls(), 0);
         });
     }
 

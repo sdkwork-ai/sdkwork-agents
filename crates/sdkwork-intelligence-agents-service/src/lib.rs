@@ -136,9 +136,12 @@ pub use domain::AgentVersionRecord;
 pub use domain::{
     AgentAuditAction, AgentBusinessRecord, AgentBusinessStatus, AgentCallExecutionMode,
     AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentCompositionTargetModule,
-    AgentImplementationKind, AgentImplementationType, AgentInteractionKind, AgentInteractionRecord,
-    AgentInteractionStatus, AgentItemDriveRefRecord, AgentItemFeedbackRating,
-    AgentItemFeedbackRecord, AgentItemResourceRole, AgentProviderBindingRecord, AgentResourceType,
+    AgentExecutionHostKind, AgentExecutionHostRecord, AgentExecutionHostStatus,
+    AgentExecutionPlacementKind, AgentExecutionPlacementLifecycle, AgentExecutionPlacementRecord,
+    AgentExecutionPlacementStatus, AgentExecutionPlacementTarget, AgentImplementationKind,
+    AgentImplementationType, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus,
+    AgentItemDriveRefRecord, AgentItemFeedbackRating, AgentItemFeedbackRecord,
+    AgentItemResourceRole, AgentProviderBindingRecord, AgentResourceType,
     AgentResourceUserStateRecord, AgentRuntimeExecutionOperation, AgentRuntimeExecutionRecord,
     AgentRuntimeExecutionStatus, AgentSessionCheckpointRecord, AgentSessionCheckpointStatus,
     AgentSessionEntrySurface, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus,
@@ -232,7 +235,10 @@ pub use ports::{
     SessionActivitySummaryListQuery, SessionItemListQuery, SessionItemListSort, SessionListQuery,
     DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_TURN_INPUT_CONTENT_BYTES, TURN_CONTEXT_ITEM_LIMIT,
 };
-pub use ports::{SessionCheckpointListQuery, SessionRuntimeBindingListQuery, TurnListQuery};
+pub use ports::{
+    ExecutionHostListQuery, ExecutionPlacementListQuery, SessionCheckpointListQuery,
+    SessionRuntimeBindingListQuery, TurnListQuery,
+};
 pub use postgres_model_configuration_store::{
     PostgresAgentConfigurationStore, ProfileScope, ScopedAgentConfigurationStore,
     ScopedInMemoryAgentConfigurationStore,

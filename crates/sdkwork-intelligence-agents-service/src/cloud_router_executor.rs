@@ -969,6 +969,8 @@ mod tests {
             access_token: access_token.map(str::to_string),
             wire_protocol: None,
             execution_route: None,
+            session_inherited_route: None,
+            agent_default_route: None,
         }
     }
 

@@ -5,11 +5,14 @@ use crate::agent_turn_input_queue::{
 };
 use crate::domain::{
     AgentBusinessRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord,
-    AgentInteractionRecord, AgentItemDriveRefRecord, AgentItemFeedbackRecord,
-    AgentProviderBindingRecord, AgentResourceType, AgentResourceUserStateRecord,
-    AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord,
-    AgentSessionItemStatus, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentTaskRecord,
-    AgentToolAssetRecord, AgentToolConfigurationRecord, AgentVisibility,
+    AgentExecutionHostKind, AgentExecutionHostRecord, AgentExecutionHostStatus,
+    AgentExecutionPlacementKind,
+    AgentExecutionPlacementRecord, AgentInteractionRecord, AgentItemDriveRefRecord,
+    AgentItemFeedbackRecord, AgentProviderBindingRecord, AgentResourceType,
+    AgentResourceUserStateRecord, AgentSessionCheckpointRecord, AgentSessionItemKind,
+    AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord,
+    AgentSessionRuntimeBindingRecord, AgentTaskRecord, AgentToolAssetRecord,
+    AgentToolConfigurationRecord, AgentVisibility,
 };
 use crate::list_cursors::{
     audit_list_scope_fingerprint, interaction_list_scope_fingerprint,
@@ -1112,6 +1115,79 @@ impl SessionRuntimeBindingListQuery {
     }
 }
 
+/// List filter for durable session execution placements.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutionPlacementListQuery {
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub session_id: String,
+    pub current_only: bool,
+    pub pagination: PaginationParams,
+}
+
+impl ExecutionPlacementListQuery {
+    pub fn for_session(
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            tenant_id,
+            organization_id,
+            session_id: session_id.into(),
+            current_only: false,
+            pagination: PaginationParams::default(),
+        }
+    }
+
+    pub fn current_only(mut self) -> Self {
+        self.current_only = true;
+        self
+    }
+
+    pub fn with_pagination(mut self, pagination: PaginationParams) -> Self {
+        self.pagination = pagination;
+        self
+    }
+}
+
+/// Admin list filter for the execution host registry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutionHostListQuery {
+    pub tenant_id: u64,
+    pub organization_id: u64,
+    pub host_kind: Option<AgentExecutionHostKind>,
+    pub status: Option<AgentExecutionHostStatus>,
+    pub pagination: PaginationParams,
+}
+
+impl ExecutionHostListQuery {
+    pub fn for_scope(tenant_id: u64, organization_id: u64) -> Self {
+        Self {
+            tenant_id,
+            organization_id,
+            host_kind: None,
+            status: None,
+            pagination: PaginationParams::default(),
+        }
+    }
+
+    pub fn with_host_kind(mut self, host_kind: AgentExecutionHostKind) -> Self {
+        self.host_kind = Some(host_kind);
+        self
+    }
+
+    pub fn with_status(mut self, status: AgentExecutionHostStatus) -> Self {
+        self.status = Some(status);
+        self
+    }
+
+    pub fn with_pagination(mut self, pagination: PaginationParams) -> Self {
+        self.pagination = pagination;
+        self
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SessionCheckpointListQuery {
     pub tenant_id: u64,
@@ -1691,6 +1767,103 @@ pub trait AgentRepository: Send + Sync {
         expected_version: u64,
         updated_at: String,
     ) -> KernelResult<AgentSessionRuntimeBindingRecord>;
+
+    /// Persists one durable execution placement row. At most one current
+    /// placement per session is enforced by the store.
+    fn insert_execution_placement(&self, record: AgentExecutionPlacementRecord)
+        -> KernelResult<()>;
+
+    /// Updates a placement row under an optimistic-version CAS.
+    fn update_execution_placement(
+        &self,
+        record: AgentExecutionPlacementRecord,
+        expected_version: u64,
+    ) -> KernelResult<()>;
+
+    fn get_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRecord>>;
+
+    /// Returns the session's current placement (active, `is_current`).
+    fn get_current_execution_placement(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+    ) -> KernelResult<Option<AgentExecutionPlacementRecord>>;
+
+    fn list_execution_placements(
+        &self,
+        query: &ExecutionPlacementListQuery,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>>;
+
+    /// Switches the session's current placement under one repository
+    /// transaction: retires every other current row, then activates the
+    /// target row under the expected optimistic version.
+    fn switch_current_execution_placement_atomic(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        session_id: &str,
+        placement_id: &str,
+        expected_version: u64,
+        updated_at: String,
+    ) -> KernelResult<AgentExecutionPlacementRecord>;
+
+    /// Scheduler reconciliation input: live placements of one tenant whose
+    /// lease evidence expired before `as_of` (states requested, allocating,
+    /// ready and active).
+    fn list_expired_execution_placements(
+        &self,
+        tenant_id: u64,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>>;
+
+    /// Scheduler reconciliation input across every tenant of the deployment
+    /// (worker sweep): live placements whose lease evidence lapsed.
+    fn list_expired_execution_placements_across_tenants(
+        &self,
+        as_of: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<AgentExecutionPlacementRecord>>;
+
+    /// Registers or updates one execution host under an optimistic-version
+    /// CAS on the conflict path. Returns the durable row after the write.
+    fn upsert_execution_host(
+        &self,
+        record: AgentExecutionHostRecord,
+        expected_version: u64,
+    ) -> KernelResult<AgentExecutionHostRecord>;
+
+    fn get_execution_host(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_id: &str,
+    ) -> KernelResult<Option<AgentExecutionHostRecord>>;
+
+    /// Scheduler eligibility scan: active, non-deleted hosts of one kind in
+    /// the given scope, ordered by capacity headroom.
+    fn list_eligible_execution_hosts(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        host_kind: AgentExecutionHostKind,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>>;
+
+    /// Admin list over the registry (all lifecycle states), newest first.
+
+    fn list_execution_hosts(
+        &self,
+        query: &ExecutionHostListQuery,
+    ) -> KernelResult<Vec<AgentExecutionHostRecord>>;
+
+    fn count_execution_hosts(&self, query: &ExecutionHostListQuery) -> KernelResult<u64>;
 
     fn insert_session_checkpoint(&self, record: AgentSessionCheckpointRecord) -> KernelResult<()>;
 

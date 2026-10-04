@@ -102,8 +102,18 @@ kind are eligible, the placement binding answers which session runs where
 (session affinity, per-host drain, reconciliation of stale placements).
 Lease and fencing transitions follow
 `agent-execution-placement-orchestration.contract.json`; the runtime
-lifecycle implementation (kernel placement port, automatic recording at turn
-claim) remains gated there and lands as a separate reviewed change.
+lifecycle implementation (kernel placement port) remains gated there.
+
+Recording is internal and automatic (staged authorization phase 1): a
+successful turn creates or renews the session's single placement record
+(deterministic `placement.{sessionId}`) with the effective target, the turn
+reference and renewed lease evidence; a route that could not be honored
+marks the placement failed without pinning the session; the reconciliation
+sweep expires placements whose lease evidence lapsed. A turn without an
+explicit route override inherits the target of its session's live placement
+(session affinity) before the deployment default applies. Kernel placement
+leases, fencing generations and multi-generation placements arrive with the
+gated kernel port.
 
 ## 4. Turn
 
