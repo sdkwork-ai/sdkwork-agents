@@ -15,9 +15,9 @@ pnpm add @sdkwork/agents-app-sdk
 ## Quick Start
 
 ```typescript
-import { SdkworkBackendClient } from '@sdkwork/agents-app-sdk';
+import { SdkworkAppClient } from '@sdkwork/agents-app-sdk';
 
-const client = new SdkworkBackendClient({
+const client = new SdkworkAppClient({
   baseUrl: 'http://localhost:8080',
   timeout: 30000,
 });
@@ -41,9 +41,9 @@ Access-Token: <accessToken>
 ## Configuration (Non-Auth)
 
 ```typescript
-import { SdkworkBackendClient } from '@sdkwork/agents-app-sdk';
+import { SdkworkAppClient } from '@sdkwork/agents-app-sdk';
 
-const client = new SdkworkBackendClient({
+const client = new SdkworkAppClient({
   baseUrl: 'http://localhost:8080',
   timeout: 30000, // Request timeout in ms
   headers: {      // Custom headers
@@ -68,7 +68,7 @@ const result = await client.ai.agents.agentEngines.list();
 ## Error Handling
 
 ```typescript
-import { SdkworkBackendClient, NetworkError, TimeoutError, AuthenticationError } from '@sdkwork/agents-app-sdk';
+import { SdkworkAppClient, NetworkError, TimeoutError, AuthenticationError } from '@sdkwork/agents-app-sdk';
 
 try {
   const result = await client.ai.agents.agentEngines.list();

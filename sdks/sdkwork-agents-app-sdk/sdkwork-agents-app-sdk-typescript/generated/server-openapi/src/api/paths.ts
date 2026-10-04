@@ -1,4 +1,4 @@
-export const APP_API_PREFIX = '';
+export const APP_API_PREFIX = '/app/v3/api';
 
 export function appApiPath(path: string): string {
   if (!path) {

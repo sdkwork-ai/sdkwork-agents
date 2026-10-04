@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "sdkwork-agents-app-sdk",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "language": "typescript",
   "sdkType": "app",
   "packageName": "sdkwork-agents-app-sdk-generated-typescript",
