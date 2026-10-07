@@ -2045,6 +2045,9 @@ importers:
       '@sdkwork/agents-pc':
         specifier: workspace:*
         version: link:../..
+      '@sdkwork/agents-pc-commons':
+        specifier: workspace:*
+        version: link:../sdkwork-agents-pc-commons
       react:
         specifier: 'catalog:'
         version: 19.3.0
