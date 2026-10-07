@@ -317,6 +317,12 @@ pub fn speech_parameters(input: &SynthesizeSpeechInput) -> serde_json::Value {
 /// Builds the `parameters` payload for music creation tools.
 pub fn music_parameters(input: &GenerateMusicInput) -> serde_json::Value {
     let mut parameters = serde_json::Map::new();
+    // Vendor forwarding mirrors image_parameters: without it the generations
+    // service resolves the modality default vendor (suno) and the LLM's
+    // vendor/model selection is silently dropped.
+    if let Some(vendor) = input.vendor.as_deref() {
+        parameters.insert("vendor".to_string(), serde_json::json!(vendor));
+    }
     if let Some(tags) = input.tags.as_deref() {
         parameters.insert("tags".to_string(), serde_json::json!(tags));
     }
