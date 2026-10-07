@@ -48,6 +48,29 @@ fn generation_endpoint(modality: &str, operation: &str) -> Option<String> {
     }
 }
 
+/// Whether a port error string is an insufficient-balance rejection.
+///
+/// HTTP failures surface through the stable `"generations api returned
+/// {status}: {body}"` prefix produced by [`HttpGenerationsPort::post`] and
+/// [`HttpGenerationsPort::get`]; the status token and body feed the shared
+/// cloudrouter detector (402 / code 40201 / legacy precharge shapes) so the
+/// tool loop can escalate the turn to the recharge affordance.
+pub fn is_insufficient_balance_failure(error: &str) -> bool {
+    let Some(rest) = error.strip_prefix("generations api returned ") else {
+        return false;
+    };
+    let (status_token, body) = match rest.split_once(':') {
+        Some((status_token, body)) => (status_token, body),
+        None => (rest, ""),
+    };
+    let status = status_token
+        .split_whitespace()
+        .next()
+        .and_then(|token| token.parse::<u16>().ok())
+        .unwrap_or(0);
+    sdkwork_agents_tool_cloudrouter::is_cloudrouter_insufficient_balance(status, body)
+}
+
 /// Blocking HTTP port for the generations app API.
 ///
 /// The HTTP client is built lazily: a misconfigured environment degrades to

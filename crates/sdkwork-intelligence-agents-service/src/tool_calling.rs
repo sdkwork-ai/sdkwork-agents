@@ -25,6 +25,12 @@ use sdkwork_agents_tool_contract::MediaToolCall;
 
 /// Namespace prefix of the built-in generations MCP tools.
 pub const GENERATIONS_MCP_TOOL_PREFIX: &str = "mcp__generations__";
+
+/// Stable `TurnToolExecution::Failed` code for a wallet shortfall. The tool
+/// loop escalates it to a turn-level funding error so the HTTP boundary can
+/// answer 402 with the recharge affordance instead of feeding the failure
+/// back as ordinary model content.
+pub const TOOL_FUNDING_FAILURE_CODE: &str = "insufficient_balance";
 /// Namespace prefix shared by every external MCP tool.
 pub const EXTERNAL_MCP_TOOL_PREFIX: &str = "mcp__";
 /// Default per-tool execution budget for synchronous media tools.
@@ -411,7 +417,11 @@ impl GenerationsToolExecutor {
                         Ok(generation) => generation,
                         Err(message) => {
                             return TurnToolExecution::Failed {
-                                code: "generations_retrieve_failed".to_string(),
+                                code: if crate::generations_tool_port::is_insufficient_balance_failure(&message) {
+                                    TOOL_FUNDING_FAILURE_CODE.to_string()
+                                } else {
+                                    "generations_retrieve_failed".to_string()
+                                },
                                 message,
                             }
                         }
@@ -434,7 +444,11 @@ impl GenerationsToolExecutor {
         match result {
             Ok(content) => TurnToolExecution::Completed { content },
             Err(message) => TurnToolExecution::Failed {
-                code: "generations_tool_failed".to_string(),
+                code: if crate::generations_tool_port::is_insufficient_balance_failure(&message) {
+                    TOOL_FUNDING_FAILURE_CODE.to_string()
+                } else {
+                    "generations_tool_failed".to_string()
+                },
                 message,
             },
         }
@@ -620,7 +634,14 @@ impl TurnToolExecutor for MediaToolExecutor {
                 }),
             },
             Err(error) => TurnToolExecution::Failed {
-                code: error.code().to_string(),
+                code: if matches!(
+                    error,
+                    sdkwork_agents_tool_contract::MediaToolError::FundingRequired(_)
+                ) {
+                    TOOL_FUNDING_FAILURE_CODE.to_string()
+                } else {
+                    error.code().to_string()
+                },
                 message: error.to_string(),
             },
         }

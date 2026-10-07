@@ -25,6 +25,10 @@ pub enum MediaToolError {
     Timeout(String),
     /// The upstream gateway applied a quota or rate limit.
     RateLimited(String),
+    /// The caller's own wallet cannot fund this call. Distinct from
+    /// `ProviderError`: nothing is broken, the user must recharge, so
+    /// boundaries must surface a funding affordance instead of a retry hint.
+    FundingRequired(String),
 }
 
 impl MediaToolError {
@@ -38,6 +42,7 @@ impl MediaToolError {
             MediaToolError::ProviderError(_) => "provider_error",
             MediaToolError::Timeout(_) => "timeout",
             MediaToolError::RateLimited(_) => "rate_limited",
+            MediaToolError::FundingRequired(_) => "funding_required",
         }
     }
 
@@ -61,7 +66,8 @@ impl fmt::Display for MediaToolError {
             | MediaToolError::ProviderUnavailable(message)
             | MediaToolError::ProviderError(message)
             | MediaToolError::Timeout(message)
-            | MediaToolError::RateLimited(message) => {
+            | MediaToolError::RateLimited(message)
+            | MediaToolError::FundingRequired(message) => {
                 write!(formatter, "{}: {message}", self.code())
             }
         }
@@ -100,6 +106,10 @@ mod tests {
         assert_eq!(
             MediaToolError::RateLimited("x".into()).code(),
             "rate_limited"
+        );
+        assert_eq!(
+            MediaToolError::FundingRequired("x".into()).code(),
+            "funding_required"
         );
     }
 

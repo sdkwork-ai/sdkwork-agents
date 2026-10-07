@@ -501,7 +501,7 @@ fn run_cloud_router_turn(
                     auth_token,
                     access_token,
                     &mut tool_events,
-                ),
+                )?,
             };
             let capped = cap_tool_content(&result_content);
             let tool_id = descriptor
@@ -623,12 +623,50 @@ fn execute_turn_tool(
         }
     };
     match execution {
-        TurnToolExecution::Completed { content } => ("succeeded".to_string(), content),
-        TurnToolExecution::ApprovalRequired { detail } => ("approval_required".to_string(), detail),
-        TurnToolExecution::Failed { code, message } => (
-            "failed".to_string(),
-            format!("tool {} failed ({code}): {message}", descriptor.tool_id),
-        ),
+        TurnToolExecution::Completed { content } => Ok(("succeeded".to_string(), content)),
+        TurnToolExecution::ApprovalRequired { detail } => {
+            Ok(("approval_required".to_string(), detail))
+        }
+        TurnToolExecution::Failed { code, message } => {
+            if code == crate::tool_calling::TOOL_FUNDING_FAILURE_CODE {
+                // A wallet shortfall is not model-fixable content: record the
+                // failed tool call for the UI, then abort the turn with the
+                // funding-tagged kernel error so the HTTP boundary answers
+                // 402/`40201` with the recharge affordance.
+                let tool_id = descriptor.tool_id.clone();
+                let content = format!("tool {tool_id} failed ({code}): {message}");
+                tool_events.push(TurnToolEvent {
+                    tool_call_id: call.tool_call_id.clone(),
+                    tool_id,
+                    kind: TurnToolEventKind::ToolResult,
+                    status: "failed".to_string(),
+                    arguments_json: None,
+                    content: Some(crate::tool_calling::cap_tool_content(&content)),
+                });
+                emit_tool_call_result(
+                    sink,
+                    call,
+                    &descriptor.tool_id,
+                    "failed",
+                    crate::tool_calling::cap_tool_content(&content).as_str(),
+                );
+                return Err(
+                    KernelError::resource_exhausted(
+                        "media generation rejected: insufficient account balance",
+                    )
+                    .with_detail(
+                        sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
+                        "insufficient_balance",
+                    )
+                    .with_retryable(false)
+                    .with_safe_for_user(true),
+                );
+            }
+            Ok((
+                "failed".to_string(),
+                format!("tool {} failed ({code}): {message}", descriptor.tool_id),
+            ))
+        }
     }
 }
 

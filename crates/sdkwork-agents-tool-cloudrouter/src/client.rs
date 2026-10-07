@@ -294,6 +294,15 @@ pub fn map_cloudrouter_error(
 
     let mut message = format!("tool `{tool_id}` cloudrouter call failed: {error}");
     match &error {
+        // A funding shortfall is handled before every generic branch: it is
+        // the caller's own wallet, not a provider defect, so the boundary can
+        // escalate the turn to the 402 recharge affordance.
+        SdkworkError::HttpStatus { status, body }
+            if is_cloudrouter_insufficient_balance(*status, body) =>
+        {
+            message.push_str("; 账户余额不足，请充值或购买套餐后重试");
+            MediaToolError::FundingRequired(message)
+        }
         SdkworkError::HttpStatus { status, .. } if *status == 401 => {
             message.push_str("; 登录 auth token 无效或已过期，请重新登录后重试");
             MediaToolError::AuthRequired(message)

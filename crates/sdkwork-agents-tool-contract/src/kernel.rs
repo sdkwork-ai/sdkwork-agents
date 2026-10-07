@@ -70,6 +70,7 @@ pub fn project_kernel_error(error: MediaToolError) -> KernelError {
         }
         MediaToolError::Timeout(message) => KernelError::timeout(message),
         MediaToolError::RateLimited(message) => KernelError::rate_limited(message),
+        MediaToolError::FundingRequired(message) => KernelError::resource_exhausted(message),
     }
 }
 
