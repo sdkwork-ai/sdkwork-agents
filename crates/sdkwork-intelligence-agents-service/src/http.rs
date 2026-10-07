@@ -14604,22 +14604,12 @@ async fn streaming_turn_execution_http_response(
                             Ok::<Bytes, std::io::Error>(Bytes::from(chunk)),
                             (receiver, heartbeat),
                         )),
-                        Some(TurnHttpStreamSignal::Failed(problem)) => {
-                            // A mid-stream failure cannot upgrade the already-sent
-                            // 200 into a problem response, so the terminal emits a
-                            // structured `error` event carrying the full problem
-                            // body (status, code, i18nKey, action) and the stream
-                            // closes cleanly. Clients run the same failure
-                            // classification as on a non-stream problem response.
-                            let frame = problem.stream_error_frame();
-                            let payload = format!("data: {frame}
-
-");
-                            Some((
-                                Ok::<Bytes, std::io::Error>(Bytes::from(payload)),
-                                (receiver, heartbeat),
-                            ))
-                        }
+                        Some(TurnHttpStreamSignal::Failed(problem)) => Some((
+                            Ok::<Bytes, std::io::Error>(Bytes::from(
+                                turn_stream_failure_chunk(&problem),
+                            )),
+                            (receiver, heartbeat),
+                        )),
                         None => None,
                     }
                 }
@@ -14662,6 +14652,24 @@ fn turn_completion_sse_chunk(
     let mut chunk = String::new();
     append_sse_json_event(&mut chunk, "completion", &payload, "turn completion")?;
     Ok(chunk)
+}
+
+/// Mid-stream terminal failure chunk: a structured `error` SSE event in the
+/// same wire shape as every other stream event, carrying the full problem
+/// body (status, numeric code, i18nKey, machine action). Clients classify it
+/// exactly like a non-stream problem response — a funding shortfall lights
+/// the recharge affordance even when deltas already flowed.
+fn turn_stream_failure_chunk(problem: &ApiProblem) -> String {
+    let mut chunk = String::new();
+    let payload = problem.stream_error_frame();
+    if append_sse_json_event(&mut chunk, "error", &payload, "turn stream failure").is_err() {
+        // Serializing an in-memory JSON value cannot fail; keep a minimal
+        // terminal frame anyway so the client never sees a bare hangup.
+        return "data: {\"eventType\":\"error\"}
+
+".to_string();
+    }
+    chunk
 }
 
 /// Build the durable turn execution response.
@@ -17257,3 +17265,41 @@ mod tests {
         assert_eq!(repeated_get_payload["data"], get_payload["data"]);
     }
 }
+
+#[cfg(test)]
+mod turn_stream_failure_chunk_tests {
+    use super::*;
+
+    #[test]
+    fn funding_failure_chunk_follows_the_stream_event_wire_shape() {
+        let problem = ApiProblem::payment_required("insufficient account balance")
+            .with_recharge_action();
+        let chunk = turn_stream_failure_chunk(&problem);
+        assert!(chunk.starts_with("event: error
+data: "), "frame prefix: {chunk}");
+        assert!(chunk.ends_with("
+
+"), "frame terminator: {chunk}");
+        let data = chunk
+            .strip_prefix("event: error
+data: ")
+            .and_then(|rest| rest.strip_suffix("
+
+"))
+            .expect("frame body");
+        let payload: serde_json::Value = serde_json::from_str(data).expect("json payload");
+        assert_eq!(payload["eventType"], "error");
+        assert_eq!(payload["problem"]["status"], 402);
+        assert_eq!(payload["problem"]["code"], 40201);
+        assert_eq!(payload["problem"]["action"]["kind"], "recharge");
+    }
+
+    #[test]
+    fn generic_failure_chunk_still_carries_the_problem_body() {
+        let problem = ApiProblem::internal("boom");
+        let chunk = turn_stream_failure_chunk(&problem);
+        assert!(chunk.contains("\"eventType\":\"error\""));
+        assert!(chunk.contains("\"code\":500") || chunk.contains("\"code\": 500"));
+    }
+}
+
