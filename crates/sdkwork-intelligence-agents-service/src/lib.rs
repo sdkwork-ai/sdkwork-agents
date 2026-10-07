@@ -3,6 +3,7 @@ mod agent_turn;
 mod agent_turn_input_queue;
 mod api;
 mod application;
+mod chat_agent_prompt;
 mod cloud_router_executor;
 mod domain;
 mod drive_asset_saver;
@@ -56,6 +57,10 @@ pub use agent_turn_input_queue::{
 pub use api::{
     ApiOperation, AGENT_APP_API_OPERATIONS, AGENT_APP_API_PREFIX, AGENT_BACKEND_API_OPERATIONS,
     AGENT_BACKEND_API_PREFIX, AGENT_OPEN_API_OPERATIONS, AGENT_OPEN_API_PREFIX,
+};
+pub use chat_agent_prompt::{
+    canonical_system_prompt, effective_system_prompt, is_unconfigured_prompt,
+    DEFAULT_CHAT_AGENT_ID,
 };
 pub use application::{
     ActivateAgentProviderBindingCommand, AgentCompositionSlotCreateCommand,

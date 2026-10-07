@@ -2,9 +2,11 @@
 
 mod agent_http_state;
 mod boundaries;
+mod chat_default_toolkit;
 
 pub use agent_http_state::build_agent_http_state;
 pub use boundaries::{AGENTS_OWNED_CAPABILITIES, KERNEL_OWNED_CAPABILITIES};
+pub use chat_default_toolkit::{curated_chat_tools, CHAT_DEFAULT_TOOL_IDS};
 
 use std::sync::Arc;
 

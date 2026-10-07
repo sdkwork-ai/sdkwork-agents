@@ -11356,6 +11356,7 @@ dependencies = [
  "sdkwork-database-sqlx",
  "sdkwork-intelligence-agents-service",
  "sdkwork-routes-agents-http-shared",
+ "serde_json",
  "tokio",
  "tracing",
 ]
@@ -11434,17 +11435,6 @@ dependencies = [
 
 [[package]]
 name = "sdkwork-agents-tool-file"
-version = "0.1.0"
-dependencies = [
- "cloudrouter-open-sdk",
- "sdkwork-agent-kernel",
- "sdkwork-agents-tool-cloudrouter",
- "sdkwork-agents-tool-contract",
- "serde_json",
-]
-
-[[package]]
-name = "sdkwork-agents-tool-generations"
 version = "0.1.0"
 dependencies = [
  "cloudrouter-open-sdk",

@@ -350,6 +350,7 @@ mod tests {
             quality: Some("high".to_string()),
             size: None,
             reference_images: vec![],
+            reference_asset_ids: vec![],
         };
         let parameters = image_parameters(&input);
         assert_eq!(parameters["vendor"], "openai");

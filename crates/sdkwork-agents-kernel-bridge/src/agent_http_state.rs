@@ -17,16 +17,21 @@ use sdkwork_intelligence_agents_service::{
 };
 use std::sync::Arc;
 
-/// Toolkit configuration source for chat agents: the built-in generations
-/// MCP descriptors plus the synchronous media family form the default set.
-/// External MCP tools expand per turn from the agent's composition-slot
-/// policies (see `toolkit::McpSlotPolicy`).
+/// Toolkit configuration source for chat agents: the curated chat default
+/// set (see [`chat_default_toolkit`]) forms the default surface, while the
+/// full built-in union stays available for explicit opt-in via enabled Tool
+/// composition slots. External MCP tools expand per turn from the agent's
+/// composition-slot policies (see `toolkit::McpSlotPolicy`).
 struct DefaultTurnToolkitConfig {
     dispatcher: std::sync::Arc<TurnToolDispatcher>,
 }
 
 impl TurnToolkitConfig for DefaultTurnToolkitConfig {
     fn default_tools(&self) -> Vec<sdkwork_intelligence_agents_service::TurnToolDescriptor> {
+        crate::chat_default_toolkit::curated_chat_tools(&self.dispatcher.default_descriptors())
+    }
+
+    fn all_builtin_tools(&self) -> Vec<sdkwork_intelligence_agents_service::TurnToolDescriptor> {
         self.dispatcher.default_descriptors()
     }
 }

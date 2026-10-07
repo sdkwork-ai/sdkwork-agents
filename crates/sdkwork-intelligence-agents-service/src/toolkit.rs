@@ -65,8 +65,16 @@ pub struct AgentToolkitOverview {
 /// policies themselves (see `McpSlotPolicy`), keeping the per-turn resolution
 /// self-contained.
 pub trait TurnToolkitConfig: Send + Sync {
-    /// The default (built-in) tool descriptors every chat agent gets.
+    /// The default (curated) tool descriptors every chat agent gets.
     fn default_tools(&self) -> Vec<TurnToolDescriptor>;
+
+    /// Every built-in tool descriptor available for explicit opt-in through
+    /// an enabled Tool composition slot. Defaults to [`Self::default_tools`];
+    /// configurations that curate the default set must return the full
+    /// built-in union here so an agent can still re-add trimmed tools.
+    fn all_builtin_tools(&self) -> Vec<TurnToolDescriptor> {
+        self.default_tools()
+    }
 }
 
 /// Resolves the effective toolkit for one agent turn.
@@ -75,6 +83,7 @@ pub fn resolve_effective_toolkit(
     slots: &[AgentCompositionSlotRecord],
 ) -> ResolvedToolkit {
     let default_tools = config.default_tools();
+    let all_builtin_tools = config.all_builtin_tools();
     let mut tools: Vec<TurnToolDescriptor> = default_tools;
     let mut skills: Vec<ResolvedSkill> = Vec::new();
     let mut connections: Vec<crate::tool_calling::McpServerConnection> = Vec::new();
@@ -95,10 +104,22 @@ pub fn resolve_effective_toolkit(
         }
         match slot.slot_kind {
             crate::domain::AgentCompositionSlotKind::Tool => {
-                // Explicitly enabled built-in tools are already present; an
-                // unknown tool id cannot be described and is skipped (the
-                // dispatcher fails closed at call time anyway).
-                let _ = slot.target_ref.as_str();
+                // An enabled Tool slot opts the agent back into a built-in
+                // tool that its curated default set may have trimmed. A tool
+                // id trimmed by a disabled slot stays trimmed; an unknown id
+                // cannot be described and is skipped (the dispatcher fails
+                // closed at call time anyway).
+                if disabled_tool_ids.contains(&slot.target_ref.as_str()) {
+                    continue;
+                }
+                if let Some(builtin) = all_builtin_tools
+                    .iter()
+                    .find(|tool| tool.tool_id == slot.target_ref)
+                {
+                    if !tools.iter().any(|tool| tool.tool_id == builtin.tool_id) {
+                        tools.push(builtin.clone());
+                    }
+                }
             }
             crate::domain::AgentCompositionSlotKind::Mcp => {
                 let Some(policy) = McpSlotPolicy::parse(&slot.policy_json) else {
@@ -408,6 +429,92 @@ mod tests {
         let resolved = resolve_effective_toolkit(&config, &slots);
         assert_eq!(resolved.tools.len(), 1);
         assert_eq!(resolved.tools[0].tool_id, "mcp__generations__music.create");
+    }
+
+    /// Config whose curated default is a strict subset of the built-in union
+    /// (mirrors the kernel-bridge chat default toolkit).
+    struct CuratedConfig {
+        curated: Vec<TurnToolDescriptor>,
+        all_builtin: Vec<TurnToolDescriptor>,
+    }
+
+    impl TurnToolkitConfig for CuratedConfig {
+        fn default_tools(&self) -> Vec<TurnToolDescriptor> {
+            self.curated.clone()
+        }
+
+        fn all_builtin_tools(&self) -> Vec<TurnToolDescriptor> {
+            self.all_builtin.clone()
+        }
+    }
+
+    #[test]
+    fn enabled_tool_slot_opts_back_into_a_trimmed_builtin_tool() {
+        let config = CuratedConfig {
+            curated: vec![default_tool("mcp__generations__image.create")],
+            all_builtin: vec![
+                default_tool("mcp__generations__image.create"),
+                default_tool("video.kling.generations.create"),
+            ],
+        };
+        let slots = vec![slot(
+            "slot.tool.1",
+            AgentCompositionSlotKind::Tool,
+            AgentCompositionTargetModule::Tools,
+            "video.kling.generations.create",
+            true,
+            "{}",
+        )];
+        let resolved = resolve_effective_toolkit(&config, &slots);
+        let ids: Vec<&str> = resolved.tools.iter().map(|t| t.tool_id.as_str()).collect();
+        assert_eq!(
+            ids,
+            vec![
+                "mcp__generations__image.create",
+                "video.kling.generations.create"
+            ]
+        );
+    }
+
+    #[test]
+    fn disabled_tool_slot_stays_trimmed_against_the_builtin_union() {
+        let config = CuratedConfig {
+            curated: vec![default_tool("mcp__generations__image.create")],
+            all_builtin: vec![
+                default_tool("mcp__generations__image.create"),
+                default_tool("video.kling.generations.create"),
+            ],
+        };
+        let slots = vec![slot(
+            "slot.tool.1",
+            AgentCompositionSlotKind::Tool,
+            AgentCompositionTargetModule::Tools,
+            "video.kling.generations.create",
+            false,
+            "{}",
+        )];
+        let resolved = resolve_effective_toolkit(&config, &slots);
+        assert_eq!(resolved.tools.len(), 1);
+        assert_eq!(resolved.tools[0].tool_id, "mcp__generations__image.create");
+    }
+
+    #[test]
+    fn unknown_enabled_tool_slot_is_skipped() {
+        let config = CuratedConfig {
+            curated: vec![default_tool("mcp__generations__image.create")],
+            all_builtin: vec![default_tool("mcp__generations__image.create")],
+        };
+        let slots = vec![slot(
+            "slot.tool.1",
+            AgentCompositionSlotKind::Tool,
+            AgentCompositionTargetModule::Tools,
+            "not.a.builtin.tool",
+            true,
+            "{}",
+        )];
+        let resolved = resolve_effective_toolkit(&config, &slots);
+        assert_eq!(resolved.tools.len(), 1);
+        assert_eq!(resolved.tools[0].tool_id, "mcp__generations__image.create");
     }
 
     #[test]

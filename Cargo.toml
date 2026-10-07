@@ -23,7 +23,6 @@ members = [
     "crates/sdkwork-agents-tool-image",
     "crates/sdkwork-agents-tool-file",
     "crates/sdkwork-agents-tool-intelligence",
-    "crates/sdkwork-agents-tool-generations",
 ]
 
 [workspace.package]
@@ -146,7 +145,6 @@ sdkwork-agents-tool-sound-effect = { path = "crates/sdkwork-agents-tool-sound-ef
 sdkwork-agents-tool-image = { path = "crates/sdkwork-agents-tool-image" }
 sdkwork-agents-tool-file = { path = "crates/sdkwork-agents-tool-file" }
 sdkwork-agents-tool-intelligence = { path = "crates/sdkwork-agents-tool-intelligence" }
-sdkwork-agents-tool-generations = { path = "crates/sdkwork-agents-tool-generations" }
 
 [patch.crates-io]
 # Codex app-server-client enables websocket proxy support supplied by these upstream forks.

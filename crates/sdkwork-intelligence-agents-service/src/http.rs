@@ -11016,6 +11016,10 @@ async fn app_create_turn(
             .into_iter()
             .map(AgentItemDriveRefBody::into_input)
             .collect::<Result<Vec<_>, _>>()?;
+        let system_prompt = crate::chat_agent_prompt::effective_system_prompt(
+            agent_id.as_str(),
+            body.system_prompt.as_deref(),
+        );
         let command = CreateTurnCommand {
             tenant_id: parse_tenant_id(&scope.tenant_id).map_err(ApiProblem::from_kernel_error)?,
             organization_id: parse_organization_id(&scope.organization_id)
@@ -11029,7 +11033,7 @@ async fn app_create_turn(
                 .unwrap_or_else(|| "text/plain".to_string()),
             turn_mode: crate::agent_turn::AgentTurnMode::from_code(&body.turn_mode)
                 .ok_or_else(|| ApiProblem::validation("invalid turnMode"))?,
-            system_prompt: body.system_prompt,
+            system_prompt,
             runtime_binding_id: body.runtime_binding_id,
             requested_model_id: body.requested_model_id,
             access_mode_id: body.access_mode_id,
@@ -12542,6 +12546,10 @@ async fn backend_create_turn(
             .into_iter()
             .map(AgentItemDriveRefBody::into_input)
             .collect::<Result<Vec<_>, _>>()?;
+        let system_prompt = crate::chat_agent_prompt::effective_system_prompt(
+            agent_id.as_str(),
+            body.system_prompt.as_deref(),
+        );
         let command = CreateTurnCommand {
             tenant_id: parse_tenant_id(&scope.tenant_id).map_err(ApiProblem::from_kernel_error)?,
             organization_id: parse_organization_id(&scope.organization_id)
@@ -12555,7 +12563,7 @@ async fn backend_create_turn(
                 .unwrap_or_else(|| "text/plain".to_string()),
             turn_mode: crate::agent_turn::AgentTurnMode::from_code(&body.turn_mode)
                 .ok_or_else(|| ApiProblem::validation("invalid turnMode"))?,
-            system_prompt: body.system_prompt,
+            system_prompt,
             runtime_binding_id: body.runtime_binding_id,
             requested_model_id: body.requested_model_id,
             access_mode_id: None,
