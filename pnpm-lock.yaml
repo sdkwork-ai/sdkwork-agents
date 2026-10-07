@@ -692,6 +692,9 @@ importers:
       '@sdkwork/membership-service':
         specifier: workspace:*
         version: link:../../../sdkwork-membership-common/packages/sdkwork-membership-service
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.47.0(react@19.3.0)
     devDependencies:
       '@sdkwork/ui-pc-react':
         specifier: workspace:*
@@ -1631,9 +1634,6 @@ importers:
       '@sdkwork/agents-pc-membership':
         specifier: workspace:*
         version: link:packages/sdkwork-agents-pc-membership
-      '@sdkwork/agents-pc-presentation':
-        specifier: workspace:*
-        version: link:packages/sdkwork-agents-pc-presentation
       '@sdkwork/auth-pc-react':
         specifier: workspace:*
         version: link:../../../sdkwork-iam/apps/sdkwork-iam-pc/packages/sdkwork-auth-pc-react
