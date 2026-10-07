@@ -9679,11 +9679,16 @@ where
                 });
             }
         }
-        completed_items.push(assistant_output_item.clone());
         // Persist the tool-calling loop's activity as durable ToolCall /
         // ToolResult session items (pair-wise by tool_call_id) so the chat
         // transcript renders tool cards after reload and the approval flow
         // can re-inspect blocked calls.
+        //
+        // Tool items chronologically precede the assistant's final summary
+        // (the summary follows the tool results in the conversation), and
+        // `validate_completed_turn_items` requires the batch's LAST item to be
+        // the turn's AssistantOutput response item — so tool items must be
+        // extended BEFORE the assistant output is pushed.
         completed_items.extend(tool_items_from_turn_events(
             &completion.tool_events,
             &command.session_id,
@@ -9693,6 +9698,7 @@ where
             &command,
             &self.repository,
         )?);
+        completed_items.push(assistant_output_item.clone());
 
         turn.response_item_id = Some(assistant_output_item.item_id.clone());
         turn.model_id = assistant_output_item.model_id.clone();

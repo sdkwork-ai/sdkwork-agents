@@ -117,8 +117,10 @@ impl HttpGenerationsPort {
     ) -> Result<serde_json::Value, String> {
         let endpoint = generation_endpoint(modality, operation)
             .ok_or_else(|| format!("generations has no endpoint for {modality}.{operation}"))?;
+        // Context selectors (tenant/organization) resolve from the
+        // authenticated session server-side (API_SPEC §10.0); a client-supplied
+        // `tenantId` body field is rejected with 40001.
         let mut body = serde_json::json!({
-            "tenantId": tenant_id.to_string(),
             "prompt": prompt,
         });
         if let Some(model) = model.filter(|value| !value.trim().is_empty()) {
