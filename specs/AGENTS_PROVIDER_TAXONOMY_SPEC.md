@@ -97,10 +97,19 @@ unavailable bindings fail closed.
 Chat agents execute model-driven tool calls inside the durable Turn loop
 (`sdkwork-intelligence-agents-service`, cloudrouter-account-pool executor):
 
-- **Default toolkit.** Every chat agent receives the built-in generations MCP
-  tools (`mcp__generations__image.create|retrieve`, `video.create|retrieve`,
-  `speech.create`, `music.create|retrieve`) plus the synchronous media family
-  by default; no composition configuration is required.
+- **Default toolkit.** Every chat agent receives the curated chat default set
+  (`mcp__generations__image.create|retrieve`, `video.create|retrieve`,
+  `music.create|retrieve`, `speech.create`, `sound-effect.generate`,
+  `audio.transcriptions.create`, `audio.translations.create`) by default; no
+  composition configuration is required. The gateway mirror media family
+  (`image.*` / `video.*` / `audio.*` vendor task namespaces) stays out of the
+  chat default set because its task ids live in vendor namespaces disjoint
+  from generation ids; the full built-in union remains available for explicit
+  opt-in through an enabled `slotKind: tool` slot (see Configuration). The
+  canonical chat system prompt (`chat_agent_prompt::canonical_system_prompt`)
+  references exactly the curated ids and is normalized server-side for
+  `agent.chat.default` when a turn request omits a prompt or carries a
+  retired client boilerplate.
 - **Model-visible names equal dispatch ids.** Tools are advertised with their
   namespaced ids (`mcp__<server>__<tool>`, `sound-effect.generate`, ...) so a
   model echo round-trips without a lookup table. Unknown tools fail closed.
@@ -121,10 +130,15 @@ Chat agents execute model-driven tool calls inside the durable Turn loop
 - **Approval.** `requires_approval` tools are never executed inline; the loop
   reports `approval_required` back to the model so it asks the user in
   conversation (interaction-object approval is a follow-up surface).
-- **Configuration.** `slotKind: tool` (enabled=false) trims default tools;
-  `slotKind: mcp` (enabled=true) expands a bound server's tools from its
-  policy; `slotKind: skill` contributes an instructions section to the
-  assembled system prompt (the request-level `systemPrompt` still wins).
+- **Configuration.** `slotKind: tool` (enabled=false) trims default tools and
+  keeps a trimmed built-in tool trimmed even when the same id is opt-in
+  elsewhere; `slotKind: tool` (enabled=true) opts an agent back into a
+  built-in tool outside its curated default set (resolved against the full
+  built-in union, unknown ids skipped); `slotKind: mcp` (enabled=true)
+  expands a bound server's tools from its policy; `slotKind: skill`
+  contributes an instructions section to the assembled system prompt (the
+  request-level `systemPrompt` still wins, normalized for
+  `agent.chat.default` per the Default toolkit bullet).
   `GET /app/v3/api/ai/agents/{agentId}/toolkit` exposes the effective
   toolkit. A broken or endpoint-less slot policy is skipped, never failing
   the turn.
