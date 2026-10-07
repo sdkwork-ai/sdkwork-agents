@@ -9,7 +9,9 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use sdkwork_utils_rust::{SdkWorkApiResponse, SdkWorkProblemDetail, SdkWorkResultCode};
+use sdkwork_utils_rust::{
+    SdkWorkApiResponse, SdkWorkProblemDetail, SdkWorkProblemRouting, SdkWorkResultCode,
+};
 use sdkwork_web_core::{
     problem_response, WebFrameworkError, WebFrameworkErrorKind, WebRequestContext,
 };
@@ -234,6 +236,42 @@ impl ApiProblem {
     pub fn with_action(mut self, action: ProblemAction) -> Self {
         self.action = Some(action);
         self
+    }
+
+    /// Mid-stream SSE error frame payload.
+    ///
+    /// A failure that surfaces after stream bytes already flowed cannot be
+    /// answered with a problem response, so the stream terminal emits this
+    /// `error` event instead: the same platform problem body the HTTP boundary
+    /// would render (status, numeric `code`, `i18nKey`), plus the machine
+    /// `action`, letting stream clients run the identical failure
+    /// classification (e.g. the recharge affordance for a funding shortfall).
+    pub fn stream_error_frame(&self) -> serde_json::Value {
+        let mut problem = match self.result_code {
+            Some(result_code) => SdkWorkProblemDetail::platform_enriched(
+                result_code,
+                self.message.clone(),
+                String::new(),
+                SdkWorkProblemRouting::default(),
+            ),
+            None => SdkWorkProblemDetail::platform_enriched(
+                SdkWorkResultCode::InternalError,
+                self.message.clone(),
+                String::new(),
+                SdkWorkProblemRouting::default(),
+            ),
+        };
+        problem.status = self.status.as_u16();
+        if !self.message.trim().is_empty() {
+            problem.detail = Some(self.message.clone());
+        }
+        let mut value = serde_json::to_value(&problem).unwrap_or(serde_json::Value::Null);
+        if let (Some(action), Some(map)) = (&self.action, value.as_object_mut()) {
+            if let Ok(action_value) = serde_json::to_value(action) {
+                map.insert("action".to_string(), action_value);
+            }
+        }
+        serde_json::json!({ "eventType": "error", "problem": value })
     }
 
     /// The standard funding remedy for [`SdkWorkResultCode::InsufficientBalance`].
@@ -636,5 +674,32 @@ mod tests {
             success_json(&context, serde_json::json!({ "item": 1 })).expect("public response");
 
         assert!(response.headers().get(CACHE_CONTROL).is_none());
+    }
+}
+
+#[cfg(test)]
+mod stream_error_frame_tests {
+    use super::*;
+
+    #[test]
+    fn funding_problem_frame_carries_code_status_and_action() {
+        let problem = ApiProblem::payment_required("insufficient account balance")
+            .with_recharge_action();
+        let frame = problem.stream_error_frame();
+        assert_eq!(frame["eventType"], "error");
+        assert_eq!(frame["problem"]["status"], 402);
+        assert_eq!(frame["problem"]["code"], 40201);
+        assert_eq!(frame["problem"]["i18nKey"], "errors.result.40201");
+        assert_eq!(frame["problem"]["action"]["kind"], "recharge");
+        assert_eq!(frame["problem"]["detail"], "insufficient account balance");
+    }
+
+    #[test]
+    fn generic_problem_frame_falls_back_to_internal_code() {
+        let problem = ApiProblem::internal("boom");
+        let frame = problem.stream_error_frame();
+        assert_eq!(frame["eventType"], "error");
+        assert_eq!(frame["problem"]["status"], 500);
+        assert!(frame.get("action").is_none());
     }
 }

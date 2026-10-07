@@ -14604,10 +14604,22 @@ async fn streaming_turn_execution_http_response(
                             Ok::<Bytes, std::io::Error>(Bytes::from(chunk)),
                             (receiver, heartbeat),
                         )),
-                        Some(TurnHttpStreamSignal::Failed(problem)) => Some((
-                            Err(std::io::Error::other(problem.message)),
-                            (receiver, heartbeat),
-                        )),
+                        Some(TurnHttpStreamSignal::Failed(problem)) => {
+                            // A mid-stream failure cannot upgrade the already-sent
+                            // 200 into a problem response, so the terminal emits a
+                            // structured `error` event carrying the full problem
+                            // body (status, code, i18nKey, action) and the stream
+                            // closes cleanly. Clients run the same failure
+                            // classification as on a non-stream problem response.
+                            let frame = problem.stream_error_frame();
+                            let payload = format!("data: {frame}
+
+");
+                            Some((
+                                Ok::<Bytes, std::io::Error>(Bytes::from(payload)),
+                                (receiver, heartbeat),
+                            ))
+                        }
                         None => None,
                     }
                 }

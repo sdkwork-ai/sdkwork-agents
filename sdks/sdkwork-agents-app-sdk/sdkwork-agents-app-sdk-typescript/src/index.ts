@@ -49,14 +49,17 @@ export function createClient(config: SdkworkAppConfig): SdkworkAppClient {
 export {
   completeAgentTurn,
   completeAgentTurnStream,
+  turnStreamErrorFromEvent,
   TURN_EVENT_PROTOCOL_KERNEL_V1,
 } from './turns.ts';
 export type {
   CompleteAgentTurnResult,
   CreateAgentTurnRequest,
   TurnRichToolEvent,
+  TurnStreamErrorEvent,
   TurnStreamEvent,
   TurnStreamHandlers,
+  TurnStreamProblemDetail,
 } from './turns.ts';
 export { createAgentCall, getAgentCall, listAgentCalls } from './calls.ts';
 export type {

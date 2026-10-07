@@ -102,10 +102,52 @@ export interface TurnStreamRichEvent {
   };
 }
 
+/**
+ * Problem body carried by a mid-stream terminal `error` event: the same
+ * platform problem shape the HTTP boundary renders (status, numeric `code`,
+ * `i18nKey`), plus the machine `action` (e.g. `{ kind: 'recharge' }` for a
+ * wallet shortfall) so stream clients run the identical failure
+ * classification as on a non-stream problem response.
+ */
+export interface TurnStreamProblemDetail {
+  type?: string;
+  title?: string;
+  status?: number;
+  detail?: string;
+  code?: number | string;
+  traceId?: string;
+  i18nKey?: string;
+  action?: { kind?: string; href?: string; label?: string };
+}
+
+/** One SSE terminal `error` event (mid-stream failure). */
+export interface TurnStreamErrorEvent {
+  eventType: 'error';
+  problem?: TurnStreamProblemDetail;
+}
+
+/**
+ * Builds the error thrown to stream consumers from a terminal `error` event.
+ * The `problem` field mirrors the SDK's non-stream problem errors so callers
+ * classify both shapes through one code path.
+ */
+export function turnStreamErrorFromEvent(event: TurnStreamErrorEvent): Error & {
+  problem?: TurnStreamProblemDetail;
+} {
+  const problem = event.problem;
+  const message = problem?.detail?.trim()
+    || problem?.title?.trim()
+    || 'Agent turn failed.';
+  const error = new Error(message) as Error & { problem?: TurnStreamProblemDetail };
+  error.problem = problem;
+  return error;
+}
+
 export type TurnStreamEvent =
   | TurnStreamDeltaEvent
   | TurnStreamRichEvent
-  | TurnStreamCompletionEvent;
+  | TurnStreamCompletionEvent
+  | TurnStreamErrorEvent;
 
 function dispatchRichEvent(raw: TurnStreamRichEvent, handlers: TurnStreamHandlers): void {
   const event = raw.event;
@@ -191,6 +233,13 @@ export async function completeAgentTurnStream(
       contentType: 'application/json',
     },
   )) {
+    if (event.eventType === 'error') {
+      // Terminal mid-stream failure (e.g. a wallet shortfall surfaced by a
+      // tool call after deltas already flowed). Throwing here surfaces the
+      // problem to the caller's error handler with the same `.problem` shape
+      // the non-stream client errors carry.
+      throw turnStreamErrorFromEvent(event);
+    }
     if (event.eventType === 'event') {
       dispatchRichEvent(event as TurnStreamRichEvent, resolvedHandlers);
     } else if (event.eventType === 'delta' && typeof event.delta === 'string' && event.delta) {
