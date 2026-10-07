@@ -308,6 +308,11 @@ fn map_tool_error(error: MediaToolError) -> ApiProblem {
         }
         MediaToolError::Timeout(message) => ApiProblem::gateway_timeout(message),
         MediaToolError::RateLimited(message) => ApiProblem::too_many_requests(message, None),
+        // A wallet shortfall must reach the client as an actionable 402 with
+        // the recharge affordance, not a dependency outage.
+        MediaToolError::FundingRequired(message) => {
+            ApiProblem::payment_required(message).with_recharge_action()
+        }
     }
 }
 

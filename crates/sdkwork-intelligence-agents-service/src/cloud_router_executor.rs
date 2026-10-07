@@ -563,7 +563,7 @@ fn execute_turn_tool(
     auth_token: &str,
     access_token: Option<&str>,
     tool_events: &mut Vec<TurnToolEvent>,
-) -> (String, String) {
+) -> Result<(String, String), KernelError> {
     let arguments = match serde_json::from_str::<serde_json::Value>(&streamed_call.arguments) {
         Ok(value) if value.is_object() => value,
         _ => {
@@ -579,7 +579,7 @@ fn execute_turn_tool(
                 arguments_json: Some(cap_tool_content(&streamed_call.arguments)),
                 content: None,
             });
-            return ("failed".to_string(), message);
+            return Ok(("failed".to_string(), message));
         }
     };
     let call = TurnToolCall {
@@ -643,13 +643,7 @@ fn execute_turn_tool(
                     arguments_json: None,
                     content: Some(crate::tool_calling::cap_tool_content(&content)),
                 });
-                emit_tool_call_result(
-                    sink,
-                    call,
-                    &descriptor.tool_id,
-                    "failed",
-                    crate::tool_calling::cap_tool_content(&content).as_str(),
-                );
+                emit_tool_call_result(sink, streamed_call, &descriptor.tool_id, "failed", &content);
                 return Err(
                     KernelError::resource_exhausted(
                         "media generation rejected: insufficient account balance",
@@ -1443,5 +1437,83 @@ mod tests {
                 "{mode}: exactly one predicate may accept a mode name"
             );
         }
+    }
+
+    /// A dispatcher stub whose single tool fails with the stable funding code,
+    /// standing in for a generations/media tool that hit a wallet shortfall.
+    struct FundingFailureExecutor;
+
+    impl crate::tool_calling::TurnToolExecutor for FundingFailureExecutor {
+        fn owns(&self, tool_id: &str) -> bool {
+            tool_id == "mcp__generations__video.create"
+        }
+
+        fn execute(
+            &self,
+            _call: &crate::tool_calling::TurnToolCall,
+            _context: &crate::tool_calling::TurnToolExecutionContext<'_>,
+        ) -> crate::tool_calling::TurnToolExecution {
+            crate::tool_calling::TurnToolExecution::Failed {
+                code: crate::tool_calling::TOOL_FUNDING_FAILURE_CODE.to_string(),
+                message: "generations api returned 402: insufficient balance".to_string(),
+            }
+        }
+
+        fn descriptors(&self) -> Vec<crate::tool_calling::TurnToolDescriptor> {
+            vec![crate::tool_calling::TurnToolDescriptor {
+                tool_id: "mcp__generations__video.create".to_string(),
+                name: "mcp__generations__video.create".to_string(),
+                description: "stub".to_string(),
+                input_schema: serde_json::json!({ "type": "object" }),
+                requires_approval: false,
+                policy_category: None,
+                timeout_ms: 30_000,
+                origin: crate::tool_calling::TurnToolOrigin::BuiltinGenerations,
+            }]
+        }
+    }
+
+    #[test]
+    fn tool_funding_failure_aborts_the_turn_with_the_funding_tag() {
+        use crate::tool_calling::{TurnToolDispatcher, TurnToolOrigin, TurnToolDescriptor};
+
+        let dispatcher = TurnToolDispatcher::new()
+            .with_executor(Box::new(FundingFailureExecutor));
+        let input = sample_input(Some("token"), Some("access"));
+        let streamed_call = sdkwork_agents_tool_cloudrouter::StreamedToolCall {
+            id: "call.funding".to_string(),
+            name: "mcp__generations__video.create".to_string(),
+            arguments: "{}".to_string(),
+        };
+        let descriptor = TurnToolDescriptor {
+            tool_id: "mcp__generations__video.create".to_string(),
+            name: "mcp__generations__video.create".to_string(),
+            description: "stub".to_string(),
+            input_schema: serde_json::json!({ "type": "object" }),
+            requires_approval: false,
+            policy_category: None,
+            timeout_ms: 30_000,
+            origin: TurnToolOrigin::BuiltinGenerations,
+        };
+        let mut tool_events = Vec::new();
+        let result = execute_turn_tool(
+            &input,
+            &dispatcher,
+            None,
+            &streamed_call,
+            &descriptor,
+            "token",
+            Some("access"),
+            &mut tool_events,
+        );
+        let error = result.expect_err("funding failure must abort the turn");
+        assert_eq!(
+            error.detail_value(sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY),
+            Some("insufficient_balance")
+        );
+        assert!(!error.retryable());
+        // The failed tool call is still recorded for the chat UI.
+        assert_eq!(tool_events.len(), 2);
+        assert_eq!(tool_events[1].status, "failed");
     }
 }

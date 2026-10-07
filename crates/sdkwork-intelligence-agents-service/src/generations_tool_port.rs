@@ -341,6 +341,43 @@ pub fn retrieve_generation_id(input: &GenerationRetrieveInput) -> String {
     input.generation_id.clone()
 }
 
+
+#[cfg(test)]
+mod insufficient_balance_tests {
+    use super::is_insufficient_balance_failure;
+
+    #[test]
+    fn recognizes_the_current_402_contract() {
+        assert!(is_insufficient_balance_failure(
+            r#"generations api returned 402 Payment Required: {"code":40201,"detail":"insufficient available balance"}"#
+        ));
+        assert!(is_insufficient_balance_failure(
+            "generations api returned 402: insufficient balance"
+        ));
+    }
+
+    #[test]
+    fn recognizes_the_legacy_precharge_shape() {
+        assert!(is_insufficient_balance_failure(
+            "generations api returned 503 Service Unavailable: {\"failedStage\":\"billing_precharge\"}"
+        ));
+    }
+
+    #[test]
+    fn rejects_unrelated_failures() {
+        assert!(!is_insufficient_balance_failure(
+            "generations api returned 500 Internal Server Error: boom"
+        ));
+        assert!(!is_insufficient_balance_failure(
+            "generations api returned 404 Not Found: {\"code\":40401}"
+        ));
+        assert!(!is_insufficient_balance_failure(
+            "generations create response missing data.item: {}"
+        ));
+        assert!(!is_insufficient_balance_failure("generations request failed: timeout"));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

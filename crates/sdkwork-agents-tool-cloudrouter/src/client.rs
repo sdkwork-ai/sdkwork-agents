@@ -517,6 +517,32 @@ mod tests {
     }
 
     #[test]
+    fn funding_shortfall_maps_to_a_dedicated_variant() {
+        let funding = map_cloudrouter_error(
+            "sound-effect.generate",
+            SdkworkError::HttpStatus {
+                status: 402,
+                body: r#"{"code":40201,"detail":"insufficient available balance"}"#.to_string(),
+            },
+        );
+        assert_eq!(funding.code(), "funding_required");
+        assert!(matches!(
+            funding,
+            MediaToolError::FundingRequired(_)
+        ));
+
+        // Legacy pre-402 gateway shape still classifies as funding.
+        let legacy = map_cloudrouter_error(
+            "audio.transcriptions.create",
+            SdkworkError::HttpStatus {
+                status: 503,
+                body: "billing_precharge rejected".to_string(),
+            },
+        );
+        assert_eq!(legacy.code(), "funding_required");
+    }
+
+    #[test]
     fn funding_shortfall_is_recognized_across_gateway_vintages() {
         // Current contract: HTTP 402 with result code 40201.
         assert!(is_cloudrouter_insufficient_balance(
