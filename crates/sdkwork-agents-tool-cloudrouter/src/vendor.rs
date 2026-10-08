@@ -106,6 +106,7 @@ mod tests {
             arguments,
             session_id: None,
             trace_id: None,
+            access_token: None,
         }
     }
 

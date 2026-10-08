@@ -233,6 +233,7 @@ pub async fn app_invoke_media_tool(
         let (tenant_id, organization_id, user_id) = scope_numbers(&scope, &context)?;
 
         let auth_token = crate::http::extract_bearer_auth_token(&headers);
+        let access_token = crate::http::extract_access_token(&headers);
         let request = MediaToolInvocationRequest {
             tool_call_id: invocation.next_tool_call_id(),
             tool_id: path.tool_id,
@@ -240,6 +241,7 @@ pub async fn app_invoke_media_tool(
             tenant_id,
             organization_id,
             auth_token,
+            access_token,
             save_to_drive: body.save_to_drive,
             actor: UploaderActor::User {
                 user_id: user_id.to_string(),

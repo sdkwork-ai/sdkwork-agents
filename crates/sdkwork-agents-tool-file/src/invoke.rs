@@ -40,7 +40,7 @@ fn invoke_upload(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let file = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().create(&request))
@@ -66,7 +66,7 @@ fn invoke_list(
     let limit = call.optional_number_arg("limit").map(|value| value as i64);
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let files = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().list(limit, None, None, None))
@@ -100,7 +100,7 @@ fn invoke_retrieve(
     let file_id = call.string_arg("fileId")?;
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let file = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().retrieve(&file_id))
@@ -126,7 +126,7 @@ fn invoke_delete(
     let file_id = call.string_arg("fileId")?;
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let result = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().delete(&file_id))
@@ -149,7 +149,7 @@ fn invoke_content(
     let file_id = call.string_arg("fileId")?;
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let content = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.files().content(&file_id))
@@ -176,6 +176,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_file_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -189,6 +190,7 @@ mod tests {
             arguments: serde_json::json!({ "file": "https://cdn.example/a.mp3", "purpose": "audio" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_file_tool(&no_token, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -199,6 +201,7 @@ mod tests {
             arguments: serde_json::json!({ "purpose": "audio" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_file_tool(&no_file, Some("token")).expect_err("file required");
         assert_eq!(error.code(), "invalid_input");
@@ -213,6 +216,7 @@ mod tests {
                 arguments: serde_json::json!({}),
                 session_id: None,
                 trace_id: None,
+                access_token: None,
             };
             let error = invoke_file_tool(&call, Some("token")).expect_err("fileId required");
             assert_eq!(error.code(), "invalid_input", "{tool_id}");

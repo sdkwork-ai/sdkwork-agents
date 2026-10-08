@@ -28,7 +28,7 @@ fn invoke_model_list(
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let models = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.models().list())
@@ -71,7 +71,7 @@ fn invoke_embedding_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let embeddings = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.embeddings().create(&request))
@@ -111,7 +111,7 @@ fn invoke_moderation_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let moderation = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.moderations().create(&request))
@@ -151,6 +151,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_intelligence_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -164,6 +165,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_intelligence_tool(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -177,6 +179,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error =
             invoke_intelligence_tool(&embedding, Some("token")).expect_err("input required");
@@ -188,6 +191,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error =
             invoke_intelligence_tool(&moderation, Some("token")).expect_err("input required");

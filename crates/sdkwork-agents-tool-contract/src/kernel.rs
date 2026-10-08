@@ -92,6 +92,9 @@ pub fn media_tool_call(call: &ToolCall) -> Result<crate::MediaToolCall, KernelEr
             .trace_context
             .as_ref()
             .map(|context| context.trace_id.clone()),
+        // Kernel-side invocations carry no access token; the turn-scoped
+        // media executor fills the dual-token pair from the request context.
+        access_token: None,
     })
 }
 

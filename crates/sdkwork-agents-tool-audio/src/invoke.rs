@@ -54,7 +54,7 @@ fn invoke_speech_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let audio_bytes = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_speech(&request))
@@ -100,7 +100,7 @@ fn invoke_transcriptions_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let transcription = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_transcription(&request))
@@ -137,7 +137,7 @@ fn invoke_translations_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let translation = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_translation(&request))
@@ -160,7 +160,7 @@ fn invoke_voices_list(
     let limit = call.optional_number_arg("limit").map(|value| value as i64);
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let voices = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().list_voices(limit, None, None, None))
@@ -187,8 +187,10 @@ fn invoke_voices_list(
 /// Builds the OpenAI file reference from the `file` argument object.
 ///
 /// Accepts either a URL reference (`{ "url": "..." }`), a provider file id
-/// (`{ "file_id": "..." }`), or a provider-specific payload object, mirroring
-/// the cloudrouter open-api file input contract.
+/// (`{ "file_id": "..." }`), a provider-specific payload object, or a bare
+/// URL string — the chat agent prompt tells the model to pass the audio URL
+/// directly, and a bare string is coerced to `{ "url": ... }` instead of
+/// failing the whole tool call.
 fn file_reference_arg(call: &MediaToolCall) -> Result<OpenAiFileReferenceInput, MediaToolError> {
     let file = call.arguments.get("file").ok_or_else(|| {
         MediaToolError::invalid_argument(format!(
@@ -196,6 +198,13 @@ fn file_reference_arg(call: &MediaToolCall) -> Result<OpenAiFileReferenceInput, 
             call.tool_id
         ))
     })?;
+    if let Some(url) = file.as_str().filter(|value| !value.trim().is_empty()) {
+        return Ok(OpenAiFileReferenceInput {
+            additional_properties: [("url".to_string(), serde_json::json!(url.trim()))]
+                .into_iter()
+                .collect(),
+        });
+    }
     let object = file.as_object().ok_or_else(|| {
         MediaToolError::invalid_argument(format!(
             "`file` must be an object (url or file_id reference) for tool `{}`",
@@ -219,7 +228,7 @@ fn invoke_voices_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let voice = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_voice(&request))
@@ -247,7 +256,7 @@ fn invoke_voice_consents_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let consent = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().create_voice_consent(&request))
@@ -271,7 +280,7 @@ fn invoke_voice_consents_list(
     let limit = call.optional_number_arg("limit").map(|value| value as i64);
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let consents = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.audio().list_voice_consents(limit, None, None, None))
@@ -307,6 +316,7 @@ mod tests {
             arguments: serde_json::json!({ "file": { "url": "https://cdn.example/a.mp3" } }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let reference = file_reference_arg(&call).expect("url reference accepted");
         assert_eq!(
@@ -320,6 +330,7 @@ mod tests {
             arguments: serde_json::json!({ "file": { "file_id": "file.123" } }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let reference = file_reference_arg(&call).expect("file_id reference accepted");
         assert_eq!(
@@ -329,24 +340,43 @@ mod tests {
     }
 
     #[test]
-    fn file_reference_rejects_missing_or_non_object() {
+    fn file_reference_rejects_missing_and_coerces_bare_urls() {
         let missing = MediaToolCall {
             tool_call_id: "call.3".to_string(),
             tool_id: tool_ids::TRANSCRIPTIONS_CREATE.to_string(),
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         assert!(file_reference_arg(&missing).is_err());
 
-        let scalar = MediaToolCall {
+        // A bare URL string (what the chat prompt tells the model to send) is
+        // coerced into the {url} reference object instead of failing the call.
+        let bare = MediaToolCall {
             tool_call_id: "call.4".to_string(),
             tool_id: tool_ids::TRANSCRIPTIONS_CREATE.to_string(),
             arguments: serde_json::json!({ "file": "https://cdn.example/a.mp3" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
-        assert!(file_reference_arg(&scalar).is_err());
+        let coerced = file_reference_arg(&bare).expect("bare url coerces");
+        assert_eq!(
+            coerced.additional_properties.get("url"),
+            Some(&serde_json::json!("https://cdn.example/a.mp3"))
+        );
+
+        // A non-string scalar (number/bool) stays rejected.
+        let number = MediaToolCall {
+            tool_call_id: "call.5".to_string(),
+            tool_id: tool_ids::TRANSCRIPTIONS_CREATE.to_string(),
+            arguments: serde_json::json!({ "file": 42 }),
+            session_id: None,
+            trace_id: None,
+            access_token: None,
+        };
+        assert!(file_reference_arg(&number).is_err());
     }
 
     #[test]
@@ -357,6 +387,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_audio_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -370,6 +401,7 @@ mod tests {
             arguments: serde_json::json!({ "input": "hello" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_audio_tool(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -383,6 +415,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_audio_tool(&call, Some("token")).expect_err("input required");
         assert_eq!(error.code(), "invalid_input");
@@ -396,6 +429,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_audio_tool(&no_name, Some("token")).expect_err("name required");
         assert_eq!(error.code(), "invalid_input");
@@ -406,6 +440,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_audio_tool(&no_consent_name, Some("token")).expect_err("name required");
         assert_eq!(error.code(), "invalid_input");
@@ -416,6 +451,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_audio_tool(&no_token, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");

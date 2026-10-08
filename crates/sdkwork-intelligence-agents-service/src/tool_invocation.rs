@@ -37,6 +37,8 @@ pub struct MediaToolInvocationRequest {
     pub organization_id: u64,
     /// Caller auth token for cloudrouter account-pool routing.
     pub auth_token: Option<String>,
+    /// Caller access token (dual-token pair second half).
+    pub access_token: Option<String>,
     /// Explicit save-to-drive request; falls back to the tenant configuration
     /// default when `None`.
     pub save_to_drive: Option<bool>,
@@ -57,6 +59,7 @@ impl MediaToolInvocationRequest {
             arguments: self.arguments.clone(),
             session_id: Some(self.app_resource_id.clone()),
             trace_id: self.trace_id.clone(),
+            access_token: self.access_token.clone(),
         }
     }
 }

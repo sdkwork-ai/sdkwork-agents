@@ -653,6 +653,7 @@ impl TurnToolExecutor for MediaToolExecutor {
             arguments: call.arguments.clone(),
             session_id: call.session_id.clone(),
             trace_id: call.trace_id.clone(),
+            access_token: context.access_token.map(str::to_string),
         };
         match self.registry.invoke(&media_call, context.auth_token) {
             Ok(result) if result.status == "succeeded" => TurnToolExecution::Completed {

@@ -83,6 +83,22 @@ impl CloudRouterMediaClient {
         Ok(client)
     }
 
+    /// Creates an `SdkworkAiClient` configured with the full caller dual-token
+    /// pair. Gateway faces classified `api-key-or-dual-token` reject a lone
+    /// Authorization bearer with 40001, so faces like
+    /// `POST /v1/audio/transcriptions` need both halves.
+    pub fn with_dual_tokens(
+        &self,
+        auth_token: &str,
+        access_token: Option<&str>,
+    ) -> Result<SdkworkAiClient, MediaToolError> {
+        let client = self.with_auth_token(auth_token)?;
+        if let Some(access_token) = access_token.map(str::trim).filter(|value| !value.is_empty()) {
+            client.set_access_token(access_token);
+        }
+        Ok(client)
+    }
+
     /// Attaches the inbound request trace context to the generated SDK client
     /// so the cloudrouter gateway sees the same trace id as the agents turn:
     /// `x-trace-id` carries the id, and a W3C `traceparent` is synthesized for

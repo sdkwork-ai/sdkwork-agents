@@ -59,7 +59,7 @@ fn invoke_generations_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let images = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images().create_generation(&request))
@@ -89,7 +89,7 @@ fn invoke_edits_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let images = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images().create_edit(&request))
@@ -115,7 +115,7 @@ fn invoke_variations_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let images = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images().create_variation(&request))
@@ -164,7 +164,7 @@ fn invoke_midjourney_generations_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(
@@ -191,7 +191,7 @@ fn invoke_midjourney_generations_list(
     let task_id = call.string_arg("taskId")?;
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images_midjourney().list_v1_images_generations(&task_id))
@@ -224,7 +224,7 @@ fn invoke_nano_banana_generations_create(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images_nano_banana().create_generations(&request))
@@ -248,7 +248,7 @@ fn invoke_nano_banana_generations_retrieve(
     let task_id = call.string_arg("taskId")?;
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images_nano_banana().retrieve_generations(&task_id))
@@ -288,7 +288,7 @@ fn invoke_vidu_reference2image(
     };
 
     let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_auth_token(auth_token)?;
+    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
         runtime.block_on(sdk.images_vidu().create_ent_v2_reference2image(&request))
@@ -348,6 +348,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_image_tool(&call, Some("token")).expect_err("unknown tool");
         assert_eq!(error.code(), "capability_missing");
@@ -361,6 +362,7 @@ mod tests {
             arguments: serde_json::json!({ "prompt": "a red fox" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_image_tool(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -374,6 +376,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_image_tool(&call, Some("token")).expect_err("prompt required");
         assert_eq!(error.code(), "invalid_input");
@@ -387,6 +390,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = invoke_image_tool(&call, Some("token")).expect_err("image required");
         assert_eq!(error.code(), "invalid_input");
@@ -397,6 +401,7 @@ mod tests {
             arguments: serde_json::json!({ "image": "https://cdn.example/a.png" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         assert!(invoke_image_tool(&scalar, Some("token")).is_err());
     }

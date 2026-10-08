@@ -25,6 +25,11 @@ pub struct MediaToolCall {
     /// the cloudrouter gateway) so one trace id spans the whole call chain.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trace_id: Option<String>,
+    /// Caller access token (the second half of the gateway dual-token pair).
+    /// Gateway faces classified `api-key-or-dual-token` reject a lone
+    /// Authorization bearer, so dual-token faces need both halves.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub access_token: Option<String>,
 }
 
 impl MediaToolCall {
@@ -115,6 +120,7 @@ mod tests {
             arguments: serde_json::json!({ "input": "hello", "voice": "alloy" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         assert_eq!(call.string_arg("input").unwrap(), "hello");
         assert_eq!(call.optional_string_arg("voice").unwrap(), "alloy");
@@ -130,6 +136,7 @@ mod tests {
             arguments: serde_json::json!({ "speed": 1.25 }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         assert_eq!(call.optional_number_arg("speed"), Some(1.25));
         assert!(call.optional_number_arg("missing").is_none());
