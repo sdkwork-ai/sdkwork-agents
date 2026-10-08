@@ -13,8 +13,8 @@ use std::time::Duration;
 use reqwest::blocking::Client;
 
 use sdkwork_generations_mcp_service::{
-    GenerateImageInput, GenerateMusicInput, GenerateVideoInput, GenerationRetrieveInput,
-    SynthesizeSpeechInput,
+    GenerateImageInput, GenerateMusicInput, GenerateSoundEffectInput, GenerateVideoInput,
+    GenerationRetrieveInput, SynthesizeSpeechInput,
 };
 
 const GENERATIONS_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
@@ -44,6 +44,9 @@ fn generation_endpoint(modality: &str, operation: &str) -> Option<String> {
             Some("/app/v3/api/generations/music/lyrics_to_music".to_string())
         }
         ("voice", "speech") => Some("/app/v3/api/generations/voice/speech".to_string()),
+        ("sfx", "sound_effects") => {
+            Some("/app/v3/api/generations/sound_effects".to_string())
+        }
         _ => None,
     }
 }
@@ -350,6 +353,24 @@ pub fn music_parameters(input: &GenerateMusicInput) -> serde_json::Value {
     serde_json::Value::Object(parameters)
 }
 
+/// Builds the `parameters` payload for the sound-effect tool.
+pub fn sound_effect_parameters(input: &GenerateSoundEffectInput) -> serde_json::Value {
+    let mut parameters = serde_json::Map::new();
+    if let Some(vendor) = input.vendor.as_deref() {
+        parameters.insert("vendor".to_string(), serde_json::json!(vendor));
+    }
+    if let Some(duration) = input.duration_seconds {
+        parameters.insert(
+            "generationConfig".to_string(),
+            serde_json::json!({ "durationSeconds": duration }),
+        );
+    }
+    if let Some(format) = input.response_format.as_deref() {
+        parameters.insert("responseFormat".to_string(), serde_json::json!(format));
+    }
+    serde_json::Value::Object(parameters)
+}
+
 /// Parses a retrieve tool's arguments into the generation id.
 pub fn retrieve_generation_id(input: &GenerationRetrieveInput) -> String {
     input.generation_id.clone()
@@ -410,6 +431,10 @@ mod tests {
             generation_endpoint("music", "text_to_music").as_deref(),
             Some("/app/v3/api/generations/music/text_to_music")
         );
+        assert_eq!(
+            generation_endpoint("sfx", "sound_effects").as_deref(),
+            Some("/app/v3/api/generations/sound_effects")
+        );
         assert_eq!(generation_endpoint("image", "unknown"), None);
     }
 
@@ -456,5 +481,19 @@ mod tests {
             parameters["generationConfig"]["durationSeconds"], 5,
             "durationSeconds must survive the builder"
         );
+    }
+
+    #[test]
+    fn sound_effect_parameters_carry_duration_and_format() {
+        let input = GenerateSoundEffectInput {
+            prompt: "thunder over a metal roof".to_string(),
+            vendor: None,
+            model: Some("eleven_text_to_sound_v2".to_string()),
+            duration_seconds: Some(6.0),
+            response_format: Some("wav".to_string()),
+        };
+        let parameters = sound_effect_parameters(&input);
+        assert_eq!(parameters["generationConfig"]["durationSeconds"], 6.0);
+        assert_eq!(parameters["responseFormat"], "wav");
     }
 }

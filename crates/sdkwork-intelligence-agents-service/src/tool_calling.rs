@@ -299,8 +299,8 @@ impl GenerationsToolExecutor {
     ) -> TurnToolExecution {
         use crate::generations_tool_port as port;
         use sdkwork_generations_mcp_service::{
-            GenerateImageInput, GenerateMusicInput, GenerateVideoInput, GenerationRetrieveInput,
-            SynthesizeSpeechInput,
+            GenerateImageInput, GenerateMusicInput, GenerateSoundEffectInput, GenerateVideoInput,
+            GenerationRetrieveInput, SynthesizeSpeechInput,
         };
         let tenant_id = call.tenant_id.unwrap_or(0);
         let result = match tool_name {
@@ -398,6 +398,27 @@ impl GenerationsToolExecutor {
                     &input.prompt,
                     input.model.as_deref(),
                     port::music_parameters(&input),
+                    None,
+                    auth_token,
+                    access_token,
+                    &call.tool_call_id,
+                )
+                .and_then(|item| {
+                    generation_payload_with_results(http, &item, auth_token, access_token)
+                })
+            }
+            "sound-effect.generate" => {
+                let input = match Self::parse_arguments::<GenerateSoundEffectInput>(call) {
+                    Ok(input) => input,
+                    Err(error) => return error,
+                };
+                http.create_generation(
+                    "sfx",
+                    "sound_effects",
+                    tenant_id,
+                    &input.prompt,
+                    input.model.as_deref(),
+                    port::sound_effect_parameters(&input),
                     None,
                     auth_token,
                     access_token,
