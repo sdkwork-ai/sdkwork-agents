@@ -248,6 +248,9 @@ pub fn image_parameters(input: &GenerateImageInput) -> serde_json::Value {
     if input.size.is_some() {
         parameters.insert("size".to_string(), serde_json::json!(input.size));
     }
+    if let Some(seed) = input.seed {
+        parameters.insert("seed".to_string(), serde_json::json!(seed));
+    }
     if !input.reference_images.is_empty() {
         parameters.insert(
             "referenceImages".to_string(),
@@ -291,10 +294,13 @@ pub fn video_parameters(input: &GenerateVideoInput) -> serde_json::Value {
         );
     }
     if let Some(last_frame) = input.last_frame.as_deref() {
-        parameters.insert(
-            "lastFrame".to_string(),
-            serde_json::json!({ "url": last_frame }),
-        );
+        // The command extractor reads `lastFrame` / `imageTail` as a bare URL
+        // string; wrapping it in `{url}` would drop the tail frame before the
+        // vendor adapter ever sees it.
+        parameters.insert("lastFrame".to_string(), serde_json::json!(last_frame));
+    }
+    if let Some(seed) = input.seed {
+        parameters.insert("seed".to_string(), serde_json::json!(seed));
     }
     serde_json::Value::Object(parameters)
 }
@@ -417,11 +423,38 @@ mod tests {
             image_count: Some(2),
             quality: Some("high".to_string()),
             size: None,
+            seed: Some(7),
             reference_images: vec![],
             reference_asset_ids: vec![],
         };
         let parameters = image_parameters(&input);
         assert_eq!(parameters["vendor"], "openai");
         assert_eq!(parameters["generationConfig"]["imageCount"], 2);
+        assert_eq!(parameters["seed"], 7);
+    }
+
+    #[test]
+    fn video_parameters_carry_tail_frame_as_bare_url_and_seed() {
+        let input = GenerateVideoInput {
+            prompt: "waves".to_string(),
+            model: Some("viduq2".to_string()),
+            vendor: Some("vidu".to_string()),
+            duration_seconds: Some(5),
+            aspect_ratio: Some("16:9".to_string()),
+            resolution: Some("1080p".to_string()),
+            seed: Some(42),
+            reference_images: vec!["https://cdn.example/start.png".to_string()],
+            reference_asset_ids: vec![],
+            last_frame: Some("https://cdn.example/end.png".to_string()),
+        };
+        let parameters = video_parameters(&input);
+        // The command extractor reads `lastFrame` as a bare URL string; an
+        // object wrapper would silently drop the tail frame.
+        assert_eq!(parameters["lastFrame"], "https://cdn.example/end.png");
+        assert_eq!(parameters["seed"], 42);
+        assert_eq!(
+            parameters["generationConfig"]["durationSeconds"], 5,
+            "durationSeconds must survive the builder"
+        );
     }
 }
