@@ -305,6 +305,15 @@ pub fn video_parameters(input: &GenerateVideoInput) -> serde_json::Value {
     if let Some(seed) = input.seed {
         parameters.insert("seed".to_string(), serde_json::json!(seed));
     }
+    if let Some(negative_prompt) = input.negative_prompt.as_deref() {
+        parameters.insert("negativePrompt".to_string(), serde_json::json!(negative_prompt));
+    }
+    if let Some(mode) = input.mode.as_deref() {
+        parameters.insert("mode".to_string(), serde_json::json!(mode));
+    }
+    if let Some(cfg_scale) = input.cfg_scale {
+        parameters.insert("cfgScale".to_string(), serde_json::json!(cfg_scale));
+    }
     serde_json::Value::Object(parameters)
 }
 
@@ -349,6 +358,12 @@ pub fn music_parameters(input: &GenerateMusicInput) -> serde_json::Value {
     }
     if let Some(negative_tags) = input.negative_tags.as_deref() {
         parameters.insert("negativeTags".to_string(), serde_json::json!(negative_tags));
+    }
+    if let Some(is_instrumental) = input.is_instrumental {
+        parameters.insert("isInstrumental".to_string(), serde_json::json!(is_instrumental));
+    }
+    if let Some(lyrics_optimizer) = input.lyrics_optimizer {
+        parameters.insert("lyricsOptimizer".to_string(), serde_json::json!(lyrics_optimizer));
     }
     serde_json::Value::Object(parameters)
 }
@@ -468,6 +483,9 @@ mod tests {
             aspect_ratio: Some("16:9".to_string()),
             resolution: Some("1080p".to_string()),
             seed: Some(42),
+            negative_prompt: Some("no text overlays".to_string()),
+            mode: Some("pro".to_string()),
+            cfg_scale: Some(0.75),
             reference_images: vec!["https://cdn.example/start.png".to_string()],
             reference_asset_ids: vec![],
             last_frame: Some("https://cdn.example/end.png".to_string()),
@@ -477,10 +495,33 @@ mod tests {
         // object wrapper would silently drop the tail frame.
         assert_eq!(parameters["lastFrame"], "https://cdn.example/end.png");
         assert_eq!(parameters["seed"], 42);
+        assert_eq!(parameters["negativePrompt"], "no text overlays");
+        assert_eq!(parameters["mode"], "pro");
+        assert_eq!(parameters["cfgScale"], 0.75);
         assert_eq!(
             parameters["generationConfig"]["durationSeconds"], 5,
             "durationSeconds must survive the builder"
         );
+    }
+
+    #[test]
+    fn music_parameters_carry_instrumental_and_lyrics_flags() {
+        let input = GenerateMusicInput {
+            prompt: "a bright piano loop".to_string(),
+            vendor: Some("minimax".to_string()),
+            tags: None,
+            title: None,
+            lyrics: None,
+            duration_seconds: None,
+            negative_tags: None,
+            is_instrumental: Some(true),
+            lyrics_optimizer: Some(false),
+            model: Some("music-cover".to_string()),
+        };
+        let parameters = music_parameters(&input);
+        assert_eq!(parameters["isInstrumental"], true);
+        assert_eq!(parameters["lyricsOptimizer"], false);
+        assert_eq!(parameters["vendor"], "minimax");
     }
 
     #[test]

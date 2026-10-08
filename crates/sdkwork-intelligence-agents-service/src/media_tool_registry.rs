@@ -197,6 +197,7 @@ mod tests {
             arguments: serde_json::json!({ "input": "hello" }),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = registry.invoke(&call, None).expect_err("auth required");
         assert_eq!(error.code(), "auth_required");
@@ -208,6 +209,7 @@ mod tests {
             arguments: serde_json::json!({}),
             session_id: None,
             trace_id: None,
+            access_token: None,
         };
         let error = registry
             .invoke(&unknown, Some("token"))
