@@ -9,12 +9,12 @@ pub mod tool_ids {
 
 const VERSION: &str = "0.1.0";
 
-/// Why the sound-effect tool is reserved: the cloudrouter open-api surface
-/// exposes no sound-effect generation endpoint yet.
-pub const PENDING_CAPABILITY_REASON: &str =
-    "cloudrouter open-api has no sound-effect endpoint; reserved until the upstream surface opens";
-
 /// Static definitions for the sound-effect category.
+///
+/// The tool is fully available: the cloudrouter gateway exposes
+/// `POST /app/v3/api/generations/sound_effects` and the ElevenLabs adapter
+/// dispatches it (the tool used to be availability-gated as
+/// `PendingCapability` before that surface opened).
 pub fn sound_effect_tool_definitions() -> Vec<MediaToolDefinition> {
     vec![generate_definition()]
 }
@@ -26,9 +26,8 @@ fn generate_definition() -> MediaToolDefinition {
         name: "generate".to_string(),
         display_name: "Generate Sound Effect".to_string(),
         version: VERSION.to_string(),
-        description: "Generates a sound effect from a text description. The tool is \
-                      reserved: invocation reports capability-missing until the \
-                      cloudrouter gateway opens a sound-effect endpoint."
+        description: "Generates a sound effect from a text description (thunder, \
+                      rain, café ambience, …) and returns a playable audio asset."
             .to_string(),
         input_schema: serde_json::json!({
             "type": "object",
@@ -61,9 +60,7 @@ fn generate_definition() -> MediaToolDefinition {
         side_effect_level: "side_effectful".to_string(),
         policy_categories: vec![ToolCategory::SoundEffect.policy_category("generate")],
         timeout_ms: 60_000,
-        availability: ToolAvailability::PendingCapability {
-            reason: PENDING_CAPABILITY_REASON.to_string(),
-        },
+        availability: ToolAvailability::Available,
     }
 }
 
@@ -82,12 +79,7 @@ mod tests {
             definition.input_schema["required"],
             serde_json::json!(["prompt"])
         );
-        assert_eq!(
-            definition.availability,
-            ToolAvailability::PendingCapability {
-                reason: PENDING_CAPABILITY_REASON.to_string()
-            }
-        );
+        assert_eq!(definition.availability, ToolAvailability::Available);
         assert_eq!(
             definition.policy_categories,
             vec!["media.sound-effect.generate"]

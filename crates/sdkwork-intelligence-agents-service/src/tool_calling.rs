@@ -26,6 +26,9 @@ use sdkwork_agents_tool_contract::MediaToolCall;
 /// Namespace prefix of the built-in generations MCP tools.
 pub const GENERATIONS_MCP_TOOL_PREFIX: &str = "mcp__generations__";
 
+/// Bare curated id of the sound-effect tool (no `mcp__generations__` prefix).
+pub const SOUND_EFFECT_TOOL_ID: &str = "sound-effect.generate";
+
 /// Stable `TurnToolExecution::Failed` code for a wallet shortfall. The tool
 /// loop escalates it to a turn-level funding error so the HTTP boundary can
 /// answer 402 with the recharge affordance instead of feeding the failure
@@ -536,7 +539,11 @@ fn extract_generation_media_urls(results: &[serde_json::Value]) -> Vec<String> {
 
 impl TurnToolExecutor for GenerationsToolExecutor {
     fn owns(&self, tool_id: &str) -> bool {
+        // The sound-effect tool ships with the bare curated id
+        // (`sound-effect.generate`, no `mcp__generations__` prefix) but runs on
+        // the same generations HTTP family as the prefixed tools.
         tool_id.starts_with(GENERATIONS_MCP_TOOL_PREFIX)
+            || tool_id == SOUND_EFFECT_TOOL_ID
     }
 
     fn descriptors(&self) -> Vec<TurnToolDescriptor> {
@@ -548,7 +555,10 @@ impl TurnToolExecutor for GenerationsToolExecutor {
         call: &TurnToolCall,
         context: &TurnToolExecutionContext<'_>,
     ) -> TurnToolExecution {
-        let tool_name = &call.tool_id[GENERATIONS_MCP_TOOL_PREFIX.len()..];
+        let tool_name = call
+            .tool_id
+            .strip_prefix(GENERATIONS_MCP_TOOL_PREFIX)
+            .unwrap_or(call.tool_id.as_str());
         match &self.runtime {
             GenerationsToolRuntime::Embedded(port) => {
                 let arguments_json =
@@ -622,7 +632,10 @@ impl MediaToolExecutor {
 
 impl TurnToolExecutor for MediaToolExecutor {
     fn owns(&self, tool_id: &str) -> bool {
-        self.registry.describe_tool(tool_id).is_some()
+        // `sound-effect.generate` stays registry-visible (descriptors) but its
+        // execution belongs to the generations HTTP family, which forwards it
+        // to the gateway's sound_effects surface.
+        tool_id != SOUND_EFFECT_TOOL_ID && self.registry.describe_tool(tool_id).is_some()
     }
 
     fn descriptors(&self) -> Vec<TurnToolDescriptor> {
@@ -989,18 +1002,23 @@ mod tests {
     }
 
     #[test]
-    fn media_executor_excludes_pending_capability_tools() {
+    fn media_executor_advertises_available_tools_only() {
         let executor = MediaToolExecutor::new(Arc::new(MediaToolRegistry::new()));
         let descriptors = executor.descriptors();
-        // Sound effects are reserved until the upstream surface opens; they
-        // must not be advertised to the model while invocation would fail.
-        assert!(!descriptors
+        // Sound effects execute through the generations HTTP family, but the
+        // registry still advertises the descriptor now that the gateway's
+        // sound_effects surface is live.
+        assert!(descriptors
             .iter()
-            .any(|descriptor| descriptor.tool_id == "sound-effect.generate"));
+            .any(|descriptor| descriptor.tool_id == SOUND_EFFECT_TOOL_ID));
         // The synchronous media family stays available.
         assert!(descriptors
             .iter()
             .any(|descriptor| descriptor.tool_id == "audio.speech.create"));
+        // Availability gating still works: a pending tool would be excluded.
+        assert!(!descriptors
+            .iter()
+            .any(|descriptor| descriptor.tool_id == "sound-effect.nonexistent"));
     }
 
     #[test]

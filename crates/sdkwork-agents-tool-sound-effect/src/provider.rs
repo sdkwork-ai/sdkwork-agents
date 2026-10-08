@@ -21,7 +21,7 @@ use crate::definitions::{sound_effect_tool_definitions, tool_ids};
 /// Provider id for the cloudrouter-backed sound-effect category.
 pub const SOUND_EFFECT_PROVIDER_ID: &str = "cloudrouter.media.sound-effect";
 
-/// Sound-effect category tool provider (capability reserved).
+/// Sound-effect category tool provider (descriptors; execution delegated).
 #[derive(Debug, Default)]
 pub struct SoundEffectMediaToolProvider;
 
@@ -46,9 +46,10 @@ impl MediaToolProvider for SoundEffectMediaToolProvider {
         _auth_token: Option<&str>,
     ) -> Result<MediaToolResult, MediaToolError> {
         match call.tool_id.as_str() {
-            tool_ids::GENERATE => Err(MediaToolError::pending_capability(
-                "sound-effect.generate: cloudrouter open-api has no sound-effect endpoint; \
-                 reserved until the upstream surface opens",
+            tool_ids::GENERATE => Err(MediaToolError::CapabilityMissing(
+                "sound-effect.generate executes in the agents media tool family \
+                 executor (generations HTTP); this provider carries descriptors only"
+                    .to_string(),
             )),
             other => Err(MediaToolError::CapabilityMissing(format!(
                 "sound-effect provider has no tool `{other}`"
@@ -62,7 +63,7 @@ impl ToolProvider for SoundEffectMediaToolProvider {
         ProviderManifest::new(
             SOUND_EFFECT_PROVIDER_ID,
             "tool",
-            "Sound-effect media tools (capability reserved)",
+            "Sound-effect media tools",
             "0.1.0",
             vec![
                 "tool.invoke".to_string(),
@@ -106,7 +107,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn provider_exposes_the_reserved_tool() {
+    fn provider_exposes_the_sound_effect_tool() {
         let provider = SoundEffectMediaToolProvider::new();
         let descriptors = provider.list_tools();
         assert_eq!(descriptors.len(), 1);
@@ -115,19 +116,21 @@ mod tests {
     }
 
     #[test]
-    fn invocation_fails_with_capability_missing() {
+    fn invocation_reports_the_executor_delegation() {
+        // Execution lives in the agents media tool family executor (generations
+        // HTTP); this provider carries descriptors only.
         let provider = SoundEffectMediaToolProvider::new();
         let call = ToolCall::new(
             "call.1",
             tool_ids::GENERATE,
             r#"{"prompt":"thunder rumble"}"#,
         );
-        let error = provider.invoke_tool(call).expect_err("pending capability");
+        let error = provider.invoke_tool(call).expect_err("descriptor-only provider");
         assert_eq!(
             error.kind(),
             sdkwork_agent_kernel::KernelErrorKind::CapabilityMissing
         );
-        assert!(error.to_string().contains("cloudrouter"));
+        assert!(error.to_string().contains("media tool family"));
     }
 
     #[test]
