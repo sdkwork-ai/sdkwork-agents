@@ -4,86 +4,37 @@
   "mode": "dry-run",
   "standardProfile": "sdkwork-v3",
   "sdkgenPath": "sdkwork-sdk-generator/bin/sdkgen.js",
-  "startedAt": "2026-10-19T06:59:45.452Z",
+  "startedAt": "2026-10-19T07:00:30.274Z",
   "families": [
     {
-      "key": "app",
-      "familyDir": "sdkwork-agents-app-sdk",
-      "authority": "sdkwork-agents-app-api",
-      "input": "sdks/sdkwork-agents-app-sdk/openapi/sdkwork-agents-app-api.sdkgen.yaml",
-      "output": "sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-typescript/generated/server-openapi",
-      "sdkName": "sdkwork-agents-app-sdk",
-      "sdkType": "app",
+      "key": "backend",
+      "familyDir": "sdkwork-agents-backend-sdk",
+      "authority": "sdkwork-agents-backend-api",
+      "input": "sdks/sdkwork-agents-backend-sdk/openapi/sdkwork-agents-backend-api.sdkgen.yaml",
+      "output": "sdks/sdkwork-agents-backend-sdk/sdkwork-agents-backend-sdk-typescript/generated/server-openapi",
+      "sdkName": "sdkwork-agents-backend-sdk",
+      "sdkType": "backend",
       "sdkOwner": "sdkwork-agents",
-      "packageName": "@sdkwork/agents-app-sdk",
-      "apiPrefix": "/app/v3/api",
+      "packageName": "@sdkwork/agents-backend-sdk",
+      "apiPrefix": "/backend/v3/api",
       "sdkDependencies": [
         {
-          "workspace": "sdkwork-iam-app-sdk",
-          "role": "appbase-identity-and-session-capability",
+          "workspace": "sdkwork-iam-backend-sdk",
+          "role": "appbase-backend-management-capability",
           "required": true,
           "dependencyMode": "consumer-sdk",
-          "apiPrefix": "/app/v3/api",
-          "apiAuthority": "sdkwork-iam-app-api",
+          "apiPrefix": "/backend/v3/api",
+          "apiAuthority": "sdkwork-iam-backend-api",
           "generatedTransportImportPolicy": "forbidden",
           "packageByLanguage": {
-            "typescript": "@sdkwork/iam-app-sdk"
-          }
-        },
-        {
-          "workspace": "sdkwork-drive-app-sdk",
-          "role": "drive-uploader-file-storage-capability",
-          "required": true,
-          "dependencyMode": "consumer-sdk",
-          "apiPrefix": "/app/v3/api",
-          "apiAuthority": "sdkwork-drive.app",
-          "generatedTransportImportPolicy": "forbidden",
-          "packageByLanguage": {
-            "typescript": "@sdkwork/drive-app-sdk"
-          }
-        },
-        {
-          "workspace": "sdkwork-prompts-app-sdk",
-          "role": "project-instructions-capability",
-          "required": true,
-          "dependencyMode": "consumer-sdk",
-          "apiPrefix": "/app/v3/api",
-          "apiAuthority": "sdkwork-prompts-app-api",
-          "generatedTransportImportPolicy": "forbidden",
-          "packageByLanguage": {
-            "typescript": "@sdkwork/prompts-app-sdk"
-          }
-        },
-        {
-          "workspace": "sdkwork-memory-app-sdk",
-          "role": "project-memory-selection-capability",
-          "required": true,
-          "dependencyMode": "consumer-sdk",
-          "apiPrefix": "/app/v3/api",
-          "apiAuthority": "sdkwork-memory.app",
-          "generatedTransportImportPolicy": "forbidden",
-          "packageByLanguage": {
-            "typescript": "@sdkwork/memory-app-sdk"
-          }
-        },
-        {
-          "workspace": "sdkwork-documents-app-sdk",
-          "role": "project-document-selection-capability",
-          "required": true,
-          "dependencyMode": "consumer-sdk",
-          "apiPrefix": "/app/v3/api",
-          "apiAuthority": "sdkwork-documents-app-api",
-          "generatedTransportImportPolicy": "forbidden",
-          "packageByLanguage": {
-            "typescript": "@sdkwork/documents-app-sdk"
+            "typescript": "@sdkwork/iam-backend-sdk"
           }
         }
       ],
       "version": "0.1.0",
-      "fingerprint": "4bf066336e8927a49191ab333e929ca9eb30410f00f3bf4eeb17dfee9543e906",
+      "fingerprint": "1ff1746bb5d99e4d6d7c40f7c867cefd354301cd80f0d82cd41f33af7c480c02",
       "fingerprints": {
-        "typescript": "4bf066336e8927a49191ab333e929ca9eb30410f00f3bf4eeb17dfee9543e906",
-        "flutter": "614a545ec713c87a3fa01815575cad7c15af66ef558a38e42760cd7641208374"
+        "typescript": "1ff1746bb5d99e4d6d7c40f7c867cefd354301cd80f0d82cd41f33af7c480c02"
       },
       "hasChanges": false,
       "riskLevel": "low",
@@ -91,22 +42,11 @@
       "languages": [
         {
           "language": "typescript",
-          "workspace": "sdkwork-agents-app-sdk-typescript",
-          "output": "sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-typescript/generated/server-openapi",
-          "packageName": "@sdkwork/agents-app-sdk",
+          "workspace": "sdkwork-agents-backend-sdk-typescript",
+          "output": "sdks/sdkwork-agents-backend-sdk/sdkwork-agents-backend-sdk-typescript/generated/server-openapi",
+          "packageName": "@sdkwork/agents-backend-sdk",
           "version": "0.1.0",
-          "fingerprint": "4bf066336e8927a49191ab333e929ca9eb30410f00f3bf4eeb17dfee9543e906",
-          "hasChanges": false,
-          "riskLevel": "low",
-          "generated": false
-        },
-        {
-          "language": "flutter",
-          "workspace": "sdkwork-agents-app-sdk-flutter",
-          "output": "sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-flutter/generated/server-openapi",
-          "packageName": "sdkwork_agents_app_sdk",
-          "version": "0.1.0",
-          "fingerprint": "614a545ec713c87a3fa01815575cad7c15af66ef558a38e42760cd7641208374",
+          "fingerprint": "1ff1746bb5d99e4d6d7c40f7c867cefd354301cd80f0d82cd41f33af7c480c02",
           "hasChanges": false,
           "riskLevel": "low",
           "generated": false
@@ -114,5 +54,5 @@
       ]
     }
   ],
-  "finishedAt": "2026-10-19T06:59:46.011Z"
+  "finishedAt": "2026-10-19T07:00:30.522Z"
 }

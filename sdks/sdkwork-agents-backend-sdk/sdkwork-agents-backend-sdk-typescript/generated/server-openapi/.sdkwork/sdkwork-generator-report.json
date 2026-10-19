@@ -11,8 +11,8 @@
   "status": "ok",
   "mode": "apply",
   "hasChanges": true,
-  "hasDestructiveChanges": true,
-  "changeFingerprint": "c1ab8bdbb291e3af7666526cafb1321f86742e27916f69ca6826040df841c216",
+  "hasDestructiveChanges": false,
+  "changeFingerprint": "cbf62caf6d5b9d1e7efdff85fa957b317a6696748395c6569a05ddb07a742c28",
   "changeImpact": {
     "schemaVersion": 1,
     "areas": [
@@ -25,21 +25,24 @@
       {
         "area": "api-surface",
         "paths": [
-          "src/api/ai.d.ts",
-          "src/api/paths.d.ts"
+          "src/api/ai.ts",
+          "src/api/paths.ts"
         ]
       },
       {
         "area": "models",
         "paths": [
-          "src/types/agent-management-profile.d.ts",
-          "src/types/execution-host-kind.d.ts",
-          "src/types/execution-host-list-response.d.ts",
-          "src/types/execution-host-record.d.ts",
-          "src/types/execution-host-response.d.ts",
-          "src/types/execution-host-status.d.ts",
-          "src/types/execution-host-upsert-request.d.ts",
-          "src/types/index.d.ts"
+          "src/types/agent-management-profile.ts",
+          "src/types/agent-turn-citation.ts",
+          "src/types/agent-turn-execution-item.ts",
+          "src/types/agent-turn-execution-response.ts",
+          "src/types/execution-host-kind.ts",
+          "src/types/execution-host-list-response.ts",
+          "src/types/execution-host-record.ts",
+          "src/types/execution-host-response.ts",
+          "src/types/execution-host-status.ts",
+          "src/types/execution-host-upsert-request.ts",
+          "src/types/index.ts"
         ]
       },
       {
@@ -68,7 +71,6 @@
     "summary": "Changes have been applied. Run the required verification plan now.",
     "reasons": [
       "backed-up-generated-files",
-      "deleted-generated-files",
       "manual-review-required",
       "verification-required"
     ]
@@ -160,7 +162,7 @@
   },
   "sdk": {
     "name": "sdkwork-agents-backend-sdk",
-    "version": "0.1.6",
+    "version": "0.1.0",
     "language": "typescript",
     "sdkType": "backend",
     "protocol": "http",
@@ -168,33 +170,45 @@
     "packageName": "@sdkwork/agents-backend-sdk"
   },
   "versioning": {
-    "resolvedVersion": "0.1.6",
-    "localVersions": [
-      "0.1.5"
-    ]
+    "resolvedVersion": "0.1.0",
+    "localVersions": []
   },
   "stats": {
-    "totalFiles": 146,
-    "models": 122,
+    "totalFiles": 148,
+    "models": 124,
     "apis": 1,
-    "types": 124
+    "types": 126
   },
   "warnings": [],
   "syncSummary": {
     "dryRun": false,
     "controlPlaneEnabled": true,
-    "writtenFiles": 3,
+    "writtenFiles": 16,
     "skippedScaffoldFiles": 2,
-    "skippedUnchangedGeneratedFiles": 141,
-    "deletedGeneratedFiles": 10,
+    "skippedUnchangedGeneratedFiles": 130,
+    "deletedGeneratedFiles": 0,
     "changeSummaryPath": ".sdkwork/sdkwork-generator-changes.json",
-    "changeFingerprint": "c1ab8bdbb291e3af7666526cafb1321f86742e27916f69ca6826040df841c216",
+    "changeFingerprint": "cbf62caf6d5b9d1e7efdff85fa957b317a6696748395c6569a05ddb07a742c28",
     "changes": {
-      "createdGeneratedFiles": [],
+      "createdGeneratedFiles": [
+        "src/types/agent-turn-citation.ts",
+        "src/types/agent-turn-execution-item.ts"
+      ],
       "updatedGeneratedFiles": [
         "CHANGELOG.md",
         "package.json",
-        "sdkwork-sdk.json"
+        "sdkwork-sdk.json",
+        "src/api/ai.ts",
+        "src/api/paths.ts",
+        "src/types/agent-management-profile.ts",
+        "src/types/agent-turn-execution-response.ts",
+        "src/types/execution-host-kind.ts",
+        "src/types/execution-host-list-response.ts",
+        "src/types/execution-host-record.ts",
+        "src/types/execution-host-response.ts",
+        "src/types/execution-host-status.ts",
+        "src/types/execution-host-upsert-request.ts",
+        "src/types/index.ts"
       ],
       "unchangedGeneratedFiles": [
         "bin/publish-core.mjs",
@@ -204,10 +218,8 @@
         "bin/sdk-gen.sh",
         "LICENSE",
         "README.md",
-        "src/api/ai.ts",
         "src/api/base.ts",
         "src/api/index.ts",
-        "src/api/paths.ts",
         "src/auth/index.ts",
         "src/http/client.ts",
         "src/http/index.ts",
@@ -241,7 +253,6 @@
         "src/types/agent-interaction-status.ts",
         "src/types/agent-item-drive-ref-record.ts",
         "src/types/agent-list-response.ts",
-        "src/types/agent-management-profile.ts",
         "src/types/agent-provider-binding-list-response.ts",
         "src/types/agent-provider-binding-record.ts",
         "src/types/agent-provider-binding-response.ts",
@@ -276,7 +287,6 @@
         "src/types/agent-task-run-record.ts",
         "src/types/agent-task-run-response.ts",
         "src/types/agent-task-state-change-request.ts",
-        "src/types/agent-turn-execution-response.ts",
         "src/types/agent-turn-list-response.ts",
         "src/types/agent-turn-mode.ts",
         "src/types/agent-turn-record.ts",
@@ -306,14 +316,7 @@
         "src/types/create-agent-task-request.ts",
         "src/types/create-agent-turn-request.ts",
         "src/types/execute-agent-task-request.ts",
-        "src/types/execution-host-kind.ts",
-        "src/types/execution-host-list-response.ts",
-        "src/types/execution-host-record.ts",
-        "src/types/execution-host-response.ts",
-        "src/types/execution-host-status.ts",
-        "src/types/execution-host-upsert-request.ts",
         "src/types/field-error.ts",
-        "src/types/index.ts",
         "src/types/int64-string.ts",
         "src/types/invalidate-agent-session-checkpoint-request.ts",
         "src/types/legacy-agent-interaction-resolution.ts",
@@ -339,34 +342,26 @@
         "src/types/update-agent-status-request.ts",
         "tsconfig.json"
       ],
-      "deletedGeneratedFiles": [
-        "src/api/ai.d.ts",
-        "src/api/paths.d.ts",
-        "src/types/agent-management-profile.d.ts",
-        "src/types/execution-host-kind.d.ts",
-        "src/types/execution-host-list-response.d.ts",
-        "src/types/execution-host-record.d.ts",
-        "src/types/execution-host-response.d.ts",
-        "src/types/execution-host-status.d.ts",
-        "src/types/execution-host-upsert-request.d.ts",
-        "src/types/index.d.ts"
-      ],
+      "deletedGeneratedFiles": [],
       "scaffoldedFiles": [],
       "preservedScaffoldFiles": [
         "custom/build-runtime.mjs",
         "custom/README.md"
       ],
       "backedUpFiles": [
-        "src/api/ai.d.ts",
-        "src/api/paths.d.ts",
-        "src/types/agent-management-profile.d.ts",
-        "src/types/execution-host-kind.d.ts",
-        "src/types/execution-host-list-response.d.ts",
-        "src/types/execution-host-record.d.ts",
-        "src/types/execution-host-response.d.ts",
-        "src/types/execution-host-status.d.ts",
-        "src/types/execution-host-upsert-request.d.ts",
-        "src/types/index.d.ts"
+        "CHANGELOG.md",
+        "package.json",
+        "sdkwork-sdk.json",
+        "src/api/ai.ts",
+        "src/api/paths.ts",
+        "src/types/agent-management-profile.ts",
+        "src/types/execution-host-kind.ts",
+        "src/types/execution-host-list-response.ts",
+        "src/types/execution-host-record.ts",
+        "src/types/execution-host-response.ts",
+        "src/types/execution-host-status.ts",
+        "src/types/execution-host-upsert-request.ts",
+        "src/types/index.ts"
       ]
     },
     "impact": {
@@ -381,21 +376,24 @@
         {
           "area": "api-surface",
           "paths": [
-            "src/api/ai.d.ts",
-            "src/api/paths.d.ts"
+            "src/api/ai.ts",
+            "src/api/paths.ts"
           ]
         },
         {
           "area": "models",
           "paths": [
-            "src/types/agent-management-profile.d.ts",
-            "src/types/execution-host-kind.d.ts",
-            "src/types/execution-host-list-response.d.ts",
-            "src/types/execution-host-record.d.ts",
-            "src/types/execution-host-response.d.ts",
-            "src/types/execution-host-status.d.ts",
-            "src/types/execution-host-upsert-request.d.ts",
-            "src/types/index.d.ts"
+            "src/types/agent-management-profile.ts",
+            "src/types/agent-turn-citation.ts",
+            "src/types/agent-turn-execution-item.ts",
+            "src/types/agent-turn-execution-response.ts",
+            "src/types/execution-host-kind.ts",
+            "src/types/execution-host-list-response.ts",
+            "src/types/execution-host-record.ts",
+            "src/types/execution-host-response.ts",
+            "src/types/execution-host-status.ts",
+            "src/types/execution-host-upsert-request.ts",
+            "src/types/index.ts"
           ]
         },
         {
@@ -467,22 +465,24 @@
       "summary": "Changes have been applied. Run the required verification plan now.",
       "reasons": [
         "backed-up-generated-files",
-        "deleted-generated-files",
         "manual-review-required",
         "verification-required"
       ]
     },
     "backedUpFiles": [
-      "src/api/ai.d.ts",
-      "src/api/paths.d.ts",
-      "src/types/agent-management-profile.d.ts",
-      "src/types/execution-host-kind.d.ts",
-      "src/types/execution-host-list-response.d.ts",
-      "src/types/execution-host-record.d.ts",
-      "src/types/execution-host-response.d.ts",
-      "src/types/execution-host-status.d.ts",
-      "src/types/execution-host-upsert-request.d.ts",
-      "src/types/index.d.ts"
+      "CHANGELOG.md",
+      "package.json",
+      "sdkwork-sdk.json",
+      "src/api/ai.ts",
+      "src/api/paths.ts",
+      "src/types/agent-management-profile.ts",
+      "src/types/execution-host-kind.ts",
+      "src/types/execution-host-list-response.ts",
+      "src/types/execution-host-record.ts",
+      "src/types/execution-host-response.ts",
+      "src/types/execution-host-status.ts",
+      "src/types/execution-host-upsert-request.ts",
+      "src/types/index.ts"
     ],
     "preservedLegacyFiles": false
   }

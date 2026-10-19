@@ -5752,21 +5752,53 @@ components:
               - item
               properties:
                 item:
-                  type: object
-                  additionalProperties: false
-                  required:
-                  - session
-                  - turn
-                  - items
-                  properties:
-                    session:
-                      $ref: '#/components/schemas/AgentSessionRecord'
-                    turn:
-                      $ref: '#/components/schemas/AgentTurnRecord'
-                    items:
-                      type: array
-                      items:
-                        $ref: '#/components/schemas/AgentSessionItemRecord'
+                  $ref: '#/components/schemas/AgentTurnExecutionItem'
+    AgentTurnExecutionItem:
+      type: object
+      additionalProperties: false
+      required:
+      - session
+      - turn
+      - items
+      properties:
+        session:
+          $ref: '#/components/schemas/AgentSessionRecord'
+        turn:
+          $ref: '#/components/schemas/AgentTurnRecord'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentSessionItemRecord'
+        citations:
+          type: array
+          description: Knowledge sources that grounded this turn, numbered like
+            the citation markers in the prompt. Empty for ungrounded turns.
+          items:
+            $ref: '#/components/schemas/AgentTurnCitation'
+    AgentTurnCitation:
+      type: object
+      additionalProperties: false
+      required:
+      - index
+      - documentId
+      - title
+      properties:
+        index:
+          type: integer
+          format: int32
+          minimum: 1
+          description: 1-based marker number used in the grounding prompt.
+        documentId:
+          type: string
+        title:
+          type: string
+        sourceUri:
+          type: string
+          nullable: true
+        score:
+          type: number
+          format: double
+          nullable: true
     AgentTurnRuntimeEvent:
       type: object
       additionalProperties: false

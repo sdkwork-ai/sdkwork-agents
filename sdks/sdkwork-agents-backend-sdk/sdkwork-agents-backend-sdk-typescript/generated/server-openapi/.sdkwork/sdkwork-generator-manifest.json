@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-backend-sdk",
-    "version": "0.1.6",
+    "version": "0.1.0",
     "language": "typescript",
     "sdkType": "backend",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "fafc3767a600179bd3935524130adeae28ae36788ab55f3c32bdcf66aaafbe06"
+      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
     },
     {
       "path": "LICENSE",
@@ -40,7 +40,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "03363952869fe266c90e91f7721defbcf270308ef6c00f135351dc7df7963d8f"
+      "sha256": "9f2169f9519d90244a4d10028e7bc880bbcd335b6d7d9e60629f467b3b56757c"
     },
     {
       "path": "README.md",
@@ -48,11 +48,11 @@
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "46d93c7e1348206bc90a279f1843a0b4c3832ecd423772332dd25d2c733cd504"
+      "sha256": "41a8c6da4302828ade79a0df8a2d23e83418659cd0325cdb9fcf99c14a6c1bdf"
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "b2c26b3e26ce24495ca2678eca25cd979618cf127f5fc08e02777e3ae0c187b0"
+      "sha256": "b23fa994e5db58a08aa2f0345a1155a5d41fcded5bdf1a21a01aa929f5608519"
     },
     {
       "path": "src/api/base.ts",
@@ -64,7 +64,7 @@
     },
     {
       "path": "src/api/paths.ts",
-      "sha256": "31aaa93a9dd0fc98d25eb422e6b64997b648591eababccc694cd6da7a1474160"
+      "sha256": "fb06a3db13e96bb5b349ddc1831aa6d350c17b09d05ea92a36438131140f666e"
     },
     {
       "path": "src/auth/index.ts",
@@ -339,8 +339,16 @@
       "sha256": "38c5b471a886d785ad6de23da43cde89bbad6b805482e8b69176639c0a7f74c0"
     },
     {
+      "path": "src/types/agent-turn-citation.ts",
+      "sha256": "c3e98febd1948a219ddde423eaf4afb06f47a167b9d16b1383cc4bb754142012"
+    },
+    {
+      "path": "src/types/agent-turn-execution-item.ts",
+      "sha256": "08e09e10266b6e9dfe412c095032d22d0c12f2f1e14fef06dea84e1c10dafc64"
+    },
+    {
       "path": "src/types/agent-turn-execution-response.ts",
-      "sha256": "52f3bbc2793626940daf2ba8fc06f7f071134a06409a817dc2aaf0fb408e3102"
+      "sha256": "9fd8b211f9cc3dc3ec29b7558cf7004bff3337675ffad4dc92a85b7913c03f89"
     },
     {
       "path": "src/types/agent-turn-list-response.ts",
@@ -488,7 +496,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "fac8856b30f676b0f935998c55fc32c4a270d4f7498d805786b0cffdacda5e6c"
+      "sha256": "7bb63438f9eb4607f60951a0d953b8a83532144271a63bc523e2f4d5802180bc"
     },
     {
       "path": "src/types/int64-string.ts",

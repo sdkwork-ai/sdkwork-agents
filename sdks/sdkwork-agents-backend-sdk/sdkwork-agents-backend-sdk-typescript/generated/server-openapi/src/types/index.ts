@@ -77,6 +77,8 @@ export type { AgentTurnResponse } from './agent-turn-response';
 export type { AgentTurnListResponse } from './agent-turn-list-response';
 export type { CreateAgentTurnRequest } from './create-agent-turn-request';
 export type { AgentTurnExecutionResponse } from './agent-turn-execution-response';
+export type { AgentTurnExecutionItem } from './agent-turn-execution-item';
+export type { AgentTurnCitation } from './agent-turn-citation';
 export type { AgentTurnRuntimeEvent } from './agent-turn-runtime-event';
 export type { AgentTurnStreamEvent } from './agent-turn-stream-event';
 export type { CancelAgentTurnRequest } from './cancel-agent-turn-request';
