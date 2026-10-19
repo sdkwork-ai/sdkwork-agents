@@ -69,6 +69,14 @@ This is an open-closed extension point: new provider or composition bindings are
 registered through manifests and slots; core Session/Turn contracts stay
 unchanged.
 
+Turn grounding is implemented for knowledge: enabled `knowledge -> knowledgebase`
+slots resolve through the `KnowledgeGroundingResolver` port, the composition
+root adapts it over the Knowledgebase App API transport SDK, and both prompt
+builders insert one bounded, citation-numbered system block. Memory slot
+resolution and rendering are implemented; the memory adapter waits for a
+`sdkwork-memory` public Rust App API SDK and a production memory retriever.
+See [TECH-2026-1019-turn-knowledge-memory-grounding.md](../docs/architecture/tech/TECH-2026-1019-turn-knowledge-memory-grounding.md).
+
 ## 5. Commercial Readiness Gates
 
 | Gate | Required evidence |

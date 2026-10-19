@@ -18,8 +18,8 @@ use sdkwork_agents_runtime_facade::{
     AgentEngineTurnInput,
 };
 use sdkwork_agents_runtime_facade::{
-    resolve_agent_conversation_execution_route_with_defaults,
-    AgentConversationExecutionDecision, AgentConversationExecutionRoute,
+    resolve_agent_conversation_execution_route_with_defaults, AgentConversationExecutionDecision,
+    AgentConversationExecutionRoute,
 };
 use sdkwork_utils_rust::string::is_blank;
 use std::collections::HashMap;
@@ -185,6 +185,14 @@ pub struct TurnExecutionInput {
     /// enabled skills). The request-level `system_prompt` still wins when
     /// present; this field feeds the `system` message otherwise.
     pub assembled_system_prompt: Option<String>,
+    /// Retrieved knowledge snippets for this turn, resolved from enabled
+    /// knowledge composition slots before execution. Empty when no slot is
+    /// bound, the resolver is not configured, or retrieval degraded.
+    pub knowledge_context: Vec<crate::context_grounding::KnowledgeGroundingSnippet>,
+    /// Retrieved user-memory snippets for this turn, resolved from enabled
+    /// memory composition slots. Empty when no slot is bound or retrieval
+    /// degraded.
+    pub memory_context: Vec<crate::context_grounding::MemoryGroundingSnippet>,
     /// Connections for the agent's bound external MCP servers, resolved per
     /// turn from composition-slot policies. Carried so the external MCP
     /// executor dispatches without a global lookup.
@@ -1232,6 +1240,12 @@ fn build_model_items(input: &TurnExecutionInput) -> Vec<String> {
     {
         items.push(format!("system: {welcome}"));
     }
+    if let Some(grounding) = crate::context_grounding::build_grounding_prompt(
+        &input.knowledge_context,
+        &input.memory_context,
+    ) {
+        items.push(format!("system: {}", grounding.text));
+    }
     for (role, content) in &input.history {
         items.push(format!("{}: {content}", role.as_str()));
     }
@@ -1456,6 +1470,8 @@ mod tests {
         let output = execute_agent_turn(&TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
+            knowledge_context: Vec::new(),
+            memory_context: Vec::new(),
             mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
@@ -1489,6 +1505,8 @@ mod tests {
         let output = execute_agent_turn(&TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
+            knowledge_context: Vec::new(),
+            memory_context: Vec::new(),
             mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
@@ -1564,6 +1582,8 @@ mod tests {
         let output = completer.complete(&TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
+            knowledge_context: Vec::new(),
+            memory_context: Vec::new(),
             mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: turn_model_request_id("turn.test"),
@@ -1668,10 +1688,47 @@ mod tests {
         }
     }
 
+    #[test]
+    fn model_items_include_bounded_knowledge_and_memory_grounding() {
+        let mut input = sample_turn_execution_input();
+        input.knowledge_context = vec![crate::context_grounding::KnowledgeGroundingSnippet {
+            document_id: "doc-1".to_string(),
+            title: "Refund policy".to_string(),
+            snippet: "Refunds are accepted within 30 days.".to_string(),
+            score: Some(0.91),
+            source_uri: Some("drive://kb/doc-1".to_string()),
+            retrieval_method: Some("hybrid".to_string()),
+        }];
+        input.memory_context = vec![crate::context_grounding::MemoryGroundingSnippet {
+            memory_id: "mem-1".to_string(),
+            content: "The user prefers concise answers.".to_string(),
+            score: None,
+            source_uri: None,
+        }];
+
+        let items = build_model_items(&input);
+        let grounding_index = items
+            .iter()
+            .position(|item| item.contains("<knowledge_sources>"))
+            .expect("knowledge grounding item");
+        assert!(items[grounding_index].contains("[1] Refund policy"));
+        assert!(items.iter().any(|item| item.contains("<user_memory>")));
+        let user_index = items
+            .iter()
+            .position(|item| item == "user: run")
+            .expect("user item");
+        assert!(
+            grounding_index < user_index,
+            "grounding must precede the current user message"
+        );
+    }
+
     fn sample_turn_execution_input() -> TurnExecutionInput {
         TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
+            knowledge_context: Vec::new(),
+            memory_context: Vec::new(),
             mcp_connections: Vec::new(),
             turn_id: "turn.timeout-test".to_string(),
             model_request_id: turn_model_request_id("turn.timeout-test"),

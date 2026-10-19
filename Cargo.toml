@@ -1,4 +1,4 @@
-﻿[workspace]
+[workspace]
 resolver = "2"
 members = [
     "crates/sdkwork-api-agents-assembly",
@@ -10,6 +10,7 @@ members = [
     "crates/sdkwork-routes-agents-backend-api",
     "crates/sdkwork-agents-runtime-facade",
     "crates/sdkwork-agents-kernel-bridge",
+    "crates/sdkwork-agents-knowledgebase-bridge",
     "crates/sdkwork-agents-database-host",
     "crates/sdkwork-api-agents-standalone-gateway",
     "crates/sdkwork-intelligence-agents-worker",
@@ -125,6 +126,10 @@ sdkwork-routes-agents-backend-api = { path = "crates/sdkwork-routes-agents-backe
 sdkwork-agents-contract = { path = "crates/sdkwork-agents-contract" }
 sdkwork-agents-runtime-facade = { path = "crates/sdkwork-agents-runtime-facade" }
 sdkwork-agents-kernel-bridge = { path = "crates/sdkwork-agents-kernel-bridge" }
+# Generator-owned Knowledgebase App API transport. The Agents turn path reaches
+# knowledge content only through this public SDK and the caller's dual tokens.
+sdkwork-knowledgebase-app-sdk-generated-rust = { path = "../sdkwork-knowledgebase/sdks/sdkwork-knowledgebase-app-sdk/sdkwork-knowledgebase-app-sdk-rust/generated/server-openapi" }
+sdkwork-agents-knowledgebase-bridge = { path = "crates/sdkwork-agents-knowledgebase-bridge" }
 sdkwork-agents-database-host = { path = "crates/sdkwork-agents-database-host" }
 sdkwork-api-agents-assembly = { path = "crates/sdkwork-api-agents-assembly" }
 sdkwork-api-agents-standalone-gateway = { path = "crates/sdkwork-api-agents-standalone-gateway" }

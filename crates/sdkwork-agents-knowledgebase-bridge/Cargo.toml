@@ -1,0 +1,20 @@
+[package]
+name = "sdkwork-agents-knowledgebase-bridge"
+rust-version.workspace = true
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Knowledgebase grounding adapter for SDKWork Agents turns"
+
+[lib]
+name = "sdkwork_agents_knowledgebase_bridge"
+
+[lints]
+workspace = true
+
+[dependencies]
+sdkwork-agent-kernel.workspace = true
+sdkwork-intelligence-agents-service.workspace = true
+sdkwork-knowledgebase-app-sdk-generated-rust.workspace = true
+tokio = { workspace = true, features = ["rt", "time"] }
+tracing.workspace = true

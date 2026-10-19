@@ -302,14 +302,22 @@ fn string_list(value: &serde_json::Value, key: &str) -> Vec<String> {
 
 /// Parses a slot's `policy_json` into a flat string map (best effort; an
 /// unparsable policy yields an empty map and never fails the turn).
-fn parse_slot_policy(policy_json: &str) -> std::collections::HashMap<String, String> {
+pub(crate) fn parse_slot_policy(policy_json: &str) -> std::collections::HashMap<String, String> {
     serde_json::from_str::<serde_json::Value>(policy_json)
         .ok()
         .and_then(|value| value.as_object().cloned())
         .map(|object| {
             object
                 .into_iter()
-                .filter_map(|(key, value)| value.as_str().map(|text| (key, text.to_string())))
+                .filter_map(|(key, value)| {
+                    let text = match value {
+                        serde_json::Value::String(text) => text,
+                        serde_json::Value::Number(number) => number.to_string(),
+                        serde_json::Value::Bool(flag) => flag.to_string(),
+                        _ => return None,
+                    };
+                    Some((key, text))
+                })
                 .collect()
         })
         .unwrap_or_default()

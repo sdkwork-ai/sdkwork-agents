@@ -5,6 +5,7 @@ mod api;
 mod application;
 mod chat_agent_prompt;
 mod cloud_router_executor;
+mod context_grounding;
 mod domain;
 mod drive_asset_saver;
 mod dto;
@@ -58,49 +59,57 @@ pub use api::{
     ApiOperation, AGENT_APP_API_OPERATIONS, AGENT_APP_API_PREFIX, AGENT_BACKEND_API_OPERATIONS,
     AGENT_BACKEND_API_PREFIX, AGENT_OPEN_API_OPERATIONS, AGENT_OPEN_API_PREFIX,
 };
-pub use chat_agent_prompt::{
-    canonical_system_prompt, effective_system_prompt, is_unconfigured_prompt,
-    DEFAULT_CHAT_AGENT_ID,
-};
 pub use application::{
-    ActivateAgentProviderBindingCommand, AgentCompositionSlotCreateCommand,
-    AgentCompositionSlotDeleteCommand, AgentCompositionSlotGetCommand,
-    AgentCompositionSlotListCommand, AgentCompositionSlotUpdateCommand, AgentItemDriveRefInput,
-    AgentPreviewResponseCommand, AgentPromptOptimizationCommand, AgentProviderBindingCommand,
-    AgentSessionItemWithDriveRefs, AgentsService, OutboxDispatchSummary, dispatch_pending_outbox_events, AnswerInteractionCommand,
-    ApproveInteractionCommand, ArchiveSessionCommand, CancelTaskCommand, CancelTaskRunCommand,
-    CancelTurnCommand, ChangeAgentStatusCommand, ChangeSessionCheckpointStatusCommand,
-    ChangeSessionRuntimeBindingStatusCommand, ClaimInteractionCommand,
-    ClaimNextTurnInputQueueEntryCommand, ClaimNextTurnInputQueueEntryResult,
-    ClearTurnInputQueueEntriesCommand, CloseSessionCommand, CreateAgentCommand,
-    CreateInteractionCommand, CreateProjectCommand, CreateProjectCompositionSlotCommand,
-    CreateSessionCheckpointCommand, CreateSessionCommand, CreateSessionItemCommand,
-    CreateSessionRuntimeBindingCommand, CreateTaskCommand, CreateTurnCommand,
-    CreateTurnInputQueueEntryCommand, CreateWorkspaceCommand, DeleteAgentCommand,
-    DeleteProjectCompositionSlotCommand, EnsureDefaultWorkspaceCommand, ExecuteTaskCommand,
-    FailTurnInputQueueEntryCommand, GetAgentCommand, GetInteractionCommand, GetProjectCommand,
-    GetProjectCompositionSlotCommand, GetSessionCheckpointCommand, GetSessionCommand,
-    GetSessionItemCommand, GetSessionRuntimeBindingCommand, GetSessionUserStateCommand,
-    GetTaskCommand, GetTaskRunCommand, GetTurnByIdempotencyCommand, GetTurnCommand,
-    GetWorkspaceCommand, ImportProjectCommand, InteractionClaimResult, ItemFeedbackResult,
-    ListAgentAuditEventsCommand, ListAgentsCommand, ListInteractionsCommand,
+    dispatch_pending_outbox_events, ActivateAgentProviderBindingCommand,
+    AgentCompositionSlotCreateCommand, AgentCompositionSlotDeleteCommand,
+    AgentCompositionSlotGetCommand, AgentCompositionSlotListCommand,
+    AgentCompositionSlotUpdateCommand, AgentItemDriveRefInput, AgentPreviewResponseCommand,
+    AgentPromptOptimizationCommand, AgentProviderBindingCommand, AgentSessionItemWithDriveRefs,
+    AgentsService, AnswerInteractionCommand, ApproveInteractionCommand, ArchiveSessionCommand,
+    CancelTaskCommand, CancelTaskRunCommand, CancelTurnCommand, ChangeAgentStatusCommand,
+    ChangeSessionCheckpointStatusCommand, ChangeSessionRuntimeBindingStatusCommand,
+    ClaimInteractionCommand, ClaimNextTurnInputQueueEntryCommand,
+    ClaimNextTurnInputQueueEntryResult, ClearTurnInputQueueEntriesCommand, CloseSessionCommand,
+    CreateAgentCommand, CreateInteractionCommand, CreateProjectCommand,
+    CreateProjectCompositionSlotCommand, CreateSessionCheckpointCommand, CreateSessionCommand,
+    CreateSessionItemCommand, CreateSessionRuntimeBindingCommand, CreateTaskCommand,
+    CreateTurnCommand, CreateTurnInputQueueEntryCommand, CreateWorkspaceCommand,
+    DeleteAgentCommand, DeleteProjectCompositionSlotCommand, EnsureDefaultWorkspaceCommand,
+    ExecuteTaskCommand, FailTurnInputQueueEntryCommand, GetAgentCommand, GetInteractionCommand,
+    GetProjectCommand, GetProjectCompositionSlotCommand, GetSessionCheckpointCommand,
+    GetSessionCommand, GetSessionItemCommand, GetSessionRuntimeBindingCommand,
+    GetSessionUserStateCommand, GetTaskCommand, GetTaskRunCommand, GetTurnByIdempotencyCommand,
+    GetTurnCommand, GetWorkspaceCommand, ImportProjectCommand, InteractionClaimResult,
+    ItemFeedbackResult, ListAgentAuditEventsCommand, ListAgentsCommand, ListInteractionsCommand,
     ListItemFeedbackCommand, ListMcpMarketplaceCommand, ListProjectCompositionSlotsCommand,
     ListProjectsCommand, ListSessionCheckpointsCommand, ListSessionItemsCommand,
     ListSessionRuntimeBindingsCommand, ListSessionUserStatesCommand, ListSessionsCommand,
     ListTaskRunAttemptsCommand, ListTaskRunsCommand, ListTasksCommand,
-    ListTurnInputQueueEntriesCommand, ListTurnsCommand, ListWorkspacesCommand, PauseTaskCommand,
-    ProjectMutationCommand, ProviderBindingListCommand, ReconcileTaskRunCommand,
-    RemoveTurnInputQueueEntryCommand, ReorderTurnInputQueueEntriesCommand, ReplaceTaskCommand,
-    ResolveInteractionCommand, RestoreAgentCommand, ResumeTaskCommand, RetryTaskRunCommand,
-    RetryTurnInputQueueEntryCommand, SessionCheckpointResult, SessionRuntimeBindingResult,
-    SessionUserStateResult, TaskRunAttemptPage, TaskRunPage, TaskRunReconciliationOutcome,
-    TaskRunReconciliationResult, TurnExecutionResult, TurnReconciliationResult, UpdateAgentCommand,
-    UpdateItemFeedbackCommand, UpdateProjectCommand, UpdateProjectCompositionSlotCommand,
-    UpdateSessionRuntimeBindingCommand, UpdateSessionUserStateCommand,
-    UpdateTurnInputQueueEntryCommand, UpdateWorkspaceCommand, WorkspaceMutationCommand,
+    ListTurnInputQueueEntriesCommand, ListTurnsCommand, ListWorkspacesCommand,
+    OutboxDispatchSummary, PauseTaskCommand, ProjectMutationCommand, ProviderBindingListCommand,
+    ReconcileTaskRunCommand, RemoveTurnInputQueueEntryCommand, ReorderTurnInputQueueEntriesCommand,
+    ReplaceTaskCommand, ResolveInteractionCommand, RestoreAgentCommand, ResumeTaskCommand,
+    RetryTaskRunCommand, RetryTurnInputQueueEntryCommand, SessionCheckpointResult,
+    SessionRuntimeBindingResult, SessionUserStateResult, TaskRunAttemptPage, TaskRunPage,
+    TaskRunReconciliationOutcome, TaskRunReconciliationResult, TurnExecutionResult,
+    TurnReconciliationResult, UpdateAgentCommand, UpdateItemFeedbackCommand, UpdateProjectCommand,
+    UpdateProjectCompositionSlotCommand, UpdateSessionRuntimeBindingCommand,
+    UpdateSessionUserStateCommand, UpdateTurnInputQueueEntryCommand, UpdateWorkspaceCommand,
+    WorkspaceMutationCommand,
+};
+pub use chat_agent_prompt::{
+    canonical_system_prompt, effective_system_prompt, is_unconfigured_prompt, DEFAULT_CHAT_AGENT_ID,
 };
 pub use cloud_router_executor::{
     CloudRouterFirstTurnExecutor, ENV_CLOUDROUTER_BASE_URL, RUNTIME_MODE_CLOUDROUTER,
+};
+pub use context_grounding::{
+    build_grounding_prompt, resolve_knowledge_bindings, resolve_memory_bindings, GroundingPrompt,
+    GroundingRequest, KnowledgeCitation, KnowledgeGroundingBinding, KnowledgeGroundingResolver,
+    KnowledgeGroundingSnippet, MemoryGroundingBinding, MemoryGroundingResolver,
+    MemoryGroundingSnippet, DEFAULT_KNOWLEDGE_TOP_K, MAX_GROUNDING_BLOCK_CHARS,
+    MAX_KNOWLEDGE_BINDINGS, MAX_KNOWLEDGE_SNIPPETS, MAX_KNOWLEDGE_SNIPPET_CHARS,
+    MAX_KNOWLEDGE_TOP_K, MAX_MEMORY_BINDINGS, MAX_MEMORY_SNIPPETS, MAX_MEMORY_SNIPPET_CHARS,
 };
 pub use drive_asset_saver::{DriveAssetRef, DriveAssetSaver, DriveSaveContext, DriveSaveError};
 pub use generations_tool_port::{
@@ -180,8 +189,8 @@ pub use http::testing;
 #[cfg(feature = "http-axum")]
 pub use http::{
     build_app_routes, build_backend_routes, build_combined_routes, build_open_routes,
-    serve_agents_metrics, signal_turn_reconciliation_shutdown, AgentHttpState,
-    AgentRequestContext, AgentTaskWorkerHandle,
+    serve_agents_metrics, signal_turn_reconciliation_shutdown, AgentHttpState, AgentRequestContext,
+    AgentTaskWorkerHandle,
 };
 pub use id::{AgentBusinessIdGenerator, AgentIdGenerator};
 pub use infrastructure::{

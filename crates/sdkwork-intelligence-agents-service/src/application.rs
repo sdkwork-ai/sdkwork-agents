@@ -33,10 +33,9 @@ use crate::list_cursors::{
     encode_created_at_cursor, encode_session_list_cursor, CreatedAtListCursor, SessionListCursor,
 };
 use crate::ports::{
-    offset_paginated_result, AgentAuditSink, AgentRepository, PaginatedResult, PaginationParams,
-    ExecutionHostListQuery, ProviderBindingListQuery, SessionItemListQuery,
-    TurnRequestWriteOutcome, MAX_PAGE_SIZE,
-    MAX_TURN_INPUT_CONTENT_BYTES, TURN_CONTEXT_ITEM_LIMIT,
+    offset_paginated_result, AgentAuditSink, AgentRepository, ExecutionHostListQuery,
+    PaginatedResult, PaginationParams, ProviderBindingListQuery, SessionItemListQuery,
+    TurnRequestWriteOutcome, MAX_PAGE_SIZE, MAX_TURN_INPUT_CONTENT_BYTES, TURN_CONTEXT_ITEM_LIMIT,
 };
 use crate::project::{
     project_names_equal, AgentProjectCompositionSlotRecord, AgentProjectDriveAccessMode,
@@ -334,7 +333,10 @@ impl TurnExecutionLease {
         rand::rng().fill_bytes(&mut token_bytes);
         Self {
             owner: turn_lease_owner(),
-            token: token_bytes.iter().map(|byte| format!("{byte:02x}")).collect(),
+            token: token_bytes
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect(),
             ttl_seconds,
             heartbeat_seconds,
         }
@@ -966,6 +968,10 @@ where
     policy_provider: P,
     turn_executor: Arc<dyn TurnExecutor>,
     toolkit_config: std::sync::RwLock<Option<Arc<dyn TurnToolkitConfig>>>,
+    knowledge_grounding_resolver:
+        std::sync::RwLock<Option<Arc<dyn crate::context_grounding::KnowledgeGroundingResolver>>>,
+    memory_grounding_resolver:
+        std::sync::RwLock<Option<Arc<dyn crate::context_grounding::MemoryGroundingResolver>>>,
 }
 
 /// Outcome of claiming a provider Session identity for the canonical
@@ -997,6 +1003,8 @@ where
             policy_provider,
             turn_executor: Arc::new(ContractTurnExecutor),
             toolkit_config: std::sync::RwLock::new(None),
+            knowledge_grounding_resolver: std::sync::RwLock::new(None),
+            memory_grounding_resolver: std::sync::RwLock::new(None),
         }
     }
 
@@ -1026,27 +1034,43 @@ where
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = toolkit_config;
     }
 
-    /// Resolves the per-turn toolkit: default MCP set merged with the agent's
-    /// enabled composition slots (tool trims, external MCP servers, skills).
-    /// An agent with no slots keeps the full default set — chat agents get
-    /// image/video/audio/music/sound-effect MCP support out of the box.
-    fn resolve_turn_toolkit(
+    /// Registers the per-turn knowledge and memory grounding resolvers.
+    ///
+    /// Wired by the composition root over the capability modules' generated
+    /// SDKs. Without them, a turn whose agent binds knowledge or memory slots
+    /// still runs; the missing grounding is reported as an operator warning.
+    pub fn with_context_grounding(
+        self,
+        knowledge: Option<Arc<dyn crate::context_grounding::KnowledgeGroundingResolver>>,
+        memory: Option<Arc<dyn crate::context_grounding::MemoryGroundingResolver>>,
+    ) -> Self {
+        self.set_context_grounding(knowledge, memory);
+        self
+    }
+
+    /// Replaces the grounding resolvers on a shared (Arc) service instance.
+    pub fn set_context_grounding(
+        &self,
+        knowledge: Option<Arc<dyn crate::context_grounding::KnowledgeGroundingResolver>>,
+        memory: Option<Arc<dyn crate::context_grounding::MemoryGroundingResolver>>,
+    ) {
+        *self
+            .knowledge_grounding_resolver
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = knowledge;
+        *self
+            .memory_grounding_resolver
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = memory;
+    }
+
+    /// Loads the agent's live composition slots once per turn. Toolkit,
+    /// knowledge, and memory resolution share this snapshot so a turn never
+    /// observes a partially updated slot set.
+    fn list_turn_slots(
         &self,
         agent: &AgentBusinessRecord,
-    ) -> KernelResult<crate::toolkit::ResolvedToolkit> {
-        let Some(config) = self
-            .toolkit_config
-            .read()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .clone()
-        else {
-            return Ok(crate::toolkit::ResolvedToolkit {
-                tools: Vec::new(),
-                skills: Vec::new(),
-                assembled_system_prompt: None,
-                connections: Vec::new(),
-            });
-        };
+    ) -> KernelResult<Vec<AgentCompositionSlotRecord>> {
         let query = crate::ports::CompositionSlotListQuery::for_agent(
             agent.tenant_id,
             agent.agent_id.clone(),
@@ -1056,13 +1080,95 @@ where
             offset: 0,
             page_token: None,
         });
-        let slots = self
+        Ok(self
             .repository
             .list_composition_slots(&query)?
             .into_iter()
             .filter(|slot| !slot.is_deleted())
-            .collect::<Vec<_>>();
-        Ok(resolve_effective_toolkit(config.as_ref(), &slots))
+            .collect())
+    }
+
+    /// Resolves the per-turn toolkit: default MCP set merged with the agent's
+    /// enabled composition slots (tool trims, external MCP servers, skills).
+    /// An agent with no slots keeps the full default set — chat agents get
+    /// image/video/audio/music/sound-effect MCP support out of the box.
+    fn resolve_turn_toolkit(
+        &self,
+        agent: &AgentBusinessRecord,
+    ) -> KernelResult<crate::toolkit::ResolvedToolkit> {
+        let slots = self.list_turn_slots(agent)?;
+        Ok(self.resolve_turn_toolkit_from_slots(&slots))
+    }
+
+    fn resolve_turn_toolkit_from_slots(
+        &self,
+        slots: &[AgentCompositionSlotRecord],
+    ) -> crate::toolkit::ResolvedToolkit {
+        let Some(config) = self
+            .toolkit_config
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone()
+        else {
+            return crate::toolkit::ResolvedToolkit {
+                tools: Vec::new(),
+                skills: Vec::new(),
+                assembled_system_prompt: None,
+                connections: Vec::new(),
+            };
+        };
+        resolve_effective_toolkit(config.as_ref(), slots)
+    }
+
+    /// Resolves per-turn knowledge and memory grounding from the same slot
+    /// snapshot that drives the toolkit. Never fails the turn.
+    fn resolve_turn_grounding(
+        &self,
+        agent: &AgentBusinessRecord,
+        session_id: &str,
+        user_content: &str,
+        auth_token: Option<&str>,
+        access_token: Option<&str>,
+        slots: &[AgentCompositionSlotRecord],
+    ) -> (
+        Vec<crate::context_grounding::KnowledgeGroundingSnippet>,
+        Vec<crate::context_grounding::MemoryGroundingSnippet>,
+    ) {
+        let knowledge = crate::context_grounding::resolve_knowledge_bindings(slots);
+        let memory = crate::context_grounding::resolve_memory_bindings(slots);
+        if knowledge.is_empty() && memory.is_empty() {
+            return (Vec::new(), Vec::new());
+        }
+
+        // Clone the Arcs and drop the guards before any resolver call so an
+        // outbound retrieval can never hold the service lock.
+        let knowledge_resolver = self
+            .knowledge_grounding_resolver
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+        let memory_resolver = self
+            .memory_grounding_resolver
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .clone();
+
+        let request = crate::context_grounding::GroundingRequest {
+            tenant_id: agent.tenant_id,
+            organization_id: agent.organization_id,
+            agent_id: &agent.agent_id,
+            session_id,
+            query: user_content,
+            knowledge: &knowledge,
+            memory: &memory,
+            auth_token,
+            access_token,
+        };
+        crate::context_grounding::resolve_turn_grounding(
+            knowledge_resolver.as_deref(),
+            memory_resolver.as_deref(),
+            &request,
+        )
     }
 
     /// Verify that the canonical Agents repository can serve requests.
@@ -2737,7 +2843,8 @@ where
         tenant_id: u64,
         organization_id: u64,
     ) -> KernelResult<u64> {
-        self.repository.count_webhook_subscriptions(tenant_id, organization_id)
+        self.repository
+            .count_webhook_subscriptions(tenant_id, organization_id)
     }
 
     /// `agents.webhooks.delete` — removes the subscription. Past deliveries
@@ -9201,7 +9308,18 @@ where
         // Effective toolkit: default MCP set merged with the agent's
         // composition slot overrides (tool disable / external MCP / skills).
         // Resolved per turn so configuration changes apply on the next turn.
-        let toolkit = self.resolve_turn_toolkit(&agent)?;
+        // The same slot snapshot drives knowledge and memory grounding, so a
+        // turn never observes a half-updated agent configuration.
+        let turn_slots = self.list_turn_slots(&agent)?;
+        let toolkit = self.resolve_turn_toolkit_from_slots(&turn_slots);
+        let (knowledge_context, memory_context) = self.resolve_turn_grounding(
+            &agent,
+            &session.session_id,
+            &user_content,
+            command.auth_token.as_deref(),
+            command.access_token.as_deref(),
+            &turn_slots,
+        );
 
         // Session affinity: a turn without an explicit route override inherits
         // the target of the session's live execution placement, so a session
@@ -9230,6 +9348,8 @@ where
             agent_default_route,
             effective_tools: toolkit.tools,
             assembled_system_prompt: toolkit.assembled_system_prompt,
+            knowledge_context,
+            memory_context,
             mcp_connections: toolkit.connections,
             turn_id: turn_id.clone(),
             model_request_id: turn_model_request_id(&turn_id),
@@ -9270,8 +9390,7 @@ where
                 let (tenant_id, organization_id) = (turn.tenant_id, turn.organization_id);
                 let turn_id = turn_id.clone();
                 let lease_token = lease.token.clone();
-                let (ttl_seconds, heartbeat_seconds) =
-                    (lease.ttl_seconds, lease.heartbeat_seconds);
+                let (ttl_seconds, heartbeat_seconds) = (lease.ttl_seconds, lease.heartbeat_seconds);
                 scope.spawn(move || {
                     heartbeat_turn_lease(
                         repository,
@@ -12040,6 +12159,80 @@ mod task_tests {
     type TaskTestService =
         AgentsService<InMemoryAgentRepository, InMemoryAgentAuditSink, IamGatedPolicyProvider>;
 
+    /// Grounding resolver that asserts the resolved slot binding and answers
+    /// one deterministic snippet.
+    struct StaticKnowledgeGroundingResolver;
+
+    impl crate::context_grounding::KnowledgeGroundingResolver for StaticKnowledgeGroundingResolver {
+        fn resolve_knowledge(
+            &self,
+            request: &crate::context_grounding::GroundingRequest<'_>,
+        ) -> KernelResult<Vec<crate::context_grounding::KnowledgeGroundingSnippet>> {
+            assert_eq!(request.knowledge.len(), 1);
+            assert_eq!(request.knowledge[0].space_id, 4242);
+            assert_eq!(request.query, "how do refunds work");
+            Ok(vec![crate::context_grounding::KnowledgeGroundingSnippet {
+                document_id: "doc-4242".to_string(),
+                title: "Refund policy".to_string(),
+                snippet: "Refunds are accepted within 30 days.".to_string(),
+                score: Some(0.88),
+                source_uri: Some("drive://kb/doc-4242".to_string()),
+                retrieval_method: Some("hybrid".to_string()),
+            }])
+        }
+    }
+
+    #[test]
+    fn turn_grounding_reads_enabled_knowledge_slots_and_calls_the_resolver() {
+        let service = AgentsService::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        )
+        .with_context_grounding(Some(Arc::new(StaticKnowledgeGroundingResolver)), None);
+        let agent = service
+            .create_agent(create_agent_cmd(
+                "agent.grounding.knowledge",
+                100_001,
+                0,
+                100,
+                "grounding-knowledge",
+                "Grounding Knowledge",
+                "2026-08-02T00:00:00Z",
+            ))
+            .expect("create grounding test agent");
+        service
+            .create_composition_slot(AgentCompositionSlotCreateCommand {
+                tenant_id: 100_001,
+                organization_id: 0,
+                agent_id: agent.agent_id.clone(),
+                slot_id: "slot.knowledge.refund".to_string(),
+                slot_kind: AgentCompositionSlotKind::Knowledge,
+                target_module: AgentCompositionTargetModule::Knowledgebase,
+                target_ref: "4242".to_string(),
+                target_version_ref: None,
+                priority: 0,
+                enabled: true,
+                policy_json: r#"{"title":"Refund KB"}"#.to_string(),
+                requested_by: sample_subject(),
+                requested_at: "2026-08-02T00:00:01Z".to_string(),
+            })
+            .expect("create knowledge composition slot");
+
+        let slots = service.list_turn_slots(&agent).expect("turn slots");
+        let (knowledge, memory) = service.resolve_turn_grounding(
+            &agent,
+            "session.test",
+            "how do refunds work",
+            None,
+            None,
+            &slots,
+        );
+        assert_eq!(knowledge.len(), 1);
+        assert!(knowledge[0].snippet.contains("30 days"));
+        assert!(memory.is_empty());
+    }
+
     #[derive(Debug, Default)]
     struct BlockingCancellationState {
         started: bool,
@@ -13002,7 +13195,10 @@ mod task_tests {
         assert_eq!(organization_one_tasks.total_count, None);
         assert!(!organization_one_tasks.has_more);
         assert!(organization_one_tasks.next_page_token.is_none());
-        assert_eq!(organization_one_tasks.items[0].organization_id, ORGANIZATION_ONE);
+        assert_eq!(
+            organization_one_tasks.items[0].organization_id,
+            ORGANIZATION_ONE
+        );
         let organization_two_tasks = service
             .list_tasks(ListTasksCommand {
                 query: TaskListQuery::for_organization(100_001, 20),

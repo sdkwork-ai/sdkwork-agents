@@ -58,6 +58,37 @@ fn build_turn_tool_dispatcher() -> TurnToolDispatcher {
 /// overrides always win over this default.
 pub const AGENTS_TURN_EXECUTION_ROUTE_ENV: &str = "SDKWORK_AGENTS_TURN_EXECUTION_ROUTE";
 
+/// Builds the Knowledgebase grounding resolver when the capability module is
+/// configured for this deployment.
+///
+/// `SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL` is optional: an unset value means
+/// the knowledge module is not mounted and knowledge/memory composition slots
+/// degrade to an ungrounded turn with a warning. A set-but-invalid value is a
+/// deployment misconfiguration and fails bootstrap instead of silently
+/// disabling retrieval.
+fn knowledgebase_grounding_resolver(
+) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::KnowledgeGroundingResolver>>> {
+    match sdkwork_agents_knowledgebase_bridge::KnowledgebaseGroundingResolver::from_env() {
+        Ok(Some(resolver)) => {
+            tracing::info!(
+                env = sdkwork_agents_knowledgebase_bridge::KNOWLEDGEBASE_BASE_URL_ENV,
+                "Agents knowledge grounding is enabled through sdkwork-knowledgebase"
+            );
+            Ok(Some(Arc::new(resolver)))
+        }
+        Ok(None) => {
+            tracing::info!(
+                env = sdkwork_agents_knowledgebase_bridge::KNOWLEDGEBASE_BASE_URL_ENV,
+                "Agents knowledge grounding is not configured; knowledge composition slots will not retrieve"
+            );
+            Ok(None)
+        }
+        Err(message) => Err(anyhow::anyhow!(
+            "agents knowledge grounding bootstrap failed: {message}"
+        )),
+    }
+}
+
 /// Reads and validates the deployment-default execution route from the
 /// environment. `None` (the built-in in-process default applies) or a
 /// canonical route code; an unknown code is a deployment misconfiguration
@@ -146,6 +177,7 @@ fn dev_agent_http_state(
     sandbox_port: Option<Arc<dyn sdkwork_agent_kernel::SandboxedSessionPort>>,
 ) -> Result<AgentHttpState> {
     let dispatcher = Arc::new(build_turn_tool_dispatcher());
+    let grounding = knowledgebase_grounding_resolver()?;
     Ok(AgentHttpState::with_turn_executor(
         InMemoryAgentRepository::try_new().context("build agents dev in-memory repository")?,
         InMemoryAgentAuditSink::default(),
@@ -160,7 +192,8 @@ fn dev_agent_http_state(
             Arc::clone(&dispatcher),
         )),
     )
-    .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig { dispatcher }))))
+    .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig { dispatcher })))
+    .with_context_grounding(grounding, None))
 }
 
 fn production_postgres_agent_http_state(
@@ -196,6 +229,7 @@ fn production_postgres_agent_http_state(
     let audit_sink = SqlAgentAuditSink::new_global(audit_adapter);
 
     let tool_dispatcher = Arc::new(build_turn_tool_dispatcher());
+    let grounding = knowledgebase_grounding_resolver()?;
     let state = AgentHttpState::with_turn_executor(
         repository,
         audit_sink,
@@ -215,7 +249,8 @@ fn production_postgres_agent_http_state(
     )
     .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig {
         dispatcher: tool_dispatcher,
-    })));
+    })))
+    .with_context_grounding(grounding, None);
 
     // Persist applied model configuration profiles in the canonical Agents
     // PostgreSQL database (server-authoritative persistence; SQLite is

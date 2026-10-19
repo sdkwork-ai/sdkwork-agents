@@ -196,7 +196,8 @@
         "reverseDependencyPolicy": "forbidden",
         "generatedTransportImportPolicy": "forbidden",
         "packageByLanguage": {
-          "typescript": "@sdkwork/knowledgebase-app-sdk"
+          "typescript": "@sdkwork/knowledgebase-app-sdk",
+          "rust": "sdkwork-knowledgebase-app-sdk-generated-rust"
         }
       },
       {

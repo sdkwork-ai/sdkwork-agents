@@ -76,13 +76,11 @@ use crate::list_cursors::{
 };
 use crate::mcp_marketplace::McpServerMarketplaceRecord;
 use crate::ports::{
-    ExecutionHostListQuery,
-    ExecutionPlacementListQuery,
     AgentAuditSink, AgentRepository, AuditEventListQuery, CompositionSlotListQuery,
-    ItemFeedbackListQuery, McpMarketplaceListQuery, PaginationParams,
-    ProjectCompositionSlotListQuery, ProjectListQuery, ProviderBindingListQuery,
-    ResourceUserStateListQuery, SessionActivitySummaryListQuery, SessionCheckpointListQuery,
-    SessionRuntimeBindingListQuery, TurnListQuery, WorkspaceListQuery,
+    ExecutionHostListQuery, ExecutionPlacementListQuery, ItemFeedbackListQuery,
+    McpMarketplaceListQuery, PaginationParams, ProjectCompositionSlotListQuery, ProjectListQuery,
+    ProviderBindingListQuery, ResourceUserStateListQuery, SessionActivitySummaryListQuery,
+    SessionCheckpointListQuery, SessionRuntimeBindingListQuery, TurnListQuery, WorkspaceListQuery,
 };
 use crate::postgres_model_configuration_store::{
     ProfileScope, ScopedAgentConfigurationStore, ScopedInMemoryAgentConfigurationStore,
@@ -709,7 +707,8 @@ impl AgentRepository for DynAgentRepository {
         as_of: &str,
         limit: usize,
     ) -> KernelResult<Vec<crate::domain::AgentExecutionPlacementRecord>> {
-        self.0.list_expired_execution_placements(tenant_id, as_of, limit)
+        self.0
+            .list_expired_execution_placements(tenant_id, as_of, limit)
     }
 
     fn list_expired_execution_placements_across_tenants(
@@ -735,7 +734,8 @@ impl AgentRepository for DynAgentRepository {
         organization_id: u64,
         host_id: &str,
     ) -> KernelResult<Option<crate::domain::AgentExecutionHostRecord>> {
-        self.0.get_execution_host(tenant_id, organization_id, host_id)
+        self.0
+            .get_execution_host(tenant_id, organization_id, host_id)
     }
 
     fn list_eligible_execution_hosts(
@@ -1232,7 +1232,8 @@ impl AgentRepository for DynAgentRepository {
         tenant_id: u64,
         organization_id: u64,
     ) -> KernelResult<u64> {
-        self.0.count_webhook_subscriptions(tenant_id, organization_id)
+        self.0
+            .count_webhook_subscriptions(tenant_id, organization_id)
     }
 
     fn clear_turn_streaming_content(
@@ -1704,6 +1705,18 @@ impl AgentHttpState {
         self
     }
 
+    /// Registers the per-turn knowledge and memory grounding resolvers.
+    /// Wired by the gateway bootstrap over the capability modules' generated
+    /// SDKs; without them, slot-bound grounding is skipped with a warning.
+    pub fn with_context_grounding(
+        self,
+        knowledge: Option<Arc<dyn crate::context_grounding::KnowledgeGroundingResolver>>,
+        memory: Option<Arc<dyn crate::context_grounding::MemoryGroundingResolver>>,
+    ) -> Self {
+        self.service.set_context_grounding(knowledge, memory);
+        self
+    }
+
     pub fn session_facade(&self) -> Arc<dyn sdkwork_agents_runtime_facade::AgentsSessionFacade> {
         Arc::new(HttpAgentsSessionFacade::new(self.service.clone()))
     }
@@ -1899,10 +1912,8 @@ impl AgentTaskWorkerHandle {
         &self,
         worker_id: String,
     ) -> KernelResult<crate::OutboxDispatchSummary> {
-        self.run(move |service| {
-            crate::dispatch_pending_outbox_events(service, &worker_id)
-        })
-        .await
+        self.run(move |service| crate::dispatch_pending_outbox_events(service, &worker_id))
+            .await
     }
 
     pub async fn scheduler_metrics_snapshot(
@@ -3630,7 +3641,9 @@ async fn app_apply_model_configuration(
             apply_agent_model_configuration(state, scope, request_id.as_str(), body)
         })
         .await
-        .map_err(|error| ApiProblem::internal(format!("model configuration apply failed: {error}")))??;
+        .map_err(|error| {
+            ApiProblem::internal(format!("model configuration apply failed: {error}"))
+        })??;
         Ok(ResourceData { item: applied })
     }
     .await;
@@ -14667,7 +14680,8 @@ fn turn_stream_failure_chunk(problem: &ApiProblem) -> String {
         // terminal frame anyway so the client never sees a bare hangup.
         return "data: {\"eventType\":\"error\"}
 
-".to_string();
+"
+        .to_string();
     }
     chunk
 }
@@ -15720,10 +15734,14 @@ mod tests {
         let status = response.status();
         let response_bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         if status != StatusCode::OK {
-            eprintln!("model selection failure body: {}", String::from_utf8_lossy(&response_bytes));
+            eprintln!(
+                "model selection failure body: {}",
+                String::from_utf8_lossy(&response_bytes)
+            );
         }
         assert_eq!(status, StatusCode::OK);
-        let payload: Value = serde_json::from_slice(&response_bytes).expect("selection response should be JSON");
+        let payload: Value =
+            serde_json::from_slice(&response_bytes).expect("selection response should be JSON");
         assert_eq!(payload["data"]["item"]["modelId"], "gpt-5.4");
     }
 
@@ -17272,20 +17290,36 @@ mod turn_stream_failure_chunk_tests {
 
     #[test]
     fn funding_failure_chunk_follows_the_stream_event_wire_shape() {
-        let problem = ApiProblem::payment_required("insufficient account balance")
-            .with_recharge_action();
+        let problem =
+            ApiProblem::payment_required("insufficient account balance").with_recharge_action();
         let chunk = turn_stream_failure_chunk(&problem);
-        assert!(chunk.starts_with("event: error
-data: "), "frame prefix: {chunk}");
-        assert!(chunk.ends_with("
+        assert!(
+            chunk.starts_with(
+                "event: error
+data: "
+            ),
+            "frame prefix: {chunk}"
+        );
+        assert!(
+            chunk.ends_with(
+                "
 
-"), "frame terminator: {chunk}");
+"
+            ),
+            "frame terminator: {chunk}"
+        );
         let data = chunk
-            .strip_prefix("event: error
-data: ")
-            .and_then(|rest| rest.strip_suffix("
+            .strip_prefix(
+                "event: error
+data: ",
+            )
+            .and_then(|rest| {
+                rest.strip_suffix(
+                    "
 
-"))
+",
+                )
+            })
             .expect("frame body");
         let payload: serde_json::Value = serde_json::from_str(data).expect("json payload");
         assert_eq!(payload["eventType"], "error");
@@ -17302,4 +17336,3 @@ data: ")
         assert!(chunk.contains("\"code\":500") || chunk.contains("\"code\": 500"));
     }
 }
-

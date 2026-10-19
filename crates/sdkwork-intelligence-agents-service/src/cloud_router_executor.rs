@@ -644,17 +644,15 @@ fn execute_turn_tool(
                     content: Some(crate::tool_calling::cap_tool_content(&content)),
                 });
                 emit_tool_call_result(sink, streamed_call, &descriptor.tool_id, "failed", &content);
-                return Err(
-                    KernelError::resource_exhausted(
-                        "media generation rejected: insufficient account balance",
-                    )
-                    .with_detail(
-                        sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
-                        "insufficient_balance",
-                    )
-                    .with_retryable(false)
-                    .with_safe_for_user(true),
-                );
+                return Err(KernelError::resource_exhausted(
+                    "media generation rejected: insufficient account balance",
+                )
+                .with_detail(
+                    sdkwork_agents_tool_cloudrouter::FUNDING_SHORTFALL_DETAIL_KEY,
+                    "insufficient_balance",
+                )
+                .with_retryable(false)
+                .with_safe_for_user(true));
             }
             Ok((
                 "failed".to_string(),
@@ -800,6 +798,16 @@ fn build_chat_messages(input: &TurnExecutionInput) -> Vec<OpenAiChatMessage> {
         messages.push(OpenAiChatMessage {
             content: Some(content.to_string()),
             role: label.to_string(),
+            ..Default::default()
+        });
+    }
+    if let Some(grounding) = crate::context_grounding::build_grounding_prompt(
+        &input.knowledge_context,
+        &input.memory_context,
+    ) {
+        messages.push(OpenAiChatMessage {
+            content: Some(grounding.text),
+            role: "system".to_string(),
             ..Default::default()
         });
     }
@@ -971,10 +979,47 @@ mod tests {
         }
     }
 
+    #[test]
+    fn chat_messages_include_knowledge_grounding_before_history() {
+        let mut input = sample_input(None, None);
+        input.knowledge_context = vec![crate::context_grounding::KnowledgeGroundingSnippet {
+            document_id: "doc-1".to_string(),
+            title: "Refund policy".to_string(),
+            snippet: "Refunds are accepted within 30 days.".to_string(),
+            score: Some(0.91),
+            source_uri: None,
+            retrieval_method: Some("hybrid".to_string()),
+        }];
+
+        let messages = build_chat_messages(&input);
+        let grounding_index = messages
+            .iter()
+            .position(|message| {
+                message.role == "system"
+                    && message
+                        .content
+                        .as_deref()
+                        .is_some_and(|content| content.contains("<knowledge_sources>"))
+            })
+            .expect("grounding system message");
+        let history_index = messages
+            .iter()
+            .position(|message| {
+                message.role == "user" && message.content.as_deref() == Some("hello")
+            })
+            .expect("history message");
+        assert!(
+            grounding_index < history_index,
+            "grounding must precede conversation history"
+        );
+    }
+
     fn sample_input(auth_token: Option<&str>, access_token: Option<&str>) -> TurnExecutionInput {
         TurnExecutionInput {
             effective_tools: Vec::new(),
             assembled_system_prompt: None,
+            knowledge_context: Vec::new(),
+            memory_context: Vec::new(),
             mcp_connections: Vec::new(),
             turn_id: "turn.test".to_string(),
             model_request_id: "model-request.test".to_string(),
@@ -1475,10 +1520,9 @@ mod tests {
 
     #[test]
     fn tool_funding_failure_aborts_the_turn_with_the_funding_tag() {
-        use crate::tool_calling::{TurnToolDispatcher, TurnToolOrigin, TurnToolDescriptor};
+        use crate::tool_calling::{TurnToolDescriptor, TurnToolDispatcher, TurnToolOrigin};
 
-        let dispatcher = TurnToolDispatcher::new()
-            .with_executor(Box::new(FundingFailureExecutor));
+        let dispatcher = TurnToolDispatcher::new().with_executor(Box::new(FundingFailureExecutor));
         let input = sample_input(Some("token"), Some("access"));
         let streamed_call = sdkwork_agents_tool_cloudrouter::StreamedToolCall {
             id: "call.funding".to_string(),

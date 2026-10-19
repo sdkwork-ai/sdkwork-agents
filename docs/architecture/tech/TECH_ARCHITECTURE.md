@@ -169,6 +169,13 @@ Agent and Project composition use the canonical mapping in
 `specs/AGENTS_DOMAIN_SPEC.md` section 3. `document/documents` is a reference to
 the Documents module, not a copied document table, Drive alias or derived read table.
 
+Knowledge and memory slots are resolved per Turn into one bounded grounding
+block (numbered knowledge sources plus user memory) through the
+`KnowledgeGroundingResolver` / `MemoryGroundingResolver` ports. Transport lives
+only in the composition-root adapters; the service never calls a capability
+module directly. See
+[TECH-2026-1019-turn-knowledge-memory-grounding.md](TECH-2026-1019-turn-knowledge-memory-grounding.md).
+
 ## 6. Execution And Consistency
 
 1. The HTTP adapter derives tenant, organization, user, credential mode and
