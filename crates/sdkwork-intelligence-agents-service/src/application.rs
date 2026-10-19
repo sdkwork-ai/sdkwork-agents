@@ -8343,6 +8343,7 @@ where
             user_item_drive_refs,
             stream_deltas: Vec::new(),
             stream_events: Vec::new(),
+            citations: Vec::new(),
         })
     }
 
@@ -9320,6 +9321,13 @@ where
             command.access_token.as_deref(),
             &turn_slots,
         );
+        // Render once to obtain the exact citation set the prompt will use. The
+        // renderers build the same block from the same snippets, so numbering
+        // and truncation stay identical between prompt and response.
+        let turn_citations =
+            crate::context_grounding::build_grounding_prompt(&knowledge_context, &memory_context)
+                .map(|prompt| prompt.citations)
+                .unwrap_or_default();
 
         // Session affinity: a turn without an explicit route override inherits
         // the target of the session's live execution placement, so a session
@@ -9884,6 +9892,7 @@ where
             user_item_drive_refs,
             stream_deltas: completion.stream_deltas,
             stream_events: completion.stream_events,
+            citations: turn_citations,
         })
     }
 

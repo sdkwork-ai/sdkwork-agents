@@ -988,6 +988,9 @@ pub struct TurnExecutionResult {
     pub user_item_drive_refs: Vec<AgentItemDriveRefRecord>,
     pub stream_deltas: Vec<String>,
     pub stream_events: Vec<KernelEvent>,
+    /// Knowledge sources that grounded this turn, numbered like the prompt
+    /// markers. Empty for ungrounded turns and replayed turns.
+    pub citations: Vec<crate::context_grounding::KnowledgeCitation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

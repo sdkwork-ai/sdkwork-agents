@@ -483,6 +483,7 @@ class AgentManagementProfile {
   final String? categoryId;
   final String? color;
   final bool? debugMode;
+  final String? executionRoute;
   final String? iconName;
   final bool? jsonMode;
   final List<String>? knowledgeBaseIds;
@@ -504,6 +505,7 @@ class AgentManagementProfile {
     this.categoryId,
     this.color,
     this.debugMode,
+    this.executionRoute,
     this.iconName,
     this.jsonMode,
     this.knowledgeBaseIds,
@@ -527,6 +529,7 @@ class AgentManagementProfile {
       categoryId: json['categoryId']?.toString(),
       color: json['color']?.toString(),
       debugMode: json['debugMode'] is bool ? json['debugMode'] : null,
+      executionRoute: json['executionRoute']?.toString(),
       iconName: json['iconName']?.toString(),
       jsonMode: json['jsonMode'] is bool ? json['jsonMode'] : null,
       knowledgeBaseIds: (() {
@@ -596,6 +599,7 @@ class AgentManagementProfile {
       'categoryId': categoryId,
       'color': color,
       'debugMode': debugMode,
+      'executionRoute': executionRoute,
       'iconName': iconName,
       'jsonMode': jsonMode,
       'knowledgeBaseIds': knowledgeBaseIds?.map((item) => item).toList(),
@@ -12116,6 +12120,128 @@ class AgentTurnExecutionResponse {
       'code': code,
       'data': data,
       'traceId': traceId,
+    };
+  }
+}
+
+class AgentTurnExecutionItem {
+  final AgentSessionRecord session;
+  final AgentTurnRecord turn;
+  final List<AgentSessionItemRecord> items;
+  final List<AgentTurnCitation>? citations;
+
+  AgentTurnExecutionItem({
+    required this.session,
+    required this.turn,
+    required this.items,
+    this.citations
+  });
+
+  factory AgentTurnExecutionItem.fromJson(Map<String, dynamic> json) {
+    return AgentTurnExecutionItem(
+      session: (() {
+        final map = _sdkworkAsMap(json['session']);
+        if (map == null) {
+          throw FormatException('AgentTurnExecutionItem.session is required');
+        }
+        return AgentSessionRecord.fromJson(map);
+      })(),
+      turn: (() {
+        final map = _sdkworkAsMap(json['turn']);
+        if (map == null) {
+          throw FormatException('AgentTurnExecutionItem.turn is required');
+        }
+        return AgentTurnRecord.fromJson(map);
+      })(),
+      items: (() {
+        final list = _sdkworkAsList(json['items']);
+        if (list == null) {
+          throw FormatException('AgentTurnExecutionItem.items is required');
+        }
+        return list
+            .map((item) => (() {
+        final map = _sdkworkAsMap(item);
+        return map == null ? null : AgentSessionItemRecord.fromJson(map);
+      })())
+            .whereType<AgentSessionItemRecord>()
+            .toList();
+      })(),
+      citations: (() {
+        final list = _sdkworkAsList(json['citations']);
+        if (list == null) {
+          return null;
+        }
+        return list
+            .map((item) => (() {
+        final map = _sdkworkAsMap(item);
+        return map == null ? null : AgentTurnCitation.fromJson(map);
+      })())
+            .whereType<AgentTurnCitation>()
+            .toList();
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'session': session.toJson(),
+      'turn': turn.toJson(),
+      'items': items.map((item) => item.toJson()).toList(),
+      'citations': citations?.map((item) => item.toJson()).toList(),
+    };
+  }
+}
+
+class AgentTurnCitation {
+  final int index;
+  final String documentId;
+  final String title;
+  final String? sourceUri;
+  final double? score;
+
+  AgentTurnCitation({
+    required this.index,
+    required this.documentId,
+    required this.title,
+    this.sourceUri,
+    this.score
+  });
+
+  factory AgentTurnCitation.fromJson(Map<String, dynamic> json) {
+    return AgentTurnCitation(
+      index: (() {
+        final value = json['index'];
+        if (value is! int) {
+          throw FormatException('AgentTurnCitation.index is required');
+        }
+        return value;
+      })(),
+      documentId: (() {
+        final value = json['documentId']?.toString();
+        if (value == null) {
+          throw FormatException('AgentTurnCitation.documentId is required');
+        }
+        return value;
+      })(),
+      title: (() {
+        final value = json['title']?.toString();
+        if (value == null) {
+          throw FormatException('AgentTurnCitation.title is required');
+        }
+        return value;
+      })(),
+      sourceUri: json['sourceUri']?.toString(),
+      score: json['score'] is num ? json['score'].toDouble() : null
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'index': index,
+      'documentId': documentId,
+      'title': title,
+      'sourceUri': sourceUri,
+      'score': score,
     };
   }
 }

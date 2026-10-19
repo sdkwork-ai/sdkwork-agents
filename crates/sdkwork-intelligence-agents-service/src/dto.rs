@@ -3000,12 +3000,38 @@ impl AgentTurnRecordDto {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentTurnExecutionDto {
     pub session: AgentSessionRecordDto,
     pub turn: AgentTurnRecordDto,
     pub items: Vec<AgentSessionItemRecordDto>,
+    /// Knowledge sources that grounded this turn. Optional on the wire so older
+    /// clients keep decoding responses; an ungrounded turn serializes `[]`.
+    pub citations: Vec<AgentTurnCitationDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentTurnCitationDto {
+    /// 1-based marker number used in the grounding prompt.
+    pub index: u32,
+    pub document_id: String,
+    pub title: String,
+    pub source_uri: Option<String>,
+    pub score: Option<f64>,
+}
+
+impl From<&crate::context_grounding::KnowledgeCitation> for AgentTurnCitationDto {
+    fn from(citation: &crate::context_grounding::KnowledgeCitation) -> Self {
+        Self {
+            index: citation.index,
+            document_id: citation.document_id.clone(),
+            title: citation.title.clone(),
+            source_uri: citation.source_uri.clone(),
+            score: citation.score,
+        }
+    }
 }
 
 impl AgentTurnExecutionDto {
@@ -3027,6 +3053,11 @@ impl AgentTurnExecutionDto {
                     }
                 })
                 .collect::<KernelResult<Vec<_>>>()?,
+            citations: result
+                .citations
+                .iter()
+                .map(AgentTurnCitationDto::from)
+                .collect(),
         })
     }
 }
@@ -3588,6 +3619,23 @@ fn normalize_optional_string(value: &str) -> Option<String> {
 mod tests {
     use super::*;
     use sdkwork_agent_kernel::PolicySubject;
+
+    #[test]
+    fn turn_citation_dto_serializes_camel_case_fields() {
+        let value = serde_json::to_value(AgentTurnCitationDto {
+            index: 1,
+            document_id: "doc-1".to_string(),
+            title: "Refund policy".to_string(),
+            source_uri: Some("kb://documents/doc-1".to_string()),
+            score: Some(0.75),
+        })
+        .expect("citation serializes");
+        assert_eq!(value["index"], 1);
+        assert_eq!(value["documentId"], "doc-1");
+        assert_eq!(value["title"], "Refund policy");
+        assert_eq!(value["sourceUri"], "kb://documents/doc-1");
+        assert_eq!(value["score"], 0.75);
+    }
 
     fn sample_manifest(agent_id: &str) -> AgentManifest {
         AgentManifest {

@@ -72,9 +72,12 @@ unchanged.
 Turn grounding is implemented for knowledge: enabled `knowledge -> knowledgebase`
 slots resolve through the `KnowledgeGroundingResolver` port, the composition
 root adapts it over the Knowledgebase App API transport SDK, and both prompt
-builders insert one bounded, citation-numbered system block. Memory slot
-resolution and rendering are implemented; the memory adapter waits for a
-`sdkwork-memory` public Rust App API SDK and a production memory retriever.
+builders insert one bounded, citation-numbered system block. The turn execution
+item now returns those citations (`citations`), including in the streaming
+completion event, so clients can render sources without changing the session
+item contract. Memory slot resolution and rendering are implemented; the memory
+adapter waits for a `sdkwork-memory` public Rust App API SDK and a production
+memory retriever.
 See [TECH-2026-1019-turn-knowledge-memory-grounding.md](../docs/architecture/tech/TECH-2026-1019-turn-knowledge-memory-grounding.md).
 
 ## 5. Commercial Readiness Gates

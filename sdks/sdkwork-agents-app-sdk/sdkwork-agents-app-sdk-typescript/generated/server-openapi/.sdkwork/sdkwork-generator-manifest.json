@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-app-sdk",
-    "version": "0.1.5",
+    "version": "0.1.0",
     "language": "typescript",
     "sdkType": "app",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "cca819eb4a42a50fb175aca0d0d35956f40795b6a0f6b49bb0b840f07ab293c9"
+      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
     },
     {
       "path": "LICENSE",
@@ -40,7 +40,7 @@
     },
     {
       "path": "package.json",
-      "sha256": "fbe1c4c260a0107dc47d46a6622b0669d0bb6778feb2fb5801e39d7db0659edd"
+      "sha256": "384f358a170d58b69aa0968b9886204db6fc9085ae31aaf1e88d8219b461ab21"
     },
     {
       "path": "README.md",
@@ -48,7 +48,7 @@
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "b79a8ba5f561b740ff21c257011b41794f6270a6e56e0a599d1411e089b72720"
+      "sha256": "e509ebd5e9eeda95e2f15e8efb1ccb08d3a22e2d0fc41c22844b64f2754bbc82"
     },
     {
       "path": "src/api/ai.ts",
@@ -487,8 +487,16 @@
       "sha256": "3ae815aeeb8b7e40549deaffe99137323b1b155523631a907ed540cb8416062c"
     },
     {
+      "path": "src/types/agent-turn-citation.ts",
+      "sha256": "c3e98febd1948a219ddde423eaf4afb06f47a167b9d16b1383cc4bb754142012"
+    },
+    {
+      "path": "src/types/agent-turn-execution-item.ts",
+      "sha256": "08e09e10266b6e9dfe412c095032d22d0c12f2f1e14fef06dea84e1c10dafc64"
+    },
+    {
       "path": "src/types/agent-turn-execution-response.ts",
-      "sha256": "52f3bbc2793626940daf2ba8fc06f7f071134a06409a817dc2aaf0fb408e3102"
+      "sha256": "9fd8b211f9cc3dc3ec29b7558cf7004bff3337675ffad4dc92a85b7913c03f89"
     },
     {
       "path": "src/types/agent-turn-input-queue-drive-ref.ts",
@@ -804,7 +812,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "e2ef753a89b018ec78c140af9dd140da01cb387c16ce6d4e217cf850cc8fe637"
+      "sha256": "c06d8a37d8f70d6d26749fd4d11b34c286d0dca16f8039a50ee7acefde4c7bd6"
     },
     {
       "path": "src/types/int64-string.ts",

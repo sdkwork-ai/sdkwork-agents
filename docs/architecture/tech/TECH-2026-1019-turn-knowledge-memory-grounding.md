@@ -75,15 +75,31 @@ Configuration: `SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL` (App API origin).
 Unset = capability module not mounted (grounding skipped). Set-but-invalid =
 bootstrap failure, never a silent disable.
 
-## 5. Remaining Gates
+## 5. Citation Delivery
+
+`TurnExecutionResult.citations` carries the same `KnowledgeCitation` set the
+prompt rendered (`index`, `documentId`, `title`, `sourceUri`, `score`). The
+service computes it once with `build_grounding_prompt` before the turn moves its
+snippet vectors into the execution input, so marker numbers and truncation match
+the prompt exactly.
+
+`AgentTurnExecutionDto` exposes `citations` on the item, which means both
+delivery modes carry them without a separate channel:
+
+- non-streaming `POST .../turns` returns `data.item.citations`;
+- streaming turns include the same item in the terminal `completion` SSE event.
+
+Ungrounded turns and replayed turns serialize `[]`. The field is optional on the
+wire so older clients keep decoding responses.
+
+## 6. Remaining Gates
 
 - Memory adapter: `sdkwork-memory` does not yet publish a Rust App API SDK or a
   production `MemoryRetrieverPort` implementation. The port, slot resolution,
   and prompt rendering are complete; the adapter lands when that SDK exists.
-- Citation delivery: `KnowledgeGroundingSnippet`/`KnowledgeCitation` are
-  attached to the prompt block and available to the service, but
-  `AgentTurnStreamEvent` and session items do not yet expose citations on the
-  public wire. That is an API/SDK contract change.
+- Durable per-session-item citations: the turn response carries citations, but
+  replayed historical turns do not retain them. Persisting them belongs with the
+  session item projection contract.
 - Turn-level telemetry for grounding counts and degraded retrievals.
 
 ## 6. Verification
