@@ -26,7 +26,6 @@ use sdkwork_agent_kernel::{KernelError, KernelResult};
 use sdkwork_intelligence_agents_service::{
     GroundingRequest, MemoryGroundingResolver, MemoryGroundingSnippet, MAX_MEMORY_SNIPPETS,
 };
-use sdkwork_memory_app_sdk_generated_rust::models::MemoryRecordList;
 use sdkwork_memory_app_sdk_generated_rust::SdkworkMemoryAppClient;
 
 /// Environment variable holding the Memory App API origin.
@@ -138,6 +137,7 @@ impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
         }
 
         let query = request.query.trim().to_string();
+        let actor_id = request.actor_id.map(|value| value.to_string());
         let timeout = self.timeout;
         let snippets = run_sdk_call(move || {
             let runtime = tokio::runtime::Builder::new_current_thread()
@@ -145,47 +145,73 @@ impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
                 .build()
                 .map_err(|error| provider_error("memory.runtime_init_failed", error.to_string()))?;
             runtime.block_on(async {
-                let mut collected = Vec::new();
-                for space_id in spaces {
-                    if collected.len() >= MAX_MEMORY_SNIPPETS {
-                        break;
-                    }
-                    let response = match tokio::time::timeout(
-                        timeout,
-                        client.memory().memories_list(
-                            &space_id,
-                            Some(query.as_str()),
-                            None,
-                            Some(i64::from(top_k)),
-                            Some(false),
+                let body = sdkwork_memory_app_sdk_generated_rust::models::MemoryRetrievalRequest {
+                    query,
+                    space_ids: spaces,
+                    actor_id,
+                    top_k: i64::from(top_k),
+                    context_budget_tokens: 1_024,
+                    show_expired: Some(false),
+                    ..Default::default()
+                };
+                let idempotency_key = format!(
+                    "agents-memory-{}",
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|duration| duration.as_nanos())
+                        .unwrap_or_default()
+                );
+                match tokio::time::timeout(
+                    timeout,
+                    client.memory().retrievals_create(&body, &idempotency_key),
+                )
+                .await
+                {
+                    Ok(result) => result
+                        .map(map_retrieval_hits)
+                        .map_err(|error| provider_error("memory.retrieval_failed", error)),
+                    Err(_) => Err(KernelError::provider_error(
+                        "memory.retrieval_timeout",
+                        format!(
+                            "memory query did not complete within {} ms",
+                            timeout.as_millis()
                         ),
-                    )
-                    .await
-                    {
-                        Ok(result) => {
-                            result.map_err(|error| provider_error("memory.list_failed", error))?
-                        }
-                        Err(_) => {
-                            return Err(KernelError::provider_error(
-                                "memory.list_timeout",
-                                format!(
-                                    "memory query did not complete within {} ms",
-                                    timeout.as_millis()
-                                ),
-                            ))
-                        }
-                    };
-                    collected.extend(map_memory_records(
-                        response,
-                        MAX_MEMORY_SNIPPETS - collected.len(),
-                    ));
+                    )),
                 }
-                Ok(collected)
             })
         })?;
 
         Ok(deduplicate(snippets))
     }
+}
+
+fn map_retrieval_hits(
+    result: sdkwork_memory_app_sdk_generated_rust::models::MemoryRetrievalResult,
+) -> Vec<MemoryGroundingSnippet> {
+    result
+        .hits
+        .into_iter()
+        .take(MAX_MEMORY_SNIPPETS)
+        .filter_map(|hit| {
+            let record = hit.memory?;
+            if !record.status.eq_ignore_ascii_case("active") {
+                return None;
+            }
+            let content = record
+                .summary_text
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or(record.canonical_text);
+            if content.trim().is_empty() {
+                return None;
+            }
+            Some(MemoryGroundingSnippet {
+                memory_id: record.memory_id,
+                content,
+                score: hit.fused_score.or(Some(record.confidence)),
+                source_uri: None,
+            })
+        })
+        .collect()
 }
 
 /// In-process memory grounding resolver for co-deployed Agents processes.
@@ -264,7 +290,13 @@ impl MemoryGroundingResolver for InProcessMemoryGroundingResolver {
         let query = request.query.trim().to_string();
         let runtime = &self.runtime;
         let tenant_id = request.tenant_id;
-        let actor_id = request.actor_id;
+        let Some(actor_id) = request.actor_id else {
+            tracing::warn!(
+                agent_id = %request.agent_id,
+                "in-process memory grounding requires an authenticated actor; skipping retrieval"
+            );
+            return Ok(Vec::new());
+        };
         let mut snippets = Vec::new();
         for space_id in spaces {
             if snippets.len() >= MAX_MEMORY_SNIPPETS {
@@ -278,7 +310,7 @@ impl MemoryGroundingResolver for InProcessMemoryGroundingResolver {
                 runtime_handle
                     .block_on(runtime.retrieve(
                         tenant_id,
-                        actor_id,
+                        Some(actor_id),
                         space_id,
                         &query,
                         Some(top_k),
@@ -330,32 +362,12 @@ pub fn parse_memory_space_id(reference: &str) -> Option<String> {
     Some(numeric.to_string())
 }
 
-/// Maps the Memory App API list payload into bounded grounding snippets.
+/// Maps one Memory retrieval result into bounded grounding snippets.
 #[must_use]
-pub fn map_memory_records(
-    value: serde_json::Value,
-    remaining: usize,
+pub fn map_memory_retrieval_result(
+    result: sdkwork_memory_app_sdk_generated_rust::models::MemoryRetrievalResult,
 ) -> Vec<MemoryGroundingSnippet> {
-    let Ok(page) = serde_json::from_value::<MemoryRecordList>(value) else {
-        return Vec::new();
-    };
-    page.items
-        .into_iter()
-        .filter(|record| record.status.eq_ignore_ascii_case("active"))
-        .filter_map(|record| {
-            let content = record
-                .summary_text
-                .filter(|text| !text.trim().is_empty())
-                .unwrap_or(record.canonical_text);
-            (!content.trim().is_empty()).then_some(MemoryGroundingSnippet {
-                memory_id: record.memory_id,
-                content,
-                score: Some(record.confidence),
-                source_uri: None,
-            })
-        })
-        .take(remaining)
-        .collect()
+    map_retrieval_hits(result)
 }
 
 fn deduplicate(snippets: Vec<MemoryGroundingSnippet>) -> Vec<MemoryGroundingSnippet> {
@@ -433,54 +445,41 @@ mod tests {
 
     #[test]
     fn records_map_to_bounded_snippets_and_skip_inactive() {
-        let page = serde_json::json!({
-            "items": [
-                {
-                    "memoryId": "7001",
-                    "spaceId": "4242",
-                    "userId": null,
-                    "scope": "user",
-                    "memoryType": "semantic",
-                    "canonicalText": "Prefers refunds within 30 days.",
-                    "summaryText": null,
-                    "confidence": 0.9,
-                    "evidenceCount": 1,
-                    "contradictionCount": 0,
-                    "expiresAt": null,
-                    "status": "active",
-                    "sensitivityLevel": "normal",
-                    "metadata": null,
-                    "supersedesMemoryId": null,
-                    "supersededByMemoryId": null,
-                    "createdAt": "2026-10-01T00:00:00Z",
-                    "updatedAt": "2026-10-01T00:00:00Z",
-                    "version": "1"
+        use sdkwork_memory_app_sdk_generated_rust::models::{
+            MemoryRecord, MemoryRetrievalHit, MemoryRetrievalResult,
+        };
+        let record = |memory_id: &str, text: &str, status: &str| MemoryRecord {
+            memory_id: memory_id.to_string(),
+            canonical_text: text.to_string(),
+            confidence: 0.9,
+            status: status.to_string(),
+            ..Default::default()
+        };
+        let result = MemoryRetrievalResult {
+            retrieval_id: "1".to_string(),
+            hits: vec![
+                MemoryRetrievalHit {
+                    hit_id: "h1".to_string(),
+                    memory: Some(record("7001", "Prefers refunds within 30 days.", "active")),
+                    retriever_name: "hybrid".to_string(),
+                    result_rank: 1,
+                    fused_score: Some(0.93),
+                    status: "active".to_string(),
+                    ..Default::default()
                 },
-                {
-                    "memoryId": "7002",
-                    "spaceId": "4242",
-                    "userId": null,
-                    "scope": "user",
-                    "memoryType": "semantic",
-                    "canonicalText": "Deleted memory",
-                    "summaryText": null,
-                    "confidence": 0.5,
-                    "evidenceCount": 1,
-                    "contradictionCount": 0,
-                    "expiresAt": null,
-                    "status": "deleted",
-                    "sensitivityLevel": "normal",
-                    "metadata": null,
-                    "supersedesMemoryId": null,
-                    "supersededByMemoryId": null,
-                    "createdAt": "2026-10-01T00:00:00Z",
-                    "updatedAt": "2026-10-01T00:00:00Z",
-                    "version": "1"
-                }
+                MemoryRetrievalHit {
+                    hit_id: "h2".to_string(),
+                    memory: Some(record("7002", "Deleted memory", "deleted")),
+                    retriever_name: "hybrid".to_string(),
+                    result_rank: 2,
+                    status: "deleted".to_string(),
+                    ..Default::default()
+                },
             ],
-            "pageInfo": { "mode": "cursor", "hasMore": false }
-        });
-        let snippets = map_memory_records(page, 8);
+            degraded: false,
+            ..Default::default()
+        };
+        let snippets = map_memory_retrieval_result(result);
         assert_eq!(snippets.len(), 1);
         assert_eq!(snippets[0].memory_id, "7001");
         assert_eq!(snippets[0].content, "Prefers refunds within 30 days.");
@@ -494,44 +493,50 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn resolver_calls_memories_list_with_query_space_and_dual_tokens() {
+    async fn resolver_calls_retrievals_create_with_dual_tokens() {
         use serde_json::json;
-        use wiremock::matchers::{header, method, path, query_param};
+        use wiremock::matchers::{header, method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
         let body = json!({
             "code": 0,
             "data": {
-                "items": [{
-                    "memoryId": "7001",
-                    "spaceId": "4242",
-                    "userId": null,
-                    "scope": "user",
-                    "memoryType": "semantic",
-                    "canonicalText": "Prefers refunds within 30 days.",
-                    "summaryText": null,
-                    "confidence": 0.9,
-                    "evidenceCount": 1,
-                    "contradictionCount": 0,
-                    "expiresAt": null,
-                    "status": "active",
-                    "sensitivityLevel": "normal",
-                    "metadata": null,
-                    "supersedesMemoryId": null,
-                    "supersededByMemoryId": null,
-                    "createdAt": "2026-10-01T00:00:00Z",
-                    "updatedAt": "2026-10-01T00:00:00Z",
-                    "version": "1"
+                "retrievalId": "1",
+                "hits": [{
+                    "hitId": "h1",
+                    "memory": {
+                        "memoryId": "7001",
+                        "spaceId": "4242",
+                        "userId": null,
+                        "scope": "user",
+                        "memoryType": "semantic",
+                        "canonicalText": "Prefers refunds within 30 days.",
+                        "summaryText": null,
+                        "confidence": 0.9,
+                        "evidenceCount": 1,
+                        "contradictionCount": 0,
+                        "expiresAt": null,
+                        "status": "active",
+                        "sensitivityLevel": "normal",
+                        "metadata": null,
+                        "supersedesMemoryId": null,
+                        "supersededByMemoryId": null,
+                        "createdAt": "2026-10-01T00:00:00Z",
+                        "updatedAt": "2026-10-01T00:00:00Z",
+                        "version": "1"
+                    },
+                    "retrieverName": "hybrid",
+                    "resultRank": 1,
+                    "fusedScore": 0.93,
+                    "status": "active"
                 }],
-                "pageInfo": { "mode": "cursor", "hasMore": false }
+                "degraded": false
             },
             "traceId": "00000000-0000-4000-8000-000000000000"
         });
-        Mock::given(method("GET"))
-            .and(path("/app/v3/api/memory/memories"))
-            .and(query_param("space_id", "4242"))
-            .and(query_param("q", "how do refunds work"))
+        Mock::given(method("POST"))
+            .and(path("/app/v3/api/memory/retrievals"))
             .and(header("Authorization", "Bearer auth-token"))
             .and(header("Access-Token", "access-token"))
             .respond_with(ResponseTemplate::new(200).set_body_json(body))
