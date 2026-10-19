@@ -262,6 +262,7 @@ mod tests {
         GroundingRequest {
             tenant_id: 100_001,
             organization_id: 0,
+            actor_id: Some(7),
             agent_id: "agent.chat.default",
             session_id: "session.1",
             query: "  how do refunds work  ",

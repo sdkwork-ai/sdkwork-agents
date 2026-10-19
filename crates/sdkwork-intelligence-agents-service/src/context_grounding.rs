@@ -124,6 +124,7 @@ pub struct KnowledgeCitation {
 pub struct GroundingRequest<'a> {
     pub tenant_id: u64,
     pub organization_id: u64,
+    pub actor_id: Option<u64>,
     pub agent_id: &'a str,
     pub session_id: &'a str,
     pub query: &'a str,
@@ -635,6 +636,7 @@ mod tests {
         let request = GroundingRequest {
             tenant_id: 1,
             organization_id: 0,
+            actor_id: None,
             agent_id: "agent.chat.default",
             session_id: "session.1",
             query: "refunds",

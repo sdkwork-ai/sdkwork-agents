@@ -188,6 +188,134 @@ impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
     }
 }
 
+/// In-process memory grounding resolver for co-deployed Agents processes.
+pub struct InProcessMemoryGroundingResolver {
+    runtime: sdkwork_memory_inprocess::InProcessMemoryRuntime,
+}
+
+impl InProcessMemoryGroundingResolver {
+    /// Bootstraps the in-process runtime from the environment.
+    ///
+    /// Returns `Ok(None)` when the memory database is not configured, matching
+    /// the HTTP mode's optional-module behaviour.
+    pub fn from_env() -> Result<Option<Self>, String> {
+        if !sdkwork_memory_inprocess::memory_database_configured() {
+            return Ok(None);
+        }
+        let runtime = std::thread::scope(|scope| {
+            let handle = std::thread::Builder::new()
+                .name("agents-memory-inprocess-bootstrap".to_string())
+                .spawn_scoped(scope, || {
+                    let runtime = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                        .map_err(|error| format!("memory runtime init failed: {error}"))?;
+                    runtime.block_on(sdkwork_memory_inprocess::InProcessMemoryRuntime::from_env())
+                })
+                .map_err(|error| format!("memory bootstrap worker spawn failed: {error}"))?;
+            handle
+                .join()
+                .map_err(|_| "memory bootstrap worker panicked".to_string())?
+        })?;
+        Ok(runtime.map(Self::new))
+    }
+
+    /// Builds the resolver over an initialized runtime.
+    #[must_use]
+    pub fn new(runtime: sdkwork_memory_inprocess::InProcessMemoryRuntime) -> Self {
+        Self { runtime }
+    }
+}
+
+impl MemoryGroundingResolver for InProcessMemoryGroundingResolver {
+    fn resolve_memory(
+        &self,
+        request: &GroundingRequest<'_>,
+    ) -> KernelResult<Vec<MemoryGroundingSnippet>> {
+        if request.memory.is_empty() {
+            return Ok(Vec::new());
+        }
+        let spaces = request
+            .memory
+            .iter()
+            .filter_map(|binding| {
+                parse_memory_space_id(&binding.memory_policy_ref)
+                    .and_then(|value| value.parse::<u64>().ok())
+                    .or_else(|| {
+                        tracing::warn!(
+                            slot_id = %binding.slot_id,
+                            memory_policy_ref = %binding.memory_policy_ref,
+                            "memory composition slot does not reference a numeric memory space; skipping"
+                        );
+                        None
+                    })
+            })
+            .collect::<Vec<_>>();
+        if spaces.is_empty() {
+            return Ok(Vec::new());
+        }
+        let top_k = request
+            .memory
+            .iter()
+            .filter_map(|binding| binding.top_k)
+            .max()
+            .unwrap_or(DEFAULT_MEMORY_TOP_K)
+            .clamp(1, MAX_MEMORY_TOP_K);
+        let query = request.query.trim().to_string();
+        let runtime = &self.runtime;
+        let tenant_id = request.tenant_id;
+        let actor_id = request.actor_id;
+        let mut snippets = Vec::new();
+        for space_id in spaces {
+            if snippets.len() >= MAX_MEMORY_SNIPPETS {
+                break;
+            }
+            let result = run_sdk_call(|| {
+                let runtime_handle = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|error| provider_error("memory.runtime_init_failed", error))?;
+                runtime_handle
+                    .block_on(runtime.retrieve(
+                        tenant_id,
+                        actor_id,
+                        space_id,
+                        &query,
+                        Some(top_k),
+                        Some(DEFAULT_MEMORY_CONTEXT_BUDGET),
+                    ))
+                    .map_err(|error| {
+                        provider_error("memory.retrieval_failed", format!("{error:?}"))
+                    })
+            })?;
+            for hit in result.hits {
+                if snippets.len() >= MAX_MEMORY_SNIPPETS {
+                    break;
+                }
+                let Some(record) = hit.memory else {
+                    continue;
+                };
+                let content = record
+                    .summary_text
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or(record.canonical_text);
+                if content.trim().is_empty() {
+                    continue;
+                }
+                snippets.push(MemoryGroundingSnippet {
+                    memory_id: record.memory_id.to_string(),
+                    content,
+                    score: hit.fused_score.or(Some(record.confidence)),
+                    source_uri: None,
+                });
+            }
+        }
+        Ok(deduplicate(snippets))
+    }
+}
+
+const DEFAULT_MEMORY_CONTEXT_BUDGET: u32 = 1_024;
+
 /// Parses a memory slot reference into a Memory space id.
 ///
 /// Accepted forms: `4242` and `space:4242`. Any other form returns `None`; the
@@ -280,6 +408,7 @@ mod tests {
         GroundingRequest {
             tenant_id: 100_001,
             organization_id: 0,
+            actor_id: Some(7),
             agent_id: "agent.chat.default",
             session_id: "session.1",
             query: "  how do refunds work  ",

@@ -57,6 +57,10 @@ fn build_turn_tool_dispatcher() -> TurnToolDispatcher {
 /// execution route (`in_process` | `sandbox`). Per-request `executionRoute`
 /// overrides always win over this default.
 pub const AGENTS_TURN_EXECUTION_ROUTE_ENV: &str = "SDKWORK_AGENTS_TURN_EXECUTION_ROUTE";
+/// Selects the Agents memory transport: `in_process` (default) or `http`.
+pub const AGENTS_MEMORY_MODE_ENV: &str = "SDKWORK_AGENTS_MEMORY_MODE";
+const MEMORY_MODE_IN_PROCESS: &str = "in_process";
+const MEMORY_MODE_HTTP: &str = "http";
 
 /// Builds the Knowledgebase grounding resolver when the capability module is
 /// configured for this deployment.
@@ -91,28 +95,62 @@ fn knowledgebase_grounding_resolver(
 
 /// Builds the Memory grounding resolver when `sdkwork-memory` is mounted.
 ///
-/// `SDKWORK_AGENTS_MEMORY_BASE_URL` is optional and independent from the
-/// Knowledgebase module: an unset value means memory slots degrade with a
-/// warning, while a set-but-invalid value fails bootstrap.
+/// `SDKWORK_AGENTS_MEMORY_MODE` selects the transport and defaults to
+/// `in_process`. In-process mode requires the memory database profile; HTTP mode
+/// requires `SDKWORK_AGENTS_MEMORY_BASE_URL`. Missing optional configuration
+/// degrades with a warning, while a set-but-invalid value fails bootstrap.
 fn memory_grounding_resolver(
 ) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::MemoryGroundingResolver>>> {
-    match sdkwork_agents_memory_bridge::MemoryGroundingResolverAdapter::from_env() {
-        Ok(Some(resolver)) => {
-            tracing::info!(
-                env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
-                "Agents memory grounding is enabled through sdkwork-memory"
-            );
-            Ok(Some(Arc::new(resolver)))
+    let mode = std::env::var(AGENTS_MEMORY_MODE_ENV)
+        .ok()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| MEMORY_MODE_IN_PROCESS.to_string());
+    match mode.as_str() {
+        MEMORY_MODE_IN_PROCESS => {
+            match sdkwork_agents_memory_bridge::InProcessMemoryGroundingResolver::from_env() {
+                Ok(Some(resolver)) => {
+                    tracing::info!(
+                        mode = MEMORY_MODE_IN_PROCESS,
+                        "Agents memory grounding is enabled in-process through sdkwork-memory"
+                    );
+                    Ok(Some(Arc::new(resolver)))
+                }
+                Ok(None) => {
+                    tracing::info!(
+                        mode = MEMORY_MODE_IN_PROCESS,
+                        "Agents memory database is not configured; memory composition slots will not retrieve"
+                    );
+                    Ok(None)
+                }
+                Err(message) => Err(anyhow::anyhow!(
+                    "agents in-process memory grounding bootstrap failed: {message}"
+                )),
+            }
         }
-        Ok(None) => {
-            tracing::info!(
-                env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
-                "Agents memory grounding is not configured; memory composition slots will not retrieve"
-            );
-            Ok(None)
+        MEMORY_MODE_HTTP => {
+            match sdkwork_agents_memory_bridge::MemoryGroundingResolverAdapter::from_env() {
+                Ok(Some(resolver)) => {
+                    tracing::info!(
+                        env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
+                        "Agents memory grounding is enabled through the sdkwork-memory App API"
+                    );
+                    Ok(Some(Arc::new(resolver)))
+                }
+                Ok(None) => {
+                    tracing::info!(
+                        env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
+                        "Agents memory App API URL is not configured; memory composition slots will not retrieve"
+                    );
+                    Ok(None)
+                }
+                Err(message) => Err(anyhow::anyhow!(
+                    "agents memory grounding bootstrap failed: {message}"
+                )),
+            }
         }
-        Err(message) => Err(anyhow::anyhow!(
-            "agents memory grounding bootstrap failed: {message}"
+        other => Err(anyhow::anyhow!(
+            "{AGENTS_MEMORY_MODE_ENV} must be {MEMORY_MODE_IN_PROCESS} or {MEMORY_MODE_HTTP}; got {other}"
         )),
     }
 }

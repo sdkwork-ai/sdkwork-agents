@@ -94,16 +94,21 @@ wire so older clients keep decoding responses.
 
 ## 6. Memory Adapter
 
-`crates/sdkwork-agents-memory-bridge` implements the memory port over the
-generator-owned Memory App API Rust SDK (`sdkwork-memory` app family). A memory
-slot's `memoryPolicyRef` is a Memory space id (`4242` or `space:4242`); each
-binding maps to `memories.list?space_id=...&q=<turn query>`, forwarding the
-caller's dual tokens and accepting only `active` records. Results are bounded to
-`MAX_MEMORY_SNIPPETS`, de-duplicated by `memoryId`, and rendered as `[Mn]`
-markers by the existing prompt builder.
+`crates/sdkwork-agents-memory-bridge` provides two transports selected by
+`SDKWORK_AGENTS_MEMORY_MODE` (default `in_process`):
 
-Configuration: `SDKWORK_AGENTS_MEMORY_BASE_URL`. Unset = memory module not
-mounted (slots degrade with a warning); set-but-invalid = bootstrap failure.
+- `in_process`: bootstraps the memory data plane from the process database
+  profile and calls `MemoryAppApi::create_retrieval` directly. No network hop;
+  requires co-deployment and memory database access.
+- `http`: calls the Memory App API through the generator-owned Rust SDK using
+  `SDKWORK_AGENTS_MEMORY_BASE_URL`.
+
+Both resolve `memoryPolicyRef` as a Memory space id (`4242` or `space:4242`),
+pass the authenticated actor explicitly (in-process) or derive it from the
+caller's dual tokens (HTTP), accept only active records, bound and de-duplicate
+snippets, and render `[Mn]` markers with the existing prompt builder. Missing
+optional configuration leaves memory disabled; invalid mode or origin fails
+bootstrap.
 
 ## 7. Remaining Gates
 

@@ -134,6 +134,9 @@ sdkwork-agents-knowledgebase-bridge = { path = "crates/sdkwork-agents-knowledgeb
 # Generator-owned Memory App API transport. Agents reads durable user memory
 # only through this public SDK and the caller's dual tokens.
 sdkwork-memory-app-sdk-generated-rust = { package = "sdkwork-memory-app-sdk", path = "../sdkwork-memory/sdks/sdkwork-memory-app-sdk/sdkwork-memory-app-sdk-rust/generated/server-openapi" }
+# In-process memory runtime for co-deployed Agents processes (default mode).
+sdkwork-memory-inprocess = { path = "../sdkwork-memory/crates/sdkwork-memory-inprocess" }
+sdkwork-memory-contract = { path = "../sdkwork-memory/crates/sdkwork-memory-contract" }
 sdkwork-agents-memory-bridge = { path = "crates/sdkwork-agents-memory-bridge" }
 sdkwork-agents-database-host = { path = "crates/sdkwork-agents-database-host" }
 sdkwork-api-agents-assembly = { path = "crates/sdkwork-api-agents-assembly" }
