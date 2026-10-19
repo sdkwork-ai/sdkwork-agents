@@ -18,6 +18,7 @@ sdkwork-agent-kernel = { workspace = true }
 sdkwork-intelligence-agents-service = { workspace = true, features = ["http-axum", "postgres-sync"] }
 sdkwork-agents-runtime-facade.workspace = true
 sdkwork-agents-knowledgebase-bridge.workspace = true
+sdkwork-agents-memory-bridge.workspace = true
 sdkwork-agents-tool-cloudrouter.workspace = true
 sdkwork-agents-contract.workspace = true
 sdkwork-agents-database-host.workspace = true

@@ -11,6 +11,7 @@ members = [
     "crates/sdkwork-agents-runtime-facade",
     "crates/sdkwork-agents-kernel-bridge",
     "crates/sdkwork-agents-knowledgebase-bridge",
+    "crates/sdkwork-agents-memory-bridge",
     "crates/sdkwork-agents-database-host",
     "crates/sdkwork-api-agents-standalone-gateway",
     "crates/sdkwork-intelligence-agents-worker",
@@ -130,6 +131,10 @@ sdkwork-agents-kernel-bridge = { path = "crates/sdkwork-agents-kernel-bridge" }
 # knowledge content only through this public SDK and the caller's dual tokens.
 sdkwork-knowledgebase-app-sdk-generated-rust = { path = "../sdkwork-knowledgebase/sdks/sdkwork-knowledgebase-app-sdk/sdkwork-knowledgebase-app-sdk-rust/generated/server-openapi" }
 sdkwork-agents-knowledgebase-bridge = { path = "crates/sdkwork-agents-knowledgebase-bridge" }
+# Generator-owned Memory App API transport. Agents reads durable user memory
+# only through this public SDK and the caller's dual tokens.
+sdkwork-memory-app-sdk-generated-rust = { package = "sdkwork-memory-app-sdk", path = "../sdkwork-memory/sdks/sdkwork-memory-app-sdk/sdkwork-memory-app-sdk-rust/generated/server-openapi" }
+sdkwork-agents-memory-bridge = { path = "crates/sdkwork-agents-memory-bridge" }
 sdkwork-agents-database-host = { path = "crates/sdkwork-agents-database-host" }
 sdkwork-api-agents-assembly = { path = "crates/sdkwork-api-agents-assembly" }
 sdkwork-api-agents-standalone-gateway = { path = "crates/sdkwork-api-agents-standalone-gateway" }

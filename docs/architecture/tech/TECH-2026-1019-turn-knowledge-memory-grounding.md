@@ -92,11 +92,21 @@ delivery modes carry them without a separate channel:
 Ungrounded turns and replayed turns serialize `[]`. The field is optional on the
 wire so older clients keep decoding responses.
 
-## 6. Remaining Gates
+## 6. Memory Adapter
 
-- Memory adapter: `sdkwork-memory` does not yet publish a Rust App API SDK or a
-  production `MemoryRetrieverPort` implementation. The port, slot resolution,
-  and prompt rendering are complete; the adapter lands when that SDK exists.
+`crates/sdkwork-agents-memory-bridge` implements the memory port over the
+generator-owned Memory App API Rust SDK (`sdkwork-memory` app family). A memory
+slot's `memoryPolicyRef` is a Memory space id (`4242` or `space:4242`); each
+binding maps to `memories.list?space_id=...&q=<turn query>`, forwarding the
+caller's dual tokens and accepting only `active` records. Results are bounded to
+`MAX_MEMORY_SNIPPETS`, de-duplicated by `memoryId`, and rendered as `[Mn]`
+markers by the existing prompt builder.
+
+Configuration: `SDKWORK_AGENTS_MEMORY_BASE_URL`. Unset = memory module not
+mounted (slots degrade with a warning); set-but-invalid = bootstrap failure.
+
+## 7. Remaining Gates
+
 - Durable per-session-item citations: the turn response carries citations, but
   replayed historical turns do not retain them. Persisting them belongs with the
   session item projection contract.

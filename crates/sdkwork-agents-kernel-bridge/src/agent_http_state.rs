@@ -89,6 +89,34 @@ fn knowledgebase_grounding_resolver(
     }
 }
 
+/// Builds the Memory grounding resolver when `sdkwork-memory` is mounted.
+///
+/// `SDKWORK_AGENTS_MEMORY_BASE_URL` is optional and independent from the
+/// Knowledgebase module: an unset value means memory slots degrade with a
+/// warning, while a set-but-invalid value fails bootstrap.
+fn memory_grounding_resolver(
+) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::MemoryGroundingResolver>>> {
+    match sdkwork_agents_memory_bridge::MemoryGroundingResolverAdapter::from_env() {
+        Ok(Some(resolver)) => {
+            tracing::info!(
+                env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
+                "Agents memory grounding is enabled through sdkwork-memory"
+            );
+            Ok(Some(Arc::new(resolver)))
+        }
+        Ok(None) => {
+            tracing::info!(
+                env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
+                "Agents memory grounding is not configured; memory composition slots will not retrieve"
+            );
+            Ok(None)
+        }
+        Err(message) => Err(anyhow::anyhow!(
+            "agents memory grounding bootstrap failed: {message}"
+        )),
+    }
+}
+
 /// Reads and validates the deployment-default execution route from the
 /// environment. `None` (the built-in in-process default applies) or a
 /// canonical route code; an unknown code is a deployment misconfiguration
@@ -178,6 +206,7 @@ fn dev_agent_http_state(
 ) -> Result<AgentHttpState> {
     let dispatcher = Arc::new(build_turn_tool_dispatcher());
     let grounding = knowledgebase_grounding_resolver()?;
+    let memory_grounding = memory_grounding_resolver()?;
     Ok(AgentHttpState::with_turn_executor(
         InMemoryAgentRepository::try_new().context("build agents dev in-memory repository")?,
         InMemoryAgentAuditSink::default(),
@@ -193,7 +222,7 @@ fn dev_agent_http_state(
         )),
     )
     .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig { dispatcher })))
-    .with_context_grounding(grounding, None))
+    .with_context_grounding(grounding, memory_grounding))
 }
 
 fn production_postgres_agent_http_state(
@@ -230,6 +259,7 @@ fn production_postgres_agent_http_state(
 
     let tool_dispatcher = Arc::new(build_turn_tool_dispatcher());
     let grounding = knowledgebase_grounding_resolver()?;
+    let memory_grounding = memory_grounding_resolver()?;
     let state = AgentHttpState::with_turn_executor(
         repository,
         audit_sink,
@@ -250,7 +280,7 @@ fn production_postgres_agent_http_state(
     .with_toolkit_config(Some(Arc::new(DefaultTurnToolkitConfig {
         dispatcher: tool_dispatcher,
     })))
-    .with_context_grounding(grounding, None);
+    .with_context_grounding(grounding, memory_grounding);
 
     // Persist applied model configuration profiles in the canonical Agents
     // PostgreSQL database (server-authoritative persistence; SQLite is

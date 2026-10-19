@@ -11390,6 +11390,7 @@ dependencies = [
  "sdkwork-agents-contract",
  "sdkwork-agents-database-host",
  "sdkwork-agents-knowledgebase-bridge",
+ "sdkwork-agents-memory-bridge",
  "sdkwork-agents-runtime-facade",
  "sdkwork-agents-tool-cloudrouter",
  "sdkwork-database-sqlx",
@@ -11407,6 +11408,19 @@ dependencies = [
  "sdkwork-agent-kernel",
  "sdkwork-intelligence-agents-service",
  "sdkwork-knowledgebase-app-sdk-generated-rust",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "wiremock",
+]
+
+[[package]]
+name = "sdkwork-agents-memory-bridge"
+version = "0.1.0"
+dependencies = [
+ "sdkwork-agent-kernel",
+ "sdkwork-intelligence-agents-service",
+ "sdkwork-memory-app-sdk",
  "serde_json",
  "tokio",
  "tracing",
@@ -12258,6 +12272,17 @@ dependencies = [
 
 [[package]]
 name = "sdkwork-knowledgebase-app-sdk-generated-rust"
+version = "0.1.0"
+dependencies = [
+ "http 1.5.0",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "sdkwork-memory-app-sdk"
 version = "0.1.0"
 dependencies = [
  "http 1.5.0",
