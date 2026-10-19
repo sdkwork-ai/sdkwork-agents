@@ -93,6 +93,20 @@ fn knowledgebase_grounding_resolver(
     }
 }
 
+fn resolve_memory_mode_value(value: Option<&str>) -> Result<String, String> {
+    let mode = value
+        .map(str::trim)
+        .map(str::to_ascii_lowercase)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| MEMORY_MODE_IN_PROCESS.to_string());
+    match mode.as_str() {
+        MEMORY_MODE_IN_PROCESS | MEMORY_MODE_HTTP => Ok(mode),
+        other => Err(format!(
+            "{AGENTS_MEMORY_MODE_ENV} must be {MEMORY_MODE_IN_PROCESS} or {MEMORY_MODE_HTTP}; got {other}"
+        )),
+    }
+}
+
 /// Builds the Memory grounding resolver when `sdkwork-memory` is mounted.
 ///
 /// `SDKWORK_AGENTS_MEMORY_MODE` selects the transport and defaults to
@@ -101,11 +115,8 @@ fn knowledgebase_grounding_resolver(
 /// degrades with a warning, while a set-but-invalid value fails bootstrap.
 fn memory_grounding_resolver(
 ) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::MemoryGroundingResolver>>> {
-    let mode = std::env::var(AGENTS_MEMORY_MODE_ENV)
-        .ok()
-        .map(|value| value.trim().to_ascii_lowercase())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| MEMORY_MODE_IN_PROCESS.to_string());
+    let mode = resolve_memory_mode_value(std::env::var(AGENTS_MEMORY_MODE_ENV).ok().as_deref())
+        .map_err(anyhow::Error::msg)?;
     match mode.as_str() {
         MEMORY_MODE_IN_PROCESS => {
             match sdkwork_agents_memory_bridge::InProcessMemoryGroundingResolver::from_env() {
@@ -351,4 +362,39 @@ fn production_postgres_agent_http_state(
         state = state.with_media_tool_invocation(invocation);
     }
     Ok(state)
+}
+
+#[cfg(test)]
+mod memory_mode_tests {
+    use super::{resolve_memory_mode_value, MEMORY_MODE_HTTP, MEMORY_MODE_IN_PROCESS};
+
+    #[test]
+    fn absent_and_blank_values_default_to_in_process() {
+        assert_eq!(
+            resolve_memory_mode_value(None).expect("default"),
+            MEMORY_MODE_IN_PROCESS
+        );
+        assert_eq!(
+            resolve_memory_mode_value(Some("  ")).expect("blank default"),
+            MEMORY_MODE_IN_PROCESS
+        );
+    }
+
+    #[test]
+    fn mode_values_are_case_insensitive_and_trimmed() {
+        assert_eq!(
+            resolve_memory_mode_value(Some(" HTTP ")).expect("http"),
+            MEMORY_MODE_HTTP
+        );
+        assert_eq!(
+            resolve_memory_mode_value(Some("In_Process")).expect("in process"),
+            MEMORY_MODE_IN_PROCESS
+        );
+    }
+
+    #[test]
+    fn unknown_mode_fails_closed() {
+        let error = resolve_memory_mode_value(Some("grpc")).expect_err("unknown mode");
+        assert!(error.contains("SDKWORK_AGENTS_MEMORY_MODE"));
+    }
 }

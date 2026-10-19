@@ -97,8 +97,8 @@ wire so older clients keep decoding responses.
 `crates/sdkwork-agents-memory-bridge` provides two transports selected by
 `SDKWORK_AGENTS_MEMORY_MODE` (default `in_process`):
 
-- `in_process`: bootstraps the memory data plane from the shared workspace
-  database profile (`SDKWORK_DATABASE_*`) and calls
+- `in_process`: bootstraps the process-wide memory runtime from the shared
+  workspace database profile (`SDKWORK_DATABASE_*`) and calls
   `MemoryAppApi::create_retrieval` directly. No network hop; requires
   co-deployment and memory database access.
 - `http`: calls the Memory App API through the generator-owned Rust SDK using

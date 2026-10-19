@@ -216,18 +216,15 @@ fn map_retrieval_hits(
 
 /// In-process memory grounding resolver for co-deployed Agents processes.
 pub struct InProcessMemoryGroundingResolver {
-    runtime: sdkwork_memory_inprocess::InProcessMemoryRuntime,
+    runtime: std::sync::Arc<sdkwork_memory_inprocess::InProcessMemoryRuntime>,
 }
 
 impl InProcessMemoryGroundingResolver {
-    /// Bootstraps the in-process runtime from the environment.
+    /// Bootstraps the process-wide in-process runtime from the environment.
     ///
     /// Returns `Ok(None)` when the memory database is not configured, matching
     /// the HTTP mode's optional-module behaviour.
     pub fn from_env() -> Result<Option<Self>, String> {
-        if !sdkwork_memory_inprocess::memory_database_configured() {
-            return Ok(None);
-        }
         let runtime = std::thread::scope(|scope| {
             let handle = std::thread::Builder::new()
                 .name("agents-memory-inprocess-bootstrap".to_string())
@@ -236,7 +233,9 @@ impl InProcessMemoryGroundingResolver {
                         .enable_all()
                         .build()
                         .map_err(|error| format!("memory runtime init failed: {error}"))?;
-                    runtime.block_on(sdkwork_memory_inprocess::InProcessMemoryRuntime::from_env())
+                    runtime.block_on(
+                        sdkwork_memory_inprocess::InProcessMemoryRuntime::shared_from_env(),
+                    )
                 })
                 .map_err(|error| format!("memory bootstrap worker spawn failed: {error}"))?;
             handle
@@ -248,7 +247,7 @@ impl InProcessMemoryGroundingResolver {
 
     /// Builds the resolver over an initialized runtime.
     #[must_use]
-    pub fn new(runtime: sdkwork_memory_inprocess::InProcessMemoryRuntime) -> Self {
+    pub fn new(runtime: std::sync::Arc<sdkwork_memory_inprocess::InProcessMemoryRuntime>) -> Self {
         Self { runtime }
     }
 }
@@ -495,7 +494,7 @@ mod tests {
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn resolver_calls_retrievals_create_with_dual_tokens() {
         use serde_json::json;
-        use wiremock::matchers::{header, method, path};
+        use wiremock::matchers::{body_partial_json, header, method, path};
         use wiremock::{Mock, MockServer, ResponseTemplate};
 
         let server = MockServer::start().await;
@@ -537,6 +536,12 @@ mod tests {
         });
         Mock::given(method("POST"))
             .and(path("/app/v3/api/memory/retrievals"))
+            .and(body_partial_json(json!({
+                "query": "how do refunds work",
+                "spaceIds": ["4242"],
+                "actorId": "7",
+                "topK": 4
+            })))
             .and(header("Authorization", "Bearer auth-token"))
             .and(header("Access-Token", "access-token"))
             .respond_with(ResponseTemplate::new(200).set_body_json(body))
