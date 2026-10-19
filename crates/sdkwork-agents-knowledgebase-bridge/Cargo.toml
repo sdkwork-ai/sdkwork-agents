@@ -18,3 +18,8 @@ sdkwork-intelligence-agents-service.workspace = true
 sdkwork-knowledgebase-app-sdk-generated-rust.workspace = true
 tokio = { workspace = true, features = ["rt", "time"] }
 tracing.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+wiremock = "0.6"

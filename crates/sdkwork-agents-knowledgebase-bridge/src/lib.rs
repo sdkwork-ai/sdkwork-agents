@@ -329,4 +329,60 @@ mod tests {
         assert!(KnowledgebaseGroundingResolver::new("   ").is_err());
         assert!(KnowledgebaseGroundingResolver::new("https://kb.example.test").is_ok());
     }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn resolver_calls_the_app_retrieval_endpoint_with_dual_tokens() {
+        use serde_json::json;
+        use wiremock::matchers::{header, method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+        let body = json!({
+            "code": 0,
+            "data": {
+                "item": {
+                    "retrievalId": "7001",
+                    "hits": [{
+                        "chunkId": "doc-1-chunk",
+                        "documentId": "doc-1",
+                        "spaceId": "4242",
+                        "title": "Refund policy",
+                        "content": "Refunds are accepted within 30 days.",
+                        "score": 0.93,
+                        "rank": 1,
+                        "retrievalMethod": "hybrid",
+                        "citation": {
+                            "documentId": "doc-1",
+                            "title": "Refund policy",
+                            "sourceUri": "drive://kb/doc-1"
+                        }
+                    }]
+                }
+            },
+            "traceId": "00000000-0000-4000-8000-000000000000"
+        });
+        Mock::given(method("POST"))
+            .and(path("/app/v3/api/knowledge/retrievals"))
+            .and(header("Authorization", "Bearer auth-token"))
+            .and(header("Access-Token", "access-token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        let resolver = KnowledgebaseGroundingResolver::new(server.uri()).expect("resolver");
+        // The resolver blocks on its own worker thread; run it off the async
+        // workers so the mock server can still answer.
+        let snippets = tokio::task::spawn_blocking(move || {
+            let bindings = [binding(4242, Some(4))];
+            resolver.resolve_knowledge(&request(&bindings))
+        })
+        .await
+        .expect("grounding task")
+        .expect("grounding snippets");
+
+        assert_eq!(snippets.len(), 1);
+        assert_eq!(snippets[0].document_id, "doc-1");
+        assert!(snippets[0].snippet.contains("30 days"));
+        assert_eq!(snippets[0].source_uri.as_deref(), Some("drive://kb/doc-1"));
+    }
 }
