@@ -132,7 +132,7 @@
   "metadata": {
     "deploymentConfig": "etc/sdkwork.deployment.config.json",
     "topologySpec": "specs/topology.spec.json",
-    "workflowManifest": "sdkwork.workflow.json",
+    "workflowManifest": "agent.workflow.json",
     "kernelDependency": "../sdkwork-kernel"
   }
 }

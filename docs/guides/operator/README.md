@@ -61,7 +61,7 @@ scheduler-wide containment.
 
 ## Packaging (CI)
 
-GitHub workflow: `.github/workflows/package.yml` → reusable `sdkwork-package.yml` driven by `sdkwork.workflow.json`.
+GitHub workflow: `.github/workflows/package.yml` → reusable `sdkwork-package.yml` driven by `agent.workflow.json`.
 
 Manual dispatch inputs include sibling dependency refs (`SDKWORK_KERNEL_REF`, `SDKWORK_KNOWLEDGEBASE_REF`, etc.).
 

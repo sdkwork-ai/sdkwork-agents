@@ -79,3 +79,15 @@ sdks/**/*.d.ts.map
 # Agent scratch: session memory and generated reports (the portability and
 # shell-portability gates exclude this directory as scratch too)
 .workbuddy/
+
+# ---- auto-audited: local artifacts that must never be committed ----
+*.key
+*.pem
+*.p12
+*.pfx
+*.keystore
+tmp/
+temp/
+*.tmp
+*.temp
+.next/

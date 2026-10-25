@@ -124,7 +124,7 @@ test("root workflow scripts do not expose migration-only IM synchronization tool
 
 test("server release artifact includes immutable runtime and deployment assets", () => {
   const workflow = JSON.parse(
-    readFileSync(path.join(repoRoot, "sdkwork.workflow.json"), "utf8"),
+    readFileSync(path.join(repoRoot, "agent.workflow.json"), "utf8"),
   );
   // Framework profile validation maps `server` to runtimeTarget `server`
   // only; the server release bundle is the container- and bare-metal-ready

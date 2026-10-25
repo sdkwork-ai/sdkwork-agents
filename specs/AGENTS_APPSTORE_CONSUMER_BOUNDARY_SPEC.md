@@ -82,7 +82,7 @@ The appstore declares the Agents TypeScript SDK through the dual-track model:
 - Local development: `../sdkwork-agents/sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-typescript`
   in the appstore root `pnpm-workspace.yaml`, consumed with `workspace:*`.
 - CI packaging: a matching `sdkwork-agents` entry in the appstore
-  `sdkwork.workflow.json` `dependencies[]`.
+  `agent.workflow.json` `dependencies[]`.
 
 Agents-side changes that alter the generated SDK surface require regenerating
 `sdkwork-agents-app-sdk` through the standard generator before appstore

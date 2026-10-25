@@ -6,7 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const workflow = JSON.parse(fs.readFileSync(path.join(root, 'sdkwork.workflow.json'), 'utf8'));
+const workflow = JSON.parse(fs.readFileSync(path.join(root, 'agent.workflow.json'), 'utf8'));
 
 test('release workflow keeps install fail-closed and covers declared server deployment targets', () => {
   assert.equal(workflow.lifecycle.install.length, 1);
