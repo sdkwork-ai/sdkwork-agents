@@ -47,7 +47,7 @@ function manifestV3({
 }) {
   return {
     schemaVersion: 3,
-    kind: 'sdkwork.app',
+    kind: 'agent.app',
     app: {
       key,
       name: displayName,
@@ -269,7 +269,7 @@ function createReactSurface({
     appId,
     '```powershell\npnpm install\npnpm run typecheck\npnpm run build\n```',
   ));
-  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), manifestV3({
+  writeJson(path.join(appRoot, 'agent.app.config.json'), manifestV3({
     key: manifestKey,
     displayName: `SDKWork Agents ${suffix.toUpperCase()}`,
     description: `SDKWork Agents ${suffix} client application scaffold.`,
@@ -300,7 +300,7 @@ function createReactSurface({
       surface: 'app',
       languages: ['typescript'],
       generated: false,
-      manifests: ['package.json', 'sdkwork.app.config.json'],
+      manifests: ['package.json', 'agent.app.config.json'],
     },
     canonicalSpecs: [
       {
@@ -716,7 +716,7 @@ function createMiniProgramSurface() {
     appId,
     '```powershell\npnpm install\npnpm run build\npnpm run typecheck\n```',
   ));
-  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), manifestV3({
+  writeJson(path.join(appRoot, 'agent.app.config.json'), manifestV3({
     key: manifestKey,
     displayName: 'SDKWork Agents Mini Program',
     description: 'SDKWork Agents WeChat mini program client application scaffold.',
@@ -747,7 +747,7 @@ function createMiniProgramSurface() {
       surface: 'app',
       languages: ['typescript'],
       generated: false,
-      manifests: ['package.json', 'sdkwork.app.config.json', 'project.config.json'],
+      manifests: ['package.json', 'agent.app.config.json', 'project.config.json'],
     },
     contracts: {
       sdkDependencies: [
@@ -899,7 +899,7 @@ function createFlutterSurface() {
     appId,
     '```powershell\nflutter pub get\nflutter analyze\n```',
   ));
-  writeJson(path.join(appRoot, 'sdkwork.app.config.json'), manifestV3({
+  writeJson(path.join(appRoot, 'agent.app.config.json'), manifestV3({
     key: manifestKey,
     displayName: 'SDKWork Agents Mobile',
     description: 'SDKWork Agents Flutter mobile client application scaffold.',
@@ -932,7 +932,7 @@ function createFlutterSurface() {
       surface: 'app',
       languages: ['dart'],
       generated: false,
-      manifests: ['pubspec.yaml', 'sdkwork.app.config.json'],
+      manifests: ['pubspec.yaml', 'agent.app.config.json'],
     },
     contracts: {
       sdkDependencies: [

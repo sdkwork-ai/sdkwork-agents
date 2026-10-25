@@ -18,10 +18,10 @@ const EXPECTED = {
 };
 
 const CLIENT_MANIFEST_KEYS = {
-  'apps/sdkwork-agents-pc/sdkwork.app.config.json': 'agents-pc',
-  'apps/sdkwork-agents-h5/sdkwork.app.config.json': 'agents-h5',
-  'apps/sdkwork-agents-mini-program/sdkwork.app.config.json': 'agents-mini-program',
-  'apps/sdkwork-agents-flutter-mobile/sdkwork.app.config.json': 'agents-flutter-mobile',
+  'apps/sdkwork-agents-pc/agent.app.config.json': 'agents-pc',
+  'apps/sdkwork-agents-h5/agent.app.config.json': 'agents-h5',
+  'apps/sdkwork-agents-mini-program/agent.app.config.json': 'agents-mini-program',
+  'apps/sdkwork-agents-flutter-mobile/agent.app.config.json': 'agents-flutter-mobile',
 };
 
 const FORBIDDEN_PATTERNS = [
@@ -78,7 +78,7 @@ function checkManifest(relativePath, expectedKey = null) {
   }
 }
 
-checkManifest('sdkwork.app.config.json');
+checkManifest('agent.app.config.json');
 for (const [relativePath, expectedKey] of Object.entries(CLIENT_MANIFEST_KEYS)) {
   checkManifest(relativePath, expectedKey);
 }

@@ -40,7 +40,7 @@ test('root dev runner registers the application root and supplies private bootst
   const runner = read('scripts/agents-dev.mjs');
   const databaseRunner = read('scripts/agents-database.mjs');
   const rootPackage = JSON.parse(read('package.json'));
-  const pcManifest = JSON.parse(read('apps/sdkwork-agents-pc/sdkwork.app.config.json'));
+  const pcManifest = JSON.parse(read('apps/sdkwork-agents-pc/agent.app.config.json'));
 
   assert.match(runner, /create-dev-bootstrap-access-token-env\.mjs/);
   assert.match(runner, /mergeRepoDevBootstrapAccessTokenEnv/);

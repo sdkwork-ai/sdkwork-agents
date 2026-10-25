@@ -74,7 +74,7 @@ The canonical standards index is \`../../../sdkwork-specs/README.md\`, and \`../
 
 ## Application Identity
 
-Read \`sdkwork.app.config.json\` only for application identity, SDK/API inventory, release metadata, packaging, or app-owned capabilities. Runtime values belong to source configuration under \`etc/\` and \`config/\`, not to the application declaration.
+Read \`agent.app.config.json\` only for application identity, SDK/API inventory, release metadata, packaging, or app-owned capabilities. Runtime values belong to source configuration under \`etc/\` and \`config/\`, not to the application declaration.
 
 - Application code: \`${applicationCode}\`
 - Application key: \`${appRootName}\`
@@ -214,7 +214,7 @@ execute would be a false signal.
 function appManifest() {
   return {
     schemaVersion: 3,
-    kind: 'sdkwork.app',
+    kind: 'agent.app',
     app: {
       key: `${applicationCode}-harmony-mobile`,
       name: 'SDKWork Agents HarmonyOS Mobile',
@@ -350,7 +350,7 @@ function rootComponentSpec() {
       surface: 'app',
       languages: ['arkts'],
       generated: false,
-      manifests: ['oh-package.json5', 'build-profile.json5', 'sdkwork.app.config.json'],
+      manifests: ['oh-package.json5', 'build-profile.json5', 'agent.app.config.json'],
     },
     canonicalSpecs: [
       {
@@ -539,7 +539,7 @@ Surface-local build and test commands stay in this application root.
 function materializeWorkspaceFiles() {
   write('AGENTS.md', agentsMd());
   write('README.md', readmeMd());
-  writeJson('sdkwork.app.config.json', appManifest());
+  writeJson('agent.app.config.json', appManifest());
 
   write('.sdkwork/README.md', `# SDKWork Application Workspace
 
@@ -2200,7 +2200,7 @@ function listFiles(relativePath) {
 for (const requiredPath of [
   "AGENTS.md",
   "README.md",
-  "sdkwork.app.config.json",
+  "agent.app.config.json",
   "specs/component.spec.json",
   "oh-package.json5",
   "build-profile.json5",
@@ -2334,7 +2334,7 @@ for (const hostFile of hostConfigFiles) {
 
 // --- App manifest ----------------------------------------------------------
 
-const manifest = JSON.parse(mustExist("sdkwork.app.config.json"));
+const manifest = JSON.parse(mustExist("agent.app.config.json"));
 assert.equal(manifest.app?.appType, "APP_HARMONY", "Harmony root must declare appType APP_HARMONY");
 assert.equal(manifest.runtime?.family, "mobile", "Harmony root must declare runtime.family mobile");
 assert.equal(

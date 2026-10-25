@@ -77,7 +77,7 @@ for (const directory of requiredDirectories) {
   assertDirectory(directory);
 }
 
-assert(fs.existsSync(path.join(repoRoot, 'sdkwork.app.config.json')), 'sdkwork.app.config.json must exist');
+assert(fs.existsSync(path.join(repoRoot, 'agent.app.config.json')), 'agent.app.config.json must exist');
 assert(fs.existsSync(path.join(repoRoot, 'sdkwork.workflow.json')), 'sdkwork.workflow.json must exist');
 assert(fs.existsSync(path.join(repoRoot, 'package.json')), 'package.json must exist');
 assert(
@@ -271,18 +271,18 @@ for (const [workspace, integrationMode, slotKind, targetModule] of independentCa
   }
 }
 
-const appManifest = readJson('sdkwork.app.config.json');
+const appManifest = readJson('agent.app.config.json');
 assert(
   appManifest.metadata?.topologySpec === 'specs/topology.spec.json',
-  'sdkwork.app.config.json metadata.topologySpec must reference specs/topology.spec.json',
+  'agent.app.config.json metadata.topologySpec must reference specs/topology.spec.json',
 );
 assert(
   appManifest.metadata?.kernelDependency?.includes('sdkwork-kernel'),
-  'sdkwork.app.config.json must declare kernel dependency',
+  'agent.app.config.json must declare kernel dependency',
 );
 assert(
   appManifest.app?.appType === 'NONE',
-  'sdkwork.app.config.json appType must use canonical PlusProjectType NONE for a server-only application',
+  'agent.app.config.json appType must use canonical PlusProjectType NONE for a server-only application',
 );
 
 const workspaceYaml = readText('pnpm-workspace.yaml');

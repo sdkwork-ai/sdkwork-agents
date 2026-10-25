@@ -6,7 +6,7 @@
     "name": "SDKWork Agents",
     "repository": "sdkwork-ai/sdkwork-agents",
     "sourcePath": ".",
-    "configPath": "sdkwork.app.config.json"
+    "configPath": "agent.app.config.json"
   },
   "release": {
     "artifactPrefix": "sdkwork-agents",
@@ -261,7 +261,7 @@
         "database/**",
         "etc/topology/*.production.env",
         "deployments/**",
-        "sdkwork.app.config.json"
+        "agent.app.config.json"
       ],
       "artifactPath": "dist/release-packages/sdkwork-agents-linux-x64-standalone-server-tar-gz-0.1.0.tar.gz"
     },

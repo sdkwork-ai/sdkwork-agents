@@ -22,13 +22,13 @@ Do not copy root standard text into this repository. If these relative paths do 
 
 ## Application Identity
 
-Read `sdkwork.app.config.json` only when the task touches Agents application behavior, runtime config, SDK wiring, release metadata, app-owned capabilities, packaging, or deployment. Agent runtime SPI and persistence are owned by `../sdkwork-kernel/`.
+Read `agent.app.config.json` only when the task touches Agents application behavior, runtime config, SDK wiring, release metadata, app-owned capabilities, packaging, or deployment. Agent runtime SPI and persistence are owned by `../sdkwork-kernel/`.
 
 ## Local Dictionary Structure
 
 - `AGENTS.md`: repository agent entrypoint and relative SDKWork spec index.
 - `CLAUDE.md`, `GEMINI.md`, `CODEX.md`: compatibility shims that point to `AGENTS.md`.
-- `sdkwork.app.config.json`: Agents application identity and capability metadata.
+- `agent.app.config.json`: Agents application identity and capability metadata.
 - `sdkwork.workflow.json`: GitHub packaging/release workflow manifest governed by `GITHUB_WORKFLOW_SPEC.md`.
 - `.github/workflows/package.yml`: thin reusable workflow call only.
 - `etc/`: deployable-root source configuration governed by `SOURCE_CONFIG_SPEC.md`; runtime values must not be moved into the app manifest.
@@ -49,7 +49,7 @@ Read `sdkwork.app.config.json` only when the task touches Agents application beh
 Use dynamic progressive loading:
 
 1. Read this `AGENTS.md` and any nearer component-level `AGENTS.md`.
-2. Read `sdkwork.app.config.json` only when app behavior, runtime config, SDK wiring, release, packaging, or app-owned capabilities are touched.
+2. Read `agent.app.config.json` only when app behavior, runtime config, SDK wiring, release, packaging, or app-owned capabilities are touched.
 3. Read local `specs/README.md` and `specs/component.spec.json` only when the task touches that local contract.
 4. Read `../sdkwork-kernel/specs/README.md` when agent kernel SPI boundaries are touched.
 5. Read `specs/AGENTS_APPSTORE_CONSUMER_BOUNDARY_SPEC.md` when appstore consumer integration or the generated `sdkwork-agents-app-sdk` surface is touched.

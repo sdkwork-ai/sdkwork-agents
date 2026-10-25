@@ -138,7 +138,7 @@ test("server release artifact includes immutable runtime and deployment assets",
     "database/**",
     "etc/topology/*.production.env",
     "deployments/**",
-    "sdkwork.app.config.json",
+    "agent.app.config.json",
   ]) {
     assert.ok(
       serverTarget.outputGlobs.includes(requiredGlob),
@@ -370,13 +370,13 @@ const sessionBridgeFiles = [
 ];
 
 function collectAppManifests() {
-  const manifests = ["sdkwork.app.config.json"];
+  const manifests = ["agent.app.config.json"];
   const appsRoot = path.join(repoRoot, "apps");
   for (const entry of readdirSync(appsRoot, { withFileTypes: true })) {
     if (!entry.isDirectory()) {
       continue;
     }
-    const manifestPath = path.join("apps", entry.name, "sdkwork.app.config.json");
+    const manifestPath = path.join("apps", entry.name, "agent.app.config.json");
     try {
       readFileSync(path.join(repoRoot, manifestPath), "utf8");
       manifests.push(manifestPath);

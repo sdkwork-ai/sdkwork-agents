@@ -171,7 +171,7 @@ test('source topology profiles project exact CORS and IAM origins from etc', () 
   ];
   const deploymentIndex = readJson('etc/sdkwork.deployment.config.json');
   const topology = readJson('specs/topology.spec.json');
-  const rootManifest = readJson('sdkwork.app.config.json');
+  const rootManifest = readJson('agent.app.config.json');
   const packageScript = read('scripts/package-cloud-gateway-config.mjs');
 
   assert.equal(topology.profileRoot, 'etc/topology');
@@ -295,10 +295,10 @@ test('source topology profiles project exact CORS and IAM origins from etc', () 
   }
 
   for (const manifestPath of [
-    'apps/sdkwork-agents-pc/sdkwork.app.config.json',
-    'apps/sdkwork-agents-h5/sdkwork.app.config.json',
-    'apps/sdkwork-agents-flutter-mobile/sdkwork.app.config.json',
-    'apps/sdkwork-agents-mini-program/sdkwork.app.config.json',
+    'apps/sdkwork-agents-pc/agent.app.config.json',
+    'apps/sdkwork-agents-h5/agent.app.config.json',
+    'apps/sdkwork-agents-flutter-mobile/agent.app.config.json',
+    'apps/sdkwork-agents-mini-program/agent.app.config.json',
   ]) {
     assert.equal(readJson(manifestPath).environments, undefined, `${manifestPath} must not duplicate etc environment URLs`);
   }

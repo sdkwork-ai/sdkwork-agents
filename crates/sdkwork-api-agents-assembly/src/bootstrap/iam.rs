@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn agents_app_root_resolves_to_repository_root() {
         let root = resolve_agents_app_root();
-        assert!(root.join("sdkwork.app.config.json").is_file());
+        assert!(root.join("agent.app.config.json").is_file());
     }
 
     #[test]
