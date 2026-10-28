@@ -4530,13 +4530,13 @@ where
     // -----------------------------------------------------------------------
 
     fn ensure_session_agent_identity(&self, command: &CreateSessionCommand) -> KernelResult<()> {
-        let canonical_engine_key = command
-            .agent_id
-            .strip_prefix("agent.")
-            .filter(|engine_key| {
-                sdkwork_agents_runtime_facade::is_canonical_agent_engine(engine_key)
-            })
-            .filter(|engine_key| {
+        // Resolve the engine key by reverse lookup over the canonical engine
+        // agents (not by stripping the `agent.` prefix): an engine's canonical
+        // agent id may carry a suffix beyond the engine key itself, e.g. the
+        // rig engine owns `agent.rig-general`.
+        let canonical_engine_key = sdkwork_agents_runtime_facade::bootstrappable_engine_keys()
+            .into_iter()
+            .find(|engine_key| {
                 sdkwork_agents_runtime_facade::agent_engine_agent_id(engine_key)
                     == Some(command.agent_id.as_str())
             });

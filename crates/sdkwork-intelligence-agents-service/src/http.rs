@@ -16033,6 +16033,47 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn session_facade_resolves_canonical_rig_agent_without_registry_record() {
+        // `agent.rig-general` is the rig engine's canonical agent id, and its
+        // suffix (`rig-general`) differs from the engine key (`rig`). Session
+        // creation must resolve the engine identity by reverse lookup instead
+        // of an agent-registry record, so external dispatchers (IM) can target
+        // the rig engine agent without provisioning an agent row first.
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let facade = state.session_facade();
+        let mut request = facade_session_request("session.test.rig.canonical", None);
+        request.agent_id = "agent.rig-general".to_string();
+        request.session_kind = sdkwork_agents_runtime_facade::AgentsSessionKind::ImDispatch;
+        request.entry_surface =
+            sdkwork_agents_runtime_facade::AgentsSessionEntrySurface::ImDispatch;
+        let resolved = facade
+            .resolve_or_create_session(request)
+            .expect("the canonical rig engine agent must resolve without a registry record");
+        assert!(resolved.created);
+
+        let bindings = state
+            .service
+            .list_session_runtime_bindings(crate::application::ListSessionRuntimeBindingsCommand {
+                path_agent_id: "agent.rig-general".to_string(),
+                query: crate::ports::SessionRuntimeBindingListQuery::for_session(
+                    100_001,
+                    0,
+                    "session.test.rig.canonical",
+                ),
+                owner_scope: Some(100),
+                requested_by: facade_policy_subject(),
+            })
+            .expect("session runtime bindings must list");
+        assert_eq!(bindings.items.len(), 1);
+        assert_eq!(bindings.items[0].provider_binding_id, "binding.rig");
+        assert_eq!(bindings.items[0].model_id, "rig.default-chat");
+    }
+
+    #[tokio::test]
     async fn session_facade_archives_created_session_when_runtime_binding_creation_fails() {
         let state = AgentHttpState::new(
             InMemoryAgentRepository::new(),
