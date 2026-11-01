@@ -32,8 +32,8 @@ the same real origin set before it serves `/app/v3/api/oauth/**`.
 - `standalone.development` uses the SDKWork database config PostgreSQL profile for
   the Agents managed store and never enables inline auth bypass. It intentionally
   leaves the connection URL/password out of tracked source config; local SDKWork
-  PostgreSQL credentials come from ignored `.env.postgres`, bootstrapped from
-  the tracked `.env.postgres.example` template. The
+  PostgreSQL credentials come from ignored `config/host/postgres.env`, bootstrapped from
+  the tracked `config/host/postgres.env.example` template. The
   `cloud.development` profile consumes deployed APIs and declares no local database.
 - `test` and `staging` use reserved `.invalid` template origins. They are
   intentionally non-routable and must be replaced, before any browser-facing

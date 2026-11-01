@@ -32,7 +32,8 @@ artifacts/
 **/node_modules/
 **/target/
 !.env.*.example
-!.env.postgres.example
+config/host/postgres.env
+!config/host/postgres.env.example
 **/.pnpm-store/
 .DS_Store
 Thumbs.db
