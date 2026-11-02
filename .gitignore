@@ -92,3 +92,20 @@ temp/
 *.tmp
 *.temp
 .next/
+
+# Deploy-time browser runtime documents are generated; only the dev document is served.
+**/public/runtime-env.json
+**/etc/browser/runtime-env.*.json
+
+# Per-environment SDKWork materializations are tracked (ENVIRONMENT_SPEC 5.1.7).
+# Local values (` .env`, `.env.local`, `*.bootstrap.local`) stay ignored above.
+!.env.standalone.development
+!.env.standalone.test
+!.env.standalone.staging
+!.env.standalone.demo
+!.env.standalone.production
+!.env.cloud.development
+!.env.cloud.test
+!.env.cloud.staging
+!.env.cloud.demo
+!.env.cloud.production
