@@ -10,6 +10,7 @@ export interface UpdateAgentRequest {
   manifest?: Record<string, unknown>;
   visibility?: AgentVisibility;
   tags?: string[];
+  allowedRoleCodes?: string[];
   defaultCodeTaskIntent?: Record<string, unknown>;
   managementProfile?: AgentManagementProfile | null;
   implementationProviderId?: string | null;

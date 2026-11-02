@@ -475,6 +475,7 @@ fn create_agent_cmd(
         manifest: sample_manifest(agent_id),
         visibility: AgentVisibility::Organization,
         tags: vec!["starter".to_string()],
+        allowed_role_codes: Vec::new(),
         default_code_task_intent: Some(CodeTaskIntent::new("Refactor runtime")),
         implementation_provider_id: None,
         implementation_kind: None,

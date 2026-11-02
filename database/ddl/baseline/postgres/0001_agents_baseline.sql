@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS ai_agent (
     status SMALLINT NOT NULL,
     visibility SMALLINT NOT NULL,
     tags_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+    allowed_role_codes JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
     deleted_at TIMESTAMPTZ,
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS ai_agent (
         OR jsonb_typeof(default_code_task_intent_json) = 'object'
     ),
     CONSTRAINT ck_ai_agent_tags_json CHECK (jsonb_typeof(tags_json) = 'array'),
+    CONSTRAINT ck_ai_agent_allowed_roles_json CHECK (jsonb_typeof(allowed_role_codes) = 'array'),
     CONSTRAINT ck_ai_agent_implementation_kind CHECK (
         implementation_kind IS NULL OR implementation_kind IN (
             'manifest-only', 'typed-local-provider', 'process-adapter', 'protocol-adapter'
@@ -93,6 +95,9 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_tenant_owner_status
     ON ai_agent (tenant_id, owner_user_id, status, updated_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_list_filters
     ON ai_agent (tenant_id, organization_id, owner_user_id, updated_at DESC, id DESC)
+    WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ai_agent_allowed_roles
+    ON ai_agent USING GIN (allowed_role_codes)
     WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS ai_agent_runtime_binding (

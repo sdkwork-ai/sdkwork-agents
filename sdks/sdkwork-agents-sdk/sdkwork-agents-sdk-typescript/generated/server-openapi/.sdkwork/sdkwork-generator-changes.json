@@ -3,20 +3,26 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-sdk",
-    "version": "0.1.2",
+    "version": "0.1.0",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
     "packageName": "@sdkwork/agents-sdk"
   },
-  "changeFingerprint": "647735265538e830752e80fde6fbb9324a646eb24354ce86c63b07d9f35a4b99",
+  "changeFingerprint": "186845210e6f74148ba1ab307ccf2ab57d1a57567f168ca4125e2a4e83d3e367",
   "changes": {
     "createdGeneratedFiles": [],
     "updatedGeneratedFiles": [
       "CHANGELOG.md",
       "package.json",
+      "README.md",
       "sdkwork-sdk.json",
-      "src/types/agent-management-profile.ts"
+      "src/index.ts",
+      "src/sdk.ts",
+      "src/types/agent-management-profile.ts",
+      "src/types/agent-record.ts",
+      "src/types/create-agent-request.ts",
+      "src/types/update-agent-request.ts"
     ],
     "unchangedGeneratedFiles": [
       "bin/publish-core.mjs",
@@ -25,7 +31,6 @@
       "bin/sdk-gen.bat",
       "bin/sdk-gen.sh",
       "LICENSE",
-      "README.md",
       "src/api/ai.ts",
       "src/api/base.ts",
       "src/api/index.ts",
@@ -33,8 +38,6 @@
       "src/auth/index.ts",
       "src/http/client.ts",
       "src/http/index.ts",
-      "src/index.ts",
-      "src/sdk.ts",
       "src/types/activate-agent-provider-binding-request.ts",
       "src/types/agent-composition-slot-kind.ts",
       "src/types/agent-composition-slot-list-response.ts",
@@ -64,7 +67,6 @@
       "src/types/agent-provider-binding-list-response.ts",
       "src/types/agent-provider-binding-record.ts",
       "src/types/agent-provider-binding-response.ts",
-      "src/types/agent-record.ts",
       "src/types/agent-response.ts",
       "src/types/agent-runtime-execution-record.ts",
       "src/types/agent-runtime-execution-response.ts",
@@ -120,7 +122,6 @@
       "src/types/create-agent-preview-response-request.ts",
       "src/types/create-agent-prompt-optimization-request.ts",
       "src/types/create-agent-provider-binding-request.ts",
-      "src/types/create-agent-request.ts",
       "src/types/create-agent-session-checkpoint-request.ts",
       "src/types/create-agent-session-request.ts",
       "src/types/create-agent-session-runtime-binding-request.ts",
@@ -143,7 +144,6 @@
       "src/types/sdk-work-resource-data.ts",
       "src/types/typed-agent-interaction-resolution.ts",
       "src/types/update-agent-composition-slot-request.ts",
-      "src/types/update-agent-request.ts",
       "src/types/update-agent-session-runtime-binding-request.ts",
       "tsconfig.json"
     ],
@@ -153,20 +153,39 @@
       "custom/build-runtime.mjs",
       "custom/README.md"
     ],
-    "backedUpFiles": []
+    "backedUpFiles": [
+      "CHANGELOG.md",
+      "package.json",
+      "README.md",
+      "sdkwork-sdk.json",
+      "src/index.ts",
+      "src/sdk.ts",
+      "src/types/agent-management-profile.ts"
+    ]
   },
   "impact": {
     "schemaVersion": 1,
     "areas": [
+      "api-surface",
       "models",
       "build-metadata",
-      "documentation"
+      "documentation",
+      "unknown"
     ],
     "details": [
       {
+        "area": "api-surface",
+        "paths": [
+          "src/sdk.ts"
+        ]
+      },
+      {
         "area": "models",
         "paths": [
-          "src/types/agent-management-profile.ts"
+          "src/types/agent-management-profile.ts",
+          "src/types/agent-record.ts",
+          "src/types/create-agent-request.ts",
+          "src/types/update-agent-request.ts"
         ]
       },
       {
@@ -179,23 +198,30 @@
       {
         "area": "documentation",
         "paths": [
-          "CHANGELOG.md"
+          "CHANGELOG.md",
+          "README.md"
+        ]
+      },
+      {
+        "area": "unknown",
+        "paths": [
+          "src/index.ts"
         ]
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: models, build-metadata, documentation. Verification is required."
+    "summary": "Detected impact areas: api-surface, models, build-metadata, documentation, unknown. Verification is required."
   },
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: models, build-metadata, documentation. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: api-surface, models, build-metadata, documentation, unknown. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: models, build-metadata, documentation.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models, build-metadata, documentation, unknown.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-sdk\\sdkwork-agents-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -213,7 +239,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models, build-metadata, documentation.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models, build-metadata, documentation, unknown.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-sdk\\sdkwork-agents-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -231,12 +257,15 @@
   },
   "executionDecision": {
     "schemaVersion": 1,
-    "riskLevel": "medium",
+    "riskLevel": "high",
     "nextAction": "verify",
     "requiresManualReview": false,
     "applyRequiresExpectedFingerprint": false,
     "summary": "Changes have been applied. Run the required verification plan now.",
     "reasons": [
+      "backed-up-generated-files",
+      "manual-review-required",
+      "unknown-impact",
       "verification-required"
     ]
   },

@@ -216,7 +216,7 @@
     },
     {
       "path": "src/types/agent-record.ts",
-      "sha256": "4e5697b2904827ac8882e5369449622db381fcf341a034139c14b441ecf65712"
+      "sha256": "a829d9c3763aec627590664615f52a99d8ab52074a82102dde0d12e5d00fe2b6"
     },
     {
       "path": "src/types/agent-response.ts",
@@ -440,7 +440,7 @@
     },
     {
       "path": "src/types/create-agent-request.ts",
-      "sha256": "890f78d550e09c94eb43e06014156c5e9c2e4c0e64c94d0bc464a0a233154425"
+      "sha256": "f67924f6f89ec102e76d1a5b143c122c8e5f1669637db163043b8e8813f4f1ab"
     },
     {
       "path": "src/types/create-agent-session-checkpoint-request.ts",
@@ -580,7 +580,7 @@
     },
     {
       "path": "src/types/update-agent-request.ts",
-      "sha256": "1ef0cd4e0340e94eb8057919b79394a33347e1573a2fb00db6f5f7705c1f715e"
+      "sha256": "c3f42a734e4d78ab50fa0e60e2c79d9026b334302ced1bbc6ab95ab7ab815dcf"
     },
     {
       "path": "src/types/update-agent-session-runtime-binding-request.ts",

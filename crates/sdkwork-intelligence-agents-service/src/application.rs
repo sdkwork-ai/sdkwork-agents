@@ -1410,6 +1410,7 @@ where
             status: AgentBusinessStatus::Draft,
             visibility: command.visibility,
             tags: command.tags,
+            allowed_role_codes: command.allowed_role_codes,
             version: 0,
             created_at: command.requested_at.clone(),
             updated_at: command.requested_at.clone(),
@@ -1480,6 +1481,7 @@ where
                     status: AgentBusinessStatus::Active,
                     visibility: AgentVisibility::Private,
                     tags: vec!["agent-engine".to_string(), engine_key.to_string()],
+                    allowed_role_codes: Vec::new(),
                     version: 0,
                     created_at: requested_at.to_string(),
                     updated_at: requested_at.to_string(),
@@ -3277,6 +3279,9 @@ where
         }
         if let Some(tags) = command.tags {
             record.tags = tags;
+        }
+        if let Some(allowed_role_codes) = command.allowed_role_codes {
+            record.allowed_role_codes = allowed_role_codes;
         }
         if let Some(intent) = command.default_code_task_intent {
             record.default_code_task_intent = Some(intent);
@@ -12159,6 +12164,7 @@ mod task_tests {
             manifest: sample_manifest(agent_id),
             visibility: AgentVisibility::Private,
             tags: Vec::new(),
+            allowed_role_codes: Vec::new(),
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,
@@ -14636,6 +14642,7 @@ mod agent_ownership_tests {
             manifest: None,
             visibility: None,
             tags: None,
+            allowed_role_codes: None,
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,

@@ -16,5 +16,6 @@ export interface CreateAgentRequest {
   implementationType?: AgentImplementationType;
   visibility: AgentVisibility;
   tags?: string[];
+  allowedRoleCodes?: string[];
   requestedAt: string;
 }

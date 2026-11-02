@@ -766,6 +766,9 @@ pub struct AgentBusinessRecord {
     pub status: AgentBusinessStatus,
     pub visibility: AgentVisibility,
     pub tags: Vec<String>,
+    /// IAM role codes allowed to see and run this agent. An empty list means
+    /// every role, which is the default.
+    pub allowed_role_codes: Vec<String>,
     pub version: u64,
     pub created_at: String,
     pub updated_at: String,

@@ -85,6 +85,7 @@ pub struct CreateAgentRequestDto {
     pub manifest: AgentManifest,
     pub visibility: String,
     pub tags: Vec<String>,
+    pub allowed_role_codes: Vec<String>,
     pub default_code_task_intent: Option<CodeTaskIntent>,
     pub implementation_provider_id: Option<String>,
     pub implementation_kind: Option<String>,
@@ -106,6 +107,7 @@ impl CreateAgentRequestDto {
             manifest: self.manifest,
             visibility: parse_visibility(&self.visibility)?,
             tags: self.tags,
+            allowed_role_codes: normalize_allowed_role_codes(&self.allowed_role_codes)?,
             default_code_task_intent: self.default_code_task_intent,
             implementation_provider_id: self.implementation_provider_id,
             implementation_kind: self
@@ -254,6 +256,7 @@ pub struct UpdateAgentRequestDto {
     pub manifest: Option<AgentManifest>,
     pub visibility: Option<String>,
     pub tags: Option<Vec<String>>,
+    pub allowed_role_codes: Option<Vec<String>>,
     pub default_code_task_intent: Option<CodeTaskIntent>,
     pub implementation_provider_id: Option<Option<String>>,
     pub implementation_kind: Option<Option<String>>,
@@ -283,6 +286,11 @@ impl UpdateAgentRequestDto {
             manifest: self.manifest,
             visibility,
             tags: self.tags,
+            allowed_role_codes: self
+                .allowed_role_codes
+                .as_deref()
+                .map(normalize_allowed_role_codes)
+                .transpose()?,
             default_code_task_intent: self.default_code_task_intent,
             implementation_provider_id: self.implementation_provider_id,
             implementation_kind: self
@@ -418,6 +426,7 @@ pub struct AgentRecordDto {
     pub status: String,
     pub visibility: String,
     pub tags: Vec<String>,
+    pub allowed_role_codes: Vec<String>,
     pub version: String,
     pub created_at: String,
     pub updated_at: String,
@@ -448,6 +457,7 @@ impl AgentRecordDto {
             status: record.status.as_str().to_string(),
             visibility: record.visibility.as_str().to_string(),
             tags: record.tags.clone(),
+            allowed_role_codes: record.allowed_role_codes.clone(),
             version: record.version.to_string(),
             created_at: record.created_at.clone(),
             updated_at: record.updated_at.clone(),
@@ -3435,6 +3445,37 @@ fn parse_visibility(value: &str) -> KernelResult<AgentVisibility> {
     })
 }
 
+/// Canonical role-assignment list: trimmed, validated, de-duplicated and sorted.
+fn normalize_allowed_role_codes(codes: &[String]) -> KernelResult<Vec<String>> {
+    let mut normalized = Vec::with_capacity(codes.len());
+    for code in codes {
+        let trimmed = code.trim();
+        let mut chars = trimmed.chars();
+        let starts_lowercase = chars
+            .next()
+            .is_some_and(|value| value.is_ascii_lowercase());
+        let body_valid = chars.all(|value| {
+            value.is_ascii_lowercase()
+                || value.is_ascii_digit()
+                || matches!(value, '_' | '.' | '-')
+        });
+        if !starts_lowercase || !body_valid || trimmed.len() > 128 {
+            return Err(KernelError::validation(format!(
+                "invalid allowed role code: {code}"
+            )));
+        }
+        normalized.push(trimmed.to_string());
+    }
+    normalized.sort();
+    normalized.dedup();
+    if normalized.len() > 64 {
+        return Err(KernelError::validation(
+            "allowedRoleCodes cannot contain more than 64 entries",
+        ));
+    }
+    Ok(normalized)
+}
+
 fn parse_status(value: &str) -> KernelResult<AgentBusinessStatus> {
     AgentBusinessStatus::from_code(value).ok_or_else(|| {
         KernelError::validation(format!(
@@ -3674,6 +3715,7 @@ mod tests {
             manifest: sample_manifest("agent.alpha"),
             visibility: "organization".to_string(),
             tags: vec!["starter".to_string()],
+            allowed_role_codes: Vec::new(),
             default_code_task_intent: Some(CodeTaskIntent::new("Refactor runtime")),
             implementation_provider_id: None,
             implementation_kind: None,
@@ -3739,6 +3781,7 @@ mod tests {
             manifest: sample_manifest("agent.alpha"),
             visibility: "organization".to_string(),
             tags: vec!["starter".to_string()],
+            allowed_role_codes: Vec::new(),
             default_code_task_intent: Some(CodeTaskIntent::new("Refactor runtime")),
             implementation_provider_id: None,
             implementation_kind: None,
@@ -3781,6 +3824,7 @@ mod tests {
             manifest: None,
             visibility: None,
             tags: None,
+            allowed_role_codes: None,
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,
@@ -3811,6 +3855,7 @@ mod tests {
             manifest: sample_manifest("agent.alpha"),
             visibility: "organization".to_string(),
             tags: vec!["starter".to_string()],
+            allowed_role_codes: vec!["org_admin".to_string()],
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,
@@ -3847,6 +3892,7 @@ mod tests {
             status: AgentBusinessStatus::Draft,
             visibility: AgentVisibility::Private,
             tags: vec!["starter".to_string()],
+            allowed_role_codes: vec!["org_admin".to_string()],
             version: 2,
             created_at: "2026-06-01T00:00:00Z".to_string(),
             updated_at: "2026-06-01T00:00:00Z".to_string(),
@@ -3888,6 +3934,7 @@ mod tests {
             status: AgentBusinessStatus::Draft,
             visibility: AgentVisibility::Private,
             tags: vec!["assistant".to_string()],
+            allowed_role_codes: Vec::new(),
             version: 2,
             created_at: "2026-06-01T00:00:00Z".to_string(),
             updated_at: "2026-06-01T00:00:00Z".to_string(),

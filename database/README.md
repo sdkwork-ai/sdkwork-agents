@@ -54,6 +54,13 @@ greenfield baseline.
 All business `id` columns are application-allocated signed 64-bit values.
 PostgreSQL sequences and identity columns are not used for business IDs.
 
+## Role assignment
+
+`ai_agent.allowed_role_codes` is a JSONB array of IAM role codes allowed to see
+and run the agent. An empty array is the default and means every role. Role
+codes follow `^[a-z][a-z0-9_.-]{0,127}$`, are validated by the application, and
+are indexed with GIN for role-membership filtering.
+
 ## Initialization state
 
 This module is in **initialization state** for greenfield deployments:

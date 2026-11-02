@@ -241,6 +241,7 @@ pub struct AgentBusinessRow {
     pub status: i16,
     pub visibility: i16,
     pub tags_json: String,
+    pub allowed_role_codes_json: String,
     pub created_at: String,
     pub updated_at: String,
     pub deleted_at: Option<String>,
@@ -272,6 +273,7 @@ impl AgentBusinessRow {
             status: record.status.as_db_code(),
             visibility: record.visibility.as_db_code(),
             tags_json: tags_to_json(&record.tags)?,
+            allowed_role_codes_json: tags_to_json(&record.allowed_role_codes)?,
             created_at: record.created_at.clone(),
             updated_at: record.updated_at.clone(),
             deleted_at: record.deleted_at.clone(),
@@ -307,6 +309,7 @@ impl AgentBusinessRow {
                 KernelError::validation(format!("invalid db visibility code: {}", self.visibility))
             })?,
             tags: tags_from_json(&self.tags_json)?,
+            allowed_role_codes: tags_from_json(&self.allowed_role_codes_json)?,
             created_at: self.created_at,
             updated_at: self.updated_at,
             deleted_at: self.deleted_at,
@@ -2476,6 +2479,29 @@ fn validate_agent_business_storage_contract(record: &AgentBusinessRecord) -> Ker
             "implementationProviderId",
             Some(ID_PREFIX_PROVIDER),
         )?;
+    }
+    if record.allowed_role_codes.len() > 64 {
+        return Err(KernelError::validation(
+            "allowedRoleCodes cannot contain more than 64 entries",
+        ));
+    }
+    for code in &record.allowed_role_codes {
+        let trimmed = code.trim();
+        let mut chars = trimmed.chars();
+        let valid = chars
+            .next()
+            .is_some_and(|value| value.is_ascii_lowercase())
+            && chars.all(|value| {
+                value.is_ascii_lowercase()
+                    || value.is_ascii_digit()
+                    || matches!(value, '_' | '.' | '-')
+            })
+            && trimmed.len() <= 128;
+        if !valid {
+            return Err(KernelError::validation(format!(
+                "invalid allowed role code: {code}"
+            )));
+        }
     }
     Ok(())
 }
@@ -6955,6 +6981,7 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 row.status,
                 row.visibility,
                 row.tags_json,
+                row.allowed_role_codes_json,
                 row.created_at,
                 row.updated_at,
                 row.deleted_at,
@@ -6989,6 +7016,7 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 row.status,
                 row.visibility,
                 row.tags_json,
+                row.allowed_role_codes_json,
                 row.updated_at,
                 row.deleted_at,
                 version,
@@ -14576,6 +14604,9 @@ fn pg_row_to_agent_business_row(row: PgRow) -> KernelResult<AgentBusinessRow> {
         status: row.try_get("status").map_err(map_sqlx_error)?,
         visibility: row.try_get("visibility").map_err(map_sqlx_error)?,
         tags_json: row.try_get("tags_json").map_err(map_sqlx_error)?,
+        allowed_role_codes_json: row
+            .try_get("allowed_role_codes_json")
+            .map_err(map_sqlx_error)?,
         created_at: row.try_get("created_at").map_err(map_sqlx_error)?,
         updated_at: row.try_get("updated_at").map_err(map_sqlx_error)?,
         deleted_at: row.try_get("deleted_at").map_err(map_sqlx_error)?,

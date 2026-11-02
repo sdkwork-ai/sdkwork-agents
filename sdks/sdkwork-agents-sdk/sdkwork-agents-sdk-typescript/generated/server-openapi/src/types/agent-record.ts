@@ -23,6 +23,7 @@ export interface AgentRecord {
   status: AgentStatus;
   visibility: AgentVisibility;
   tags: string[];
+  allowedRoleCodes: string[];
   version: Int64String;
   createdAt: string;
   updatedAt: string;

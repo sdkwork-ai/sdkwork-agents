@@ -3,7 +3,7 @@
   "generator": "@sdkwork/sdk-generator",
   "sdk": {
     "name": "sdkwork-agents-sdk",
-    "version": "0.1.2",
+    "version": "0.1.0",
     "language": "typescript",
     "sdkType": "custom",
     "protocol": "http",
@@ -32,7 +32,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "302335f8e95321d635aeff72da1e6146414c1f1cf4514b2dd5ddd4f5672eb73b"
+      "sha256": "fb941a0806986a54fc192f98a98f6d9c282b8d350b2b19a3e71dda404e92d545"
     },
     {
       "path": "LICENSE",
@@ -40,15 +40,15 @@
     },
     {
       "path": "package.json",
-      "sha256": "aca1ffb4ca8583c187b89dbdd39f9bdf6cddb915bac8c552477dd68311241445"
+      "sha256": "7f96d557acab8e4cca4a943d48ce2928fff951d90ca242b18ad15e4879c03351"
     },
     {
       "path": "README.md",
-      "sha256": "3683fc11f9259857ede346d1eec68d9c018419c8ea6e140f6dc2569e39ad1c37"
+      "sha256": "99fbf7c2f138be026939f8fe9f11482d19c0b85e3de17c72f9c83cffbb1d2a03"
     },
     {
       "path": "sdkwork-sdk.json",
-      "sha256": "45128c958024503bc5fe54e2d0a68c0fb97a05f5a49f59f8ad32274d396f222f"
+      "sha256": "639c91788f41bfffc27951d510122ebe5672edcfa85b4639ebb3e27627827f3b"
     },
     {
       "path": "src/api/ai.ts",
@@ -80,11 +80,11 @@
     },
     {
       "path": "src/index.ts",
-      "sha256": "1c073c7412f3659715b6d82d79ac4da8e36e210af658036fd513f0e2b3bb39e1"
+      "sha256": "be1ba971d7c153f90af599aff97d71c8047fbb6b97a0adb57c2fceaaca4a4749"
     },
     {
       "path": "src/sdk.ts",
-      "sha256": "4d25db920a01a80296fb740e8ce336fbf9c7ba9c4f7ab05a9dabb8ab5a11a37b"
+      "sha256": "5aa6faacf6372378fd8f4afc801854beb047812d1de24b6c2979071def920afe"
     },
     {
       "path": "src/types/activate-agent-provider-binding-request.ts",
@@ -208,7 +208,7 @@
     },
     {
       "path": "src/types/agent-record.ts",
-      "sha256": "4e5697b2904827ac8882e5369449622db381fcf341a034139c14b441ecf65712"
+      "sha256": "a829d9c3763aec627590664615f52a99d8ab52074a82102dde0d12e5d00fe2b6"
     },
     {
       "path": "src/types/agent-response.ts",
@@ -432,7 +432,7 @@
     },
     {
       "path": "src/types/create-agent-request.ts",
-      "sha256": "890f78d550e09c94eb43e06014156c5e9c2e4c0e64c94d0bc464a0a233154425"
+      "sha256": "f67924f6f89ec102e76d1a5b143c122c8e5f1669637db163043b8e8813f4f1ab"
     },
     {
       "path": "src/types/create-agent-session-checkpoint-request.ts",
@@ -524,7 +524,7 @@
     },
     {
       "path": "src/types/update-agent-request.ts",
-      "sha256": "1ef0cd4e0340e94eb8057919b79394a33347e1573a2fb00db6f5f7705c1f715e"
+      "sha256": "c3f42a734e4d78ab50fa0e60e2c79d9026b334302ced1bbc6ab95ab7ab815dcf"
     },
     {
       "path": "src/types/update-agent-session-runtime-binding-request.ts",

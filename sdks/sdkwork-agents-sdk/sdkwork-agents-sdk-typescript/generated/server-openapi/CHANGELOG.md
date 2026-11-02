@@ -1,5 +1,5 @@
 # Changelog
 
-## 0.1.2
+## 0.1.0
 
 - Initial generated SDK release.

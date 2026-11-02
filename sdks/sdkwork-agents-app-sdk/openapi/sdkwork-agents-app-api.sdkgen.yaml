@@ -5637,6 +5637,7 @@ components:
       - status
       - visibility
       - tags
+      - allowedRoleCodes
       - version
       - createdAt
       - updatedAt
@@ -5702,6 +5703,14 @@ components:
             type: string
             minLength: 1
             maxLength: 64
+          maxItems: 64
+        allowedRoleCodes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[a-z][a-z0-9_.-]{0,127}$
           maxItems: 64
         version:
           $ref: '#/components/schemas/Int64String'
@@ -6375,6 +6384,14 @@ components:
             type: string
             minLength: 1
             maxLength: 64
+          maxItems: 64
+        allowedRoleCodes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[a-z][a-z0-9_.-]{0,127}$
           maxItems: 64
         requestedAt:
           type: string
@@ -7184,6 +7201,14 @@ components:
             type: string
             minLength: 1
             maxLength: 64
+          maxItems: 64
+        allowedRoleCodes:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 128
+            pattern: ^[a-z][a-z0-9_.-]{0,127}$
           maxItems: 64
         defaultCodeTaskIntent:
           type:

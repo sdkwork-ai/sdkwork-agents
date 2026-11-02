@@ -50,6 +50,7 @@ fn create_agent(service: &TestService, agent_id: &str) {
             manifest: manifest(agent_id),
             visibility: AgentVisibility::Private,
             tags: Vec::new(),
+            allowed_role_codes: Vec::new(),
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,

@@ -299,6 +299,7 @@ class AgentRecord {
   final String status;
   final String visibility;
   final List<String> tags;
+  final List<String> allowedRoleCodes;
   final String version;
   final String createdAt;
   final String updatedAt;
@@ -322,6 +323,7 @@ class AgentRecord {
     required this.status,
     required this.visibility,
     required this.tags,
+    required this.allowedRoleCodes,
     required this.version,
     required this.createdAt,
     required this.updatedAt,
@@ -425,6 +427,16 @@ class AgentRecord {
             .whereType<String>()
             .toList();
       })(),
+      allowedRoleCodes: (() {
+        final list = _sdkworkAsList(json['allowedRoleCodes']);
+        if (list == null) {
+          throw FormatException('AgentRecord.allowedRoleCodes is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
       version: (() {
         final value = json['version']?.toString();
         if (value == null) {
@@ -469,6 +481,7 @@ class AgentRecord {
       'status': status,
       'visibility': visibility,
       'tags': tags.map((item) => item).toList(),
+      'allowedRoleCodes': allowedRoleCodes.map((item) => item).toList(),
       'version': version,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -1726,6 +1739,7 @@ class CreateAgentRequest {
   final String? implementationType;
   final String visibility;
   final List<String>? tags;
+  final List<String>? allowedRoleCodes;
   final String requestedAt;
 
   CreateAgentRequest({
@@ -1741,6 +1755,7 @@ class CreateAgentRequest {
     this.implementationType,
     required this.visibility,
     this.tags,
+    this.allowedRoleCodes,
     required this.requestedAt
   });
 
@@ -1800,6 +1815,16 @@ class CreateAgentRequest {
             .whereType<String>()
             .toList();
       })(),
+      allowedRoleCodes: (() {
+        final list = _sdkworkAsList(json['allowedRoleCodes']);
+        if (list == null) {
+          return null;
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
       requestedAt: (() {
         final value = json['requestedAt']?.toString();
         if (value == null) {
@@ -1824,6 +1849,7 @@ class CreateAgentRequest {
       'implementationType': implementationType,
       'visibility': visibility,
       'tags': tags?.map((item) => item).toList(),
+      'allowedRoleCodes': allowedRoleCodes?.map((item) => item).toList(),
       'requestedAt': requestedAt,
     };
   }
@@ -3544,6 +3570,7 @@ class UpdateAgentRequest {
   final Map<String, dynamic>? manifest;
   final String? visibility;
   final List<String>? tags;
+  final List<String>? allowedRoleCodes;
   final Map<String, dynamic>? defaultCodeTaskIntent;
   final AgentManagementProfile? managementProfile;
   final String? implementationProviderId;
@@ -3558,6 +3585,7 @@ class UpdateAgentRequest {
     this.manifest,
     this.visibility,
     this.tags,
+    this.allowedRoleCodes,
     this.defaultCodeTaskIntent,
     this.managementProfile,
     this.implementationProviderId,
@@ -3575,6 +3603,16 @@ class UpdateAgentRequest {
       visibility: json['visibility']?.toString(),
       tags: (() {
         final list = _sdkworkAsList(json['tags']);
+        if (list == null) {
+          return null;
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      allowedRoleCodes: (() {
+        final list = _sdkworkAsList(json['allowedRoleCodes']);
         if (list == null) {
           return null;
         }
@@ -3609,6 +3647,7 @@ class UpdateAgentRequest {
       'manifest': manifest,
       'visibility': visibility,
       'tags': tags?.map((item) => item).toList(),
+      'allowedRoleCodes': allowedRoleCodes?.map((item) => item).toList(),
       'defaultCodeTaskIntent': defaultCodeTaskIntent,
       'managementProfile': managementProfile?.toJson(),
       'implementationProviderId': implementationProviderId,

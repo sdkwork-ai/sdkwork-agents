@@ -3,7 +3,7 @@ import type { SdkworkCustomConfig } from './types/common';
 
 import { AiApi, createAiApi } from './api/ai';
 
-export class SdkworkAgentClient {
+export class SdkworkCustomClient {
   private httpClient: HttpClient;
 
   public readonly ai: AiApi;
@@ -22,8 +22,8 @@ export class SdkworkAgentClient {
   }
 }
 
-export function createClient(config: SdkworkCustomConfig): SdkworkAgentClient {
-  return new SdkworkAgentClient(config);
+export function createClient(config: SdkworkCustomConfig): SdkworkCustomClient {
+  return new SdkworkCustomClient(config);
 }
 
-export default SdkworkAgentClient;
+export default SdkworkCustomClient;
