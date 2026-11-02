@@ -70,17 +70,21 @@ test('PC production composition exposes every SDK-backed workbench package', () 
   const agentsChatView = read('packages/sdkwork-agents-pc-agents/src/pages/AgentChatView.tsx');
   const homeRuntime = read('packages/sdkwork-agents-pc-agents/src/services/AgentsHomeRuntime.ts');
 
+  // Presentation was removed from the workbench application composition (see
+  // tests/workbench-modules.test.ts, `removes Presentation from the workbench
+  // application composition`); the membership surface is a first-class
+  // SDK-backed workbench surface instead.
   for (const packageName of [
     '@sdkwork/agents-pc-assets',
     '@sdkwork/agents-pc-canvas',
     '@sdkwork/agents-pc-chat',
     '@sdkwork/agents-pc-creative',
     '@sdkwork/agents-pc-inspiration',
-    '@sdkwork/agents-pc-presentation',
+    '@sdkwork/agents-pc-membership',
   ]) {
     assert.match(workbench, new RegExp(packageName.replace('/', '\\/'), 'u'), packageName);
   }
-  for (const tab of ['agents', 'chat_session', 'inspiration', 'creative', 'assets', 'presentation', 'canvas']) {
+  for (const tab of ['agents', 'chat_session', 'inspiration', 'creative', 'assets', 'canvas']) {
     assert.match(tabs, new RegExp(`['\"]${tab}['\"]`, 'u'), tab);
     assert.match(sidebar, new RegExp(`${tab}:|id:\\s*['\"]${tab}['\"]`, 'u'), tab);
   }

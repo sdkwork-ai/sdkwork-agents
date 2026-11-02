@@ -70,6 +70,8 @@ const PLATFORM_ONLY_PAGES = new Set([
   "pages/home/index",
   // Native <web-view> bridge the experts tab can open.
   "pages/agents-h5/index",
+  // Payment cashier <web-view> opened after a membership order is created.
+  "pages/membership/cashier",
 ]);
 
 /**

@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.client-page-parity",
+  "application": "sdkwork-agents",
+  "referenceClient": "pc",
+  "description": "Canonical page system for every SDKWork Agents client root. The PC workbench is the reference surface; mobile roots align by route identity (APP_CLIENT_ARCHITECTURE_ALIGNMENT_SPEC.md section 7) while keeping platform-appropriate presentation.",
+  "clients": {
+    "pc": {
+      "root": "apps/sdkwork-agents-pc",
+      "registry": ["apps/sdkwork-agents-pc/src/components/workbenchPages.ts"],
+      "authority": "APP_PC_ARCHITECTURE_SPEC.md",
+      "deliveredThrough": "M2"
+    },
+    "h5": {
+      "root": "apps/sdkwork-agents-h5",
+      "registry": ["apps/sdkwork-agents-h5/packages/sdkwork-agents-h5-shell/src/routeRegistry.ts"],
+      "authority": "APP_H5_ARCHITECTURE_SPEC.md",
+      "deliveredThrough": "M2"
+    },
+    "miniProgram": {
+      "root": "apps/sdkwork-agents-mini-program",
+      "registry": ["apps/sdkwork-agents-mini-program/packages/sdkwork-agents-mp-shell/src/navigation/routeRegistry.ts"],
+      "authority": "MINI_PROGRAM_APP_ARCHITECTURE_SPEC.md",
+      "deliveredThrough": "M2"
+    },
+    "flutter": {
+      "root": "apps/sdkwork-agents-flutter-mobile",
+      "registry": ["apps/sdkwork-agents-flutter-mobile/packages/sdkwork_agents_flutter_mobile_shell/lib/src/navigation/route_ids.dart"],
+      "authority": "FLUTTER_APP_MOBILE_ARCHITECTURE_SPEC.md",
+      "deliveredThrough": "M2"
+    },
+    "harmony": {
+      "root": "apps/sdkwork-agents-harmony-mobile",
+      "registry": ["apps/sdkwork-agents-harmony-mobile/packages/sdkwork-agents-harmony-mobile-agents/src/main/ets/routes/RouteContributions.ets"],
+      "authority": "HARMONY_APP_MOBILE_ARCHITECTURE_SPEC.md",
+      "deliveredThrough": "M2"
+    }
+  },
+  "milestones": {
+    "M1": "PC-primary surfaces on every client: chat, agent catalog, inspiration, creative, assets, membership, profile.",
+    "M2": "Secondary and nested surfaces: conversation history, agent editor, asset detail, canvas, projects, library, settings, automation."
+  },
+  "navigation": {
+    "pcSidebar": [
+      "app.agents.catalog.list",
+      "app.agents.conversation.chat",
+      "app.agents.inspiration.discover",
+      "app.agents.creative.studio",
+      "app.agents.assets.list",
+      "app.agents.membership.catalog"
+    ],
+    "mobileBottomTabs": [
+      "app.agents.conversation.chat",
+      "app.agents.inspiration.discover",
+      "app.agents.creative.studio",
+      "app.agents.assets.list",
+      "app.agents.catalog.list"
+    ],
+    "mobileProfileEntry": "app.agents.profile.index",
+    "mobileProfileLinks": [
+      "app.agents.membership.catalog",
+      "app.agents.projects.list",
+      "app.agents.library.list",
+      "app.agents.automation.index",
+      "app.agents.conversation.list",
+      "app.agents.settings.index"
+    ],
+    "note": "Mobile roots expose the five PC-primary surfaces as bottom tabs and keep the remaining PC pages reachable from the profile surface. Presentation differs per platform; page identity does not."
+  },
+  "pages": [
+    {
+      "id": "app.agents.conversation.chat",
+      "titleKey": "agents.mobile.tab.tasks",
+      "pc": { "entry": "chat_session", "presentation": "tab" },
+      "h5": { "presentation": "tab", "path": "/" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/conversation/index" },
+      "flutter": { "presentation": "tab", "routeName": "/conversation" },
+      "harmony": { "presentation": "tab", "pagePath": "pages/agents/AgentConversation" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.catalog.list",
+      "titleKey": "agents.mobile.tab.experts",
+      "pc": { "entry": "agents", "presentation": "tab" },
+      "h5": { "presentation": "tab", "path": "/experts" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/agents/index" },
+      "flutter": { "presentation": "tab", "routeName": "/agents" },
+      "harmony": { "presentation": "tab", "pagePath": "pages/agents/AgentsList" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.inspiration.discover",
+      "titleKey": "agents.mobile.tab.inspiration",
+      "pc": { "entry": "inspiration", "presentation": "tab" },
+      "h5": { "presentation": "tab", "path": "/inspiration" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/inspiration/index" },
+      "flutter": { "presentation": "tab", "routeName": "/inspiration" },
+      "harmony": { "presentation": "tab", "pagePath": "pages/inspiration/InspirationPage" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.creative.studio",
+      "titleKey": "agents.mobile.tab.creative",
+      "pc": { "entry": "creative", "presentation": "tab" },
+      "h5": { "presentation": "tab", "path": "/creative" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/creative/index" },
+      "flutter": { "presentation": "tab", "routeName": "/creative" },
+      "harmony": { "presentation": "tab", "pagePath": "pages/creative/CreativePage" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.assets.list",
+      "titleKey": "agents.mobile.tab.assets",
+      "pc": { "entry": "assets", "presentation": "tab" },
+      "h5": { "presentation": "tab", "path": "/assets" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/assets/index" },
+      "flutter": { "presentation": "tab", "routeName": "/assets" },
+      "harmony": { "presentation": "tab", "pagePath": "pages/assets/AssetsPage" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.membership.catalog",
+      "titleKey": "agents.mobile.tab.membership",
+      "pc": { "entry": "membership", "presentation": "overlay" },
+      "h5": { "presentation": "stack", "path": "/membership" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/membership/index" },
+      "flutter": { "presentation": "route", "routeName": "/membership" },
+      "harmony": { "presentation": "page", "pagePath": "pages/membership/MembershipPage" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.profile.index",
+      "titleKey": "agents.mobile.tab.profile",
+      "pc": { "entry": "profile", "presentation": "dialog" },
+      "h5": { "presentation": "stack", "path": "/profile" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/profile/index" },
+      "flutter": { "presentation": "route", "routeName": "/profile" },
+      "harmony": { "presentation": "page", "pagePath": "pages/profile/ProfilePage" },
+      "requiredFrom": "M1"
+    },
+    {
+      "id": "app.agents.conversation.list",
+      "titleKey": "agents.mobile.history.title",
+      "pc": { "entry": "chat_session", "presentation": "dialog" },
+      "h5": { "presentation": "stack", "path": "/conversation/history" },
+      "miniProgram": { "presentation": "subpackagePage", "pagePath": "pages/conversation/history" },
+      "flutter": { "presentation": "route", "routeName": "/conversation/history" },
+      "harmony": { "presentation": "page", "pagePath": "pages/conversation/ConversationHistory" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.catalog.editor",
+      "titleKey": "agents.mobile.tab.createAgent",
+      "pc": { "entry": "agents", "presentation": "dialog" },
+      "h5": { "presentation": "stack", "path": "/create-agent" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/agents-h5/index" },
+      "flutter": { "presentation": "route", "routeName": "/agents/editor" },
+      "harmony": { "presentation": "page", "pagePath": "pages/agents/CreateAgent" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.assets.detail",
+      "titleKey": "agents.mobile.assets.detailTitle",
+      "pc": { "entry": "assets", "presentation": "dialog" },
+      "h5": { "presentation": "sheet", "path": "/assets/:assetId" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/assets/detail" },
+      "flutter": { "presentation": "bottomSheet", "routeName": "/assets/detail" },
+      "harmony": { "presentation": "sheet", "pagePath": "pages/assets/AssetDetailPage" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.canvas.board",
+      "titleKey": "agents.mobile.tab.canvas",
+      "pc": { "entry": "canvas", "presentation": "tab" },
+      "h5": { "presentation": "stack", "path": "/canvas" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/canvas/index" },
+      "flutter": { "presentation": "route", "routeName": "/canvas" },
+      "harmony": { "presentation": "page", "pagePath": "pages/canvas/CanvasPage" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.projects.list",
+      "titleKey": "agents.mobile.tab.projects",
+      "pc": { "entry": "chat_session", "presentation": "page" },
+      "h5": { "presentation": "stack", "path": "/projects" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/projects/index" },
+      "flutter": { "presentation": "route", "routeName": "/projects" },
+      "harmony": { "presentation": "page", "pagePath": "pages/projects/ProjectsPage" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.library.list",
+      "titleKey": "agents.mobile.tab.library",
+      "pc": { "entry": "chat_session", "presentation": "page" },
+      "h5": { "presentation": "stack", "path": "/library" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/library/index" },
+      "flutter": { "presentation": "route", "routeName": "/library" },
+      "harmony": { "presentation": "page", "pagePath": "pages/library/LibraryPage" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.settings.index",
+      "titleKey": "agents.mobile.tab.settings",
+      "pc": { "entry": "settings", "presentation": "dialog" },
+      "h5": { "presentation": "stack", "path": "/settings" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/settings/index" },
+      "flutter": { "presentation": "route", "routeName": "/settings" },
+      "harmony": { "presentation": "page", "pagePath": "pages/settings/SettingsPage" },
+      "requiredFrom": "M2"
+    },
+    {
+      "id": "app.agents.automation.index",
+      "titleKey": "agents.mobile.tab.automation",
+      "pc": null,
+      "h5": { "presentation": "stack", "path": "/automation" },
+      "miniProgram": { "presentation": "page", "pagePath": "pages/automation/index" },
+      "flutter": { "presentation": "route", "routeName": "/automation" },
+      "harmony": { "presentation": "page", "pagePath": "pages/automation/AutomationPage" },
+      "requiredFrom": "M2"
+    }
+  ]
+}

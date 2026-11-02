@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "kind": "sdkwork.client-theme",
+  "application": "sdkwork-agents",
+  "theme": "tech-blue-flat",
+  "base": "light",
+  "principles": [
+    "Tech-blue accent on a light neutral base with a deep-navy navigation rail.",
+    "No decorative borders: surfaces are separated by tonal fill, never by 1px lines.",
+    "Flat: no drop shadows, no gradients, no glossy overlays.",
+    "Depth comes from surface tint and scrim only.",
+    "Focus visibility is preserved with an outline, not a border."
+  ],
+  "color": {
+    "primary": "#165DFF",
+    "primaryHover": "#4080FF",
+    "primaryPressed": "#0E42D2",
+    "primarySubtle": "#E8F0FF",
+    "primaryOn": "#FFFFFF",
+    "background": "#F4F7FC",
+    "surface": "#FFFFFF",
+    "surfaceMuted": "#EAF1FB",
+    "surfaceStrong": "#DCE8F9",
+    "rail": "#0A1B3D",
+    "railActive": "#165DFF",
+    "railText": "#C9D6EA",
+    "railTextMuted": "#7F91B0",
+    "textPrimary": "#0A1B3D",
+    "textSecondary": "#5B6B88",
+    "textTertiary": "#8A97AD",
+    "success": "#00B42A",
+    "warning": "#FF7D00",
+    "danger": "#F53F3F",
+    "scrim": "rgba(10, 27, 61, 0.45)",
+    "border": "transparent"
+  },
+  "shape": {
+    "borderWidth": 0,
+    "radiusSm": 8,
+    "radiusMd": 12,
+    "radiusLg": 16,
+    "radiusPill": 999
+  },
+  "elevation": {
+    "shadow": "none",
+    "overlay": "scrim-only"
+  },
+  "focus": {
+    "outlineWidth": 2,
+    "outlineColor": "#165DFF",
+    "outlineOffset": 2
+  },
+  "motion": {
+    "durationFastMs": 120,
+    "durationBaseMs": 200,
+    "easing": "cubic-bezier(0.2, 0, 0, 1)"
+  },
+  "dark": {
+    "background": "#0A1224",
+    "surface": "#111C33",
+    "surfaceMuted": "#17233D",
+    "surfaceStrong": "#1F2E4D",
+    "rail": "#060E1E",
+    "primary": "#4080FF",
+    "primaryHover": "#6AA0FF",
+    "primaryPressed": "#165DFF",
+    "primarySubtle": "#16305C",
+    "primaryOn": "#FFFFFF",
+    "textPrimary": "#EAF1FB",
+    "textSecondary": "#A9B7D0",
+    "textTertiary": "#7F91B0",
+    "success": "#23C343",
+    "warning": "#FF9A2E",
+    "danger": "#FF7875",
+    "scrim": "rgba(0, 0, 0, 0.6)",
+    "border": "transparent"
+  },
+  "themeMode": {
+    "default": "system",
+    "supported": ["light", "dark", "system"],
+    "rule": "Every client exposes the same three choices and resolves `system` through the platform appearance setting; dark is a complete token set, not an inversion filter."
+  },
+  "iconColors": {
+    "default": "#5B6B88",
+    "strong": "#0A1B3D",
+    "active": "#165DFF",
+    "onPrimary": "#FFFFFF",
+    "onRail": "#C9D6EA",
+    "disabled": "#8A97AD",
+    "darkDefault": "#A9B7D0",
+    "darkStrong": "#EAF1FB",
+    "darkActive": "#4080FF",
+    "darkDisabled": "#7F91B0",
+    "rule": "Icon colours are foreground tokens. A border, outline, surface, or transparent token MUST NOT be used as an icon colour."
+  },
+  "platformNotes": {
+    "pc": "Deep-navy rail, white surfaces, blue active states. Remove border and shadow utilities inside the workbench shell; keep focus outlines.",
+    "h5": "Light tech-blue shell replaces the previous dark shell. Page background #F4F7FC, cards #FFFFFF, tab bar #FFFFFF with blue active item.",
+    "miniProgram": "Light tech-blue shell. Tab bar and cards flat; no wxss border or box-shadow rules; active color #165DFF.",
+    "flutter": "Material 3 with ColorScheme.fromSeed(#165DFF) for light and the `dark` token set for dark; follow the platform brightness; elevation 0 everywhere; dividerColor transparent; filled inputs; no Card elevation. Icon colours must resolve from `iconColors` in both schemes.",
+    "harmony": "ArkUI tokens use the same colors; borderWidth 0, shadow none, background #F4F7FC and rail #0A1B3D."
+  },
+  "verification": {
+    "rules": [
+      "No visible 1px decorative border may remain on shell, cards, inputs, tab bars, modals, or list rows.",
+      "No box-shadow/elevation may remain on surfaces; dialogs may use only the scrim.",
+      "No gradient background may remain in shell or primary surfaces.",
+      "Primary actions use #165DFF with #FFFFFF text; focus outlines remain visible.",
+      "All clients must still pass their own typecheck/build/analyze gates."
+    ]
+  }
+}

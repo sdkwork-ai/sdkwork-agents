@@ -167,4 +167,80 @@ assert.match(h5AppSource, /AuthGate/u, "H5 App.tsx must wrap routes with AuthGat
 assert.match(h5AppSource, /AgentChatView/u, "H5 App.tsx must wire AgentChatView");
 assert.match(h5AppSource, /CHAT_ROUTE/u, "H5 App.tsx must wire the chat route constant");
 
+// --- Commercial release gates ----------------------------------------------
+
+const flutterAndroidManifest = mustExist(
+  "apps/sdkwork-agents-flutter-mobile/android/app/src/main/AndroidManifest.xml",
+);
+assert.match(
+  flutterAndroidManifest,
+  /android\.permission\.INTERNET/u,
+  "Flutter release manifest must declare the INTERNET permission",
+);
+assert.match(
+  flutterAndroidManifest,
+  /android:allowBackup="false"/u,
+  "Flutter release manifest must disable app-data backup",
+);
+
+const flutterGradle = mustExist(
+  "apps/sdkwork-agents-flutter-mobile/android/app/build.gradle.kts",
+);
+assert.match(
+  flutterGradle,
+  /key\.properties/u,
+  "Flutter release build must read signing material from key.properties",
+);
+assert.match(
+  flutterGradle,
+  /signingConfigs\.getByName\("release"\)/u,
+  "Flutter release build must select the release signing config when configured",
+);
+mustExist("apps/sdkwork-agents-flutter-mobile/android/key.properties.example");
+
+const iosPrivacyManifest = mustExist(
+  "apps/sdkwork-agents-flutter-mobile/ios/Runner/PrivacyInfo.xcprivacy",
+);
+assert.match(
+  iosPrivacyManifest,
+  /NSPrivacyAccessedAPICategoryUserDefaults/u,
+  "iOS privacy manifest must declare the UserDefaults required-reason API",
+);
+const iosProject = mustExist(
+  "apps/sdkwork-agents-flutter-mobile/ios/Runner.xcodeproj/project.pbxproj",
+);
+assert.match(
+  iosProject,
+  /PrivacyInfo\.xcprivacy in Resources/u,
+  "iOS privacy manifest must be part of the Runner resources build phase",
+);
+assert.match(
+  mustExist("apps/sdkwork-agents-flutter-mobile/ios/Runner/Info.plist"),
+  /ITSAppUsesNonExemptEncryption/u,
+  "iOS Info.plist must declare the export-compliance encryption flag",
+);
+
+const h5CloudProduction = mustExist("apps/sdkwork-agents-h5/.env.cloud.production");
+assert.doesNotMatch(
+  h5CloudProduction,
+  /localhost|127\.0\.0\.1/u,
+  "H5 cloud production env must not target a local host",
+);
+assert.match(
+  h5CloudProduction,
+  /^VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL=https:\/\//mu,
+  "H5 cloud production app API must use HTTPS",
+);
+
+const mpCloudProduction = JSON.parse(
+  mustExist("apps/sdkwork-agents-mini-program/config/mini-program/runtime-env.cloud.production.json"),
+);
+for (const [key, value] of Object.entries(mpCloudProduction)) {
+  if (typeof value !== "string" || !/^https?:\/\//u.test(value)) {
+    continue;
+  }
+  assert.doesNotMatch(value, /localhost|127\.0\.0\.1/u, `${key} must not target a local host`);
+  assert.match(value, /^https:\/\//u, `${key} must use HTTPS in cloud production`);
+}
+
 console.log("client surface readiness contract passed.");

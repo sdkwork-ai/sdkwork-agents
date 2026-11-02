@@ -21,6 +21,8 @@ remain authoritative under `../sdkwork-kernel/specs/`.
 | [agent-task-scheduling.contract.json](./agent-task-scheduling.contract.json) | Machine-readable Task scheduling invariants and review authority |
 | [agent-interaction-envelope.contract.json](./agent-interaction-envelope.contract.json) | Machine-readable typed Interaction request, resolution, compatibility, and review authority |
 | [agents-birdcoder-alignment.spec.json](./agents-birdcoder-alignment.spec.json) | Machine-readable cross-repo alignment tracker |
+| [client-page-parity.spec.json](./client-page-parity.spec.json) | Cross-client page system: canonical `app.agents.*` page ids, mobile navigation model, and per-platform presentation (`node --test tests/contract/client-page-parity.contract.test.mjs`) |
+| [client-theme.spec.json](./client-theme.spec.json) | Cross-client `tech-blue-flat` design tokens: color, shape, elevation, focus, and per-platform application (`node --test tests/contract/client-theme.contract.test.mjs`) |
 | [agent-execution-placement-orchestration.contract.json](./agent-execution-placement-orchestration.contract.json) | Draft machine contract for explicit local/cloud intent, Agents orchestration, and Kernel-owned execution placement |
 | [docs/architecture/AGENTS_LAYERING.md](../docs/architecture/AGENTS_LAYERING.md) | Crate and SDK layering |
 | [docs/product/prd/PRD.md](../docs/product/prd/PRD.md) | Product requirements |
