@@ -20,6 +20,8 @@ them via `IF NOT EXISTS`:
 - `0003` materializes the execution host registry
   (`ai_agent_execution_host`) and the durable session execution placement
   (`ai_agent_session_execution_placement`).
+- `0004` adds `ai_agent.allowed_role_codes`, the IAM role-code assignment list
+  (`[]` = every role, the default).
 
 The lifecycle orchestrator applies the baseline once on an empty schema
 (`baseline-plus-migrations`, `lifecycle.autoMigrate=false`). The drift gate
