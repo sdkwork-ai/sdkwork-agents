@@ -101,6 +101,39 @@ test("PC theme layer carries the primary token", () => {
   assert.ok(/165dff/iu.test(source), "PC theme must reference #165DFF");
 });
 
+test("PC dark mode redefines the complete token set for every dark wrapper", () => {
+  const css = fs.readFileSync(
+    path.join(root, "apps/sdkwork-agents-pc/src/index.css"),
+    "utf8",
+  );
+  const start = css.indexOf(".dark,");
+  const end = css.indexOf("@theme inline");
+  assert.ok(start >= 0 && end > start, "PC sheet needs a dark token block");
+  const dark = css.slice(start, end);
+  assert.match(dark, /\[data-sdk-color-mode="dark"\]/u, "BirdCoder scopes dark mode with the SDK attribute");
+  assert.match(dark, /\[data-ag-color-mode="dark"\]/u, "the standalone PC root marks dark with data-ag-color-mode");
+  assert.match(dark, /color-scheme:\s*dark/u, "the dark block owns the dark color scheme");
+
+  const token = (key) => `--ag-color-${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}`;
+  const expected = {
+    ...spec.dark,
+    iconDefault: spec.iconColors.darkDefault,
+    iconStrong: spec.iconColors.darkStrong,
+    iconActive: spec.iconColors.darkActive,
+    iconOnPrimary: spec.iconColors.onPrimary,
+    iconOnRail: spec.iconColors.onRail,
+    iconDisabled: spec.iconColors.darkDisabled,
+  };
+  for (const [key, value] of Object.entries(expected)) {
+    if (value.startsWith("rgba(")) continue;
+    assert.match(
+      dark,
+      new RegExp(`${token(key)}:\\s*${value}`, "iu"),
+      `dark token ${key} must use the spec value ${value}`,
+    );
+  }
+});
+
 test("H5 theme layer carries the primary token", () => {
   const source = readConcat(
     collectSourceFiles("apps/sdkwork-agents-h5/src", [".css", ".ts", ".tsx"]),
