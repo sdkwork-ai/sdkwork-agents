@@ -16,6 +16,8 @@ canon:
   smokeTest: docs/runbooks/smoke-test.md
   incidentRollback: docs/runbooks/incident-rollback.md
   operatorGuide: docs/guides/operator/README.md
+  agentCatalog: docs/guides/operator/agent-catalog.md
+  agentCatalogRunbook: docs/runbooks/agent-catalog-initialization.md
 domains:
   - id: product
     path: docs/product
@@ -102,3 +104,11 @@ entries:
     title: Developer guide
     path: docs/guides/developer/README.md
     domain: guides
+  - id: agent-catalog
+    title: Official agent catalog
+    path: docs/guides/operator/agent-catalog.md
+    domain: guides
+  - id: agent-catalog-initialization
+    title: Agent catalog initialization runbook
+    path: docs/runbooks/agent-catalog-initialization.md
+    domain: runbooks

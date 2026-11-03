@@ -59,6 +59,9 @@ Never edit Task Run leases or fencing tokens manually. Pause an affected Task
 through its governed API for scoped containment; scale the Worker only for
 scheduler-wide containment.
 
+Official commercial agent catalog: [agent-catalog.md](agent-catalog.md) and
+[runbooks/agent-catalog-initialization.md](../../runbooks/agent-catalog-initialization.md).
+
 ## Packaging (CI)
 
 GitHub workflow: `.github/workflows/package.yml` → reusable `sdkwork-package.yml` driven by `agent.workflow.json`.

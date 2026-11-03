@@ -69,7 +69,13 @@ This module is in **initialization state** for greenfield deployments:
 2. **Migrations** — `database/migrations/{engine}/` carries the ordered
    catch-up migrations that align previously initialized schemas with the
    folded baseline. Fresh baseline installs no-op them via `IF NOT EXISTS`.
-3. **Drift** — run `pnpm db:drift:check` before release.
+3. **Seeds** — `database/seeds/common/002_agent_catalog.sql` provisions the
+   official 58-agent catalog identity and references, while
+   `database/seeds/locales/{zh-CN,en-US}/` carry the localized display,
+   management profile, and prompt payload. The catalog also provisions one
+   knowledge space and one memory space per agent through the owning modules.
+   See [Official agent catalog](../docs/guides/operator/agent-catalog.md).
+4. **Drift** — run `pnpm db:drift:check` before release.
 
 ## Commands
 
@@ -83,3 +89,14 @@ pnpm run db:seed
 pnpm run db:status
 pnpm run db:drift:check
 ```
+
+After seeding the official catalog, run the live integrity gate:
+
+```bash
+psql "$SDKWORK_DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f database/verification/agent_catalog_checks.sql
+```
+
+It verifies 58 agents, 332 composition slots, 58 knowledge spaces, 58 memory
+spaces, 16 MCP catalog entries, 11 MCP categories, 16 draft MCP connectors, and
+every cross-module reference.

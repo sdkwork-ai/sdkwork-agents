@@ -24,6 +24,8 @@
 | Monitoring / alerting | [runbooks/monitoring.md](runbooks/monitoring.md) |
 | Live smoke test | [runbooks/smoke-test.md](runbooks/smoke-test.md) |
 | Incident / rollback | [runbooks/incident-rollback.md](runbooks/incident-rollback.md) |
+| Official agent catalog | [guides/operator/agent-catalog.md](guides/operator/agent-catalog.md) |
+| Agent catalog initialization | [runbooks/agent-catalog-initialization.md](runbooks/agent-catalog-initialization.md) |
 
 ## Archived Reports
 

@@ -8,6 +8,7 @@ Operational procedures for SDKWork Agents.
 | [monitoring.md](monitoring.md) | Prometheus scrape, alerts, and log correlation |
 | [smoke-test.md](smoke-test.md) | Live deployment smoke after cutover |
 | [incident-rollback.md](incident-rollback.md) | Elevated errors, failed cutover, rollback |
+| [agent-catalog-initialization.md](agent-catalog-initialization.md) | First install, tenant bootstrap, catalog upgrade |
 
 Related: [guides/operator/README.md](../guides/operator/README.md), [deployments/deploy.yaml](../../deployments/deploy.yaml).
 
