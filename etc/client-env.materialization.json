@@ -4,9 +4,18 @@
   "application": "sdkwork-agents",
   "command": "pnpm workflow:materialize-client-env",
   "sourceIdentity": {
-    "deploymentProfileKeys": ["SDKWORK_DEPLOYMENT_PROFILE", "SDKWORK_AGENTS_DEPLOYMENT_PROFILE"],
-    "environmentKeys": ["SDKWORK_ENVIRONMENT", "SDKWORK_AGENTS_ENVIRONMENT"],
-    "profileIdKeys": ["SDKWORK_PROFILE_ID", "SDKWORK_AGENTS_PROFILE_ID"]
+    "deploymentProfileKeys": [
+      "SDKWORK_DEPLOYMENT_PROFILE",
+      "SDKWORK_AGENTS_DEPLOYMENT_PROFILE"
+    ],
+    "environmentKeys": [
+      "SDKWORK_ENVIRONMENT",
+      "SDKWORK_AGENTS_ENVIRONMENT"
+    ],
+    "profileIdKeys": [
+      "SDKWORK_PROFILE_ID",
+      "SDKWORK_AGENTS_PROFILE_ID"
+    ]
   },
   "surfaces": [
     {
@@ -14,44 +23,102 @@
       "root": "apps/sdkwork-agents-pc",
       "format": "vite",
       "runtimeTarget": "browser",
-      "identityPrefixes": ["VITE_SDKWORK_AGENTS_PC"],
-      "includePrefixes": ["VITE_SDKWORK_AGENTS_PC_"],
+      "identityPrefixes": [
+        "VITE_SDKWORK_AGENTS_PC"
+      ],
+      "includePrefixes": [
+        "VITE_SDKWORK_AGENTS_PC_"
+      ],
       "bindings": {
         "VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": {
-          "sources": ["VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL", "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"],
+          "sources": [
+            "VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL",
+            "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"
+          ],
           "required": false
         }
       },
-      "requiredOutputKeys": ["VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"]
+      "requiredOutputKeys": [
+        "VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"
+      ],
+      "accessToken": {
+        "appId": "sdkwork-agents",
+        "tenantId": "100001",
+        "organizationId": "0",
+        "permissionScope": [
+          "iam.users.read",
+          "iam.organizations.read",
+          "iam.roles.read",
+          "iam.permissions.read"
+        ]
+      }
     },
     {
       "id": "sdkwork-agents-h5",
       "root": "apps/sdkwork-agents-h5",
       "format": "vite",
       "runtimeTarget": "browser",
-      "identityPrefixes": ["VITE_SDKWORK_AGENTS_H5"],
-      "includePrefixes": ["VITE_SDKWORK_AGENTS_H5_"],
+      "identityPrefixes": [
+        "VITE_SDKWORK_AGENTS_H5"
+      ],
+      "includePrefixes": [
+        "VITE_SDKWORK_AGENTS_H5_"
+      ],
       "bindings": {
         "VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": {
-          "sources": ["VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL", "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"],
+          "sources": [
+            "VITE_SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL",
+            "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"
+          ],
           "required": false
         }
       },
-      "requiredOutputKeys": ["VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL"]
+      "requiredOutputKeys": [
+        "VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL"
+      ],
+      "accessToken": {
+        "appId": "sdkwork-agents",
+        "tenantId": "100001",
+        "organizationId": "0",
+        "permissionScope": [
+          "iam.users.read",
+          "iam.organizations.read",
+          "iam.roles.read",
+          "iam.permissions.read"
+        ]
+      }
     },
     {
       "id": "sdkwork-agents-flutter-mobile",
       "root": "apps/sdkwork-agents-flutter-mobile",
       "format": "flutter",
       "runtimeTarget": "flutter-android",
-      "identityPrefixes": ["SDKWORK_AGENTS"],
+      "identityPrefixes": [
+        "SDKWORK_AGENTS"
+      ],
       "bindings": {
         "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL": "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL",
-        "SDKWORK_AGENTS_APP_API_BASE_URL": ["VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL", "VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"],
+        "SDKWORK_AGENTS_APP_API_BASE_URL": [
+          "VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL",
+          "VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"
+        ],
         "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": {
-          "sources": ["SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"],
+          "sources": [
+            "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"
+          ],
           "required": false
         }
+      },
+      "accessToken": {
+        "appId": "sdkwork-agents",
+        "tenantId": "100001",
+        "organizationId": "0",
+        "permissionScope": [
+          "iam.users.read",
+          "iam.organizations.read",
+          "iam.roles.read",
+          "iam.permissions.read"
+        ]
       }
     },
     {
@@ -59,14 +126,32 @@
       "root": "apps/sdkwork-agents-mini-program",
       "format": "mini-program",
       "runtimeTarget": "mini-program",
-      "identityPrefixes": ["SDKWORK_AGENTS"],
+      "identityPrefixes": [
+        "SDKWORK_AGENTS"
+      ],
       "bindings": {
         "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL": "SDKWORK_AGENTS_APPLICATION_PUBLIC_HTTP_URL",
-        "SDKWORK_AGENTS_APP_API_BASE_URL": ["VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL", "VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"],
+        "SDKWORK_AGENTS_APP_API_BASE_URL": [
+          "VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL",
+          "VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"
+        ],
         "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL": {
-          "sources": ["SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"],
+          "sources": [
+            "SDKWORK_AGENTS_PLATFORM_API_GATEWAY_HTTP_URL"
+          ],
           "required": false
         }
+      },
+      "accessToken": {
+        "appId": "sdkwork-agents",
+        "tenantId": "100001",
+        "organizationId": "0",
+        "permissionScope": [
+          "iam.users.read",
+          "iam.organizations.read",
+          "iam.roles.read",
+          "iam.permissions.read"
+        ]
       }
     }
   ]
