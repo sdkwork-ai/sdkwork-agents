@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use sdkwork_intelligence_agents_service::AgentHttpState;
-use sdkwork_routes_agents_http_shared::{agent_request_context_injector, app_route_manifest};
+use sdkwork_routes_agents_http_shared::{
+    agent_request_context_injector, app_route_manifest, backend_route_manifest,
+};
 pub use sdkwork_web_bootstrap::ApiAssemblyContribution;
 
 use crate::readiness::AgentHttpReadinessCheck;
@@ -38,9 +40,27 @@ pub async fn assemble_app_runtime_contribution() -> anyhow::Result<AppRuntimeCon
     })
 }
 
+/// Builds the unwrapped Agents Backend API for a gateway that owns the single
+/// Web Framework layer.
+///
+/// The backend composition boots its own `AgentHttpState` (repository, audit
+/// sink, policy provider) so it stays independent of the App API composition
+/// order. Background workers keep App-API ownership: every host that serves
+/// Agents composes the App API, so a backend-only merge never double-spawns
+/// the turn reconciliation worker.
+pub async fn assemble_backend_api_contribution() -> anyhow::Result<ApiAssemblyContribution> {
+    let state = build_agent_http_state().await?;
+    backend_contribution_from_state(state)
+}
+
 /// App-api surface route manifest owned by the Agents dependency assembly.
 pub fn app_api_route_manifest() -> sdkwork_web_core::HttpRouteManifest {
     sdkwork_routes_agents_http_shared::app_route_manifest()
+}
+
+/// Backend-api surface route manifest owned by the Agents dependency assembly.
+pub fn backend_api_route_manifest() -> sdkwork_web_core::HttpRouteManifest {
+    backend_route_manifest()
 }
 
 async fn build_agent_http_state() -> anyhow::Result<AgentHttpState> {
@@ -70,6 +90,24 @@ fn start_owner_background_tasks(state: &AgentHttpState) {
     // Dropping a Tokio JoinHandle detaches the process-lifetime task. Runtime shutdown still
     // terminates it, while the composing gateway remains independent of Agents worker internals.
     drop(state.spawn_turn_reconciliation_worker());
+}
+
+fn backend_contribution_from_state(
+    state: AgentHttpState,
+) -> anyhow::Result<ApiAssemblyContribution> {
+    let route_manifest = backend_api_route_manifest();
+    let readiness_check = Arc::new(AgentHttpReadinessCheck::new(state.clone()));
+    let router = sdkwork_routes_agents_backend_api::build_router().with_state(state);
+
+    ApiAssemblyContribution::from_manifest(
+        "sdkwork-agents",
+        "SDKWork Agents Backend API",
+        router,
+        route_manifest,
+        vec![agent_request_context_injector()],
+        readiness_check,
+    )
+    .map_err(anyhow::Error::msg)
 }
 
 #[cfg(test)]

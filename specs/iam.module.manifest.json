@@ -2,8 +2,627 @@
   "schemaVersion": 1,
   "kind": "sdkwork.iam.module",
   "moduleId": "agents",
+  "catalogVersion": "1.0.0",
   "domain": "agents",
+  "owner": "sdkwork-agents",
+  "displayName": "SDKWork Agents Module",
   "permissions": {
-    "catalog": []
+    "catalog": [
+      {
+        "code": "agent.business.audit.read",
+        "name": "Read agent audit events",
+        "resource": "audit",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.checkpoint.create",
+        "name": "Create agent checkpoints",
+        "resource": "checkpoint",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.checkpoint.invalidate",
+        "name": "Invalidate agent checkpoints",
+        "resource": "checkpoint",
+        "action": "invalidate",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.checkpoint.list",
+        "name": "List agent checkpoints",
+        "resource": "checkpoint",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.checkpoint.restore",
+        "name": "Restore agent checkpoints",
+        "resource": "checkpoint",
+        "action": "restore",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.checkpoint.retrieve",
+        "name": "Retrieve agent checkpoints",
+        "resource": "checkpoint",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.composition_slot.create",
+        "name": "Create agent composition slots",
+        "resource": "composition_slot",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.composition_slot.delete",
+        "name": "Delete agent composition slots",
+        "resource": "composition_slot",
+        "action": "delete",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.composition_slot.list",
+        "name": "List agent composition slots",
+        "resource": "composition_slot",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.composition_slot.retrieve",
+        "name": "Retrieve agent composition slots",
+        "resource": "composition_slot",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.composition_slot.update",
+        "name": "Update agent composition slots",
+        "resource": "composition_slot",
+        "action": "update",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.create",
+        "name": "Create managed agents",
+        "resource": "agents",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.answer",
+        "name": "Answer agent interactions",
+        "resource": "interaction",
+        "action": "answer",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.approve",
+        "name": "Approve agent interactions",
+        "resource": "interaction",
+        "action": "approve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.claim",
+        "name": "Claim agent interactions",
+        "resource": "interaction",
+        "action": "claim",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.create",
+        "name": "Create agent interactions",
+        "resource": "interaction",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.list",
+        "name": "List agent interactions",
+        "resource": "interaction",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.resolve",
+        "name": "Resolve agent interactions",
+        "resource": "interaction",
+        "action": "resolve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.interaction.retrieve",
+        "name": "Retrieve agent interactions",
+        "resource": "interaction",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.list",
+        "name": "List managed agents",
+        "resource": "agents",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.provider_binding.activate",
+        "name": "Activate agent provider bindings",
+        "resource": "provider_binding",
+        "action": "activate",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.provider_binding.add",
+        "name": "Add agent provider bindings",
+        "resource": "provider_binding",
+        "action": "add",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.provider_binding.list",
+        "name": "List agent provider bindings",
+        "resource": "provider_binding",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.restore",
+        "name": "Restore managed agents",
+        "resource": "agents",
+        "action": "restore",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.retrieve",
+        "name": "Retrieve managed agents",
+        "resource": "agents",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session.archive",
+        "name": "Archive agent sessions",
+        "resource": "session",
+        "action": "archive",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session.close",
+        "name": "Close agent sessions",
+        "resource": "session",
+        "action": "close",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session.create",
+        "name": "Create agent sessions",
+        "resource": "session",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session.list",
+        "name": "List agent sessions",
+        "resource": "session",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session.retrieve",
+        "name": "Retrieve agent sessions",
+        "resource": "session",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_item.list",
+        "name": "List agent session items",
+        "resource": "session_item",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_item.retrieve",
+        "name": "Retrieve agent session items",
+        "resource": "session_item",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_runtime_binding.activate",
+        "name": "Activate agent runtime bindings",
+        "resource": "session_runtime_binding",
+        "action": "activate",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_runtime_binding.create",
+        "name": "Create agent runtime bindings",
+        "resource": "session_runtime_binding",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_runtime_binding.deactivate",
+        "name": "Deactivate agent runtime bindings",
+        "resource": "session_runtime_binding",
+        "action": "deactivate",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_runtime_binding.list",
+        "name": "List agent runtime bindings",
+        "resource": "session_runtime_binding",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_runtime_binding.retrieve",
+        "name": "Retrieve agent runtime bindings",
+        "resource": "session_runtime_binding",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.session_runtime_binding.update",
+        "name": "Update agent runtime bindings",
+        "resource": "session_runtime_binding",
+        "action": "update",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.status.update",
+        "name": "Update agent lifecycle status",
+        "resource": "status",
+        "action": "update",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.cancel",
+        "name": "Cancel agent tasks",
+        "resource": "task",
+        "action": "cancel",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.create",
+        "name": "Create agent tasks",
+        "resource": "task",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.execute",
+        "name": "Execute agent tasks",
+        "resource": "task",
+        "action": "execute",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.list",
+        "name": "List agent tasks",
+        "resource": "task",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.pause",
+        "name": "Pause agent tasks",
+        "resource": "task",
+        "action": "pause",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.resume",
+        "name": "Resume agent tasks",
+        "resource": "task",
+        "action": "resume",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.retrieve",
+        "name": "Retrieve agent tasks",
+        "resource": "task",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task.update",
+        "name": "Update agent tasks",
+        "resource": "task",
+        "action": "update",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task_run.cancel",
+        "name": "Cancel agent task runs",
+        "resource": "task_run",
+        "action": "cancel",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task_run.list",
+        "name": "List agent task runs",
+        "resource": "task_run",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task_run.reconcile",
+        "name": "Reconcile agent task runs",
+        "resource": "task_run",
+        "action": "reconcile",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task_run.retrieve",
+        "name": "Retrieve agent task runs",
+        "resource": "task_run",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task_run.retry",
+        "name": "Retry agent task runs",
+        "resource": "task_run",
+        "action": "retry",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.task_run_attempt.list",
+        "name": "List agent task run attempts",
+        "resource": "task_run_attempt",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.turn.cancel",
+        "name": "Cancel agent conversation turns",
+        "resource": "turn",
+        "action": "cancel",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.turn.create",
+        "name": "Create agent conversation turns",
+        "resource": "turn",
+        "action": "create",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.turn.list",
+        "name": "List agent conversation turns",
+        "resource": "turn",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.turn.retrieve",
+        "name": "Retrieve agent conversation turns",
+        "resource": "turn",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.update",
+        "name": "Update managed agents",
+        "resource": "agents",
+        "action": "update",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.executionHost.list",
+        "name": "List executionHost",
+        "resource": "executionHost",
+        "action": "list",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.executionHost.manage",
+        "name": "Manage executionHost",
+        "resource": "executionHost",
+        "action": "manage",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.executionHost.retrieve",
+        "name": "Retrieve executionHost",
+        "resource": "executionHost",
+        "action": "retrieve",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "ai.agents.manage",
+        "name": "Manage managed agents",
+        "resource": "agents",
+        "action": "manage",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      }
+    ]
+  },
+  "roles": {
+    "domainStandardRoles": [
+      {
+        "code": "agents_admin_operator",
+        "name": "Agents Admin Operator",
+        "surface": "organization",
+        "scope": "organization",
+        "standard": true,
+        "assignable": true,
+        "bindingPrincipalKind": "organization_membership",
+        "permissionPatterns": [
+          "agent.business.list",
+          "agent.business.retrieve",
+          "agent.business.create",
+          "agent.business.update",
+          "agent.business.status.update",
+          "agent.business.restore",
+          "agent.business.audit.read"
+        ]
+      }
+    ],
+    "roleGrantExtensions": [
+      {
+        "roleCode": "org_admin",
+        "patterns": [
+          "agent.business.*"
+        ]
+      },
+      {
+        "roleCode": "org_operations",
+        "patterns": [
+          "agent.business.list",
+          "agent.business.retrieve",
+          "agent.business.create",
+          "agent.business.update",
+          "agent.business.status.update",
+          "agent.business.restore",
+          "agent.business.audit.read"
+        ]
+      }
+    ],
+    "roleExclusions": []
+  },
+  "directory": {
+    "organizationTemplates": [],
+    "departmentTemplates": [],
+    "positionTemplates": [],
+    "membershipTemplates": []
+  },
+  "policyConditions": {
+    "supportedAttributes": []
+  },
+  "dependencies": {
+    "requiresModules": [
+      "iam-kernel"
+    ]
   }
 }

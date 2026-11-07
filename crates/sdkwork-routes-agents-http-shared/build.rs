@@ -19,6 +19,12 @@ struct Operation {
     #[serde(rename = "operationId")]
     operation_id: String,
     security: Option<Vec<BTreeMap<String, Vec<serde_yaml::Value>>>>,
+    /// OpenAPI extension carrying the IAM permission code enforced for this
+    /// operation. Only the backend surface emits it into the generated route
+    /// manifest (see `collect_routes`), so app/open route behavior stays
+    /// governed by the service-layer policy provider.
+    #[serde(rename = "x-sdkwork-permission")]
+    required_permission: Option<String>,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -43,6 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app_root.join(
                 "crates/sdkwork-intelligence-agents-service/specs/openapi/agents-app-api.openapi.yaml",
             ),
+            false,
         ),
         (
             "agent_backend_routes.rs",
@@ -50,6 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app_root.join(
                 "crates/sdkwork-intelligence-agents-service/specs/openapi/agents-backend-api.openapi.yaml",
             ),
+            true,
         ),
         (
             "agent_open_routes.rs",
@@ -57,12 +65,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             app_root.join(
                 "crates/sdkwork-intelligence-agents-service/specs/openapi/agents-open-api.openapi.yaml",
             ),
+            false,
         ),
     ];
 
     let mut combined_entries = Vec::new();
 
-    for (file_name, const_name, path) in &surfaces {
+    for (file_name, const_name, path, attach_permissions) in &surfaces {
         let yaml = fs::read_to_string(path).map_err(|error| {
             io::Error::new(
                 error.kind(),
@@ -81,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ),
             )
         })?;
-        let entries = collect_routes(&document);
+        let entries = collect_routes(&document, *attach_permissions);
         combined_entries.extend(entries.iter().cloned());
         let source = render_routes(const_name, &entries);
         write_generated_route_manifest(out_dir.join(file_name), source)?;
@@ -97,7 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     write_generated_route_manifest(out_dir.join("agent_combined_routes.rs"), combined_source)?;
 
     println!("cargo:rerun-if-changed=build.rs");
-    for (_, _, path) in &surfaces {
+    for (_, _, path, _) in &surfaces {
         println!("cargo:rerun-if-changed={}", path.display());
     }
 
@@ -124,9 +133,10 @@ struct RouteEntry {
     tag: String,
     operation_id: String,
     auth: String,
+    required_permission: Option<String>,
 }
 
-fn collect_routes(document: &OpenApiDocument) -> Vec<RouteEntry> {
+fn collect_routes(document: &OpenApiDocument, attach_permissions: bool) -> Vec<RouteEntry> {
     let mut routes = Vec::new();
     for (path, operations) in &document.paths {
         for (method, operation) in operations {
@@ -143,6 +153,21 @@ fn collect_routes(document: &OpenApiDocument) -> Vec<RouteEntry> {
                     .unwrap_or_else(|| "ai".to_owned()),
                 operation_id: operation.operation_id.clone(),
                 auth: classify_auth(operation.security.as_ref()),
+                required_permission: if attach_permissions {
+                    operation
+                        .required_permission
+                        .as_ref()
+                        .and_then(|permission| {
+                            let trimmed = permission.trim();
+                            if trimmed.is_empty() {
+                                None
+                            } else {
+                                Some(trimmed.to_owned())
+                            }
+                        })
+                } else {
+                    None
+                },
                 path: path.clone(),
             });
         }
@@ -195,10 +220,15 @@ fn render_routes(const_name: &str, routes: &[RouteEntry]) -> String {
         "pub const {const_name}: &[sdkwork_web_contract::HttpRoute] = &[\n"
     ));
     for route in routes {
-        output.push_str(&format!(
-            "    sdkwork_web_contract::HttpRoute::new(sdkwork_web_contract::HttpMethod::{}, {:?}, {:?}, {:?}, sdkwork_web_contract::RouteAuth::{}),\n",
+        let mut line = format!(
+            "    sdkwork_web_contract::HttpRoute::new(sdkwork_web_contract::HttpMethod::{}, {:?}, {:?}, {:?}, sdkwork_web_contract::RouteAuth::{})",
             route.method, route.path, route.tag, route.operation_id, route.auth
-        ));
+        );
+        if let Some(permission) = &route.required_permission {
+            line.push_str(&format!(".with_required_permission({permission:?})"));
+        }
+        line.push_str(",\n");
+        output.push_str(&line);
     }
     output.push_str("];\n");
     output

@@ -11,8 +11,8 @@ pub use bootstrap::{assemble_api_router, ApiAssembly, assemble_api_router_with_p
 pub use contribution::{
     assemble_app_api_contribution,
     assemble_app_api_contribution_with_provider_session_cwd_resolver,
-    assemble_app_runtime_contribution, app_api_route_manifest, ApiAssemblyContribution,
-    AppRuntimeContribution,
+    assemble_app_runtime_contribution, assemble_backend_api_contribution, app_api_route_manifest,
+    backend_api_route_manifest, ApiAssemblyContribution, AppRuntimeContribution,
 };
 
 /// Apply the Agents managed-store lifecycle from the canonical environment profile.
