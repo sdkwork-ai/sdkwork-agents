@@ -265,9 +265,14 @@ correctness.
 ## 10. Verification
 
 ```powershell
-cargo check -p sdkwork-intelligence-agents-service --features http-axum
-cargo test -p sdkwork-intelligence-agents-service --features http-axum --lib
-cargo test -p sdkwork-intelligence-agents-service --features http-axum --test http_axum_contracts
+# Local runs must match the CI feature set (.github/workflows/ci.yml): without
+# `codex-test` the codex engine is not compiled, the runtime facade falls back
+# to contract mode, and the fail-closed environment gate rejects preview/turn
+# operations with HTTP 400 - the unit tests then fail on their 201/200
+# assertions.
+cargo check -p sdkwork-intelligence-agents-service --features http-axum,codex-test
+cargo test -p sdkwork-intelligence-agents-service --features http-axum,codex-test --lib
+cargo test -p sdkwork-intelligence-agents-service --features http-axum,codex-test --test http_axum_contracts
 cargo test -p sdkwork-agents-runtime-facade
 cargo check -p sdkwork-agents-kernel-bridge
 cargo check -p sdkwork-api-agents-assembly
