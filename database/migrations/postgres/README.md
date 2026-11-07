@@ -2,7 +2,7 @@
 
 Pre-launch the agents schema is consolidated on the single greenfield baseline:
 `database/ddl/baseline/postgres/0001_agents_baseline.sql`. It contains the
-complete `7.3.0` schema (canonical Agent, Session, Turn, Task Run/Attempt,
+complete `7.4.0` schema (canonical Agent, Session, Turn, Task Run/Attempt,
 Turn input queue, provider Session directory, typed Interaction envelope,
 materialized Session activity keyset (`ai_agent_session.activity_at` with
 trigger-maintained recency), turn streaming-content checkpoint, execution
@@ -22,6 +22,8 @@ them via `IF NOT EXISTS`:
   (`ai_agent_session_execution_placement`).
 - `0004` adds `ai_agent.allowed_role_codes`, the IAM role-code assignment list
   (`[]` = every role, the default).
+- `0005` materializes the managed agent category catalog
+  (`ai_agent_category`).
 
 The lifecycle orchestrator applies the baseline once on an empty schema
 (`baseline-plus-migrations`, `lifecycle.autoMigrate=false`). The drift gate

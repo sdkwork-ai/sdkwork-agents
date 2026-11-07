@@ -1,3 +1,4 @@
+mod agent_category;
 mod agent_engine_catalog;
 mod agent_turn;
 mod agent_turn_input_queue;
@@ -47,6 +48,12 @@ mod validation;
 pub mod webhook;
 mod workspace;
 
+#[cfg(feature = "postgres-sync")]
+pub use agent_category::PostgresAgentCategoryStore;
+pub use agent_category::{
+    validate_upsert_command, AgentCategoryRecord, AgentCategoryStatus, AgentCategoryStore,
+    InMemoryAgentCategoryStore, UpsertAgentCategoryCommand, ValidatedAgentCategoryCommand,
+};
 pub use agent_turn::{AgentTurnMode, AgentTurnRecord, AgentTurnStatus};
 pub use agent_turn_input_queue::{
     AgentTurnInputQueueDriveRef, AgentTurnInputQueueEntry, AgentTurnInputQueueStatus,

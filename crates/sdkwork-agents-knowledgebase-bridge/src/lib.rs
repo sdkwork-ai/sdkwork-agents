@@ -36,6 +36,7 @@ use sdkwork_knowledgebase_app_sdk_generated_rust::models::{
     KnowledgeRetrievalBinding, KnowledgeRetrievalRequest, KnowledgeRetrievalResult,
 };
 use sdkwork_knowledgebase_app_sdk_generated_rust::SdkworkAppClient;
+use sdkwork_utils_rust::service_base_url::{registry_base_url_or, report_registry_result};
 
 /// Environment variable holding the Knowledgebase App API origin.
 pub const KNOWLEDGEBASE_BASE_URL_ENV: &str = "SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL";
@@ -109,7 +110,10 @@ impl KnowledgeGroundingResolver for KnowledgebaseGroundingResolver {
         };
 
         let body = build_retrieval_request(request);
-        let client = SdkworkAppClient::new_with_base_url(self.base_url.clone())
+        // DISCOVERY_SPEC §12.1: registry-first base URL, configured value as
+        // the degradation fallback.
+        let base_url = registry_base_url_or("sdkwork-knowledgebase", &self.base_url);
+        let client = SdkworkAppClient::new_with_base_url(base_url.clone())
             .map_err(|error| provider_error("knowledgebase.client_init_failed", error))?;
         client.set_auth_token(auth_token);
         if let Some(access_token) = request
@@ -142,7 +146,14 @@ impl KnowledgeGroundingResolver for KnowledgebaseGroundingResolver {
                     )),
                 }
             })
-        })?;
+        });
+        report_registry_result(
+            "sdkwork-knowledgebase",
+            &base_url,
+            result.is_ok(),
+            "knowledgebase retrieval failed",
+        );
+        let result = result?;
 
         Ok(map_retrieval_result(result))
     }

@@ -18,6 +18,24 @@
         "replacementCode": null
       },
       {
+        "code": "agent.business.category.read",
+        "name": "Read agent categories",
+        "resource": "agent_category",
+        "action": "read",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
+        "code": "agent.business.category.manage",
+        "name": "Manage agent categories",
+        "resource": "agent_category",
+        "action": "manage",
+        "status": "active",
+        "since": "1.0.0",
+        "replacementCode": null
+      },
+      {
         "code": "agent.business.checkpoint.create",
         "name": "Create agent checkpoints",
         "resource": "checkpoint",
@@ -576,7 +594,9 @@
           "agent.business.update",
           "agent.business.status.update",
           "agent.business.restore",
-          "agent.business.audit.read"
+          "agent.business.audit.read",
+          "agent.business.category.read",
+          "agent.business.category.manage"
         ]
       }
     ],
@@ -596,7 +616,9 @@
           "agent.business.update",
           "agent.business.status.update",
           "agent.business.restore",
-          "agent.business.audit.read"
+          "agent.business.audit.read",
+          "agent.business.category.read",
+          "agent.business.category.manage"
         ]
       }
     ],

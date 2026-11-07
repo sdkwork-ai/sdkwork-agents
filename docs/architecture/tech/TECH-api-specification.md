@@ -4,7 +4,7 @@
 
 - Version: `6.0.0`
 - Status: active
-- Total operations: 246
+- Total operations: 248
 - Domain model: `AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem -> AgentInteraction`
 
 ## 1. Authorities
@@ -15,7 +15,7 @@ deterministic inventory and must be regenerated after an authority change.
 | Surface | Prefix | Operations | Authentication | Consumer SDK |
 | --- | --- | ---: | --- | --- |
 | App API | `/app/v3/api` | 127 | `Authorization` and `Access-Token` through the global app session | `@sdkwork/agents-app-sdk` and `sdkwork_agents_app_sdk` |
-| Backend API | `/backend/v3/api` | 63 | `Authorization` and `Access-Token` for operator context | `@sdkwork/agents-backend-sdk` |
+| Backend API | `/backend/v3/api` | 65 | `Authorization` and `Access-Token` for operator context | `@sdkwork/agents-backend-sdk` |
 | Open API | `/agent/v3/api` | 56 | `X-API-Key` | `@sdkwork/agents-sdk` |
 
 ## 2. Common Contract
@@ -248,6 +248,8 @@ Authority: [agents-backend-api.openapi.yaml](../../../crates/sdkwork-intelligenc
 | 61 | PUT | `/backend/v3/api/ai/execution_hosts/{hostId}` | `executionHosts.update` | Register or update one execution host |
 | 62 | GET | `/backend/v3/api/ai/tools` | `agents.tools.list` | List media tool directory with tenant configuration (admin) |
 | 63 | PUT | `/backend/v3/api/ai/tools/{toolId}/configuration` | `agents.tools.update` | Update one media tool tenant configuration (admin) |
+| 64 | GET | `/backend/v3/api/ai/agent_categories` | `agentCategories.list` | List managed agent categories (admin) |
+| 65 | PUT | `/backend/v3/api/ai/agent_categories/{categoryCode}` | `agentCategories.update` | Upsert one managed agent category (admin) |
 
 ### 4.3 Open API
 

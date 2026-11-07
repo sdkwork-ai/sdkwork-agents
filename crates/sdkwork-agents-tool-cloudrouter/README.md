@@ -20,6 +20,15 @@ calls. The adapter owns:
   `..._APPLICATION_PUBLIC_INGRESS_BIND` is prohibited
   (`APPLICATION_GATEWAY_SPEC.md` §2.3) — that self-loop is what made every
   embedded SDK call dial a port the process does not own;
+
+  The chat turn executor (`turn_transport.rs`) additionally prefers the
+  in-process surface whenever the composition root installed one. That
+  installation is the declared in-process port and outranks the profile string,
+  so an all-in-one container that declares `cloud` (or a root that never
+  published the canonical `SDKWORK_DEPLOYMENT_PROFILE`) never dials its own
+  listener. Media tools still use the HTTP client above because the generated
+  SDK is reqwest-based; they require the explicit override/authored URL in a
+  split deployment;
 - auth-token injection (`Authorization: Bearer <auth token>`) for cloudrouter
   account-pool routing — the caller's login token selects the tenant account
   group upstream, no API key required. User-scoped calls propagate the caller's

@@ -499,7 +499,16 @@ impl AgentManagementProfileDto {
         intent: Option<CodeTaskIntent>,
     ) -> KernelResult<Option<CodeTaskIntent>> {
         if self.is_empty() {
-            return Ok(intent);
+            // An explicitly empty profile clears the management profile
+            // constraint while leaving unrelated intent constraints intact.
+            // This is what lets an admin remove the last profile field (for
+            // example the agent category) without rewriting the intent.
+            return Ok(intent.map(|mut intent| {
+                intent.constraints.retain(|constraint| {
+                    !constraint.starts_with(AGENT_MANAGEMENT_PROFILE_CONSTRAINT_PREFIX)
+                });
+                intent
+            }));
         }
 
         let mut intent = intent.unwrap_or_else(|| {
@@ -3964,6 +3973,50 @@ mod tests {
             management_profile.welcome_message.as_deref(),
             Some("How can I help?")
         );
+    }
+
+    #[test]
+    fn empty_management_profile_clears_only_the_profile_constraint() {
+        let profile = AgentManagementProfileDto {
+            author: None,
+            avatar: None,
+            category_id: None,
+            color: None,
+            debug_mode: None,
+            execution_route: None,
+            icon_name: None,
+            json_mode: None,
+            knowledge_base_ids: Vec::new(),
+            memory_enabled: None,
+            model: None,
+            skill_ids: Vec::new(),
+            suggested_prompts: Vec::new(),
+            system_prompt: None,
+            temperature: None,
+            tool_ids: Vec::new(),
+            agent_type: None,
+            users: None,
+            voice_ids: Vec::new(),
+            welcome_message: None,
+        };
+        let intent = CodeTaskIntent::new("Keep prompt")
+            .with_constraint("agent.type=independent")
+            .with_constraint("sdkwork.agent.pc.config:{\"categoryId\":\"education\"}");
+
+        let merged = profile
+            .merge_into_default_code_task_intent(Some(intent))
+            .expect("empty profile merge")
+            .expect("intent is preserved");
+
+        assert_eq!(merged.prompt, "Keep prompt");
+        assert!(merged
+            .constraints
+            .iter()
+            .all(|constraint| !constraint.starts_with("sdkwork.agent.pc.config:")));
+        assert!(merged
+            .constraints
+            .iter()
+            .any(|constraint| constraint == "agent.type=independent"));
     }
 
     #[test]

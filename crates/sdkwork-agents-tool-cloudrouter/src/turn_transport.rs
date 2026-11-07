@@ -2,18 +2,23 @@
 //! (`APPLICATION_GATEWAY_SPEC.md` §2.3, `APP_SDK_INTEGRATION_SPEC.md` §5.2).
 //!
 //! A chat turn needs one thing from its dependency: a way to reach the
-//! CloudRouter open-api surface. Which way depends **only** on the deployment
-//! profile, never on a bind address or a reachability probe:
+//! CloudRouter open-api surface. Which way depends on a declared value, never
+//! on a bind address or a reachability probe
+//! (`APP_SDK_INTEGRATION_SPEC.md` §5.2):
 //!
-//! - **split** (`cloud`, or a separately deployed application) — CloudRouter
-//!   runs in another process, so the turn dials it over HTTP. The base URL comes
-//!   from the shared resolver: explicit override, then the authored topology
-//!   URL, then the compile-time split default.
-//! - **embedded** (`standalone`, the composition root that mounts the
-//!   CloudRouter assembly) — the surface is linked into *this* process, so the
-//!   turn dispatches into the assembly router directly. There is no HTTP base
+//! - **in-process** — the composition root that mounts the CloudRouter
+//!   assembly installs [`install_embedded_cloudrouter_surface`]. That
+//!   installation is the declared in-process port
+//!   (`APPLICATION_GATEWAY_SPEC.md` §2.3) and wins over the profile string, so
+//!   an all-in-one container that declares `cloud` (or a standalone root that
+//!   never published the canonical profile variable) still dispatches into the
+//!   mounted router instead of dialling its own listener. There is no HTTP base
 //!   URL, and deriving one from this process' own listener is the prohibited
-//!   self-loop that produced the production `Bad gateway` incident.
+//!   self-loop that produced the production `Bad gateway` / `50301` incidents.
+//! - **split** (`cloud`, or a separately deployed application with no mounted
+//!   surface) — CloudRouter runs in another process, so the turn dials it over
+//!   HTTP. The base URL comes from the shared resolver: explicit override, then
+//!   the authored topology URL, then the compile-time split default.
 //!
 //! Before this module the turn path had only the HTTP arm, so an embedded
 //! profile could not produce a base URL and every turn failed with
@@ -161,12 +166,19 @@ pub enum CloudRouterTurnTransport {
 impl CloudRouterTurnTransport {
     /// Selects the transport for this process.
     ///
-    /// Resolution is driven by the deployment profile alone
-    /// (`APP_SDK_INTEGRATION_SPEC.md` §5.2). In the embedded profile the
-    /// in-process surface is required: an HTTP base URL is deliberately *not*
-    /// consulted, because a standalone profile authors its public URL as a
-    /// loopback bind and adopting it while the surface is composed in-process
-    /// is the self-loop the specs prohibit.
+    /// Resolution is driven by a declared value, never by a bind address or a
+    /// reachability probe (`APP_SDK_INTEGRATION_SPEC.md` §5.2). The order is:
+    ///
+    /// 1. an explicit external override — the sanctioned escape hatch for a
+    ///    split deployment that hosts an otherwise-embedded surface separately;
+    /// 2. a surface the composition root installed in-process — that
+    ///    installation IS the declared in-process port
+    ///    (`APPLICATION_GATEWAY_SPEC.md` §2.3), so it is authoritative over the
+    ///    profile string. An all-in-one container that declares `cloud` still
+    ///    dispatches in-process instead of dialling its own listener;
+    /// 3. the embedded profile without an installed surface — fail closed,
+    ///    because falling back to loopback here is the prohibited self-loop;
+    /// 4. the split base URL resolved from topology.
     pub fn resolve() -> Result<Self, CloudRouterTransportError> {
         // An explicit external override is the sanctioned escape hatch for a
         // split deployment that hosts an otherwise-embedded surface
@@ -175,14 +187,22 @@ impl CloudRouterTurnTransport {
             return Ok(Self::Http { base_url });
         }
 
-        if turn_service_mode() == ServiceMode::Embedded {
-            let Some(dispatcher) = embedded_cloudrouter_surface() else {
-                return Err(CloudRouterTransportError::EmbeddedSurfaceNotWired);
-            };
+        // The composition root that mounts the CloudRouter assembly installs
+        // its dispatcher. That is a declaration that the surface is in-process,
+        // and it is strictly more specific than the profile string: a
+        // standalone composition root can be launched with a stale/undeclared
+        // profile, and an all-in-one container may declare `cloud` while still
+        // mounting every surface. Prefer the declared in-process port so no
+        // turn ever dials a loopback port this process may not own.
+        if let Some(dispatcher) = embedded_cloudrouter_surface() {
             return Ok(Self::InProcess {
                 dispatcher,
                 api_key: embedded_open_api_key(),
             });
+        }
+
+        if turn_service_mode() == ServiceMode::Embedded {
+            return Err(CloudRouterTransportError::EmbeddedSurfaceNotWired);
         }
 
         crate::client::resolve_cloudrouter_base_url()
@@ -202,7 +222,18 @@ impl CloudRouterTurnTransport {
         on_delta: &mut dyn FnMut(CloudRouterStreamDelta),
     ) -> Result<CloudRouterChatStreamResult, SdkworkError> {
         match self {
-            Self::Http { base_url } => stream_over_http(base_url, input, on_delta),
+            Self::Http { base_url } => {
+                let result = stream_over_http(base_url, input, on_delta);
+                // Feed the registry resolver so a failing CloudRouter instance
+                // is demoted by turn traffic, not only by an external probe.
+                sdkwork_utils_rust::service_base_url::report_registry_result(
+                    "cloudrouter",
+                    base_url,
+                    result.is_ok(),
+                    "cloud router chat completion failed",
+                );
+                result
+            }
             Self::InProcess {
                 dispatcher,
                 api_key,

@@ -709,6 +709,24 @@ fn embedded_turn_transport_end_to_end() {
         "the stop reason must report that the model asked for tools"
     );
 
+    // --- Step 10: the installed surface outranks a `cloud` profile string. A
+    // composition root that mounts CloudRouter declares its in-process port by
+    // installing the dispatcher; that declaration is more specific than the
+    // profile, so an all-in-one container that still declares `cloud` must not
+    // fall back to an HTTP base URL (the production 50301 loopback incident).
+    // The profile is process-global, so this runs last, after every turn. ---
+    std::env::set_var("SDKWORK_DEPLOYMENT_PROFILE", "cloud");
+    match CloudRouterTurnTransport::resolve() {
+        Ok(CloudRouterTurnTransport::InProcess { .. }) => {}
+        Ok(CloudRouterTurnTransport::Http { base_url }) => panic!(
+            "an installed in-process surface must win over the `cloud` profile, \
+             but the transport dialled {base_url}"
+        ),
+        Err(error) => panic!(
+            "an installed in-process surface must resolve to the in-process arm, got {error}"
+        ),
+    }
+
     // --- Final: the credential invariant, over every dispatch this test
     // produced. Each step asserted its own branch; this catches the case where
     // a new step adds headers without noticing the mutual exclusion. ---

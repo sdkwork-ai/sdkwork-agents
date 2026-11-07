@@ -2,7 +2,7 @@
 
 Owner: `agents-platform`
 
-Canonical contract: `database/contract/schema.yaml` (`7.3.0`)
+Canonical contract: `database/contract/schema.yaml` (`7.4.0`)
 
 Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
 
@@ -32,15 +32,16 @@ remain owned by their respective modules.
 
 ## Engine And Lifecycle
 
-PostgreSQL is the only managed-store engine. The `7.3.0` greenfield baseline
-contains the complete 32-table Session execution, Task scheduling, and
+PostgreSQL is the only managed-store engine. The `7.4.0` greenfield baseline
+contains the complete 33-table Session execution, Task scheduling, and
 execution-placement model. It is the only database state supported before the
 first release. `baseline-plus-migrations` remains the lifecycle strategy. New
 installations use the complete baseline; the post-baseline migration set brings
 already-initialized shared development schemas up to the folded baseline
 (`0001` tool configuration/asset tables, `0002` `organization_id`
 standardization, `0003` execution host registry and session execution
-placement), so shared development schemas converge on the baseline without
+placement, `0004` agent role assignment, `0005` managed agent category
+catalog), so shared development schemas converge on the baseline without
 replaying from an empty schema.
 
 Lifecycle `init` atomically materializes the consolidated baseline only when the

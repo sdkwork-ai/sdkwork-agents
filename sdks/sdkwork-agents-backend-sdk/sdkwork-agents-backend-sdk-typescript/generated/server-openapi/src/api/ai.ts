@@ -1,8 +1,38 @@
 import { backendApiPath } from './paths';
 import type { ApiRequestOptions, HttpClient } from '../http/client';
 
-import type { ActivateAgentProviderBindingRequest, AgentAuditEvent, AgentCompositionSlotRecord, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentProviderBindingRecord, AgentRecord, AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentTaskRecord, AgentTaskRunAttemptRecord, AgentTaskRunRecord, AgentTaskStateChangeRequest, AgentTurnRecord, AgentTurnStreamEvent, AnswerAgentInteractionRequest, ApproveAgentInteractionRequest, ArchiveAgentSessionRequest, AuditAction, CancelAgentTaskRequest, CancelAgentTaskRunRequest, CancelAgentTurnRequest, ChangeAgentSessionRuntimeBindingStatusRequest, ClaimAgentInteractionRequest, CloseAgentSessionRequest, CreateAgentCompositionSlotRequest, CreateAgentInteractionRequest, CreateAgentProviderBindingRequest, CreateAgentRequest, CreateAgentSessionCheckpointRequest, CreateAgentSessionRequest, CreateAgentSessionRuntimeBindingRequest, CreateAgentTaskRequest, CreateAgentTurnRequest, ExecuteAgentTaskRequest, ExecutionHostKind, ExecutionHostRecord, ExecutionHostStatus, ExecutionHostUpsertRequest, Int64String, InvalidateAgentSessionCheckpointRequest, MediaToolConfigurationBody, MediaToolDirectoryEntry, ReconcileAgentTaskRunRequest, ReplaceAgentTaskRequest, ResolveAgentInteractionRequest, RestoreAgentRequest, RestoreAgentSessionCheckpointRequest, RetryAgentTaskRunRequest, SdkWorkPageData, UpdateAgentCompositionSlotRequest, UpdateAgentRequest, UpdateAgentSessionRuntimeBindingRequest, UpdateAgentStatusRequest } from '../types';
+import type { ActivateAgentProviderBindingRequest, AgentAuditEvent, AgentCategoryRecord, AgentCategoryUpsertRequest, AgentCompositionSlotRecord, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentProviderBindingRecord, AgentRecord, AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentTaskRecord, AgentTaskRunAttemptRecord, AgentTaskRunRecord, AgentTaskStateChangeRequest, AgentTurnRecord, AgentTurnStreamEvent, AnswerAgentInteractionRequest, ApproveAgentInteractionRequest, ArchiveAgentSessionRequest, AuditAction, CancelAgentTaskRequest, CancelAgentTaskRunRequest, CancelAgentTurnRequest, ChangeAgentSessionRuntimeBindingStatusRequest, ClaimAgentInteractionRequest, CloseAgentSessionRequest, CreateAgentCompositionSlotRequest, CreateAgentInteractionRequest, CreateAgentProviderBindingRequest, CreateAgentRequest, CreateAgentSessionCheckpointRequest, CreateAgentSessionRequest, CreateAgentSessionRuntimeBindingRequest, CreateAgentTaskRequest, CreateAgentTurnRequest, ExecuteAgentTaskRequest, ExecutionHostKind, ExecutionHostRecord, ExecutionHostStatus, ExecutionHostUpsertRequest, Int64String, InvalidateAgentSessionCheckpointRequest, MediaToolConfigurationBody, MediaToolDirectoryEntry, ReconcileAgentTaskRunRequest, ReplaceAgentTaskRequest, ResolveAgentInteractionRequest, RestoreAgentRequest, RestoreAgentSessionCheckpointRequest, RetryAgentTaskRunRequest, SdkWorkPageData, UpdateAgentCompositionSlotRequest, UpdateAgentRequest, UpdateAgentSessionRuntimeBindingRequest, UpdateAgentStatusRequest } from '../types';
 
+
+export interface AiAgentCategoriesListParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+}
+
+export class AiAgentCategoriesApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** List managed agent categories (admin) */
+  async list(params?: AiAgentCategoriesListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: AgentCategoryRecord[]; }> {
+    const query = buildQueryString([
+      { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
+      { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<SdkWorkPageData & { items: AgentCategoryRecord[]; }>(appendQueryString(backendApiPath(`/ai/agent_categories`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+  }
+
+/** Upsert one managed agent category (admin) */
+  async update(categoryCode: string, body: AgentCategoryUpsertRequest, requestOptions?: ApiRequestOptions): Promise<AgentCategoryRecord> {
+    return this.client.request<AgentCategoryRecord>(backendApiPath(`/ai/agent_categories/${serializePathParameter(categoryCode, { name: 'categoryCode', style: 'simple', explode: false })}`), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'PUT' as any, body, contentType: 'application/json', sdkworkUnwrapKind: 'item' });
+  }
+}
 
 export interface AiExecutionHostsListParams {
   page?: number;
@@ -650,10 +680,12 @@ export class AiAgentsApi {
 export class AiApi {
   public readonly agents: AiAgentsApi;
   public readonly executionHosts: AiExecutionHostsApi;
+  public readonly agentCategories: AiAgentCategoriesApi;
 
   constructor(client: HttpClient) {
     this.agents = new AiAgentsApi(client);
     this.executionHosts = new AiExecutionHostsApi(client);
+    this.agentCategories = new AiAgentCategoriesApi(client);
   }
 
 }

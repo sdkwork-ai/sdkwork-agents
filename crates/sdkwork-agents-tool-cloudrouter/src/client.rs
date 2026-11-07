@@ -93,7 +93,10 @@ impl CloudRouterMediaClient {
         access_token: Option<&str>,
     ) -> Result<SdkworkAiClient, MediaToolError> {
         let client = self.with_auth_token(auth_token)?;
-        if let Some(access_token) = access_token.map(str::trim).filter(|value| !value.is_empty()) {
+        if let Some(access_token) = access_token
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
             client.set_access_token(access_token);
         }
         Ok(client)
@@ -264,10 +267,13 @@ fn deployment_profile() -> Option<String> {
 ///    forbidden — that is the self-loop `APPLICATION_GATEWAY_SPEC.md` §2.3
 ///    prohibits, and it silently produced the production `Bad gateway`
 ///    incident;
-/// 3. the **authored** gateway public HTTP URL
+/// 3. a healthy instance selected from `sdkwork_utils_rust::service_base_url`'s
+///    process registry (`DISCOVERY_SPEC.md` §12.1) — the default cloud path;
+/// 4. the **authored** gateway public HTTP URL
 ///    (`SDKWORK_CLOUDROUTER_ROUTER_APPLICATION_PUBLIC_HTTP_URL`) — an absolute
 ///    domain in cloud, an authored origin in a split deployment;
-/// 4. the split-deployment default (`http://127.0.0.1:3900`).
+/// 5. the split-deployment default (`http://127.0.0.1:3900`), the documented
+///    degradation path.
 pub fn cloudrouter_base_url_optional() -> Option<String> {
     resolve_cloudrouter_base_url().base_url().map(str::to_owned)
 }
@@ -289,15 +295,17 @@ pub fn resolve_cloudrouter_base_url() -> ResolvedBaseUrl {
 }
 
 /// Resolves the cloudrouter gateway base URL from the environment with the
-/// shared default.
+/// shared default, then prefers a healthy database-registry instance.
 ///
-/// Convenience wrapper over [`cloudrouter_base_url_optional`] that falls back to
-/// the split-deployment default for callers that cannot represent "no HTTP
-/// transport". Callers on a turn path that can reach a gateway hosted
-/// in-process **must** use the optional form so the missing transport is
-/// handled explicitly instead of silently dialling a self-loop.
+/// `DISCOVERY_SPEC.md` §12.1: media tools (image/audio/video/music) construct a
+/// generated HTTP SDK per call, so this is the single place that makes all of
+/// them registry-aware. In the all-in-one gateway the registry resolves
+/// `cloudrouter` to the gateway's own registered endpoint, replacing the old
+/// hard-coded `http://127.0.0.1:3900` fallback that the container does not own.
 pub fn cloudrouter_base_url() -> String {
-    cloudrouter_base_url_optional().unwrap_or_else(|| DEFAULT_CLOUDROUTER_BASE_URL.to_string())
+    let configured =
+        cloudrouter_base_url_optional().unwrap_or_else(|| DEFAULT_CLOUDROUTER_BASE_URL.to_string());
+    sdkwork_utils_rust::service_base_url::registry_base_url_or("cloudrouter", &configured)
 }
 
 /// Maps a cloudrouter SDK failure to the media tool error taxonomy with
@@ -307,6 +315,15 @@ pub fn map_cloudrouter_error(
     error: cloudrouter_open_sdk::SdkworkError,
 ) -> MediaToolError {
     use cloudrouter_open_sdk::SdkworkError;
+
+    // DISCOVERY_SPEC §12.1: a transport failure means the selected target is
+    // unreachable, so demote it; HTTP status errors still mean it answered.
+    if matches!(&error, SdkworkError::Http(_)) {
+        sdkwork_utils_rust::service_base_url::report_current_registry_failure(
+            "cloudrouter",
+            &error.to_string(),
+        );
+    }
 
     let mut message = format!("tool `{tool_id}` cloudrouter call failed: {error}");
     match &error {
@@ -542,10 +559,7 @@ mod tests {
             },
         );
         assert_eq!(funding.code(), "funding_required");
-        assert!(matches!(
-            funding,
-            MediaToolError::FundingRequired(_)
-        ));
+        assert!(matches!(funding, MediaToolError::FundingRequired(_)));
 
         // Legacy pre-402 gateway shape still classifies as funding.
         let legacy = map_cloudrouter_error(

@@ -1493,6 +1493,18 @@ pub const AGENT_BACKEND_API_OPERATIONS: &[ApiOperation] = &[
         tag: "ai",
         operation_id: "agents.tools.updateConfiguration",
     },
+    ApiOperation {
+        method: "GET",
+        path: "/backend/v3/api/ai/agent_categories",
+        tag: "ai",
+        operation_id: "agentCategories.list",
+    },
+    ApiOperation {
+        method: "PUT",
+        path: "/backend/v3/api/ai/agent_categories/{categoryCode}",
+        tag: "ai",
+        operation_id: "agentCategories.update",
+    },
 ];
 
 #[cfg(test)]
@@ -1917,7 +1929,7 @@ mod tests {
 
         assert_eq!(AGENT_OPEN_API_OPERATIONS.len(), 56);
         assert_eq!(AGENT_APP_API_OPERATIONS.len(), 127);
-        assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 63);
+        assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 65);
 
         assert_eq!(
             AGENT_OPEN_API_OPERATIONS.len(),
