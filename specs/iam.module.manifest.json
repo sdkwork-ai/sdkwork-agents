@@ -3,7 +3,7 @@
   "kind": "sdkwork.iam.module",
   "moduleId": "agents",
   "catalogVersion": "1.0.0",
-  "domain": "agents",
+  "domain": "agent",
   "owner": "sdkwork-agents",
   "displayName": "SDKWork Agents Module",
   "permissions": {
@@ -553,15 +553,6 @@
         "name": "Retrieve executionHost",
         "resource": "executionHost",
         "action": "retrieve",
-        "status": "active",
-        "since": "1.0.0",
-        "replacementCode": null
-      },
-      {
-        "code": "ai.agents.manage",
-        "name": "Manage managed agents",
-        "resource": "agents",
-        "action": "manage",
         "status": "active",
         "since": "1.0.0",
         "replacementCode": null
