@@ -953,8 +953,11 @@ fn normalize_completion_payload(
 ) -> CloudRouterCompletionResult {
     let mut content = String::new();
     let mut reasoning_content = String::new();
-    let mut model: Option<String> = None;
-    let mut raw_finish: Option<String> = None;
+    // Both wire protocols below assign these on every path (WireProtocol is a
+    // closed two-variant enum), so they bind uninitialized; the former `None`
+    // initializers were dead stores under the -D warnings gate.
+    let model: Option<String>;
+    let raw_finish: Option<String>;
     match protocol {
         WireProtocol::ChatCompletions => {
             let choice = payload
