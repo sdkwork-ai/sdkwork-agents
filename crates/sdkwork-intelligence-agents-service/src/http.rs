@@ -1,3 +1,4 @@
+mod agent_categories;
 mod context;
 mod media_tools;
 mod middleware;
@@ -1621,6 +1622,11 @@ pub struct AgentHttpState {
     provider_session_cwd_resolver:
         Option<Arc<dyn sdkwork_agents_runtime_facade::ProviderSessionProjectCwdResolver>>,
     media_tool_invocation: Option<Arc<crate::tool_invocation::MediaToolInvocationService>>,
+    /// Managed agent category catalog. The in-memory store keeps local
+    /// development and contract tests self-contained; the PostgreSQL-backed
+    /// store is installed by the kernel bridge for server-authoritative
+    /// deployments.
+    pub(crate) agent_category_store: Arc<dyn crate::agent_category::AgentCategoryStore>,
 }
 
 #[derive(Clone)]
@@ -1665,7 +1671,21 @@ impl AgentHttpState {
             model_configuration_runtime: Arc::new(AgentModelConfigurationRuntime::new()),
             provider_session_cwd_resolver: None,
             media_tool_invocation: None,
+            agent_category_store: Arc::new(crate::agent_category::InMemoryAgentCategoryStore::new()),
         }
+    }
+
+    /// Installs the managed agent category catalog store.
+    ///
+    /// Called by the kernel bridge with the PostgreSQL-backed catalog; an
+    /// unconfigured state keeps the in-memory catalog so local development and
+    /// contract tests remain self-contained.
+    pub fn with_agent_category_store(
+        mut self,
+        store: Arc<dyn crate::agent_category::AgentCategoryStore>,
+    ) -> Self {
+        self.agent_category_store = store;
+        self
     }
 
     pub fn with_provider_session_cwd_resolver(
@@ -3529,6 +3549,7 @@ pub fn build_backend_routes() -> Router<AgentHttpState> {
             "/backend/v3/api/ai/execution_hosts/{hostId}",
             get(backend_get_execution_host).put(backend_update_execution_host),
         )
+        .merge(agent_categories::routes())
         .layer(axum::middleware::from_fn(
             middleware::reject_client_scope_selectors,
         ))
@@ -16286,6 +16307,232 @@ mod tests {
             .await
             .expect("response body should be readable");
         assert!(body_bytes.is_empty());
+    }
+
+    #[tokio::test]
+    async fn agent_category_catalog_end_to_end_contract() {
+        async fn put_category(
+            app: axum::Router,
+            category_code: &str,
+            body: serde_json::Value,
+        ) -> (StatusCode, serde_json::Value) {
+            let request = Request::builder()
+                .method("PUT")
+                .uri(format!(
+                    "/backend/v3/api/ai/agent_categories/{category_code}"
+                ))
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("upsert request should be built");
+            let response = app.oneshot(request).await.expect("upsert should succeed");
+            let status = response.status();
+            let bytes = to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("upsert body should be readable");
+            let value = if bytes.is_empty() {
+                serde_json::Value::Null
+            } else {
+                serde_json::from_slice(&bytes).expect("upsert body should be JSON")
+            };
+            (status, value)
+        }
+
+        async fn get_categories(app: axum::Router, uri: &str) -> (StatusCode, serde_json::Value) {
+            let request = Request::builder()
+                .method("GET")
+                .uri(uri)
+                .body(Body::empty())
+                .expect("list request should be built");
+            let response = app.oneshot(request).await.expect("list should succeed");
+            let status = response.status();
+            let bytes = to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("list body should be readable");
+            let value = serde_json::from_slice(&bytes).expect("list body should be JSON");
+            (status, value)
+        }
+
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let app = build_test_router(state);
+
+        // Empty catalog.
+        let (status, empty) =
+            get_categories(app.clone(), "/backend/v3/api/ai/agent_categories").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(empty["data"]["items"].as_array().expect("items").len(), 0);
+        assert_eq!(empty["data"]["pageInfo"]["mode"], "offset");
+        assert_eq!(empty["data"]["pageInfo"]["totalItems"], "0");
+
+        // Create a top-level category with an icon reference.
+        let (status, created) = put_category(
+            app.clone(),
+            "education",
+            json!({
+                "name": "Education",
+                "description": "K-12 teachers",
+                "sortOrder": 2,
+                "iconRef": "drive://icons/education",
+                "status": "active"
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(created["data"]["item"]["categoryCode"], "education");
+        assert_eq!(created["data"]["item"]["name"], "Education");
+        assert_eq!(created["data"]["item"]["sortOrder"], 2);
+        assert_eq!(
+            created["data"]["item"]["iconRef"],
+            "drive://icons/education"
+        );
+        assert_eq!(created["data"]["item"]["parentId"], serde_json::Value::Null);
+        assert_eq!(created["data"]["item"]["lifecycleStatus"], "active");
+        assert_eq!(created["data"]["item"]["version"], "0");
+        assert!(created["data"]["item"]["id"].is_string());
+        let parent_id = created["data"]["item"]["id"].clone();
+
+        // Create a disabled child under the active parent.
+        let (status, child) = put_category(
+            app.clone(),
+            "education_k12",
+            json!({
+                "name": "K-12",
+                "parentId": parent_id,
+                "sortOrder": 5,
+                "status": "disabled"
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(child["data"]["item"]["parentId"], parent_id);
+        assert_eq!(child["data"]["item"]["lifecycleStatus"], "disabled");
+        assert_eq!(child["data"]["item"]["version"], "0");
+        let child_id = child["data"]["item"]["id"].clone();
+
+        // The catalog is at most two levels deep.
+        let (status, _) = put_category(
+            app.clone(),
+            "education_k12_math",
+            json!({
+                "name": "K-12 Math",
+                "parentId": child_id,
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        // A parent must exist and be active.
+        let (status, _) = put_category(
+            app.clone(),
+            "orphan",
+            json!({
+                "name": "Orphan",
+                "parentId": "999999",
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        let (status, _) = put_category(
+            app.clone(),
+            "under_disabled",
+            json!({
+                "name": "Under disabled",
+                "parentId": child_id,
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        // An optimistic update keeps identity and bumps the version.
+        let (status, updated) = put_category(
+            app.clone(),
+            "education",
+            json!({
+                "name": "Education & Training",
+                "sortOrder": 1,
+                "status": "active",
+                "expectedVersion": "0"
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(updated["data"]["item"]["id"], parent_id);
+        assert_eq!(updated["data"]["item"]["name"], "Education & Training");
+        assert_eq!(updated["data"]["item"]["sortOrder"], 1);
+        assert_eq!(updated["data"]["item"]["version"], "1");
+        assert_eq!(
+            updated["data"]["item"]["description"],
+            serde_json::Value::Null
+        );
+
+        // A stale expectedVersion is a 409 version conflict.
+        let (status, stale) = put_category(
+            app.clone(),
+            "education",
+            json!({
+                "name": "Stale update",
+                "expectedVersion": "0"
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::CONFLICT);
+        assert_eq!(stale["code"], 40901);
+
+        // A category cannot become its own parent.
+        let (status, _) = put_category(
+            app.clone(),
+            "education",
+            json!({
+                "name": "Self parent",
+                "parentId": parent_id,
+            }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        // The ordered catalog lists parent and child with pagination metadata.
+        let (status, listed) =
+            get_categories(app.clone(), "/backend/v3/api/ai/agent_categories").await;
+        assert_eq!(status, StatusCode::OK);
+        let items = listed["data"]["items"].as_array().expect("items");
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["categoryCode"], "education");
+        assert_eq!(items[1]["categoryCode"], "education_k12");
+        assert_eq!(listed["data"]["pageInfo"]["totalItems"], "2");
+        assert_eq!(listed["data"]["pageInfo"]["hasMore"], false);
+
+        // Free-text filter applies to code, name, and description.
+        let (status, filtered) =
+            get_categories(app.clone(), "/backend/v3/api/ai/agent_categories?q=educa").await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            filtered["data"]["items"].as_array().expect("items").len(),
+            2
+        );
+
+        let (_, missed) =
+            get_categories(app.clone(), "/backend/v3/api/ai/agent_categories?q=finance").await;
+        assert_eq!(missed["data"]["items"].as_array().expect("items").len(), 0);
+
+        // Invalid category codes, missing names, and server-owned `deleted`
+        // statuses are rejected as 400 problems.
+        let (status, _) = put_category(app.clone(), "Upper", json!({ "name": "Bad" })).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        let (status, _) = put_category(app.clone(), "finance", json!({ "sortOrder": 1 })).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+
+        let (status, _) = put_category(
+            app,
+            "finance",
+            json!({ "name": "Finance", "status": "deleted" }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
     }
 
     #[tokio::test]

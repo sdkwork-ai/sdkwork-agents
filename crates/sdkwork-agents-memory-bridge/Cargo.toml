@@ -14,6 +14,7 @@ workspace = true
 
 [dependencies]
 sdkwork-agent-kernel.workspace = true
+sdkwork-utils-rust.workspace = true
 sdkwork-intelligence-agents-service.workspace = true
 sdkwork-memory-app-sdk-generated-rust.workspace = true
 sdkwork-memory-inprocess.workspace = true

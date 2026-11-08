@@ -27,6 +27,7 @@ use sdkwork_intelligence_agents_service::{
     GroundingRequest, MemoryGroundingResolver, MemoryGroundingSnippet, MAX_MEMORY_SNIPPETS,
 };
 use sdkwork_memory_app_sdk_generated_rust::SdkworkMemoryAppClient;
+use sdkwork_utils_rust::service_base_url::{registry_base_url_or, report_registry_result};
 
 /// Environment variable holding the Memory App API origin.
 pub const MEMORY_BASE_URL_ENV: &str = "SDKWORK_AGENTS_MEMORY_BASE_URL";
@@ -101,7 +102,10 @@ impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
             ));
         };
 
-        let client = SdkworkMemoryAppClient::new_with_base_url(self.base_url.clone())
+        // DISCOVERY_SPEC §12.1: resolve through the database registry first and
+        // report the call outcome so a failing instance is demoted.
+        let base_url = registry_base_url_or("sdkwork-memory", &self.base_url);
+        let client = SdkworkMemoryAppClient::new_with_base_url(base_url.clone())
             .map_err(|error| provider_error("memory.client_init_failed", error))?;
         client.set_auth_token(auth_token);
         if let Some(access_token) = request
@@ -139,7 +143,7 @@ impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
         let query = request.query.trim().to_string();
         let actor_id = request.actor_id.map(|value| value.to_string());
         let timeout = self.timeout;
-        let snippets = run_sdk_call(move || {
+        let result = run_sdk_call(move || {
             let runtime = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
@@ -179,7 +183,14 @@ impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
                     )),
                 }
             })
-        })?;
+        });
+        report_registry_result(
+            "sdkwork-memory",
+            &base_url,
+            result.is_ok(),
+            "memory retrieval failed",
+        );
+        let snippets = result?;
 
         Ok(deduplicate(snippets))
     }

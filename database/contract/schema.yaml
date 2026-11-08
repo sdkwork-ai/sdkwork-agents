@@ -2,7 +2,7 @@ schema_version: 1
 kind: sdkwork.database.schema
 database_role: authoritative-server
 module_id: agents
-contract_version: 7.3.0
+contract_version: 7.4.0
 owner_team: agents-platform
 compliance_level: L2
 engines:
@@ -199,6 +199,16 @@ tables:
     owner: agents-platform
     description: Generated media asset persisted to Drive outside a session-item
       context with the drive node as the storage authority.
+  - name: ai_agent_category
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Managed agent taxonomy. Agents reference a category by
+      `categoryCode` through the management profile `categoryId`; this table is
+      the administrative source of truth for that catalog. Categories carry an
+      optional same-tenant parent (at most two levels), an optional icon
+      reference, lifecycle status, sort order, and an optimistic-concurrency
+      version.
 external_references:
   - module: sdkwork-memory
     columns: [target_ref, target_version_ref]

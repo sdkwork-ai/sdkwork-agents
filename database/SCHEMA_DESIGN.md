@@ -2,13 +2,13 @@
 
 Status: active
 
-Contract: `7.3.0`
+Contract: `7.4.0`
 
 Managed engine: PostgreSQL
 
 ## Ownership
 
-All 32 tables are authored and written by `sdkwork-intelligence-agents-service`.
+All 33 tables are authored and written by `sdkwork-intelligence-agents-service`.
 There are no imported tables, derived read stores, shadow copies, compatibility tables,
 or cross-module foreign keys. External capabilities are represented only by
 stable reference columns.

@@ -13,6 +13,7 @@ name = "sdkwork_agents_knowledgebase_bridge"
 workspace = true
 
 [dependencies]
+sdkwork-utils-rust.workspace = true
 sdkwork-agent-kernel.workspace = true
 sdkwork-intelligence-agents-service.workspace = true
 sdkwork-knowledgebase-app-sdk-generated-rust.workspace = true

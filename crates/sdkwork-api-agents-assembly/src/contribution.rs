@@ -148,4 +148,50 @@ mod tests {
 
         assert_eq!(expected, catalog);
     }
+
+    #[test]
+    fn backend_api_manifest_and_openapi_inventories_match() {
+        let manifest = backend_api_route_manifest();
+        let openapi = sdkwork_web_contract::build_openapi_document(
+            "SDKWork Agents Backend API",
+            manifest.routes(),
+        );
+
+        assert_eq!(
+            route_inventory_from_routes(manifest.routes()),
+            route_inventory_from_openapi(&openapi)
+                .expect("valid Agents Backend API OpenAPI inventory")
+        );
+    }
+
+    #[test]
+    fn backend_api_manifest_exposes_the_agent_category_catalog() {
+        let manifest = backend_api_route_manifest();
+        for (method, path, permission) in [
+            (
+                "GET",
+                "/backend/v3/api/ai/agent_categories",
+                "agent.business.category.read",
+            ),
+            (
+                "PUT",
+                "/backend/v3/api/ai/agent_categories/{categoryCode}",
+                "agent.business.category.manage",
+            ),
+        ] {
+            let route = manifest
+                .match_route(method, path)
+                .unwrap_or_else(|| panic!("{method} {path} must be served by the backend API"));
+            assert_eq!(
+                route.auth,
+                sdkwork_web_contract::RouteAuth::DualToken,
+                "{method} {path} must require the dual-token auth boundary"
+            );
+            assert_eq!(
+                route.required_permission,
+                Some(permission),
+                "{method} {path} must require its category permission"
+            );
+        }
+    }
 }

@@ -11,9 +11,9 @@ use sdkwork_intelligence_agents_service::{
     AgentHttpState, AllowAllPolicyProvider, CloudRouterFirstTurnExecutor, ExternalMcpToolExecutor,
     GenerationsToolExecutor, HttpGenerationsPort, IamGatedPolicyProvider, InMemoryAgentAuditSink,
     InMemoryAgentRepository, MediaToolExecutor, MediaToolInvocationService, MediaToolRegistry,
-    PostgresAgentConfigurationStore, RoutedTurnExecutor, RuntimeFacadeTurnExecutor,
-    SqlAgentAuditSink, SqlAgentRepository, SyncPostgresAdapter, TurnToolDispatcher,
-    TurnToolkitConfig,
+    PostgresAgentCategoryStore, PostgresAgentConfigurationStore, RoutedTurnExecutor,
+    RuntimeFacadeTurnExecutor, SqlAgentAuditSink, SqlAgentRepository, SyncPostgresAdapter,
+    TurnToolDispatcher, TurnToolkitConfig,
 };
 use std::sync::Arc;
 
@@ -334,11 +334,18 @@ fn production_postgres_agent_http_state(
     // Persist applied model configuration profiles in the canonical Agents
     // PostgreSQL database (server-authoritative persistence; SQLite is
     // client-local only per DATABASE_SPEC).
-    let configuration_store = PostgresAgentConfigurationStore::from_pool(configuration_pool);
+    let configuration_store =
+        PostgresAgentConfigurationStore::from_pool(configuration_pool.clone());
     let mut state = state.with_model_configuration_providers(
         Box::new(InMemorySecretProvider::new()),
         Box::new(configuration_store),
     );
+
+    // Administrative agent taxonomy: the category catalog is tenant scoped
+    // and lives in the same canonical Agents database.
+    let agent_category_store = PostgresAgentCategoryStore::from_pool(configuration_pool)
+        .context("build agents category catalog store")?;
+    state = state.with_agent_category_store(Arc::new(agent_category_store));
 
     // Media tool pipeline: registry + tenant configuration + server-side
     // drive persistence sharing the canonical Agents database.
