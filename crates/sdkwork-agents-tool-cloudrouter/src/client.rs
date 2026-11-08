@@ -72,6 +72,18 @@ impl CloudRouterMediaClient {
 
     /// Creates an `SdkworkAiClient` configured with the caller's auth token
     /// (account-pool routing; no API key required).
+    ///
+    /// Clients are pooled per `(base URL, token)`: each media tool invocation
+    /// re-resolves the registry target (per-call load balancing across a
+    /// multi-process cluster), while the HTTP connection pool is reused for a
+    /// target this process has already called.
+    /// Creates an `SdkworkAiClient` configured with the caller's auth token
+    /// (account-pool routing; no API key required).
+    ///
+    /// The client is built per call because `with_trace_id` stores the turn
+    /// trace on the generated client's header map; sharing one client across
+    /// concurrent turns would race trace ids. Base-URL resolution is still
+    /// per-call, so a multi-process cluster load-balances media traffic.
     pub fn with_auth_token(&self, auth_token: &str) -> Result<SdkworkAiClient, MediaToolError> {
         let client =
             SdkworkAiClient::new_with_base_url(self.base_url.clone()).map_err(|error| {
