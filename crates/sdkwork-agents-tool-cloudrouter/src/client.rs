@@ -192,6 +192,15 @@ pub fn cloudrouter_http_error_hint(status: u16, body: &str) -> &'static str {
         return "";
     }
     if status >= 500 {
+        // An empty account pool is not an upstream credential rejection. The
+        // gateway names the exact gate that blocked routing, and each gate has a
+        // different operator fix, so report that gate instead of a blanket 401
+        // ("check the API key"), which misdiagnoses the outage.
+        if body.contains("upstream_route_snapshot_empty")
+            || body.contains("routing account-pool gates")
+        {
+            return account_pool_gate_hint(body);
+        }
         if body.contains("upstream")
             || body.contains("credential")
             || body.contains("api key")
@@ -216,6 +225,43 @@ pub fn cloudrouter_http_error_hint(status: u16, body: &str) -> &'static str {
         }
     }
     "; Cloud Router 账号池网关暂不可用，请稍后重试"
+}
+
+/// Operator hint for an empty routing snapshot, chosen by the gate the gateway
+/// reported as blocking (`block at '<gate>'`). Every gate has a distinct fix, so
+/// a single generic message would send the operator to the wrong setting.
+fn account_pool_gate_hint(body: &str) -> &'static str {
+    for (marker, hint) in [
+        (
+            "block at 'enabled_suppliers'",
+            "; 账号池无可用路由：没有启用的上游供应商，请先在 Cloud Router 后台启用供应商",
+        ),
+        (
+            "block at 'enabled_accounts'",
+            "; 账号池无可用路由：该模型的供应商下没有启用的上游账号，请在 Cloud Router 后台启用（或新建）一个上游账号并配置凭证",
+        ),
+        (
+            "block at 'auth_method_matches'",
+            "; 账号池无可用路由：上游账号的鉴权方式未在供应商侧启用，请对齐账号 authMethod 与供应商鉴权配置",
+        ),
+        (
+            "block at 'active_credentials'",
+            "; 账号池无可用路由：上游账号没有有效凭证，请在 Cloud Router 后台为该账号配置有效的 API Key",
+        ),
+        (
+            "block at 'group_members'",
+            "; 账号池无可用路由：上游账号未加入启用的账号组，请将其加入默认账号组",
+        ),
+        (
+            "block at 'base_url_resolvable'",
+            "; 账号池无可用路由：上游 Base URL 无法解析，请配置端点或账号默认 Base URL",
+        ),
+    ] {
+        if body.contains(marker) {
+            return hint;
+        }
+    }
+    "; 账号池无可用路由：请检查上游账号是否启用、凭证是否有效、是否加入账号组、Base URL 是否可解析"
 }
 
 /// Runs a cloudrouter SDK async call on a dedicated blocking runtime,
@@ -656,6 +702,32 @@ mod tests {
         assert_ne!(
             hint,
             cloudrouter_http_error_hint(502, r#"{"detail":"something else entirely"}"#)
+        );
+    }
+
+    #[test]
+    fn empty_account_pool_reports_the_blocking_gate_not_a_401() {
+        // Production 2026-11-09: a 503 carrying the account-pool gate chain was
+        // reported as "credentials rejected (401)", which sent the operator to
+        // the API key instead of the disabled upstream account.
+        let body = r#"{"error":{"message":"upstream route snapshot is empty for model: deepseek/deepseek-flash (routing account-pool gates [enabled_suppliers=33, enabled_accounts=0, auth_method_matches=0, active_credentials=0, group_members=33, base_url_resolvable=0] block at 'enabled_accounts'; create or enable an upstream account under an enabled supplier)","code":"upstream_route_snapshot_empty"}}"#;
+        let hint = cloudrouter_http_error_hint(503, body);
+        assert!(hint.contains("启用"), "hint: {hint}");
+        assert!(
+            !hint.contains("401"),
+            "must not claim a credential rejection: {hint}"
+        );
+
+        let credentials = cloudrouter_http_error_hint(
+            503,
+            r#"{"error":{"message":"block at 'active_credentials'"}}"#,
+        );
+        assert!(credentials.contains("凭证"), "hint: {credentials}");
+        assert_ne!(hint, credentials);
+
+        // A credential rejection that names no gate keeps the 401 hint.
+        assert!(
+            cloudrouter_http_error_hint(503, "upstream credential rejected (401)").contains("401")
         );
     }
 
