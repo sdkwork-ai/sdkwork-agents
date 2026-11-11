@@ -2,6 +2,7 @@
 
 use cloudrouter_open_sdk::models::{
     OpenAiAudioTranscriptionRequest, OpenAiFileReferenceInput, OpenAiSpeechCreateRequest,
+    OpenAiVoiceCreateRequest,
 };
 use sdkwork_agents_tool_cloudrouter::{run_sync, CloudRouterMediaClient};
 use sdkwork_agents_tool_contract::{MediaResource, MediaToolCall, MediaToolError, MediaToolResult};
@@ -50,7 +51,7 @@ fn invoke_speech_create(
         voice,
         speed,
         response_format,
-        metadata: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -221,10 +222,23 @@ fn invoke_voices_create(
     auth_token: Option<&str>,
 ) -> Result<MediaToolResult, MediaToolError> {
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
-    let request = cloudrouter_open_sdk::models::OpenAiVoiceCreateRequest {
-        name: Some(call.string_arg("name")?),
-        description: call.optional_string_arg("description"),
-        metadata: None,
+    let name = call.string_arg("name")?;
+    let prompt = call
+        .optional_string_arg("prompt")
+        .or_else(|| call.optional_string_arg("description"))
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| {
+            MediaToolError::invalid_argument(format!(
+                "missing `prompt` argument for tool `{}`",
+                call.tool_id
+            ))
+        })?;
+    let request = OpenAiVoiceCreateRequest {
+        name,
+        prompt,
+        r#type: "prompt".to_string(),
+        script_hint: call.optional_string_arg("scriptHint"),
+        model: call.optional_string_arg("model"),
     };
 
     let client = CloudRouterMediaClient::from_env();

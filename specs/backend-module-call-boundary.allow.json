@@ -1,0 +1,17 @@
+{
+  "$comment": "MODULE_SPEC.md §4.2 deliberate exceptions for sdkwork-agents. Every entry MUST have a written reason and MUST sit in an explicitly named *_http_adapter module that is never the default.",
+  "allow": [
+    {
+      "file": "crates/sdkwork-agents-knowledgebase-bridge/src/http_adapter.rs",
+      "envVar": "SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL",
+      "module": "knowledgebase",
+      "reason": "Explicit split-deployment opt-in only. SDKWORK_AGENTS_KNOWLEDGEBASE_MODE defaults to in_process and http is selected only by that variable; the adapter then requires a valid App API origin at bootstrap, so a split deployment cannot boot and fail after a turn has started (MODULE_SPEC.md §4.2.3). Blocked upstream migration: the in-process replacement needs a callable retrieval port — KnowledgebaseRuntime::retrieval_app_service(&Arc<Self>) -> Arc<dyn KnowledgeRetrievalAppService> plus a host-pool constructor — because HostedRetrievalService and the KnowledgebaseRuntime accessors are pub(crate) and the kb_* stores are FORCE ROW LEVEL SECURITY bound to Knowledgebase's deployment scope (recorded in crates/sdkwork-agents-knowledgebase-bridge/src/in_process.rs REQUIRED_SIBLING_API). Delete this entry when that port lands."
+    },
+    {
+      "file": "crates/sdkwork-agents-memory-bridge/src/http_adapter.rs",
+      "envVar": "SDKWORK_AGENTS_MEMORY_BASE_URL",
+      "module": "memory",
+      "reason": "Explicit split-deployment opt-in only. SDKWORK_AGENTS_MEMORY_MODE defaults to in_process through sdkwork-memory-inprocess, which calls the same MemoryAppApi::create_retrieval service method as the App API route; http is selected only by that variable and the adapter then requires a valid App API origin at bootstrap (MODULE_SPEC.md §4.2.3)."
+    }
+  ]
+}

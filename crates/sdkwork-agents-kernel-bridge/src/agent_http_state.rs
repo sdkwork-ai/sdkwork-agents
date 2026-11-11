@@ -57,53 +57,111 @@ fn build_turn_tool_dispatcher() -> TurnToolDispatcher {
 /// execution route (`in_process` | `sandbox`). Per-request `executionRoute`
 /// overrides always win over this default.
 pub const AGENTS_TURN_EXECUTION_ROUTE_ENV: &str = "SDKWORK_AGENTS_TURN_EXECUTION_ROUTE";
+/// Selects the Agents knowledge transport: `in_process` (default) or `http`.
+pub const AGENTS_KNOWLEDGEBASE_MODE_ENV: &str =
+    sdkwork_agents_knowledgebase_bridge::KNOWLEDGEBASE_MODE_ENV;
 /// Selects the Agents memory transport: `in_process` (default) or `http`.
-pub const AGENTS_MEMORY_MODE_ENV: &str = "SDKWORK_AGENTS_MEMORY_MODE";
-const MEMORY_MODE_IN_PROCESS: &str = "in_process";
-const MEMORY_MODE_HTTP: &str = "http";
+pub const AGENTS_MEMORY_MODE_ENV: &str = sdkwork_agents_memory_bridge::MEMORY_MODE_ENV;
 
-/// Builds the Knowledgebase grounding resolver when the capability module is
-/// configured for this deployment.
-///
-/// `SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL` is optional: an unset value means
-/// the knowledge module is not mounted and knowledge/memory composition slots
-/// degrade to an ungrounded turn with a warning. A set-but-invalid value is a
-/// deployment misconfiguration and fails bootstrap instead of silently
-/// disabling retrieval.
-fn knowledgebase_grounding_resolver(
-) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::KnowledgeGroundingResolver>>> {
-    match sdkwork_agents_knowledgebase_bridge::KnowledgebaseGroundingResolver::from_env() {
-        Ok(Some(resolver)) => {
-            tracing::info!(
-                env = sdkwork_agents_knowledgebase_bridge::KNOWLEDGEBASE_BASE_URL_ENV,
-                "Agents knowledge grounding is enabled through sdkwork-knowledgebase"
-            );
-            Ok(Some(Arc::new(resolver)))
+/// Grounding transport selected for one optional capability module
+/// (`MODULE_SPEC.md` §4.2: in-process is the default, HTTP is an explicit
+/// split-deployment opt-in).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GroundingTransport {
+    InProcess,
+    Http,
+}
+
+/// In-process transport token, shared by both capability bridges.
+const TRANSPORT_IN_PROCESS: &str = "in_process";
+/// Sibling HTTP transport token, shared by both capability bridges.
+const TRANSPORT_HTTP: &str = "http";
+
+impl GroundingTransport {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::InProcess => TRANSPORT_IN_PROCESS,
+            Self::Http => TRANSPORT_HTTP,
         }
-        Ok(None) => {
-            tracing::info!(
-                env = sdkwork_agents_knowledgebase_bridge::KNOWLEDGEBASE_BASE_URL_ENV,
-                "Agents knowledge grounding is not configured; knowledge composition slots will not retrieve"
-            );
-            Ok(None)
-        }
-        Err(message) => Err(anyhow::anyhow!(
-            "agents knowledge grounding bootstrap failed: {message}"
-        )),
     }
 }
 
-fn resolve_memory_mode_value(value: Option<&str>) -> Result<String, String> {
+/// Resolves one capability's transport, failing closed on an unknown value. The
+/// bootstrap functions then require the HTTP opt-in's origin.
+fn resolve_transport_mode(
+    env_name: &str,
+    value: Option<&str>,
+) -> Result<GroundingTransport, String> {
     let mode = value
         .map(str::trim)
         .map(str::to_ascii_lowercase)
         .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| MEMORY_MODE_IN_PROCESS.to_string());
+        .unwrap_or_else(|| TRANSPORT_IN_PROCESS.to_string());
     match mode.as_str() {
-        MEMORY_MODE_IN_PROCESS | MEMORY_MODE_HTTP => Ok(mode),
+        TRANSPORT_IN_PROCESS => Ok(GroundingTransport::InProcess),
+        TRANSPORT_HTTP => Ok(GroundingTransport::Http),
         other => Err(format!(
-            "{AGENTS_MEMORY_MODE_ENV} must be {MEMORY_MODE_IN_PROCESS} or {MEMORY_MODE_HTTP}; got {other}"
+            "{env_name} must be {TRANSPORT_IN_PROCESS} or {TRANSPORT_HTTP}; got {other}"
         )),
+    }
+}
+
+/// Builds the Knowledgebase grounding resolver for this deployment.
+///
+/// `SDKWORK_AGENTS_KNOWLEDGEBASE_MODE` selects the transport and defaults to
+/// `in_process`; the App API origin variable is read only behind the explicit
+/// `http` opt-in, where a missing or invalid origin fails bootstrap instead of
+/// silently disabling retrieval. The in-process resolver needs no configuration
+/// and fails closed with a typed provider error while the Knowledgebase app-api
+/// retrieval port is `pub(crate)` upstream; the missing sibling API is named in
+/// the warning so the block is discoverable from the operator log.
+fn knowledgebase_grounding_resolver(
+) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::KnowledgeGroundingResolver>>> {
+    let mode = resolve_transport_mode(
+        AGENTS_KNOWLEDGEBASE_MODE_ENV,
+        std::env::var(AGENTS_KNOWLEDGEBASE_MODE_ENV).ok().as_deref(),
+    )
+    .map_err(anyhow::Error::msg)?;
+    match mode {
+        GroundingTransport::InProcess => {
+            let resolver = sdkwork_agents_knowledgebase_bridge::InProcessKnowledgebaseGroundingResolver::from_env()
+                .map_err(|message| {
+                    anyhow::anyhow!(
+                        "agents in-process knowledge grounding bootstrap failed: {message}"
+                    )
+                })?;
+            match resolver {
+                Some(resolver) => {
+                    tracing::warn!(
+                        mode = mode.as_str(),
+                        required_sibling_api =
+                            sdkwork_agents_knowledgebase_bridge::REQUIRED_SIBLING_API,
+                        "Agents knowledge grounding runs in-process, but the sdkwork-knowledgebase retrieval port is not callable yet; knowledge composition slots will degrade to an ungrounded answer"
+                    );
+                    Ok(Some(Arc::new(resolver)))
+                }
+                None => {
+                    tracing::info!(
+                        mode = mode.as_str(),
+                        "Agents in-process knowledge grounding is not available; knowledge composition slots will not retrieve"
+                    );
+                    Ok(None)
+                }
+            }
+        }
+        GroundingTransport::Http => {
+            let resolver =
+                sdkwork_agents_knowledgebase_bridge::KnowledgebaseGroundingResolver::from_env()
+                    .map_err(|message| {
+                        anyhow::anyhow!("agents knowledge grounding bootstrap failed: {message}")
+                    })?;
+            tracing::info!(
+                mode = mode.as_str(),
+                env = sdkwork_agents_knowledgebase_bridge::KNOWLEDGEBASE_BASE_URL_ENV,
+                "Agents knowledge grounding uses the sdkwork-knowledgebase App API (explicit split-deployment opt-in)"
+            );
+            Ok(Some(Arc::new(resolver)))
+        }
     }
 }
 
@@ -111,25 +169,27 @@ fn resolve_memory_mode_value(value: Option<&str>) -> Result<String, String> {
 ///
 /// `SDKWORK_AGENTS_MEMORY_MODE` selects the transport and defaults to
 /// `in_process`. In-process mode requires the memory database profile; HTTP mode
-/// requires `SDKWORK_AGENTS_MEMORY_BASE_URL`. Missing optional configuration
-/// degrades with a warning, while a set-but-invalid value fails bootstrap.
+/// requires `SDKWORK_AGENTS_MEMORY_BASE_URL` and fails bootstrap without it.
 fn memory_grounding_resolver(
 ) -> Result<Option<Arc<dyn sdkwork_intelligence_agents_service::MemoryGroundingResolver>>> {
-    let mode = resolve_memory_mode_value(std::env::var(AGENTS_MEMORY_MODE_ENV).ok().as_deref())
-        .map_err(anyhow::Error::msg)?;
-    match mode.as_str() {
-        MEMORY_MODE_IN_PROCESS => {
+    let mode = resolve_transport_mode(
+        AGENTS_MEMORY_MODE_ENV,
+        std::env::var(AGENTS_MEMORY_MODE_ENV).ok().as_deref(),
+    )
+    .map_err(anyhow::Error::msg)?;
+    match mode {
+        GroundingTransport::InProcess => {
             match sdkwork_agents_memory_bridge::InProcessMemoryGroundingResolver::from_env() {
                 Ok(Some(resolver)) => {
                     tracing::info!(
-                        mode = MEMORY_MODE_IN_PROCESS,
+                        mode = mode.as_str(),
                         "Agents memory grounding is enabled in-process through sdkwork-memory"
                     );
                     Ok(Some(Arc::new(resolver)))
                 }
                 Ok(None) => {
                     tracing::info!(
-                        mode = MEMORY_MODE_IN_PROCESS,
+                        mode = mode.as_str(),
                         "Agents memory database is not configured; memory composition slots will not retrieve"
                     );
                     Ok(None)
@@ -139,30 +199,18 @@ fn memory_grounding_resolver(
                 )),
             }
         }
-        MEMORY_MODE_HTTP => {
-            match sdkwork_agents_memory_bridge::MemoryGroundingResolverAdapter::from_env() {
-                Ok(Some(resolver)) => {
-                    tracing::info!(
-                        env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
-                        "Agents memory grounding is enabled through the sdkwork-memory App API"
-                    );
-                    Ok(Some(Arc::new(resolver)))
-                }
-                Ok(None) => {
-                    tracing::info!(
-                        env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
-                        "Agents memory App API URL is not configured; memory composition slots will not retrieve"
-                    );
-                    Ok(None)
-                }
-                Err(message) => Err(anyhow::anyhow!(
-                    "agents memory grounding bootstrap failed: {message}"
-                )),
-            }
+        GroundingTransport::Http => {
+            let resolver =
+                sdkwork_agents_memory_bridge::MemoryGroundingResolverAdapter::from_env().map_err(
+                    |message| anyhow::anyhow!("agents memory grounding bootstrap failed: {message}"),
+                )?;
+            tracing::info!(
+                mode = mode.as_str(),
+                env = sdkwork_agents_memory_bridge::MEMORY_BASE_URL_ENV,
+                "Agents memory grounding uses the sdkwork-memory App API (explicit split-deployment opt-in)"
+            );
+            Ok(Some(Arc::new(resolver)))
         }
-        other => Err(anyhow::anyhow!(
-            "{AGENTS_MEMORY_MODE_ENV} must be {MEMORY_MODE_IN_PROCESS} or {MEMORY_MODE_HTTP}; got {other}"
-        )),
     }
 }
 
@@ -372,36 +420,66 @@ fn production_postgres_agent_http_state(
 }
 
 #[cfg(test)]
-mod memory_mode_tests {
-    use super::{resolve_memory_mode_value, MEMORY_MODE_HTTP, MEMORY_MODE_IN_PROCESS};
+mod grounding_transport_mode_tests {
+    use super::{
+        resolve_transport_mode, GroundingTransport, AGENTS_KNOWLEDGEBASE_MODE_ENV,
+        AGENTS_MEMORY_MODE_ENV, TRANSPORT_HTTP, TRANSPORT_IN_PROCESS,
+    };
+
+    #[test]
+    fn transport_tokens_agree_with_both_capability_bridges() {
+        assert_eq!(
+            TRANSPORT_IN_PROCESS,
+            sdkwork_agents_knowledgebase_bridge::MODE_IN_PROCESS
+        );
+        assert_eq!(
+            TRANSPORT_IN_PROCESS,
+            sdkwork_agents_memory_bridge::MODE_IN_PROCESS
+        );
+        assert_eq!(
+            TRANSPORT_HTTP,
+            sdkwork_agents_knowledgebase_bridge::MODE_HTTP
+        );
+        assert_eq!(TRANSPORT_HTTP, sdkwork_agents_memory_bridge::MODE_HTTP);
+    }
 
     #[test]
     fn absent_and_blank_values_default_to_in_process() {
         assert_eq!(
-            resolve_memory_mode_value(None).expect("default"),
-            MEMORY_MODE_IN_PROCESS
+            resolve_transport_mode(AGENTS_MEMORY_MODE_ENV, None).expect("default"),
+            GroundingTransport::InProcess
         );
         assert_eq!(
-            resolve_memory_mode_value(Some("  ")).expect("blank default"),
-            MEMORY_MODE_IN_PROCESS
+            resolve_transport_mode(AGENTS_MEMORY_MODE_ENV, Some("  ")).expect("blank default"),
+            GroundingTransport::InProcess
+        );
+        assert_eq!(
+            resolve_transport_mode(AGENTS_KNOWLEDGEBASE_MODE_ENV, None).expect("default"),
+            GroundingTransport::InProcess
         );
     }
 
     #[test]
     fn mode_values_are_case_insensitive_and_trimmed() {
         assert_eq!(
-            resolve_memory_mode_value(Some(" HTTP ")).expect("http"),
-            MEMORY_MODE_HTTP
+            resolve_transport_mode(AGENTS_MEMORY_MODE_ENV, Some(" HTTP ")).expect("http"),
+            GroundingTransport::Http
         );
         assert_eq!(
-            resolve_memory_mode_value(Some("In_Process")).expect("in process"),
-            MEMORY_MODE_IN_PROCESS
+            resolve_transport_mode(AGENTS_KNOWLEDGEBASE_MODE_ENV, Some("In_Process"))
+                .expect("in process"),
+            GroundingTransport::InProcess
         );
     }
 
     #[test]
-    fn unknown_mode_fails_closed() {
-        let error = resolve_memory_mode_value(Some("grpc")).expect_err("unknown mode");
+    fn unknown_mode_fails_closed_and_names_its_own_variable() {
+        let error =
+            resolve_transport_mode(AGENTS_MEMORY_MODE_ENV, Some("grpc")).expect_err("unknown mode");
         assert!(error.contains("SDKWORK_AGENTS_MEMORY_MODE"));
+
+        let error = resolve_transport_mode(AGENTS_KNOWLEDGEBASE_MODE_ENV, Some("rpc"))
+            .expect_err("unknown knowledge mode");
+        assert!(error.contains("SDKWORK_AGENTS_KNOWLEDGEBASE_MODE"));
     }
 }
