@@ -70,14 +70,17 @@ registered through manifests and slots; core Session/Turn contracts stay
 unchanged.
 
 Turn grounding is implemented for knowledge: enabled `knowledge -> knowledgebase`
-slots resolve through the `KnowledgeGroundingResolver` port, the composition
-root adapts it over the Knowledgebase App API transport SDK, and both prompt
+slots resolve through the `KnowledgeGroundingResolver` port, and both prompt
 builders insert one bounded, citation-numbered system block. The turn execution
 item now returns those citations (`citations`), including in the streaming
 completion event, so clients can render sources without changing the session
-item contract. Memory slots resolve through the Memory App API Rust SDK and the
-`MemoryGroundingResolver` port; `SDKWORK_AGENTS_MEMORY_BASE_URL` mounts the
-adapter, and `memoryPolicyRef` addresses a Memory space.
+item contract. Memory slots resolve through the `MemoryGroundingResolver` port;
+`SDKWORK_AGENTS_MEMORY_MODE` selects `in_process` (default, through the memory
+module's in-process runtime) or `http`, and `memoryPolicyRef` addresses a Memory
+space. Knowledge grounding uses the same mode switch; its in-process port is
+blocked on the Knowledgebase app-api retrieval service being `pub(crate)`, so the
+in-process resolver fails closed and names the sibling API it needs while `http`
+remains the explicit split-deployment opt-in.
 See [TECH-2026-1019-turn-knowledge-memory-grounding.md](../docs/architecture/tech/TECH-2026-1019-turn-knowledge-memory-grounding.md).
 
 ## 5. Commercial Readiness Gates

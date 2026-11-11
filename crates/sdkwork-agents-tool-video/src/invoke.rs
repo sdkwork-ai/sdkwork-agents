@@ -1,7 +1,7 @@
 //! Invocation behaviour for the video category tools.
 
 use cloudrouter_open_sdk::models::{
-    KlingVideoGenerationRequest, OpenAiVideoCreateRequest, OpenAiVideoEditRequest,
+    ArkImageSource, KlingVideoGenerationRequest, OpenAiVideoCreateRequest, OpenAiVideoEditRequest,
     OpenAiVideoExtendRequest, OpenAiVideoRemixRequest, ViduImageToVideoRequest,
     ViduReferenceToVideoRequest, ViduStartEndToVideoRequest, ViduTextToVideoRequest,
     VolcengineContentGenerationTaskCreateRequest, VolcengineContentPart,
@@ -54,17 +54,14 @@ fn invoke_create(
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
     let request = OpenAiVideoCreateRequest {
         prompt: call.string_arg("prompt")?,
-        model: call
-            .optional_string_arg("model")
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(|| "default".to_string()),
-        image: call.optional_string_arg("image"),
-        video: call.optional_string_arg("video"),
+        model: call.optional_string_arg("model").filter(|value| !value.trim().is_empty()),
+        input_reference: call
+            .optional_string_arg("image")
+            .map(|url| std::collections::HashMap::from([("image_url".to_string(), url)])),
         seconds: call
-            .optional_number_arg("seconds")
-            .map(|value| value as i64),
+            .optional_string_arg("seconds")
+            .or_else(|| call.optional_number_arg("seconds").map(|value| (value as i64).to_string())),
         size: call.optional_string_arg("size"),
-        metadata: None,
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -149,15 +146,8 @@ fn invoke_edits_create(
 ) -> Result<MediaToolResult, MediaToolError> {
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
     let request = OpenAiVideoEditRequest {
-        prompt: Some(call.string_arg("prompt")?),
-        model: call.optional_string_arg("model"),
-        image: call.optional_string_arg("image"),
-        video: call.optional_string_arg("video"),
-        seconds: call
-            .optional_number_arg("seconds")
-            .map(|value| value as i64),
-        size: call.optional_string_arg("size"),
-        metadata: None,
+        prompt: call.string_arg("prompt")?,
+        video: call.string_arg("video")?,
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -179,15 +169,17 @@ fn invoke_extensions_create(
 ) -> Result<MediaToolResult, MediaToolError> {
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
     let request = OpenAiVideoExtendRequest {
-        prompt: Some(call.string_arg("prompt")?),
-        model: call.optional_string_arg("model"),
-        image: call.optional_string_arg("image"),
-        video: call.optional_string_arg("video"),
+        prompt: call.string_arg("prompt")?,
+        video: call.string_arg("video")?,
         seconds: call
-            .optional_number_arg("seconds")
-            .map(|value| value as i64),
-        size: call.optional_string_arg("size"),
-        metadata: None,
+            .optional_string_arg("seconds")
+            .or_else(|| call.optional_number_arg("seconds").map(|value| (value as i64).to_string()))
+            .ok_or_else(|| {
+                MediaToolError::invalid_argument(format!(
+                    "missing `seconds` argument for tool `{}`",
+                    call.tool_id
+                ))
+            })?,
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -210,15 +202,7 @@ fn invoke_remix_create(
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
     let video_id = call.string_arg("videoId")?;
     let request = OpenAiVideoRemixRequest {
-        prompt: Some(call.string_arg("prompt")?),
-        model: call.optional_string_arg("model"),
-        image: call.optional_string_arg("image"),
-        video: call.optional_string_arg("video"),
-        seconds: call
-            .optional_number_arg("seconds")
-            .map(|value| value as i64),
-        size: call.optional_string_arg("size"),
-        metadata: None,
+        prompt: call.string_arg("prompt")?,
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -367,10 +351,10 @@ fn invoke_vidu_text2video(
         duration: optional_i64_arg(call, "duration"),
         aspect_ratio: call.optional_string_arg("aspectRatio"),
         resolution: call.optional_string_arg("resolution"),
-        movement_amplitude: call.optional_string_arg("movementAmplitude"),
         seed: optional_i64_arg(call, "seed"),
         payload: None,
         callback_url: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -405,12 +389,11 @@ fn invoke_vidu_img2video(
         model: model_arg(call, "model"),
         prompt: call.optional_string_arg("prompt"),
         duration: optional_i64_arg(call, "duration"),
-        aspect_ratio: call.optional_string_arg("aspectRatio"),
         resolution: call.optional_string_arg("resolution"),
-        movement_amplitude: call.optional_string_arg("movementAmplitude"),
         seed: optional_i64_arg(call, "seed"),
         payload: None,
         callback_url: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -451,6 +434,7 @@ fn invoke_vidu_reference2video(
         seed: optional_i64_arg(call, "seed"),
         payload: None,
         callback_url: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -485,12 +469,11 @@ fn invoke_vidu_start_end2video(
         model: model_arg(call, "model"),
         prompt: call.optional_string_arg("prompt"),
         duration: optional_i64_arg(call, "duration"),
-        aspect_ratio: call.optional_string_arg("aspectRatio"),
         resolution: call.optional_string_arg("resolution"),
-        movement_amplitude: call.optional_string_arg("movementAmplitude"),
         seed: optional_i64_arg(call, "seed"),
         payload: None,
         callback_url: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -550,25 +533,22 @@ fn invoke_volcengine_generations_create(
     let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
     let mut content = vec![VolcengineContentPart {
         text: Some(call.string_arg("prompt")?),
-        image_url: None,
-        video_url: None,
-        file_id: None,
         r#type: "text".to_string(),
+        ..Default::default()
     }];
     if let Some(image_url) = call.optional_string_arg("imageUrl") {
         content.push(VolcengineContentPart {
-            text: None,
-            image_url: Some(image_url),
-            video_url: None,
-            file_id: None,
+            image_url: Some(ArkImageSource { url: image_url }),
+            role: Some("first_frame".to_string()),
             r#type: "image_url".to_string(),
+            ..Default::default()
         });
     }
     let request = VolcengineContentGenerationTaskCreateRequest {
         content,
         model: model_arg(call, "model"),
         callback_url: None,
-        metadata: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -582,8 +562,7 @@ fn invoke_volcengine_generations_create(
     })?;
 
     let task_id = response
-        .task_id
-        .or(response.id)
+        .id
         .ok_or_else(|| MediaToolError::ProviderError("volcengine returned no task id".into()))?;
     Ok(MediaToolResult::succeeded(
         &call.tool_call_id,
@@ -608,8 +587,18 @@ fn invoke_volcengine_generations_retrieve(
         )
     })?;
 
-    let status = normalize_vendor_status(task.status.as_deref().or(task.state.as_deref()));
-    let items = task.videos.unwrap_or_default();
+    let status = normalize_vendor_status(task.status.as_deref());
+    let items = task
+        .content
+        .map(|content| {
+            vec![cloudrouter_open_sdk::models::ProviderGeneratedMedia {
+                url: content.video_url,
+                uri: None,
+                duration: None,
+                ..Default::default()
+            }]
+        })
+        .unwrap_or_default();
     Ok(normalized_vendor_media(
         &task_id,
         status,

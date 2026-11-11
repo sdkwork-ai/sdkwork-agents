@@ -1,19 +1,29 @@
 //! Memory grounding adapter for SDKWork Agents turns.
 //!
 //! The Agents service owns conversation orchestration; durable user memory stays
-//! in `sdkwork-memory`. This crate is the composition-root adapter that turns
-//! the service's `MemoryGroundingResolver` port into bounded
-//! `memories.list?q=...` calls against the Memory App API using the
-//! generator-owned Rust transport SDK.
+//! in `sdkwork-memory`. This crate is the composition-root adapter for the
+//! service's `MemoryGroundingResolver` port and models the transport exactly as
+//! `MODULE_SPEC.md` §4.2 requires:
 //!
-//! Safety and scope:
+//! - **Default: in-process** ([`InProcessMemoryGroundingResolver`]). Durable
+//!   memory is read through `sdkwork-memory-inprocess`, the sibling module's own
+//!   in-process runtime, which calls the same `MemoryAppApi::create_retrieval`
+//!   service method the App API route uses. No sibling HTTP endpoint is involved
+//!   and the process-wide memory data plane is shared, never opened per call.
+//! - **Opt-in split deployment: HTTP** (`SDKWORK_AGENTS_MEMORY_MODE=http` plus
+//!   [`MEMORY_BASE_URL_ENV`]). The origin is then mandatory: bootstrap fails when
+//!   it is missing, blank, or not an http(s) origin — never at the first business
+//!   request. The transport lives in [`http_adapter`] and is the only place that
+//!   reads the origin variable.
 //!
-//! - The caller's dual tokens are forwarded unchanged; the Memory App API
-//!   derives actor, tenant, and owner scope from the credential, so this adapter
-//!   never widens access.
-//! - Every call runs on a scoped thread with its own current-thread runtime and a
-//!   hard deadline, matching the knowledge adapter, so a slow memory backend can
-//!   never pin the turn.
+//! Safety and scope (identical for both transports):
+//!
+//! - The caller's authenticated actor and tenant are taken from the request
+//!   context, never from process identity; the HTTP transport forwards the
+//!   caller's dual tokens unchanged, so the Memory App API derives actor, tenant,
+//!   and owner scope from the credential.
+//! - Every call runs under a hard deadline ([`DEFAULT_TIMEOUT`]), so a slow
+//!   memory backend can never pin the turn.
 //! - The memory slot's `memoryPolicyRef` addresses a Memory space. Accepted forms
 //!   are a bare numeric id or `space:<id>`. Invalid refs skip the binding with a
 //!   warning instead of failing the turn.
@@ -26,204 +36,25 @@ use sdkwork_agent_kernel::{KernelError, KernelResult};
 use sdkwork_intelligence_agents_service::{
     GroundingRequest, MemoryGroundingResolver, MemoryGroundingSnippet, MAX_MEMORY_SNIPPETS,
 };
-use sdkwork_memory_app_sdk_generated_rust::SdkworkMemoryAppClient;
-use sdkwork_utils_rust::service_base_url::{registry_base_url_or, report_registry_result};
 
-/// Environment variable holding the Memory App API origin.
-pub const MEMORY_BASE_URL_ENV: &str = "SDKWORK_AGENTS_MEMORY_BASE_URL";
+pub mod http_adapter;
+
+pub use http_adapter::{MemoryGroundingResolverAdapter, MEMORY_BASE_URL_ENV};
+
+/// Environment variable selecting the Memory transport.
+///
+/// `in_process` (default) or `http` (explicit split-deployment opt-in).
+pub const MEMORY_MODE_ENV: &str = "SDKWORK_AGENTS_MEMORY_MODE";
+/// In-process transport (default).
+pub const MODE_IN_PROCESS: &str = "in_process";
+/// Sibling HTTP surface, allowed only as an explicit opt-in.
+pub const MODE_HTTP: &str = "http";
 /// Default per-turn memory deadline.
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(8);
 /// Default retrieval depth when the slot does not set `topK`.
 pub const DEFAULT_MEMORY_TOP_K: u32 = 8;
 /// Hard ceiling for one memory query.
 pub const MAX_MEMORY_TOP_K: u32 = 32;
-
-/// Per-turn Memory grounding resolver.
-pub struct MemoryGroundingResolverAdapter {
-    base_url: String,
-    timeout: Duration,
-}
-
-impl MemoryGroundingResolverAdapter {
-    /// Builds the resolver from `SDKWORK_AGENTS_MEMORY_BASE_URL`.
-    ///
-    /// Returns `Ok(None)` when the variable is absent or blank: memory grounding
-    /// is an optional capability module, not a boot requirement.
-    pub fn from_env() -> Result<Option<Self>, String> {
-        let base_url = std::env::var(MEMORY_BASE_URL_ENV)
-            .ok()
-            .map(|value| value.trim().to_string())
-            .filter(|value| !value.is_empty());
-        match base_url {
-            Some(base_url) => Self::new(base_url).map(Some),
-            None => Ok(None),
-        }
-    }
-
-    /// Builds the resolver for an explicit Memory App API origin.
-    pub fn new(base_url: impl Into<String>) -> Result<Self, String> {
-        let base_url = base_url.into();
-        let trimmed = base_url.trim();
-        if trimmed.is_empty() {
-            return Err(format!(
-                "{MEMORY_BASE_URL_ENV} must not be blank when memory grounding is enabled"
-            ));
-        }
-        if !(trimmed.starts_with("http://") || trimmed.starts_with("https://")) {
-            return Err(format!(
-                "{MEMORY_BASE_URL_ENV} must be an absolute http(s) origin"
-            ));
-        }
-        Ok(Self {
-            base_url: trimmed.trim_end_matches('/').to_string(),
-            timeout: DEFAULT_TIMEOUT,
-        })
-    }
-
-    /// Overrides the per-turn memory deadline.
-    #[must_use]
-    pub fn with_timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = timeout.max(Duration::from_millis(1));
-        self
-    }
-}
-
-impl MemoryGroundingResolver for MemoryGroundingResolverAdapter {
-    fn resolve_memory(
-        &self,
-        request: &GroundingRequest<'_>,
-    ) -> KernelResult<Vec<MemoryGroundingSnippet>> {
-        if request.memory.is_empty() {
-            return Ok(Vec::new());
-        }
-        let Some(auth_token) = request.auth_token.filter(|value| !value.trim().is_empty()) else {
-            return Err(KernelError::validation(
-                "memory grounding requires the caller auth token; refusing to read memory without an authenticated actor",
-            ));
-        };
-
-        // DISCOVERY_SPEC §12.1: resolve through the database registry first and
-        // report the call outcome so a failing instance is demoted.
-        let base_url = registry_base_url_or("sdkwork-memory", &self.base_url);
-        let client = SdkworkMemoryAppClient::new_with_base_url(base_url.clone())
-            .map_err(|error| provider_error("memory.client_init_failed", error))?;
-        client.set_auth_token(auth_token);
-        if let Some(access_token) = request
-            .access_token
-            .filter(|value| !value.trim().is_empty())
-        {
-            client.set_access_token(access_token);
-        }
-
-        let top_k = request
-            .memory
-            .iter()
-            .filter_map(|binding| binding.top_k)
-            .max()
-            .unwrap_or(DEFAULT_MEMORY_TOP_K)
-            .clamp(1, MAX_MEMORY_TOP_K);
-        let spaces = request
-            .memory
-            .iter()
-            .filter_map(|binding| {
-                parse_memory_space_id(&binding.memory_policy_ref).or_else(|| {
-                    tracing::warn!(
-                        slot_id = %binding.slot_id,
-                        memory_policy_ref = %binding.memory_policy_ref,
-                        "memory composition slot does not reference a numeric memory space; skipping"
-                    );
-                    None
-                })
-            })
-            .collect::<Vec<_>>();
-        if spaces.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let query = request.query.trim().to_string();
-        let actor_id = request.actor_id.map(|value| value.to_string());
-        let timeout = self.timeout;
-        let result = run_sdk_call(move || {
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|error| provider_error("memory.runtime_init_failed", error.to_string()))?;
-            runtime.block_on(async {
-                let body = sdkwork_memory_app_sdk_generated_rust::models::MemoryRetrievalRequest {
-                    query,
-                    space_ids: spaces,
-                    actor_id,
-                    top_k: i64::from(top_k),
-                    context_budget_tokens: 1_024,
-                    show_expired: Some(false),
-                    ..Default::default()
-                };
-                let idempotency_key = format!(
-                    "agents-memory-{}",
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map(|duration| duration.as_nanos())
-                        .unwrap_or_default()
-                );
-                match tokio::time::timeout(
-                    timeout,
-                    client.memory().retrievals_create(&body, &idempotency_key),
-                )
-                .await
-                {
-                    Ok(result) => result
-                        .map(map_retrieval_hits)
-                        .map_err(|error| provider_error("memory.retrieval_failed", error)),
-                    Err(_) => Err(KernelError::provider_error(
-                        "memory.retrieval_timeout",
-                        format!(
-                            "memory query did not complete within {} ms",
-                            timeout.as_millis()
-                        ),
-                    )),
-                }
-            })
-        });
-        report_registry_result(
-            "sdkwork-memory",
-            &base_url,
-            result.is_ok(),
-            "memory retrieval failed",
-        );
-        let snippets = result?;
-
-        Ok(deduplicate(snippets))
-    }
-}
-
-fn map_retrieval_hits(
-    result: sdkwork_memory_app_sdk_generated_rust::models::MemoryRetrievalResult,
-) -> Vec<MemoryGroundingSnippet> {
-    result
-        .hits
-        .into_iter()
-        .take(MAX_MEMORY_SNIPPETS)
-        .filter_map(|hit| {
-            let record = hit.memory?;
-            if !record.status.eq_ignore_ascii_case("active") {
-                return None;
-            }
-            let content = record
-                .summary_text
-                .filter(|value| !value.trim().is_empty())
-                .unwrap_or(record.canonical_text);
-            if content.trim().is_empty() {
-                return None;
-            }
-            Some(MemoryGroundingSnippet {
-                memory_id: record.memory_id,
-                content,
-                score: hit.fused_score.or(Some(record.confidence)),
-                source_uri: None,
-            })
-        })
-        .collect()
-}
 
 /// In-process memory grounding resolver for co-deployed Agents processes.
 pub struct InProcessMemoryGroundingResolver {
@@ -234,7 +65,7 @@ impl InProcessMemoryGroundingResolver {
     /// Bootstraps the process-wide in-process runtime from the environment.
     ///
     /// Returns `Ok(None)` when the memory database is not configured, matching
-    /// the HTTP mode's optional-module behaviour.
+    /// the optional-module behaviour of the capability.
     pub fn from_env() -> Result<Option<Self>, String> {
         let runtime = std::thread::scope(|scope| {
             let handle = std::thread::Builder::new()
@@ -380,7 +211,36 @@ pub fn map_memory_retrieval_result(
     map_retrieval_hits(result)
 }
 
-fn deduplicate(snippets: Vec<MemoryGroundingSnippet>) -> Vec<MemoryGroundingSnippet> {
+fn map_retrieval_hits(
+    result: sdkwork_memory_app_sdk_generated_rust::models::MemoryRetrievalResult,
+) -> Vec<MemoryGroundingSnippet> {
+    result
+        .hits
+        .into_iter()
+        .take(MAX_MEMORY_SNIPPETS)
+        .filter_map(|hit| {
+            let record = hit.memory?;
+            if !record.status.eq_ignore_ascii_case("active") {
+                return None;
+            }
+            let content = record
+                .summary_text
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or(record.canonical_text);
+            if content.trim().is_empty() {
+                return None;
+            }
+            Some(MemoryGroundingSnippet {
+                memory_id: record.memory_id,
+                content,
+                score: hit.fused_score.or(Some(record.confidence)),
+                source_uri: None,
+            })
+        })
+        .collect()
+}
+
+pub(crate) fn deduplicate(snippets: Vec<MemoryGroundingSnippet>) -> Vec<MemoryGroundingSnippet> {
     let mut seen = std::collections::HashSet::new();
     snippets
         .into_iter()
@@ -389,7 +249,7 @@ fn deduplicate(snippets: Vec<MemoryGroundingSnippet>) -> Vec<MemoryGroundingSnip
         .collect()
 }
 
-fn run_sdk_call<T>(work: impl FnOnce() -> KernelResult<T> + Send) -> KernelResult<T>
+pub(crate) fn run_sdk_call<T>(work: impl FnOnce() -> KernelResult<T> + Send) -> KernelResult<T>
 where
     T: Send,
 {
@@ -407,18 +267,17 @@ where
     })
 }
 
-fn provider_error(code: &str, detail: impl ToString) -> KernelError {
+pub(crate) fn provider_error(code: &str, detail: impl ToString) -> KernelError {
     KernelError::provider_error(code, detail.to_string())
         .with_provider("provider.memory.sdkwork-memory")
         .from_source(sdkwork_agent_kernel::KernelErrorSource::Provider)
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use sdkwork_intelligence_agents_service::MemoryGroundingBinding;
+pub(crate) mod tests_support {
+    use sdkwork_intelligence_agents_service::{GroundingRequest, MemoryGroundingBinding};
 
-    fn binding(reference: &str, top_k: Option<u32>) -> MemoryGroundingBinding {
+    pub(crate) fn binding(reference: &str, top_k: Option<u32>) -> MemoryGroundingBinding {
         MemoryGroundingBinding {
             slot_id: "slot.memory.test".to_string(),
             memory_policy_ref: reference.to_string(),
@@ -426,7 +285,7 @@ mod tests {
         }
     }
 
-    fn request<'a>(memory: &'a [MemoryGroundingBinding]) -> GroundingRequest<'a> {
+    pub(crate) fn request<'a>(memory: &'a [MemoryGroundingBinding]) -> GroundingRequest<'a> {
         GroundingRequest {
             tenant_id: 100_001,
             organization_id: 0,
@@ -440,6 +299,11 @@ mod tests {
             access_token: Some("access-token"),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 
     #[test]
     fn space_references_accept_numeric_and_space_prefix() {
@@ -493,83 +357,5 @@ mod tests {
         assert_eq!(snippets.len(), 1);
         assert_eq!(snippets[0].memory_id, "7001");
         assert_eq!(snippets[0].content, "Prefers refunds within 30 days.");
-    }
-
-    #[test]
-    fn new_rejects_blank_and_non_http_origins() {
-        assert!(MemoryGroundingResolverAdapter::new("ftp://memory").is_err());
-        assert!(MemoryGroundingResolverAdapter::new("   ").is_err());
-        assert!(MemoryGroundingResolverAdapter::new("https://memory.example.test").is_ok());
-    }
-
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn resolver_calls_retrievals_create_with_dual_tokens() {
-        use serde_json::json;
-        use wiremock::matchers::{body_partial_json, header, method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
-
-        let server = MockServer::start().await;
-        let body = json!({
-            "code": 0,
-            "data": {
-                "retrievalId": "1",
-                "hits": [{
-                    "hitId": "h1",
-                    "memory": {
-                        "memoryId": "7001",
-                        "spaceId": "4242",
-                        "userId": null,
-                        "scope": "user",
-                        "memoryType": "semantic",
-                        "canonicalText": "Prefers refunds within 30 days.",
-                        "summaryText": null,
-                        "confidence": 0.9,
-                        "evidenceCount": 1,
-                        "contradictionCount": 0,
-                        "expiresAt": null,
-                        "status": "active",
-                        "sensitivityLevel": "normal",
-                        "metadata": null,
-                        "supersedesMemoryId": null,
-                        "supersededByMemoryId": null,
-                        "createdAt": "2026-10-01T00:00:00Z",
-                        "updatedAt": "2026-10-01T00:00:00Z",
-                        "version": "1"
-                    },
-                    "retrieverName": "hybrid",
-                    "resultRank": 1,
-                    "fusedScore": 0.93,
-                    "status": "active"
-                }],
-                "degraded": false
-            },
-            "traceId": "00000000-0000-4000-8000-000000000000"
-        });
-        Mock::given(method("POST"))
-            .and(path("/app/v3/api/memory/retrievals"))
-            .and(body_partial_json(json!({
-                "query": "how do refunds work",
-                "spaceIds": ["4242"],
-                "actorId": "7",
-                "topK": 4
-            })))
-            .and(header("Authorization", "Bearer auth-token"))
-            .and(header("Access-Token", "access-token"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(body))
-            .mount(&server)
-            .await;
-
-        let resolver = MemoryGroundingResolverAdapter::new(server.uri()).expect("memory resolver");
-        let snippets = tokio::task::spawn_blocking(move || {
-            let bindings = [binding("space:4242", Some(4))];
-            resolver.resolve_memory(&request(&bindings))
-        })
-        .await
-        .expect("grounding task")
-        .expect("memory snippets");
-
-        assert_eq!(snippets.len(), 1);
-        assert_eq!(snippets[0].memory_id, "7001");
-        assert!(snippets[0].content.contains("30 days"));
     }
 }

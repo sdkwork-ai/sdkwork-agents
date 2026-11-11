@@ -1,13 +1,11 @@
 //! Invocation behaviour for the image category tools.
 
 use cloudrouter_open_sdk::models::{
-    MidjourneyImageGenerationRequest, NanoBananaImageGenerationRequest, OpenAiImageEditRequest,
-    OpenAiImageGenerationRequest, OpenAiImageReferenceInput, OpenAiImageReferenceInputList,
+    OpenAiImageEditRequest, OpenAiImageGenerationRequest, OpenAiImageReferenceInput,
     OpenAiImageVariationRequest, ViduReferenceToImageRequest,
 };
 use sdkwork_agents_tool_cloudrouter::{
-    model_arg, normalize_vendor_status, normalized_vendor_media, run_sync, string_array_arg,
-    CloudRouterMediaClient,
+    model_arg, run_sync, string_array_arg, CloudRouterMediaClient,
 };
 use sdkwork_agents_tool_contract::{MediaResource, MediaToolCall, MediaToolError, MediaToolResult};
 
@@ -56,6 +54,7 @@ fn invoke_generations_create(
         size: call.optional_string_arg("size"),
         quality: call.optional_string_arg("quality"),
         response_format: call.optional_string_arg("response_format"),
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -77,15 +76,21 @@ fn invoke_edits_create(
     let mask = optional_image_reference_arg(call, "mask")?;
 
     let request = OpenAiImageEditRequest {
-        image: Some(OpenAiImageReferenceInputList {
-            additional_properties: image.additional_properties,
+        images: vec![image],
+        mask: mask.map(|reference| {
+            reference
+                .additional_properties
+                .into_iter()
+                .filter_map(|(key, value)| value.as_str().map(|text| (key, text.to_string())))
+                .collect()
         }),
-        mask,
-        model: call
-            .optional_string_arg("model")
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or_else(|| "default".to_string()),
+        model: Some(
+            call.optional_string_arg("model")
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or_else(|| "default".to_string()),
+        ),
         prompt: call.string_arg("prompt")?,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();
@@ -151,118 +156,42 @@ fn normalized_images_result(
 
 fn invoke_midjourney_generations_create(
     call: &MediaToolCall,
-    auth_token: Option<&str>,
+    _auth_token: Option<&str>,
 ) -> Result<MediaToolResult, MediaToolError> {
-    let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
-    let request = MidjourneyImageGenerationRequest {
-        prompt: call.string_arg("prompt")?,
-        model: call.optional_string_arg("model"),
-        aspect_ratio: call.optional_string_arg("aspectRatio"),
-        style: call.optional_string_arg("style"),
-        seed: call.optional_number_arg("seed").map(|value| value as i64),
-        callback_url: None,
-    };
-
-    let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
-    let task = run_sync(&call.tool_id, |runtime| {
-        runtime.block_on(
-            sdk.images_midjourney()
-                .create_v1_images_generation(&request),
-        )
-    })?;
-
-    let task_id = task
-        .task_id
-        .or(task.id)
-        .ok_or_else(|| MediaToolError::ProviderError("midjourney returned no task id".into()))?;
-    Ok(MediaToolResult::succeeded(
-        &call.tool_call_id,
-        serde_json::json!({ "taskId": task_id }),
-    ))
+    Err(MediaToolError::CapabilityMissing(format!(
+        "the cloudrouter open-api publishes no midjourney surface for tool `{}`",
+        call.tool_id
+    )))
 }
 
 fn invoke_midjourney_generations_list(
     call: &MediaToolCall,
-    auth_token: Option<&str>,
+    _auth_token: Option<&str>,
 ) -> Result<MediaToolResult, MediaToolError> {
-    let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
-    let task_id = call.string_arg("taskId")?;
-
-    let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
-    let task = run_sync(&call.tool_id, |runtime| {
-        runtime.block_on(sdk.images_midjourney().list_v1_images_generations(&task_id))
-    })?;
-
-    let status = normalize_vendor_status(task.status.as_deref().or(task.state.as_deref()));
-    let items = task.images.unwrap_or_default();
-    Ok(normalized_vendor_media(
-        &task_id,
-        status,
-        items,
-        "image",
-        task.error.as_ref(),
-    ))
+    Err(MediaToolError::CapabilityMissing(format!(
+        "the cloudrouter open-api publishes no midjourney surface for tool `{}`",
+        call.tool_id
+    )))
 }
 
 fn invoke_nano_banana_generations_create(
     call: &MediaToolCall,
-    auth_token: Option<&str>,
+    _auth_token: Option<&str>,
 ) -> Result<MediaToolResult, MediaToolError> {
-    let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
-    let request = NanoBananaImageGenerationRequest {
-        prompt: call.string_arg("prompt")?,
-        model: call.optional_string_arg("model"),
-        images: string_array_arg(call, "images")?,
-        aspect_ratio: call.optional_string_arg("aspectRatio"),
-        size: call.optional_string_arg("size"),
-        seed: call.optional_number_arg("seed").map(|value| value as i64),
-        callback_url: None,
-    };
-
-    let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
-    let task = run_sync(&call.tool_id, |runtime| {
-        runtime.block_on(sdk.images_nano_banana().create_generations(&request))
-    })?;
-
-    let task_id = task
-        .task_id
-        .or(task.id)
-        .ok_or_else(|| MediaToolError::ProviderError("nano-banana returned no task id".into()))?;
-    Ok(MediaToolResult::succeeded(
-        &call.tool_call_id,
-        serde_json::json!({ "taskId": task_id }),
-    ))
+    Err(MediaToolError::CapabilityMissing(format!(
+        "the cloudrouter open-api publishes no nano-banana surface for tool `{}`",
+        call.tool_id
+    )))
 }
 
 fn invoke_nano_banana_generations_retrieve(
     call: &MediaToolCall,
-    auth_token: Option<&str>,
+    _auth_token: Option<&str>,
 ) -> Result<MediaToolResult, MediaToolError> {
-    let auth_token = CloudRouterMediaClient::require_auth_token(auth_token, &call.tool_id)?;
-    let task_id = call.string_arg("taskId")?;
-
-    let client = CloudRouterMediaClient::from_env();
-    let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
-    client.with_trace_id(&sdk, call.trace_id.as_deref());
-    let task = run_sync(&call.tool_id, |runtime| {
-        runtime.block_on(sdk.images_nano_banana().retrieve_generations(&task_id))
-    })?;
-
-    let status = normalize_vendor_status(task.status.as_deref().or(task.state.as_deref()));
-    let items = task.images.unwrap_or_default();
-    Ok(normalized_vendor_media(
-        &task_id,
-        status,
-        items,
-        "image",
-        task.error.as_ref(),
-    ))
+    Err(MediaToolError::CapabilityMissing(format!(
+        "the cloudrouter open-api publishes no nano-banana surface for tool `{}`",
+        call.tool_id
+    )))
 }
 
 fn invoke_vidu_reference2image(
@@ -279,12 +208,12 @@ fn invoke_vidu_reference2image(
     let request = ViduReferenceToImageRequest {
         prompt: call.string_arg("prompt")?,
         model: model_arg(call, "model"),
-        images,
+        images: Some(images),
         aspect_ratio: call.optional_string_arg("aspectRatio"),
-        style: call.optional_string_arg("style"),
         seed: call.optional_number_arg("seed").map(|value| value as i64),
         payload: None,
         callback_url: None,
+        ..Default::default()
     };
 
     let client = CloudRouterMediaClient::from_env();

@@ -71,9 +71,22 @@ transport). It:
   runtimes;
 - applies an 8-second default deadline and returns typed kernel provider errors.
 
-Configuration: `SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL` (App API origin).
-Unset = capability module not mounted (grounding skipped). Set-but-invalid =
-bootstrap failure, never a silent disable.
+Configuration: `SDKWORK_AGENTS_KNOWLEDGEBASE_MODE` selects the transport and
+defaults to `in_process` (MODULE_SPEC.md §4.2). The knowledge transport is the
+only user of `SDKWORK_AGENTS_KNOWLEDGEBASE_BASE_URL`, and that origin is required
+when the mode is `http`: a missing or invalid origin fails bootstrap, never a
+silent disable.
+
+**In-process status:** the Knowledgebase retrieval capability is not callable
+in-process yet. `KnowledgeRetrievalAppService` has no public constructor
+(`HostedRetrievalService` and the runtime accessors of `KnowledgebaseRuntime` are
+`pub(crate)`), and the `kb_*` stores are `FORCE ROW LEVEL SECURITY` bound to a
+deployment scope, so rebuilding them in Agents would mean a second Knowledgebase
+runtime composition instead of a narrow port. The in-process resolver therefore
+fails closed with a typed provider error naming the additive sibling API it needs
+(`KnowledgebaseRuntime::retrieval_app_service(&Arc<Self>)` plus a host-pool
+constructor). A deployment that needs grounding today sets
+`SDKWORK_AGENTS_KNOWLEDGEBASE_MODE=http` plus the App API origin.
 
 ## 5. Citation Delivery
 

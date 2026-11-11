@@ -42,7 +42,7 @@ fn invoke_generations_create(
     let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let response = run_sync(&call.tool_id, |runtime| {
-        runtime.block_on(sdk.audio_suno().create_v1_music_generation(&request))
+        runtime.block_on(sdk.music_suno().create_v1_music_generation(&request))
     })?;
 
     let task_id = response.task_id.or(response.id).ok_or_else(|| {
@@ -68,7 +68,7 @@ fn invoke_generations_list(
     let sdk = client.with_dual_tokens(auth_token, call.access_token.as_deref())?;
     client.with_trace_id(&sdk, call.trace_id.as_deref());
     let task = run_sync(&call.tool_id, |runtime| {
-        runtime.block_on(sdk.audio_suno().list_v1_music_generations(&task_id))
+        runtime.block_on(sdk.music_suno().list_v1_music_generations(&task_id))
     })?;
 
     let status = normalize_music_status(task.status.as_deref());
