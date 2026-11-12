@@ -1,7 +1,7 @@
 # Official Agent Catalog
 
 - Status: active
-- Catalog version: `1.2.1`
+- Catalog version: `1.3.0`
 - Owner: `agents-platform`
 - Source of truth: [`scripts/agent-catalog/catalog.mjs`](../../../scripts/agent-catalog/catalog.mjs)
 - Generator: [`scripts/generate-agent-catalog-seeds.mjs`](../../../scripts/generate-agent-catalog-seeds.mjs)
