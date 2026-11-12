@@ -13,7 +13,7 @@ The official catalog is the commercial starting set of managed agents for
 `tenant_id=100001`, `organization_id=0`. It is seeded through the standard
 database lifecycle, not through application code or an ad-hoc SQL console.
 
-The catalog ships **58 agents** across eleven business domains:
+The catalog ships **64 agents** across twelve business domains:
 
 | Domain | Agents | Representative roles |
 | --- | ---: | --- |
@@ -28,6 +28,7 @@ The catalog ships **58 agents** across eleven business domains:
 | Enterprise services | 4 | Management consulting, HR, tax, B2B sales |
 | Government | 4 | Service guide, policy interpretation, official documents, digital government |
 | Hotel / hospitality | 4 | Operations, revenue management, guest service, OTA marketing |
+| Writing / publishing | 6 | Novelist, book author, news reporter, article writer, copywriter, editor |
 
 Every agent receives:
 
@@ -153,7 +154,7 @@ Expected result:
 ```text
 agents | versions | slots | knowledge_spaces | memory_spaces | mcp_servers | mcp_categories | mcp_connectors
 -------+----------+-------+------------------+---------------+-------------+----------------+----------------
-    58 |       58 |   332 |               58 |            58 |          16 |             11 |             16
+    64 |       64 |   364 |               64 |            64 |          18 |             12 |             18
 ```
 
 The live gate fails closed when:
@@ -170,13 +171,18 @@ The live gate fails closed when:
 
 Ready after seeding:
 
-- all 58 agents are active and publicly visible in the tenant catalog;
+- all 64 agents are active and publicly visible in the tenant catalog;
 - every agent has a complete Chinese management profile and system prompt;
 - every agent has version history and stable composition references;
 - knowledge spaces and memory spaces exist, are active, and are tenant-scoped;
-- 16 MCP server entries, 11 industry categories, and 16 draft connectors exist.
+- 18 MCP server entries, 12 industry categories, and 18 draft connectors exist.
   Each server points at its latest draft connector; no connector has an endpoint
   or credential until an operator activates it.
+- the six writing agents declare their intended tool descriptors on the
+  `mcp.sdkwork.writing-sources` and `mcp.sdkwork.knowledgebase-notes` slots
+  (`read-only` for source verification, `read-write` for notes), so consumers can
+  render the capability surface before activation. The connectors stay draft and
+  the runtime still discovers no live tool until an operator activates them.
 
 Requires operator activation before the capability is live:
 
@@ -184,12 +190,14 @@ Requires operator activation before the capability is live:
 | --- | --- |
 | Knowledge grounding | Upload curated sources into each `kb_space`; the space is provisioned but intentionally contains no tenant-private documents |
 | Memory retrieval | The Agents memory adapter must be configured (`SDKWORK_AGENTS_MEMORY_MODE`); memory spaces start empty and learn from sessions |
-| MCP tools | The 16 draft connectors are `publish_status=draft`, `lifecycle_status=0`, and have no endpoint. Add the approved endpoint and credentials to the draft connector, publish it, then update the slot policy with `endpointUrl` and the discovered `tools` descriptors |
+| MCP tools | The 18 draft connectors are `publish_status=draft`, `lifecycle_status=0`, and have no endpoint. Add the approved endpoint and credentials to the draft connector, publish it, then update the slot policy with `endpointUrl` and the discovered `tools` descriptors. The writing agents' declared tool names describe intent only until this activation |
 | Model routing | Each management profile references `model.deepseek-deepseek-v4-pro`; confirm the deployment's model catalog and routing policy resolve it |
 | Role visibility | `allowed_role_codes=[]` means every role may see and run the agent; narrow it for regulated tenants |
 
-The MCP composition slots intentionally omit `endpointUrl` and tool descriptors
-until activation. The toolkit therefore fails closed and never exposes a tool
+The MCP composition slots omit `endpointUrl` until activation, and every
+non-writing slot also omits tool descriptors; only the writing slots publish
+intended descriptors for consumer rendering. The toolkit therefore fails closed
+and never exposes an unchecked tool
 that has no reachable server. This is a deliberate safety gate, not an
 unfinished reference.
 

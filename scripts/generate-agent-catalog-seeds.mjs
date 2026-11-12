@@ -308,9 +308,30 @@ function validateCatalog() {
     for (const key of agent.mcp) {
       assert(MCP_SERVERS.some((server) => server.key === key), `${agent.slug} has unknown MCP ${key}`);
     }
+    for (const [key, binding] of Object.entries(agent.mcpToolBindings ?? {})) {
+      assert(agent.mcp.includes(key), `${agent.slug} declares tools for unbound MCP ${key}`);
+      assert(
+        binding && typeof binding === "object",
+        `${agent.slug}.mcpToolBindings.${key} must be an object`,
+      );
+      assert(
+        ["read-only", "read-write"].includes(binding.toolPolicy),
+        `${agent.slug}.mcpToolBindings.${key} has invalid toolPolicy ${binding.toolPolicy}`,
+      );
+      assert(
+        Array.isArray(binding.tools) && binding.tools.length > 0,
+        `${agent.slug}.mcpToolBindings.${key} needs at least one tool`,
+      );
+      for (const tool of binding.tools) {
+        assert(
+          typeof tool === "string" && /^[a-z][a-z0-9_]*$/.test(tool),
+          `${agent.slug}.mcpToolBindings.${key} has invalid tool name ${tool}`,
+        );
+      }
+    }
   }
   assert(AGENTS.length >= 36, "catalog must cover at least 36 commercial agents");
-  for (const category of ["engineering", "education", "healthcare", "legal", "travel", "ecommerce", "realestate"]) {
+  for (const category of ["engineering", "education", "healthcare", "legal", "travel", "ecommerce", "realestate", "writing"]) {
     assert(AGENTS.some((agent) => agent.category === category), `missing category ${category}`);
   }
 }
@@ -399,6 +420,7 @@ function renderAgentsCommon() {
       },
     });
     for (const [mcpIndex, key] of agent.mcp.entries()) {
+      const toolBinding = agent.mcpToolBindings?.[key];
       slots.push({
         suffix: `mcp.${key.replace("mcp.sdkwork.", "")}`,
         kind: "mcp",
@@ -412,8 +434,8 @@ function renderAgentsCommon() {
           connectorRef: `connector.${key.replace("mcp.sdkwork.", "")}`,
           activation: "required",
           activationState: "catalog_draft",
-          toolPolicy: "read-only",
-          tools: [],
+          toolPolicy: toolBinding?.toolPolicy ?? "read-only",
+          tools: toolBinding?.tools ?? [],
         },
       });
     }

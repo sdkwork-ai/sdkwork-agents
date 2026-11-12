@@ -1,11 +1,11 @@
 # Agent Catalog Source
 
-`catalog.mjs` is the single source of truth for the official 58-agent catalog.
+`catalog.mjs` is the single source of truth for the official 64-agent catalog.
 
 - `AGENTS` — identity, taxonomy, knowledge/memory/MCP references, bilingual
   prompts, welcome messages, suggested prompts, and skill quality gates.
-- `MCP_SERVERS` — the 16 shared MCP catalog entries referenced by agents.
-- `MCP_CATEGORIES` — the 11 industry MCP categories used by the catalog UI.
+- `MCP_SERVERS` — the 18 shared MCP catalog entries referenced by agents.
+- `MCP_CATEGORIES` — the 12 industry MCP categories used by the catalog UI.
   Each server also gets a deterministic draft connector; activation adds the
   endpoint and credentials without changing the catalog seed.
 - `COMMON_GUARDRAILS_*` — cross-domain safety invariants appended to every prompt.
