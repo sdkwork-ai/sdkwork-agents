@@ -5,8 +5,8 @@ import { verifyAgentCatalog } from "../../scripts/verify-agent-catalog.mjs";
 
 test("official agent catalog covers the commercial industry matrix", () => {
   const result = verifyAgentCatalog();
-  assert.equal(result.agents, 58);
-  assert.equal(result.mcpServers, 16);
+  assert.equal(result.agents, 64);
+  assert.equal(result.mcpServers, 18);
   assert.deepEqual(result.categories, [
     "ecommerce",
     "education",
@@ -19,6 +19,7 @@ test("official agent catalog covers the commercial industry matrix", () => {
     "realestate",
     "restaurant",
     "travel",
+    "writing",
   ]);
 });
 

@@ -46,6 +46,7 @@ const REQUIRED_COVERAGE = {
   enterprise: 3,
   government: 3,
   hospitality: 3,
+  writing: 6,
 };
 
 function fail(message) {
@@ -87,14 +88,25 @@ function countMatches(text, pattern) {
 
 function verifyCatalog() {
   validateCatalog();
-  assert(AGENTS.length === 58, `expected 58 agents, got ${AGENTS.length}`);
-  assert(MCP_SERVERS.length === 16, `expected 16 MCP servers, got ${MCP_SERVERS.length}`);
+  assert(AGENTS.length === 64, `expected 64 agents, got ${AGENTS.length}`);
+  assert(MCP_SERVERS.length === 18, `expected 18 MCP servers, got ${MCP_SERVERS.length}`);
   const categoryCounts = new Map();
   for (const agent of AGENTS) {
     categoryCounts.set(agent.category, (categoryCounts.get(agent.category) ?? 0) + 1);
     assert(agent.tags.length >= 2, `${agent.slug} needs at least two taxonomy tags`);
     assert(agent.mcp.length >= 1, `${agent.slug} lacks MCP binding`);
     assert(agent.mcp.length <= 3, `${agent.slug} has too many MCP bindings`);
+    for (const [key, binding] of Object.entries(agent.mcpToolBindings ?? {})) {
+      assert(agent.mcp.includes(key), `${agent.slug} declares tools for unbound MCP ${key}`);
+      assert(binding.toolPolicy === "read-only" || binding.toolPolicy === "read-write", `${agent.slug}.${key} toolPolicy`);
+      assert(Array.isArray(binding.tools) && binding.tools.length > 0, `${agent.slug}.${key} needs tools`);
+    }
+    if (agent.category === "writing") {
+      assert(
+        agent.mcp.includes("mcp.sdkwork.writing-sources"),
+        `${agent.slug} needs the writing-sources MCP binding`,
+      );
+    }
     assert(agent.temperature >= 0 && agent.temperature <= 2, `${agent.slug} temperature out of range`);
     assert(agent.icon && agent.color, `${agent.slug} icon/color required`);
     assert(/^#[0-9A-Fa-f]{6}$/.test(agent.color), `${agent.slug} color must be hex`);

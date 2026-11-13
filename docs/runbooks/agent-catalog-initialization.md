@@ -16,23 +16,23 @@ Check reserved ranges before the first run:
 
 ```sql
 SELECT id, agent_id FROM ai_agent
-WHERE id BETWEEN 366300000000000001 AND 366300000000000058;
+WHERE id BETWEEN 366300000000000001 AND 366300000000000064;
 ```
 
 The catalog uses these deterministic ranges:
 
 | Range | Owner |
 | --- | --- |
-| `366300000000000001..058` | `ai_agent` |
-| `366500000000000001..058` | `ai_agent_version` |
+| `366300000000000001..064` | `ai_agent` |
+| `366500000000000001..064` | `ai_agent_version` |
 | `366400000000000001..` | `ai_agent_composition_slot` |
-| `533000000000000001..058` | `kb_space` |
-| `534000000000000001..058` | `ai_space` |
-| `535000000000000001..016` | `ai_mcp_server` |
-| `536000000000000001..058` | `ai_subject` |
-| `537000000000000001..058` | `ai_memory_binding` |
-| `538000000000000001..016` | `ai_mcp_connector` |
-| `539000000000000001..011` | `ai_mcp_server_category` |
+| `533000000000000001..064` | `kb_space` |
+| `534000000000000001..064` | `ai_space` |
+| `535000000000000001..018` | `ai_mcp_server` |
+| `536000000000000001..064` | `ai_subject` |
+| `537000000000000001..064` | `ai_memory_binding` |
+| `538000000000000001..018` | `ai_mcp_connector` |
+| `539000000000000001..012` | `ai_mcp_server_category` |
 
 ## 2. Apply In Order
 
@@ -102,7 +102,7 @@ Expected summary:
 ```text
 agents | versions | slots | knowledge_spaces | memory_spaces | mcp_servers | mcp_categories | mcp_connectors
 -------+----------+-------+------------------+---------------+-------------+----------------+----------------
-    58 |       58 |   332 |               58 |            58 |          16 |             11 |             16
+    64 |       64 |   364 |               64 |            64 |          18 |             12 |             18
 ```
 
 ## 4. Manual Spot Checks

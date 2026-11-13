@@ -19,20 +19,20 @@ BEGIN
     FROM ai_agent
     WHERE agent_id LIKE 'agent.%'
       AND agent_id <> 'agent.chat.default';
-    IF failures <> 58 THEN
-        RAISE EXCEPTION 'expected 58 catalog agents, found %', failures;
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 catalog agents, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_agent_version;
-    IF failures <> 58 THEN
-        RAISE EXCEPTION 'expected 58 agent versions, found %', failures;
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 agent versions, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_agent_composition_slot;
-    IF failures <> 332 THEN
-        RAISE EXCEPTION 'expected 332 composition slots, found %', failures;
+    IF failures <> 364 THEN
+        RAISE EXCEPTION 'expected 364 composition slots, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
@@ -156,35 +156,35 @@ BEGIN
 
     SELECT count(*) INTO failures
     FROM kb_space
-    WHERE id BETWEEN 533000000000000001 AND 533000000000000058;
-    IF failures <> 58 THEN
-        RAISE EXCEPTION 'expected 58 knowledge spaces, found %', failures;
+    WHERE id BETWEEN 533000000000000001 AND 533000000000000064;
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 knowledge spaces, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_space
-    WHERE id BETWEEN 534000000000000001 AND 534000000000000058;
-    IF failures <> 58 THEN
-        RAISE EXCEPTION 'expected 58 memory spaces, found %', failures;
+    WHERE id BETWEEN 534000000000000001 AND 534000000000000064;
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 memory spaces, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_subject
-    WHERE id BETWEEN 536000000000000001 AND 536000000000000058;
-    IF failures <> 58 THEN
-        RAISE EXCEPTION 'expected 58 memory subjects, found %', failures;
+    WHERE id BETWEEN 536000000000000001 AND 536000000000000064;
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 memory subjects, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_memory_binding
-    WHERE id BETWEEN 537000000000000001 AND 537000000000000058;
-    IF failures <> 58 THEN
-        RAISE EXCEPTION 'expected 58 memory bindings, found %', failures;
+    WHERE id BETWEEN 537000000000000001 AND 537000000000000064;
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 memory bindings, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_memory_binding
-    WHERE id BETWEEN 537000000000000001 AND 537000000000000058
+    WHERE id BETWEEN 537000000000000001 AND 537000000000000064
       AND (binding_kind <> 'agent_space' OR binding_role <> 'retriever');
     IF failures <> 0 THEN
         RAISE EXCEPTION '% memory bindings use an invalid kind or role', failures;
@@ -193,22 +193,22 @@ BEGIN
     SELECT count(*) INTO failures
     FROM ai_mcp_server
     WHERE server_key LIKE 'mcp.sdkwork.%';
-    IF failures < 16 THEN
-        RAISE EXCEPTION 'expected at least 16 MCP catalog entries, found %', failures;
+    IF failures < 18 THEN
+        RAISE EXCEPTION 'expected at least 18 MCP catalog entries, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_mcp_server_category
-    WHERE id BETWEEN 539000000000000001 AND 539000000000000011;
-    IF failures <> 11 THEN
-        RAISE EXCEPTION 'expected 11 MCP category entries, found %', failures;
+    WHERE id BETWEEN 539000000000000001 AND 539000000000000012;
+    IF failures <> 12 THEN
+        RAISE EXCEPTION 'expected 12 MCP category entries, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_mcp_connector
-    WHERE id BETWEEN 538000000000000001 AND 538000000000000016;
-    IF failures <> 16 THEN
-        RAISE EXCEPTION 'expected 16 draft MCP connectors, found %', failures;
+    WHERE id BETWEEN 538000000000000001 AND 538000000000000018;
+    IF failures <> 18 THEN
+        RAISE EXCEPTION 'expected 18 draft MCP connectors, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
@@ -256,10 +256,44 @@ BEGIN
       AND agent_id <> 'agent.chat.default'
       AND manifest_json->>'domain' NOT IN (
           'engineering', 'education', 'healthcare', 'legal', 'travel', 'ecommerce', 'realestate',
-          'restaurant', 'enterprise', 'government', 'hospitality'
+          'restaurant', 'enterprise', 'government', 'hospitality', 'writing'
       );
     IF failures <> 0 THEN
         RAISE EXCEPTION '% agents use an unknown category', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND manifest_json->>'domain' = 'writing';
+    IF failures <> 6 THEN
+        RAISE EXCEPTION 'expected 6 writing agents, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent a
+    WHERE a.agent_id LIKE 'agent.%'
+      AND a.agent_id <> 'agent.chat.default'
+      AND a.manifest_json->>'domain' = 'writing'
+      AND NOT EXISTS (
+          SELECT 1 FROM ai_agent_composition_slot s
+          WHERE s.tenant_id = a.tenant_id AND s.agent_id = a.agent_id
+            AND s.slot_kind = 'mcp'
+            AND s.target_ref = 'mcp.sdkwork.writing-sources'
+      );
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% writing agents lack the writing-sources MCP binding', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent_composition_slot
+    WHERE slot_kind = 'mcp'
+      AND target_ref = 'mcp.sdkwork.knowledgebase-notes'
+      AND policy_json->>'toolPolicy' = 'read-write'
+      AND jsonb_array_length(policy_json->'tools') >= 5;
+    IF failures <> 4 THEN
+        RAISE EXCEPTION 'expected 4 read-write knowledgebase-notes slots, found %', failures;
     END IF;
 
     RAISE NOTICE 'agent catalog verification passed';
@@ -269,10 +303,10 @@ SELECT
     (SELECT count(*) FROM ai_agent WHERE agent_id LIKE 'agent.%' AND agent_id <> 'agent.chat.default') AS agents,
     (SELECT count(*) FROM ai_agent_version) AS versions,
     (SELECT count(*) FROM ai_agent_composition_slot) AS slots,
-    (SELECT count(*) FROM kb_space WHERE id BETWEEN 533000000000000001 AND 533000000000000058) AS knowledge_spaces,
-    (SELECT count(*) FROM ai_space WHERE id BETWEEN 534000000000000001 AND 534000000000000058) AS memory_spaces,
+    (SELECT count(*) FROM kb_space WHERE id BETWEEN 533000000000000001 AND 533000000000000064) AS knowledge_spaces,
+    (SELECT count(*) FROM ai_space WHERE id BETWEEN 534000000000000001 AND 534000000000000064) AS memory_spaces,
     (SELECT count(*) FROM ai_mcp_server WHERE server_key LIKE 'mcp.sdkwork.%') AS mcp_servers,
-    (SELECT count(*) FROM ai_mcp_server_category WHERE id BETWEEN 539000000000000001 AND 539000000000000011) AS mcp_categories,
-    (SELECT count(*) FROM ai_mcp_connector WHERE id BETWEEN 538000000000000001 AND 538000000000000016) AS mcp_connectors;
+    (SELECT count(*) FROM ai_mcp_server_category WHERE id BETWEEN 539000000000000001 AND 539000000000000012) AS mcp_categories,
+    (SELECT count(*) FROM ai_mcp_connector WHERE id BETWEEN 538000000000000001 AND 538000000000000018) AS mcp_connectors;
 
 COMMIT;
