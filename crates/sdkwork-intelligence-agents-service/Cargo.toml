@@ -21,6 +21,7 @@ name = "sdkwork_intelligence_agents_service"
 path = "src/lib.rs"
 
 [dependencies]
+sdkwork-iam-context-service.workspace = true
 sdkwork-agents-contract.workspace = true
 sdkwork-agents-runtime-facade.workspace = true
 sdkwork-agents-tool-contract.workspace = true

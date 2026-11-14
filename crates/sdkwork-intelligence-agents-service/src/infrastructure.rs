@@ -20,9 +20,8 @@ use crate::id::{AgentBusinessIdGenerator, AgentIdGenerator};
 use crate::in_memory_pagination::{count_iterator, paginate_items, paginate_iterator};
 use crate::ports::{
     validate_completed_turn_items, AgentAuditSink, AgentListQuery, AgentRepository,
-    AgentVersionListQuery, AuditEventListQuery, CompositionSlotListQuery,
-    ExecutionHostListQuery, ExecutionPlacementListQuery, InteractionListQuery,
-    ItemFeedbackListQuery,
+    AgentVersionListQuery, AuditEventListQuery, CompositionSlotListQuery, ExecutionHostListQuery,
+    ExecutionPlacementListQuery, InteractionListQuery, ItemFeedbackListQuery,
     McpMarketplaceListQuery, ProjectCompositionSlotListQuery, ProjectListQuery,
     ProviderBindingListQuery, ResourceUserStateListQuery, RuntimeExecutionListQuery,
     SessionActivitySummaryListQuery, SessionCheckpointListQuery, SessionItemListQuery,
@@ -2714,9 +2713,7 @@ impl AgentRepository for InMemoryAgentRepository {
                 *tenant == query.tenant_id
                     && *org == query.organization_id
                     && query.host_kind.is_none_or(|kind| record.host_kind == kind)
-                    && query
-                        .status
-                        .is_none_or(|status| record.status == status)
+                    && query.status.is_none_or(|status| record.status == status)
                     && record.deleted_at.is_none()
             })
             .map(|(_, record)| record.clone())
@@ -2737,9 +2734,7 @@ impl AgentRepository for InMemoryAgentRepository {
                 *tenant == query.tenant_id
                     && *org == query.organization_id
                     && query.host_kind.is_none_or(|kind| record.host_kind == kind)
-                    && query
-                        .status
-                        .is_none_or(|status| record.status == status)
+                    && query.status.is_none_or(|status| record.status == status)
                     && record.deleted_at.is_none()
             })
             .count() as u64)
@@ -6645,10 +6640,9 @@ impl IamGatedPolicyProvider {
         if entry.is_empty() {
             return false;
         }
-        if entry == "*" {
-            return true;
-        }
-        if entry == required_permission {
+        // Wildcard-aware platform grammar (`*`, `{domain}.*`, `*.{action}`)
+        // plus the exact code (AUTHORIZATION_STATE_SPEC 3.5).
+        if sdkwork_iam_context_service::permission_matches(entry, required_permission) {
             return true;
         }
         // Manage permission implies all narrower capabilities for the same resource.
@@ -6658,10 +6652,6 @@ impl IamGatedPolicyProvider {
                 IAM_PERMISSION_AGENTS_READ | IAM_PERMISSION_AGENTS_USE
             )
         {
-            return true;
-        }
-        // Wildcard within the ai domain (e.g. `ai.*` matches `ai.agents.read`).
-        if entry == "ai.*" && required_permission.starts_with("ai.") {
             return true;
         }
         // Admin role codes that the IAM module grants `ai.*` to.
