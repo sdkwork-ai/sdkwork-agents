@@ -1,6 +1,6 @@
 # SDKWork Agents Database Specification
 
-- Version: `7.3.0`
+- Version: `7.5.0`
 - Status: active
 - Domain: `intelligence`
 - Capability: `agents`
@@ -33,7 +33,7 @@ and durable agent execution:
 AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem -> AgentInteraction
 ```
 
-The managed store uses PostgreSQL and owns exactly 32 tables. It has no
+The managed store uses PostgreSQL and owns exactly 33 tables. It has no
 derived read tables, shadow tables, compatibility tables, dual-write path, or
 second session aggregate. A consumer may render an Agent Session as a dialog,
 but that presentation does not create another persistence vocabulary.
@@ -338,7 +338,7 @@ partial indexes declared by the baseline.
 
 ## 11. Schema Lifecycle
 
-PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.3.0` authority and
+PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.5.0` authority and
 contains the complete 32-table model. The application is pre-launch, so every
 development, test, staging and release-candidate database must be created from
 that baseline. Importing or reinterpreting databases created from an earlier

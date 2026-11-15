@@ -339,10 +339,10 @@ for (const targetTable of [
   );
 }
 assert(
-  agentsTableRegistry.contractVersion === '7.3.0'
-    && agentTableNames.length === 32
-    && agentsDatabaseSpec.includes('owns exactly 32 tables'),
-  'Agents database contract must declare the active 32-table inventory',
+  agentsTableRegistry.contractVersion === '7.5.0'
+    && agentTableNames.length === 33
+    && agentsDatabaseSpec.includes('owns exactly 33 tables'),
+  'Agents database contract must declare the active 33-table inventory',
 );
 for (const retiredTable of [
   'ai_agent_chat_turn',

@@ -2,7 +2,7 @@
 
 Status: active
 
-Contract: `7.4.0`
+Contract: `7.5.0`
 
 Managed engine: PostgreSQL
 

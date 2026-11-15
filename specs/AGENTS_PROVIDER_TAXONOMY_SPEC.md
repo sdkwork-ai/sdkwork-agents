@@ -42,6 +42,12 @@ session, turn or persistence model.
 The app catalog endpoint is `GET /app/v3/api/ai/agent_engines`. Catalog entries
 are runtime capabilities, not copied provider configuration.
 
+Hosted conversation agents default to the Rig family (`rig-rust` implementation,
+`provider.rig.rust`). Local-execution agents declare the `harness` family with an
+engine name and the `harness.agent.runtime.v1` protocol; the archive they install
+is described by `manifest.distribution`. See
+[`AGENTS_AGENT_KIND_AND_RUNTIME_SPEC.md`](./AGENTS_AGENT_KIND_AND_RUNTIME_SPEC.md).
+
 ## 4. Capability Ownership
 
 | Capability | Runtime authority | Agents integration |

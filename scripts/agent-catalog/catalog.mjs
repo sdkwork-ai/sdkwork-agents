@@ -258,7 +258,7 @@ export const COMMON_GUARDRAILS_EN = [
  * identities into the common seed, the Chinese payload into
  * `seeds/locales/zh-CN`, and the English payload into `seeds/locales/en-US`.
  */
-export const AGENTS = [
+const CATALOG_AGENTS = [
   {
     slug: "programmer-fullstack",
     category: "engineering",
@@ -6230,3 +6230,459 @@ export const AGENTS = [
     },
   },
 ];
+
+/**
+ * Agent kinds — the two delivery and execution shapes the platform ships.
+ *
+ * - `conversation`: the agent runs inside the managed runtime and is reached
+ *   through a conversation surface. Its definition is a manifest plus prompt,
+ *   model, knowledge, memory, skill, and MCP composition.
+ * - `local-execution`: the agent is distributed as an archive the user installs
+ *   into a local harness (OpenClaw, WorkBuddy, Codex CLI, ...). Its definition
+ *   adds an archive distribution descriptor and a harness runtime descriptor;
+ *   it carries no hosted prompt or model composition.
+ *
+ * This is deliberately NOT `implementation_kind`: kind says where the agent
+ * runs for the user, implementation kind says how the platform integrates the
+ * engine. One conversation agent may target Rig or a process adapter.
+ */
+export const AGENT_KINDS = ["conversation", "local-execution"];
+
+/** Default runtime for hosted conversation agents (RIG framework agent, T3). */
+export const DEFAULT_CONVERSATION_RUNTIME_FAMILY = "rig";
+/** Default runtime family for locally installed agents (local harness runtime). */
+export const LOCAL_EXECUTION_RUNTIME_FAMILY = "harness";
+
+/**
+ * Runtime families the catalog may declare.
+ *
+ * `family` is the integration model, `engine` is the concrete executable
+ * engine. Conversation agents use `rig` by default; every local-execution agent
+ * runs on the local `harness` family, whose engine name says which product the
+ * archive installs.
+ */
+export const AGENT_RUNTIME_FAMILIES = [
+  { family: "rig", engine: "rig", implementationType: "rig-rust", implementationKind: "typed-local-provider", providerId: "provider.rig.rust" },
+  { family: "harness", engine: "openclaw", implementationType: "custom", implementationKind: "process-adapter", providerId: "provider.harness.local" },
+  { family: "harness", engine: "workbuddy", implementationType: "custom", implementationKind: "process-adapter", providerId: "provider.harness.local" },
+  { family: "harness", engine: "codex", implementationType: "custom", implementationKind: "protocol-adapter", providerId: "provider.harness.local" },
+  { family: "harness", engine: "claude-code", implementationType: "custom", implementationKind: "protocol-adapter", providerId: "provider.harness.local" },
+  { family: "harness", engine: "gemini-cli", implementationType: "custom", implementationKind: "protocol-adapter", providerId: "provider.harness.local" },
+  { family: "harness", engine: "opencode", implementationType: "custom", implementationKind: "protocol-adapter", providerId: "provider.harness.local" },
+  { family: "harness", engine: "hermes", implementationType: "custom", implementationKind: "process-adapter", providerId: "provider.harness.local" },
+];
+
+/**
+ * Professional industry taxonomy for agent categorization.
+ *
+ * Two levels, aligned with how enterprise catalogs classify professional
+ * services: a reusable domain (parent) and a specialty (leaf). Agents always
+ * reference a leaf through `category_code`; a parent is never assigned to an
+ * agent, so filtering by parent is a deliberate aggregate query.
+ *
+ * Parent codes carry no agents. Leave codes reuse the historical catalog
+ * category codes wherever possible so existing filters and locale seeds keep
+ * resolving.
+ */
+export const AGENT_CATEGORY_TREE = [
+  {
+    code: "technology",
+    name: "Technology and Engineering",
+    zhName: "技术与工程",
+    description: "Software, data, product, and local runtime engineering.",
+    zhDescription: "软件研发、数据智能、产品设计与本地运行时工程。",
+    iconRef: "Cpu",
+    children: [
+      { code: "engineering", name: "Engineering", zhName: "工程技术", description: "Code, infrastructure, and engineering delivery.", zhDescription: "代码、基础设施与工程交付。", iconRef: "Code2" },
+      { code: "data-ai", name: "Data and AI", zhName: "数据与人工智能", description: "Analysis, modeling, and machine-learning work.", zhDescription: "数据分析、建模与机器学习工作。", iconRef: "ChartNoAxesCombined" },
+      { code: "product", name: "Product and Design", zhName: "产品与设计", description: "Product discovery, UX, and interaction design.", zhDescription: "产品发现、用户体验与交互设计。", iconRef: "PenTool" },
+      { code: "local-execution", name: "Local Execution Agents", zhName: "本地执行智能体", description: "Agents installed locally from an archive and run by a harness runtime.", zhDescription: "以安装包分发到本地、由 Harness 运行时驱动的智能体。", iconRef: "Package" },
+    ],
+  },
+  {
+    code: "business",
+    name: "Business and Growth",
+    zhName: "商业与增长",
+    description: "Marketing, sales, operations, and commerce.",
+    zhDescription: "市场营销、销售、运营与电商交易。",
+    iconRef: "Briefcase",
+    children: [
+      { code: "marketing", name: "Marketing", zhName: "市场营销", description: "Campaigns, content marketing, and brand work.", zhDescription: "营销活动、内容营销与品牌工作。", iconRef: "Megaphone" },
+      { code: "sales", name: "Sales and Customer", zhName: "销售与客户", description: "Pipeline, customer success, and service.", zhDescription: "销售漏斗、客户成功与客户服务。", iconRef: "Handshake" },
+      { code: "operations", name: "Operations", zhName: "运营管理", description: "Business operations, process, and service delivery.", zhDescription: "业务运营、流程与服务交付。", iconRef: "Workflow" },
+      { code: "ecommerce", name: "E-commerce", zhName: "电商零售", description: "Catalog, traffic, conversion, and after-sales.", zhDescription: "商品、流量、转化与售后。", iconRef: "ShoppingCart" },
+    ],
+  },
+  {
+    code: "corporate",
+    name: "Corporate Functions",
+    zhName: "企业职能",
+    description: "Finance, legal, people, and enterprise services.",
+    zhDescription: "财务、法务、人力资源与企业服务。",
+    iconRef: "Building2",
+    children: [
+      { code: "finance", name: "Finance and Accounting", zhName: "财务与会计", description: "Accounting, tax, budgeting, and investment analysis.", zhDescription: "会计、税务、预算与投资分析。", iconRef: "Calculator" },
+      { code: "legal", name: "Legal", zhName: "法律法务", description: "Statutes, contracts, compliance, and litigation support.", zhDescription: "法律、合同、合规与诉讼支持。", iconRef: "Scale" },
+      { code: "hr", name: "Human Resources", zhName: "人力资源", description: "Recruiting, performance, and organization development.", zhDescription: "招聘、绩效与组织发展。", iconRef: "Users" },
+      { code: "enterprise", name: "Enterprise Services", zhName: "企业服务", description: "Registration, tax, qualification, and B2B advisory.", zhDescription: "注册、税务、资质与 B2B 咨询。", iconRef: "Building" },
+    ],
+  },
+  {
+    code: "education",
+    name: "Education and Training",
+    zhName: "教育培训",
+    description: "K12, higher education, and professional training.",
+    zhDescription: "K12、高等教育与职业培训。",
+    iconRef: "GraduationCap",
+    children: [
+      { code: "education-k12", name: "K12 Education", zhName: "K12 教育", description: "Curriculum, teaching, and tutoring for K12.", zhDescription: "K12 课程、教学与辅导。", iconRef: "BookOpen" },
+      { code: "education-higher", name: "Higher Education", zhName: "高等教育", description: "University teaching, research, and academic writing.", zhDescription: "高校教学、科研与学术写作。", iconRef: "University" },
+      { code: "education-training", name: "Professional Training", zhName: "职业培训", description: "Workforce learning, certification, and skills training.", zhDescription: "职业学习、认证与技能培训。", iconRef: "Presentation" },
+    ],
+  },
+  {
+    code: "health",
+    name: "Health and Wellbeing",
+    zhName: "健康与福祉",
+    description: "Clinical evidence, care, and wellbeing guidance.",
+    zhDescription: "临床证据、照护与健康指导。",
+    iconRef: "HeartPulse",
+    children: [
+      { code: "healthcare", name: "Healthcare", zhName: "医疗健康", description: "Clinical guidance, drug references, and medical evidence.", zhDescription: "临床指南、药品参考与医学证据。", iconRef: "Stethoscope" },
+    ],
+  },
+  {
+    code: "public-service",
+    name: "Public Service",
+    zhName: "公共服务",
+    description: "Government policy, administrative procedures, and civic services.",
+    zhDescription: "政务政策、行政流程与公共服务。",
+    iconRef: "Landmark",
+    children: [
+      { code: "government", name: "Government and Public Service", zhName: "政务公共服务", description: "Official policy, service guides, and administrative procedures.", zhDescription: "官方政策、服务指南与行政流程。", iconRef: "Landmark" },
+    ],
+  },
+  {
+    code: "lifestyle",
+    name: "Lifestyle Services",
+    zhName: "生活服务",
+    description: "Travel, hospitality, dining, and property.",
+    zhDescription: "旅游、住宿、餐饮与房产。",
+    iconRef: "Compass",
+    children: [
+      { code: "travel", name: "Travel", zhName: "旅游出行", description: "Flights, hotels, points of interest, and transit.", zhDescription: "航班、酒店、景点与交通。", iconRef: "Plane" },
+      { code: "hospitality", name: "Hotel and Hospitality", zhName: "酒店住宿", description: "Room inventory, rates, OTA channels, and guest experience.", zhDescription: "房态、价格、OTA 渠道与宾客体验。", iconRef: "BedDouble" },
+      { code: "restaurant", name: "Restaurant and F&B", zhName: "餐饮食品", description: "Menu costing, POS, suppliers, and food safety.", zhDescription: "菜单成本、POS、供应商与食品安全。", iconRef: "UtensilsCrossed" },
+      { code: "realestate", name: "Real Estate", zhName: "房产家居", description: "Listings, comparables, community data, and policy.", zhDescription: "房源、成交可比、小区数据与政策。", iconRef: "House" },
+    ],
+  },
+  {
+    code: "content",
+    name: "Content and Media",
+    zhName: "内容与媒体",
+    description: "Writing, publishing, and media production.",
+    zhDescription: "写作出版与媒体制作。",
+    iconRef: "Clapperboard",
+    children: [
+      { code: "writing", name: "Writing and Publishing", zhName: "写作出版", description: "Editorial standards, source verification, and publishing.", zhDescription: "编辑规范、来源核验与出版。", iconRef: "PenLine" },
+      { code: "media", name: "Media Production", zhName: "媒体制作", description: "Audio, video, and multi-channel content production.", zhDescription: "音视频与多渠道内容制作。", iconRef: "Video" },
+    ],
+  },
+  {
+    code: "industrial",
+    name: "Manufacturing and Supply Chain",
+    zhName: "制造与供应链",
+    description: "Production, quality, procurement, and logistics.",
+    zhDescription: "生产、质量、采购与物流。",
+    iconRef: "Factory",
+    children: [
+      { code: "manufacturing", name: "Manufacturing", zhName: "生产制造", description: "Production planning, quality, and lean improvement.", zhDescription: "生产计划、质量与精益改善。", iconRef: "Factory" },
+      { code: "supply-chain", name: "Supply Chain", zhName: "供应链物流", description: "Procurement, inventory, warehousing, and logistics.", zhDescription: "采购、库存、仓储与物流。", iconRef: "Truck" },
+    ],
+  },
+];
+
+/** Ordered leaf codes; parents are never assigned to an agent. */
+export const AGENT_CATEGORY_CODES = AGENT_CATEGORY_TREE.flatMap((parent) =>
+  parent.children.map((child) => child.code),
+);
+
+/**
+ * Explicit leaf reassignments where a historical category code was broader
+ * than the professional taxonomy. Everything else keeps `agent.category`.
+ */
+const CATEGORY_CODE_BY_SLUG_PREFIX = [
+  ["edu-k12-", "education-k12"],
+  ["edu-uni-", "education-higher"],
+];
+
+function categoryCodeForAgent(agent) {
+  for (const [prefix, code] of CATEGORY_CODE_BY_SLUG_PREFIX) {
+    if (agent.slug.startsWith(prefix)) {
+      return code;
+    }
+  }
+  if (agent.category === "education") {
+    return "education-training";
+  }
+  return agent.category;
+}
+
+function engineDescriptor(engine) {
+  const descriptor = AGENT_RUNTIME_FAMILIES.find((entry) => entry.engine === engine);
+  if (!descriptor) {
+    throw new Error(`Unknown agent runtime engine: ${engine}`);
+  }
+  return descriptor;
+}
+
+function conversationRuntime(engine = "rig") {
+  const descriptor = engineDescriptor(engine);
+  return {
+    family: descriptor.family,
+    engine: descriptor.engine,
+    implementation_kind: descriptor.implementationKind,
+    implementation_type: descriptor.implementationType,
+    provider_id: descriptor.providerId,
+    capabilities: ["model.chat", "tool.invoke", "knowledge.retrieve", "memory.retrieve", "session.resume"],
+  };
+}
+
+function localExecutionRuntime(engine) {
+  const descriptor = engineDescriptor(engine);
+  return {
+    family: descriptor.family,
+    engine: descriptor.engine,
+    protocol: "harness.agent.runtime.v1",
+    implementation_kind: descriptor.implementationKind,
+    implementation_type: descriptor.implementationType,
+    provider_id: descriptor.providerId,
+    capabilities: ["tool.invoke", "shell.exec", "file.read", "file.write", "process.manage", "session.resume"],
+  };
+}
+
+/**
+ * Hosted conversation agents. Default runtime is RIG; `categoryCode` is the
+ * professional leaf, `kind` the delivery shape.
+ */
+export const AGENTS = CATALOG_AGENTS.map((agent) => ({
+  ...agent,
+  kind: "conversation",
+  runtime: conversationRuntime("rig"),
+  categoryCode: categoryCodeForAgent(agent),
+}));
+
+/**
+ * System-level local-execution agents distributed as archives.
+ *
+ * These agents are installed on the user's machine and executed by the local
+ * harness runtime (`runtime.family: harness`). The distribution descriptor is
+ * a catalog reference — the archive is resolved and downloaded when the user
+ * installs the agent; no binary is committed to this repository.
+ */
+export const LOCAL_EXECUTION_AGENTS = [
+  {
+    slug: "openclaw",
+    engine: "openclaw",
+    categoryCode: "local-execution",
+    icon: "Bot",
+    color: "#111827",
+    tags: ["local", "harness", "openclaw", "automation", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.openclaw",
+      version: "1.0.0",
+      entrypoint: "openclaw/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "OpenClaw 本地智能体",
+      tagline: "安装到本机后自主拆解任务、调用工具并持续执行，适合桌面自动化与本地工程协作。",
+      description: "OpenClaw 官方本地执行智能体包，由 Harness 本地运行时驱动，安装后即可在本机执行多步任务。",
+    },
+    en: {
+      name: "OpenClaw Local Agent",
+      tagline: "Install locally to plan multi-step work, call tools, and keep executing on the desktop.",
+      description: "Official OpenClaw local-execution agent package driven by the Harness runtime; install once and run multi-step tasks on the machine.",
+    },
+  },
+  {
+    slug: "workbuddy",
+    engine: "workbuddy",
+    categoryCode: "local-execution",
+    icon: "Laptop",
+    color: "#0F766E",
+    tags: ["local", "harness", "workbuddy", "desktop", "office", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.workbuddy",
+      version: "1.0.0",
+      entrypoint: "workbuddy/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "WorkBuddy 本地工作助理",
+      tagline: "装在本机的工作助理，直接操作文件、表格与桌面应用，把日常办公任务做完。",
+      description: "WorkBuddy 官方本地执行智能体包，经 Harness 本地运行时连接桌面应用与本地文件，适合日常办公自动化。",
+    },
+    en: {
+      name: "WorkBuddy Local Work Assistant",
+      tagline: "A desktop work assistant that operates files, sheets, and local apps to finish everyday office tasks.",
+      description: "Official WorkBuddy local-execution package that uses the Harness runtime to drive desktop apps and local files for everyday office automation.",
+    },
+  },
+  {
+    slug: "codex-cli",
+    engine: "codex",
+    categoryCode: "local-execution",
+    icon: "Terminal",
+    color: "#4B5563",
+    tags: ["local", "harness", "codex", "cli", "coding", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.codex-cli",
+      version: "1.0.0",
+      entrypoint: "codex/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "Codex 本地编码智能体",
+      tagline: "在本地仓库中读写代码、运行命令并提交验证通过的最小变更。",
+      description: "Codex CLI 官方本地执行智能体包，由 Harness 本地运行时托管，适合本地仓库的编码与验证任务。",
+    },
+    en: {
+      name: "Codex Local Coding Agent",
+      tagline: "Read and write code in a local repository, run commands, and land minimal verified changes.",
+      description: "Official Codex CLI local-execution package hosted by the Harness runtime for local repository coding and verification.",
+    },
+  },
+  {
+    slug: "claude-code",
+    engine: "claude-code",
+    categoryCode: "local-execution",
+    icon: "Sparkles",
+    color: "#D97706",
+    tags: ["local", "harness", "claude-code", "cli", "coding", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.claude-code",
+      version: "1.0.0",
+      entrypoint: "claude-code/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "Claude Code 本地智能体",
+      tagline: "以本地 CLI 方式理解代码库、规划改动并执行验证。",
+      description: "Claude Code 官方本地执行智能体包，经 Harness 本地运行时接入本地终端与仓库。",
+    },
+    en: {
+      name: "Claude Code Local Agent",
+      tagline: "Understand a codebase, plan changes, and verify them through a local CLI.",
+      description: "Official Claude Code local-execution package connected to the local terminal and repository by the Harness runtime.",
+    },
+  },
+  {
+    slug: "gemini-cli",
+    engine: "gemini-cli",
+    categoryCode: "local-execution",
+    icon: "Gem",
+    color: "#2563EB",
+    tags: ["local", "harness", "gemini", "cli", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.gemini-cli",
+      version: "1.0.0",
+      entrypoint: "gemini-cli/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "Gemini CLI 本地智能体",
+      tagline: "在本地终端完成检索、代码理解与多步骤执行任务。",
+      description: "Gemini CLI 官方本地执行智能体包，由 Harness 本地运行时统一托管与审计。",
+    },
+    en: {
+      name: "Gemini CLI Local Agent",
+      tagline: "Run retrieval, code understanding, and multi-step tasks from a local terminal.",
+      description: "Official Gemini CLI local-execution package hosted and audited by the Harness runtime.",
+    },
+  },
+  {
+    slug: "opencode",
+    engine: "opencode",
+    categoryCode: "local-execution",
+    icon: "SquareTerminal",
+    color: "#7C3AED",
+    tags: ["local", "harness", "opencode", "cli", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.opencode",
+      version: "1.0.0",
+      entrypoint: "opencode/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "OpenCode 本地智能体",
+      tagline: "开源的本地编码智能体，接入本地模型与仓库完成开发任务。",
+      description: "OpenCode 官方本地执行智能体包，由 Harness 本地运行时驱动，可连接本地模型与工具。",
+    },
+    en: {
+      name: "OpenCode Local Agent",
+      tagline: "An open local coding agent that connects local models and repositories to finish development work.",
+      description: "Official OpenCode local-execution package driven by the Harness runtime with local models and tools.",
+    },
+  },
+  {
+    slug: "hermes-agent",
+    engine: "hermes",
+    categoryCode: "local-execution",
+    icon: "Atom",
+    color: "#0891B2",
+    tags: ["local", "harness", "hermes", "autonomous", "official", "commercial"],
+    archive: {
+      kind: "archive",
+      format: "zip",
+      archiveRef: "archive.sdkwork.hermes-agent",
+      version: "1.0.0",
+      entrypoint: "hermes/manifest.json",
+      installMode: "extract",
+    },
+    zh: {
+      name: "Hermes 本地智能体",
+      tagline: "面向长期任务的本地自治智能体，支持工具循环与断点续跑。",
+      description: "Hermes 官方本地执行智能体包，经 Harness 本地运行时执行长任务并保留可恢复的执行状态。",
+    },
+    en: {
+      name: "Hermes Local Agent",
+      tagline: "A local autonomous agent for long-running tasks with tool loops and resumable execution.",
+      description: "Official Hermes local-execution package that runs long tasks through the Harness runtime with resumable execution state.",
+    },
+  },
+].map((agent) => ({
+  ...agent,
+  kind: "local-execution",
+  category: "local-execution",
+  runtime: localExecutionRuntime(agent.engine),
+  distribution: {
+    ...agent.archive,
+    checksum: null,
+  },
+}));
+
+/** Every catalog agent, hosted and locally installed. */
+export const SYSTEM_AGENTS = [...AGENTS, ...LOCAL_EXECUTION_AGENTS];
+
+/** Resolves the runtime descriptor for an agent (hosted or local). */
+export function runtimeForAgent(agent) {
+  return agent.runtime;
+}
+
+/** Resolves the professional leaf category code for an agent. */
+export function categoryCodeFor(agent) {
+  return agent.categoryCode;
+}

@@ -6,7 +6,723 @@
 
 -- Display names, prompts, and skill instructions live under seeds/locales/{zh-CN,en-US}.
 
+-- Agent categories are a two-level professional taxonomy; agents reference a leaf code.
+
 BEGIN;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000001, '17c07574-c7ff-4650-8c98-48842b04488d', 100001, 0,
+  'technology', 'Technology and Engineering', 'Software, data, product, and local runtime engineering.', NULL,
+  10, 'Cpu', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000002, 'a213c338-712a-40ee-8be3-3d7d89008a99', 100001, 0,
+  'business', 'Business and Growth', 'Marketing, sales, operations, and commerce.', NULL,
+  20, 'Briefcase', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000003, 'c985f65a-8d80-4799-877e-27f6d120f7a7', 100001, 0,
+  'corporate', 'Corporate Functions', 'Finance, legal, people, and enterprise services.', NULL,
+  30, 'Building2', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000004, 'cd5acf7f-576f-4053-8907-88aaf48f9c53', 100001, 0,
+  'education', 'Education and Training', 'K12, higher education, and professional training.', NULL,
+  40, 'GraduationCap', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000005, 'ff12be6a-8176-493c-8f20-a2da9372fa31', 100001, 0,
+  'health', 'Health and Wellbeing', 'Clinical evidence, care, and wellbeing guidance.', NULL,
+  50, 'HeartPulse', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000006, '4ea70522-401e-4271-8dea-a1c96edac357', 100001, 0,
+  'public-service', 'Public Service', 'Government policy, administrative procedures, and civic services.', NULL,
+  60, 'Landmark', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000007, '386c8f6c-ba72-48f7-8675-4bae9b51afe7', 100001, 0,
+  'lifestyle', 'Lifestyle Services', 'Travel, hospitality, dining, and property.', NULL,
+  70, 'Compass', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000008, '55c116a0-04f3-4d52-8340-bf6045185b94', 100001, 0,
+  'content', 'Content and Media', 'Writing, publishing, and media production.', NULL,
+  80, 'Clapperboard', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000009, '1a337cce-b46f-4fe3-89a9-ee69b76cd856', 100001, 0,
+  'industrial', 'Manufacturing and Supply Chain', 'Production, quality, procurement, and logistics.', NULL,
+  90, 'Factory', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000010, 'a9b2888a-fd45-46b9-8079-502676aa3ea4', 100001, 0,
+  'engineering', 'Engineering', 'Code, infrastructure, and engineering delivery.', 540000000000000001,
+  100, 'Code2', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000011, '92a8cbae-d06e-4512-839b-6a17e4e4e757', 100001, 0,
+  'data-ai', 'Data and AI', 'Analysis, modeling, and machine-learning work.', 540000000000000001,
+  101, 'ChartNoAxesCombined', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000012, '57ed778a-727b-439f-8234-f80134205593', 100001, 0,
+  'product', 'Product and Design', 'Product discovery, UX, and interaction design.', 540000000000000001,
+  102, 'PenTool', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000013, 'd396187a-2cf7-4c74-8a38-eb0440372b93', 100001, 0,
+  'local-execution', 'Local Execution Agents', 'Agents installed locally from an archive and run by a harness runtime.', 540000000000000001,
+  103, 'Package', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000014, 'fd89097f-2120-4e9c-8f08-2c942260468d', 100001, 0,
+  'marketing', 'Marketing', 'Campaigns, content marketing, and brand work.', 540000000000000002,
+  104, 'Megaphone', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000015, 'e6bcc3f2-a42b-4c33-87c0-113f350fc997', 100001, 0,
+  'sales', 'Sales and Customer', 'Pipeline, customer success, and service.', 540000000000000002,
+  105, 'Handshake', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000016, 'd8b4da59-147f-4ec7-8e84-ab59ed0d5671', 100001, 0,
+  'operations', 'Operations', 'Business operations, process, and service delivery.', 540000000000000002,
+  106, 'Workflow', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000017, '11fd8701-6e14-4c9e-871c-90ed3bb0b7ba', 100001, 0,
+  'ecommerce', 'E-commerce', 'Catalog, traffic, conversion, and after-sales.', 540000000000000002,
+  107, 'ShoppingCart', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000018, '87d1842f-8db6-4a7b-87fa-f27f46f1cfd9', 100001, 0,
+  'finance', 'Finance and Accounting', 'Accounting, tax, budgeting, and investment analysis.', 540000000000000003,
+  108, 'Calculator', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000019, '866638c3-b3bc-4911-83fe-3d4ea4f5167a', 100001, 0,
+  'legal', 'Legal', 'Statutes, contracts, compliance, and litigation support.', 540000000000000003,
+  109, 'Scale', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000020, '3f6e36c6-6448-477f-858d-299436a6c407', 100001, 0,
+  'hr', 'Human Resources', 'Recruiting, performance, and organization development.', 540000000000000003,
+  110, 'Users', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000021, 'a17dc51c-fdb7-42c5-8f70-166436f894b9', 100001, 0,
+  'enterprise', 'Enterprise Services', 'Registration, tax, qualification, and B2B advisory.', 540000000000000003,
+  111, 'Building', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000022, '6c992bb9-bf2f-48e6-890d-b7d850d7b029', 100001, 0,
+  'education-k12', 'K12 Education', 'Curriculum, teaching, and tutoring for K12.', 540000000000000004,
+  112, 'BookOpen', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000023, '7a44464e-3610-4777-8afb-bb82c8f67e74', 100001, 0,
+  'education-higher', 'Higher Education', 'University teaching, research, and academic writing.', 540000000000000004,
+  113, 'University', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000024, 'feaaffc5-1215-44b1-8406-4b92ef9c0e66', 100001, 0,
+  'education-training', 'Professional Training', 'Workforce learning, certification, and skills training.', 540000000000000004,
+  114, 'Presentation', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000025, 'eee2b1b0-b849-4212-848c-a900b26b7e54', 100001, 0,
+  'healthcare', 'Healthcare', 'Clinical guidance, drug references, and medical evidence.', 540000000000000005,
+  115, 'Stethoscope', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000026, 'ce19bd0f-8523-4ee8-8699-9d66ad056af2', 100001, 0,
+  'government', 'Government and Public Service', 'Official policy, service guides, and administrative procedures.', 540000000000000006,
+  116, 'Landmark', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000027, '39a6c4a3-5ffa-48d2-8599-5e9ab644a695', 100001, 0,
+  'travel', 'Travel', 'Flights, hotels, points of interest, and transit.', 540000000000000007,
+  117, 'Plane', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000028, '1dcc50bf-cef6-40e5-8d25-492c60ea542b', 100001, 0,
+  'hospitality', 'Hotel and Hospitality', 'Room inventory, rates, OTA channels, and guest experience.', 540000000000000007,
+  118, 'BedDouble', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000029, 'b6504215-e0e2-4c0c-8741-67c0d528e08b', 100001, 0,
+  'restaurant', 'Restaurant and F&B', 'Menu costing, POS, suppliers, and food safety.', 540000000000000007,
+  119, 'UtensilsCrossed', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000030, '8e4ae917-567a-4f18-880b-14d7ea1cdebd', 100001, 0,
+  'realestate', 'Real Estate', 'Listings, comparables, community data, and policy.', 540000000000000007,
+  120, 'House', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000031, 'fa07c768-bae8-4b6d-8648-c65f183abf9f', 100001, 0,
+  'writing', 'Writing and Publishing', 'Editorial standards, source verification, and publishing.', 540000000000000008,
+  121, 'PenLine', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000032, 'f9b797e2-6b81-4714-89ee-81f05556cfec', 100001, 0,
+  'media', 'Media Production', 'Audio, video, and multi-channel content production.', 540000000000000008,
+  122, 'Video', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000033, 'aa8e6c7d-a612-4f97-810d-8c55442bafb1', 100001, 0,
+  'manufacturing', 'Manufacturing', 'Production planning, quality, and lean improvement.', 540000000000000009,
+  123, 'Factory', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
+
+INSERT INTO ai_agent_category (
+  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,
+  sort_order, icon_ref, status, created_by, updated_by, version,
+  created_at, updated_at, deleted_at, deleted_by
+) VALUES (
+  540000000000000034, '03d69523-777e-4e49-8ae3-04f0c088ae0e', 100001, 0,
+  'supply-chain', 'Supply Chain', 'Procurement, inventory, warehousing, and logistics.', 540000000000000009,
+  124, 'Truck', 1, 1, 1, 0,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, NULL
+)
+ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET
+  name = EXCLUDED.name,
+  description = EXCLUDED.description,
+  parent_id = EXCLUDED.parent_id,
+  sort_order = EXCLUDED.sort_order,
+  icon_ref = EXCLUDED.icon_ref,
+  status = EXCLUDED.status,
+  updated_at = EXCLUDED.updated_at,
+  deleted_at = NULL
+;
 
 INSERT INTO ai_agent (
   id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
@@ -16,16 +732,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000001, '8c8a9bfb-a798-47b2-8cff-7bfa61a7f16a', 100001, 0, 1,
   'agent.programmer.fullstack', 'programmer-fullstack', 'programmer-fullstack', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.fullstack","name":"programmer-fullstack","display_name":"programmer-fullstack","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","fullstack","web","api","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.fullstack","name":"programmer-fullstack","display_name":"programmer-fullstack","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","fullstack","web","api","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -36,8 +755,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000001, 100001, 0, 'agent.programmer.fullstack',
-  'version.programmer-fullstack.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.fullstack","name":"programmer-fullstack","display_name":"programmer-fullstack","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-fullstack.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.fullstack","name":"programmer-fullstack","display_name":"programmer-fullstack","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -194,16 +914,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000002, '8c3cbdc3-e881-4dbb-8b26-d7a01fe02591', 100001, 0, 1,
   'agent.programmer.frontend', 'programmer-frontend', 'programmer-frontend', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.frontend","name":"programmer-frontend","display_name":"programmer-frontend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","frontend","react","accessibility","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.frontend","name":"programmer-frontend","display_name":"programmer-frontend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","frontend","react","accessibility","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -214,8 +937,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000002, 100001, 0, 'agent.programmer.frontend',
-  'version.programmer-frontend.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.frontend","name":"programmer-frontend","display_name":"programmer-frontend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-frontend.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.frontend","name":"programmer-frontend","display_name":"programmer-frontend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -372,16 +1096,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000003, '9201b288-3feb-4a17-8e37-eb6356e95ced', 100001, 0, 1,
   'agent.edu.k12.math', 'edu-k12-math', 'edu-k12-math', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.math","name":"edu-k12-math","display_name":"edu-k12-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","math","curriculum","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.math","name":"edu-k12-math","display_name":"edu-k12-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","math","curriculum","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -392,8 +1119,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000003, 100001, 0, 'agent.edu.k12.math',
-  'version.edu-k12-math.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.math","name":"edu-k12-math","display_name":"edu-k12-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-math.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.math","name":"edu-k12-math","display_name":"edu-k12-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -550,16 +1278,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000004, '6d4ea35c-2e54-4d10-85e8-a9a51b377cee', 100001, 0, 1,
   'agent.edu.uni.cs', 'edu-uni-cs', 'edu-uni-cs', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.cs","name":"edu-uni-cs","display_name":"edu-uni-cs","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","computer-science","algorithms","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.cs","name":"edu-uni-cs","display_name":"edu-uni-cs","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","computer-science","algorithms","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -570,8 +1301,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000004, 100001, 0, 'agent.edu.uni.cs',
-  'version.edu-uni-cs.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.cs","name":"edu-uni-cs","display_name":"edu-uni-cs","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-cs.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.cs","name":"edu-uni-cs","display_name":"edu-uni-cs","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -728,16 +1460,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000005, '12c9af31-d25e-45a9-885a-ad664f381dc4', 100001, 0, 1,
   'agent.doctor.general', 'doctor-general', 'doctor-general', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.general","name":"doctor-general","display_name":"doctor-general","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["healthcare","doctor","general-practice","triage","health","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.general","name":"doctor-general","display_name":"doctor-general","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["healthcare","conversation","doctor","general-practice","triage","health","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -748,8 +1483,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000005, 100001, 0, 'agent.doctor.general',
-  'version.doctor-general.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.general","name":"doctor-general","display_name":"doctor-general","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.doctor-general.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.general","name":"doctor-general","display_name":"doctor-general","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -882,16 +1618,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000006, 'e4ba4571-a2a3-4d33-8ec8-b82007780d4a', 100001, 0, 1,
   'agent.lawyer.civil', 'lawyer-civil', 'lawyer-civil', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.civil","name":"lawyer-civil","display_name":"lawyer-civil","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["legal","lawyer","civil","contract","dispute","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.civil","name":"lawyer-civil","display_name":"lawyer-civil","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["legal","conversation","lawyer","civil","contract","dispute","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -902,8 +1641,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000006, 100001, 0, 'agent.lawyer.civil',
-  'version.lawyer-civil.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.civil","name":"lawyer-civil","display_name":"lawyer-civil","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.lawyer-civil.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.civil","name":"lawyer-civil","display_name":"lawyer-civil","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -1036,16 +1776,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000007, '679ee480-17fb-4779-8917-f9f3b573e138', 100001, 0, 1,
   'agent.travel.planner', 'travel-planner', 'travel-planner', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.planner","name":"travel-planner","display_name":"travel-planner","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["travel","itinerary","budget","planning","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.planner","name":"travel-planner","display_name":"travel-planner","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","agent_kind":"conversation","category_code":"travel","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["travel","conversation","itinerary","budget","planning","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -1056,8 +1799,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000007, 100001, 0, 'agent.travel.planner',
-  'version.travel-planner.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.planner","name":"travel-planner","display_name":"travel-planner","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.travel-planner.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.planner","name":"travel-planner","display_name":"travel-planner","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","agent_kind":"conversation","category_code":"travel","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -1190,16 +1934,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000008, '95a00869-9dba-4345-89ce-ad26cbcf17ce', 100001, 0, 1,
   'agent.ecommerce.operations', 'ecommerce-operations', 'ecommerce-operations', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.operations","name":"ecommerce-operations","display_name":"ecommerce-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["ecommerce","operations","growth","conversion","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.operations","name":"ecommerce-operations","display_name":"ecommerce-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["ecommerce","conversation","operations","growth","conversion","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -1210,8 +1957,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000008, 100001, 0, 'agent.ecommerce.operations',
-  'version.ecommerce-operations.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.operations","name":"ecommerce-operations","display_name":"ecommerce-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.ecommerce-operations.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.operations","name":"ecommerce-operations","display_name":"ecommerce-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -1344,16 +2092,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000009, '1223fca9-485c-4d10-85b6-991cfe61a3ad', 100001, 0, 1,
   'agent.realestate.buyer', 'realestate-buyer', 'realestate-buyer', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.buyer","name":"realestate-buyer","display_name":"realestate-buyer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["realestate","buyer","due-diligence","negotiation","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.buyer","name":"realestate-buyer","display_name":"realestate-buyer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","agent_kind":"conversation","category_code":"realestate","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["realestate","conversation","buyer","due-diligence","negotiation","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -1364,8 +2115,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000009, 100001, 0, 'agent.realestate.buyer',
-  'version.realestate-buyer.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.buyer","name":"realestate-buyer","display_name":"realestate-buyer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.realestate-buyer.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.buyer","name":"realestate-buyer","display_name":"realestate-buyer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","agent_kind":"conversation","category_code":"realestate","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -1522,16 +2274,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000010, '96610c53-a0d0-4f7d-8864-73017bc8a8f1', 100001, 0, 1,
   'agent.edu.k12.chinese', 'edu-k12-chinese', 'edu-k12-chinese', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chinese","name":"edu-k12-chinese","display_name":"edu-k12-chinese","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","chinese","reading","writing","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chinese","name":"edu-k12-chinese","display_name":"edu-k12-chinese","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","chinese","reading","writing","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -1542,8 +2297,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000010, 100001, 0, 'agent.edu.k12.chinese',
-  'version.edu-k12-chinese.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chinese","name":"edu-k12-chinese","display_name":"edu-k12-chinese","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-chinese.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chinese","name":"edu-k12-chinese","display_name":"edu-k12-chinese","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -1676,16 +2432,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000011, '098e8c35-fa1d-4f29-8af6-b3a06a2415cb', 100001, 0, 1,
   'agent.edu.k12.english', 'edu-k12-english', 'edu-k12-english', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.english","name":"edu-k12-english","display_name":"edu-k12-english","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","english","listening","writing","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.english","name":"edu-k12-english","display_name":"edu-k12-english","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","english","listening","writing","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -1696,8 +2455,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000011, 100001, 0, 'agent.edu.k12.english',
-  'version.edu-k12-english.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.english","name":"edu-k12-english","display_name":"edu-k12-english","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-english.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.english","name":"edu-k12-english","display_name":"edu-k12-english","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -1854,16 +2614,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000012, 'e27a00d8-aca5-4cc2-87fc-a8deb89a4c8d', 100001, 0, 1,
   'agent.edu.k12.physics', 'edu-k12-physics', 'edu-k12-physics', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.physics","name":"edu-k12-physics","display_name":"edu-k12-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","physics","experiment","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.physics","name":"edu-k12-physics","display_name":"edu-k12-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","physics","experiment","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -1874,8 +2637,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000012, 100001, 0, 'agent.edu.k12.physics',
-  'version.edu-k12-physics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.physics","name":"edu-k12-physics","display_name":"edu-k12-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-physics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.physics","name":"edu-k12-physics","display_name":"edu-k12-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -2032,16 +2796,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000013, '0cd738a4-d424-4b48-8ed2-15e83a0e0a99', 100001, 0, 1,
   'agent.edu.k12.chemistry', 'edu-k12-chemistry', 'edu-k12-chemistry', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chemistry","name":"edu-k12-chemistry","display_name":"edu-k12-chemistry","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","chemistry","experiment","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chemistry","name":"edu-k12-chemistry","display_name":"edu-k12-chemistry","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","chemistry","experiment","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -2052,8 +2819,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000013, 100001, 0, 'agent.edu.k12.chemistry',
-  'version.edu-k12-chemistry.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chemistry","name":"edu-k12-chemistry","display_name":"edu-k12-chemistry","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-chemistry.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.chemistry","name":"edu-k12-chemistry","display_name":"edu-k12-chemistry","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -2186,16 +2954,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000014, 'a70ab850-76b6-4136-8086-d6358ec12602', 100001, 0, 1,
   'agent.edu.k12.biology', 'edu-k12-biology', 'edu-k12-biology', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.biology","name":"edu-k12-biology","display_name":"edu-k12-biology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","biology","genetics","experiment","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.biology","name":"edu-k12-biology","display_name":"edu-k12-biology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","biology","genetics","experiment","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -2206,8 +2977,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000014, 100001, 0, 'agent.edu.k12.biology',
-  'version.edu-k12-biology.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.biology","name":"edu-k12-biology","display_name":"edu-k12-biology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-biology.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.biology","name":"edu-k12-biology","display_name":"edu-k12-biology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -2340,16 +3112,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000015, '19c9c8bb-caff-4f5e-8f07-7cb8c2180aaf', 100001, 0, 1,
   'agent.edu.k12.history', 'edu-k12-history', 'edu-k12-history', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.history","name":"edu-k12-history","display_name":"edu-k12-history","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","history","source-analysis","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.history","name":"edu-k12-history","display_name":"edu-k12-history","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","history","source-analysis","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -2360,8 +3135,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000015, 100001, 0, 'agent.edu.k12.history',
-  'version.edu-k12-history.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.history","name":"edu-k12-history","display_name":"edu-k12-history","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-history.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.history","name":"edu-k12-history","display_name":"edu-k12-history","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -2518,16 +3294,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000016, 'c99f2bb0-5054-4d7d-8bf7-5f12736f612b', 100001, 0, 1,
   'agent.edu.k12.geography', 'edu-k12-geography', 'edu-k12-geography', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.geography","name":"edu-k12-geography","display_name":"edu-k12-geography","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","geography","map","region","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.geography","name":"edu-k12-geography","display_name":"edu-k12-geography","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","geography","map","region","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -2538,8 +3317,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000016, 100001, 0, 'agent.edu.k12.geography',
-  'version.edu-k12-geography.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.geography","name":"edu-k12-geography","display_name":"edu-k12-geography","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-geography.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.geography","name":"edu-k12-geography","display_name":"edu-k12-geography","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -2696,16 +3476,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000017, 'e5960d82-3375-41a6-8208-c9d7a4504ff2', 100001, 0, 1,
   'agent.edu.k12.politics', 'edu-k12-politics', 'edu-k12-politics', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.politics","name":"edu-k12-politics","display_name":"edu-k12-politics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","k12","politics","civics","law","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.politics","name":"edu-k12-politics","display_name":"edu-k12-politics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-k12","conversation","education","k12","politics","civics","law","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -2716,8 +3499,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000017, 100001, 0, 'agent.edu.k12.politics',
-  'version.edu-k12-politics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.politics","name":"edu-k12-politics","display_name":"edu-k12-politics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-k12-politics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.k12.politics","name":"edu-k12-politics","display_name":"edu-k12-politics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-k12","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -2874,16 +3658,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000018, '113320d5-ce18-4145-8ac7-bcb84c77378e', 100001, 0, 1,
   'agent.programmer.backend', 'programmer-backend', 'programmer-backend', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.backend","name":"programmer-backend","display_name":"programmer-backend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","backend","api","database","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.backend","name":"programmer-backend","display_name":"programmer-backend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","backend","api","database","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -2894,8 +3681,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000018, 100001, 0, 'agent.programmer.backend',
-  'version.programmer-backend.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.backend","name":"programmer-backend","display_name":"programmer-backend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-backend.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.backend","name":"programmer-backend","display_name":"programmer-backend","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -3028,16 +3816,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000019, '5486e94a-4e7c-4c73-8640-93ffc4108402', 100001, 0, 1,
   'agent.programmer.architect', 'programmer-architect', 'programmer-architect', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.architect","name":"programmer-architect","display_name":"programmer-architect","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","architecture","system-design","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.architect","name":"programmer-architect","display_name":"programmer-architect","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","architecture","system-design","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -3048,8 +3839,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000019, 100001, 0, 'agent.programmer.architect',
-  'version.programmer-architect.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.architect","name":"programmer-architect","display_name":"programmer-architect","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-architect.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.architect","name":"programmer-architect","display_name":"programmer-architect","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -3206,16 +3998,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000020, '3774c475-7a7a-43b3-8dbc-23bf582e80b8', 100001, 0, 1,
   'agent.programmer.devops', 'programmer-devops', 'programmer-devops', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.devops","name":"programmer-devops","display_name":"programmer-devops","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","devops","sre","ci-cd","kubernetes","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.devops","name":"programmer-devops","display_name":"programmer-devops","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","devops","sre","ci-cd","kubernetes","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -3226,8 +4021,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000020, 100001, 0, 'agent.programmer.devops',
-  'version.programmer-devops.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.devops","name":"programmer-devops","display_name":"programmer-devops","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-devops.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.devops","name":"programmer-devops","display_name":"programmer-devops","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -3360,16 +4156,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000021, '981825b9-a87c-4506-8d9e-5694bcde0425', 100001, 0, 1,
   'agent.programmer.qa', 'programmer-qa', 'programmer-qa', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.qa","name":"programmer-qa","display_name":"programmer-qa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","qa","testing","quality","automation","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.qa","name":"programmer-qa","display_name":"programmer-qa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","qa","testing","quality","automation","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -3380,8 +4179,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000021, 100001, 0, 'agent.programmer.qa',
-  'version.programmer-qa.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.qa","name":"programmer-qa","display_name":"programmer-qa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-qa.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.qa","name":"programmer-qa","display_name":"programmer-qa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -3514,16 +4314,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000022, '2664fbef-9d95-4260-814e-01d99839da44', 100001, 0, 1,
   'agent.programmer.data.ai', 'programmer-data-ai', 'programmer-data-ai', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.data.ai","name":"programmer-data-ai","display_name":"programmer-data-ai","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["engineering","programmer","data","ai","ml","evaluation","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.data.ai","name":"programmer-data-ai","display_name":"programmer-data-ai","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["engineering","conversation","programmer","data","ai","ml","evaluation","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -3534,8 +4337,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000022, 100001, 0, 'agent.programmer.data.ai',
-  'version.programmer-data-ai.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.data.ai","name":"programmer-data-ai","display_name":"programmer-data-ai","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.programmer-data-ai.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.programmer.data.ai","name":"programmer-data-ai","display_name":"programmer-data-ai","description":"Official SDKWork managed agent","version":"1.3.0","domain":"engineering","agent_kind":"conversation","category_code":"engineering","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -3692,16 +4496,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000023, '1d77b200-3204-46e7-8084-205bea3f8bd6', 100001, 0, 1,
   'agent.edu.uni.math', 'edu-uni-math', 'edu-uni-math', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.math","name":"edu-uni-math","display_name":"edu-uni-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","mathematics","proof","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.math","name":"edu-uni-math","display_name":"edu-uni-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","mathematics","proof","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -3712,8 +4519,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000023, 100001, 0, 'agent.edu.uni.math',
-  'version.edu-uni-math.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.math","name":"edu-uni-math","display_name":"edu-uni-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-math.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.math","name":"edu-uni-math","display_name":"edu-uni-math","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -3870,16 +4678,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000024, 'fd7bdaa1-e47b-49c6-8a82-38dd700ceda5', 100001, 0, 1,
   'agent.edu.uni.physics', 'edu-uni-physics', 'edu-uni-physics', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.physics","name":"edu-uni-physics","display_name":"edu-uni-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","physics","mechanics","electromagnetism","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.physics","name":"edu-uni-physics","display_name":"edu-uni-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","physics","mechanics","electromagnetism","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -3890,8 +4701,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000024, 100001, 0, 'agent.edu.uni.physics',
-  'version.edu-uni-physics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.physics","name":"edu-uni-physics","display_name":"edu-uni-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-physics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.physics","name":"edu-uni-physics","display_name":"edu-uni-physics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -4048,16 +4860,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000025, 'd0481f3c-3fc7-4f1c-872f-958a3cc85fc5', 100001, 0, 1,
   'agent.edu.uni.economics', 'edu-uni-economics', 'edu-uni-economics', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.economics","name":"edu-uni-economics","display_name":"edu-uni-economics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","economics","microeconomics","macroeconomics","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.economics","name":"edu-uni-economics","display_name":"edu-uni-economics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","economics","microeconomics","macroeconomics","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -4068,8 +4883,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000025, 100001, 0, 'agent.edu.uni.economics',
-  'version.edu-uni-economics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.economics","name":"edu-uni-economics","display_name":"edu-uni-economics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-economics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.economics","name":"edu-uni-economics","display_name":"edu-uni-economics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -4226,16 +5042,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000026, '617621bc-2698-4f69-8272-ab28ee76d6ff', 100001, 0, 1,
   'agent.edu.uni.law', 'edu-uni-law', 'edu-uni-law', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.law","name":"edu-uni-law","display_name":"edu-uni-law","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","law","case-method","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.law","name":"edu-uni-law","display_name":"edu-uni-law","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","law","case-method","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -4246,8 +5065,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000026, 100001, 0, 'agent.edu.uni.law',
-  'version.edu-uni-law.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.law","name":"edu-uni-law","display_name":"edu-uni-law","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-law.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.law","name":"edu-uni-law","display_name":"edu-uni-law","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -4404,16 +5224,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000027, 'a76fab7d-5dc0-4eb9-82ae-d65bf74815f4', 100001, 0, 1,
   'agent.edu.uni.medicine', 'edu-uni-medicine', 'edu-uni-medicine', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.medicine","name":"edu-uni-medicine","display_name":"edu-uni-medicine","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","medicine","preclinical","clinical-reasoning","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.medicine","name":"edu-uni-medicine","display_name":"edu-uni-medicine","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","medicine","preclinical","clinical-reasoning","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -4424,8 +5247,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000027, 100001, 0, 'agent.edu.uni.medicine',
-  'version.edu-uni-medicine.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.medicine","name":"edu-uni-medicine","display_name":"edu-uni-medicine","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-medicine.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.medicine","name":"edu-uni-medicine","display_name":"edu-uni-medicine","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -4582,16 +5406,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000028, '12d43078-9631-4e77-8ef5-e951df3fe778', 100001, 0, 1,
   'agent.edu.uni.engineering', 'edu-uni-engineering', 'edu-uni-engineering', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.engineering","name":"edu-uni-engineering","display_name":"edu-uni-engineering","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["education","university","engineering","mechanics","design","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.engineering","name":"edu-uni-engineering","display_name":"edu-uni-engineering","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["education-higher","conversation","education","university","engineering","mechanics","design","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -4602,8 +5429,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000028, 100001, 0, 'agent.edu.uni.engineering',
-  'version.edu-uni-engineering.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.engineering","name":"edu-uni-engineering","display_name":"edu-uni-engineering","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.edu-uni-engineering.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.edu.uni.engineering","name":"edu-uni-engineering","display_name":"edu-uni-engineering","description":"Official SDKWork managed agent","version":"1.3.0","domain":"education","agent_kind":"conversation","category_code":"education-higher","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -4760,16 +5588,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000029, '53af489a-724c-4e17-8690-2da845d4d18e', 100001, 0, 1,
   'agent.doctor.pediatrics', 'doctor-pediatrics', 'doctor-pediatrics', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.pediatrics","name":"doctor-pediatrics","display_name":"doctor-pediatrics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["healthcare","doctor","pediatrics","child-health","triage","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.pediatrics","name":"doctor-pediatrics","display_name":"doctor-pediatrics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["healthcare","conversation","doctor","pediatrics","child-health","triage","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -4780,8 +5611,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000029, 100001, 0, 'agent.doctor.pediatrics',
-  'version.doctor-pediatrics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.pediatrics","name":"doctor-pediatrics","display_name":"doctor-pediatrics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.doctor-pediatrics.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.pediatrics","name":"doctor-pediatrics","display_name":"doctor-pediatrics","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -4914,16 +5746,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000030, '15fbb2b5-643d-4bba-8c7a-cdd292ef333c', 100001, 0, 1,
   'agent.doctor.cardiology', 'doctor-cardiology', 'doctor-cardiology', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.cardiology","name":"doctor-cardiology","display_name":"doctor-cardiology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["healthcare","doctor","cardiology","heart","chronic-care","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.cardiology","name":"doctor-cardiology","display_name":"doctor-cardiology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["healthcare","conversation","doctor","cardiology","heart","chronic-care","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -4934,8 +5769,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000030, 100001, 0, 'agent.doctor.cardiology',
-  'version.doctor-cardiology.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.cardiology","name":"doctor-cardiology","display_name":"doctor-cardiology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.doctor-cardiology.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.cardiology","name":"doctor-cardiology","display_name":"doctor-cardiology","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -5092,16 +5928,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000031, '90beeab0-3498-4c08-8e03-117e6f3ab607', 100001, 0, 1,
   'agent.doctor.mental.health', 'doctor-mental-health', 'doctor-mental-health', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.mental.health","name":"doctor-mental-health","display_name":"doctor-mental-health","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["healthcare","doctor","mental-health","psychology","crisis","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.mental.health","name":"doctor-mental-health","display_name":"doctor-mental-health","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["healthcare","conversation","doctor","mental-health","psychology","crisis","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -5112,8 +5951,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000031, 100001, 0, 'agent.doctor.mental.health',
-  'version.doctor-mental-health.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.mental.health","name":"doctor-mental-health","display_name":"doctor-mental-health","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.doctor-mental-health.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.doctor.mental.health","name":"doctor-mental-health","display_name":"doctor-mental-health","description":"Official SDKWork managed agent","version":"1.3.0","domain":"healthcare","agent_kind":"conversation","category_code":"healthcare","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -5246,16 +6086,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000032, '0cff8c30-fc0c-4e0a-857c-36b3c522d280', 100001, 0, 1,
   'agent.lawyer.labor', 'lawyer-labor', 'lawyer-labor', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.labor","name":"lawyer-labor","display_name":"lawyer-labor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["legal","lawyer","labor","employment","arbitration","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.labor","name":"lawyer-labor","display_name":"lawyer-labor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["legal","conversation","lawyer","labor","employment","arbitration","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -5266,8 +6109,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000032, 100001, 0, 'agent.lawyer.labor',
-  'version.lawyer-labor.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.labor","name":"lawyer-labor","display_name":"lawyer-labor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.lawyer-labor.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.labor","name":"lawyer-labor","display_name":"lawyer-labor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -5400,16 +6244,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000033, 'ab52b1b4-6ce5-444f-81c4-f6e19b6a38d4', 100001, 0, 1,
   'agent.lawyer.criminal', 'lawyer-criminal', 'lawyer-criminal', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.criminal","name":"lawyer-criminal","display_name":"lawyer-criminal","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["legal","lawyer","criminal","defense","procedure","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.criminal","name":"lawyer-criminal","display_name":"lawyer-criminal","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["legal","conversation","lawyer","criminal","defense","procedure","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -5420,8 +6267,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000033, 100001, 0, 'agent.lawyer.criminal',
-  'version.lawyer-criminal.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.criminal","name":"lawyer-criminal","display_name":"lawyer-criminal","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.lawyer-criminal.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.criminal","name":"lawyer-criminal","display_name":"lawyer-criminal","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -5554,16 +6402,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000034, '75668030-fcf6-4021-8323-5e7703601e2f', 100001, 0, 1,
   'agent.lawyer.ip', 'lawyer-ip', 'lawyer-ip', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.ip","name":"lawyer-ip","display_name":"lawyer-ip","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["legal","lawyer","intellectual-property","trademark","patent","copyright","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.ip","name":"lawyer-ip","display_name":"lawyer-ip","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["legal","conversation","lawyer","intellectual-property","trademark","patent","copyright","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -5574,8 +6425,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000034, 100001, 0, 'agent.lawyer.ip',
-  'version.lawyer-ip.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.ip","name":"lawyer-ip","display_name":"lawyer-ip","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.lawyer-ip.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.ip","name":"lawyer-ip","display_name":"lawyer-ip","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -5732,16 +6584,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000035, '931444e6-8e56-4915-821d-2f79024aa565', 100001, 0, 1,
   'agent.lawyer.family', 'lawyer-family', 'lawyer-family', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.family","name":"lawyer-family","display_name":"lawyer-family","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["legal","lawyer","family","marriage","custody","inheritance","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.family","name":"lawyer-family","display_name":"lawyer-family","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["legal","conversation","lawyer","family","marriage","custody","inheritance","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -5752,8 +6607,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000035, 100001, 0, 'agent.lawyer.family',
-  'version.lawyer-family.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.family","name":"lawyer-family","display_name":"lawyer-family","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.lawyer-family.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.lawyer.family","name":"lawyer-family","display_name":"lawyer-family","description":"Official SDKWork managed agent","version":"1.3.0","domain":"legal","agent_kind":"conversation","category_code":"legal","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -5886,16 +6742,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000036, 'fc4fda4e-e3c3-4345-8f70-c9d84b4e631a', 100001, 0, 1,
   'agent.travel.guide', 'travel-guide', 'travel-guide', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.guide","name":"travel-guide","display_name":"travel-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["travel","guide","culture","local","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.guide","name":"travel-guide","display_name":"travel-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","agent_kind":"conversation","category_code":"travel","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["travel","conversation","guide","culture","local","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -5906,8 +6765,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000036, 100001, 0, 'agent.travel.guide',
-  'version.travel-guide.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.guide","name":"travel-guide","display_name":"travel-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.travel-guide.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.guide","name":"travel-guide","display_name":"travel-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","agent_kind":"conversation","category_code":"travel","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -6064,16 +6924,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000037, '3e250c8c-c853-45ea-81b1-ba19bd2411c9', 100001, 0, 1,
   'agent.travel.visa', 'travel-visa', 'travel-visa', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.visa","name":"travel-visa","display_name":"travel-visa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["travel","visa","immigration","documents","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.visa","name":"travel-visa","display_name":"travel-visa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","agent_kind":"conversation","category_code":"travel","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["travel","conversation","visa","immigration","documents","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -6084,8 +6947,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000037, 100001, 0, 'agent.travel.visa',
-  'version.travel-visa.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.visa","name":"travel-visa","display_name":"travel-visa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.travel-visa.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.travel.visa","name":"travel-visa","display_name":"travel-visa","description":"Official SDKWork managed agent","version":"1.3.0","domain":"travel","agent_kind":"conversation","category_code":"travel","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -6242,16 +7106,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000038, '84e3701d-b944-47b4-8e3d-24f0aaec876d', 100001, 0, 1,
   'agent.ecommerce.product', 'ecommerce-product', 'ecommerce-product', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.product","name":"ecommerce-product","display_name":"ecommerce-product","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["ecommerce","product-selection","sourcing","market-research","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.product","name":"ecommerce-product","display_name":"ecommerce-product","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["ecommerce","conversation","product-selection","sourcing","market-research","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -6262,8 +7129,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000038, 100001, 0, 'agent.ecommerce.product',
-  'version.ecommerce-product.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.product","name":"ecommerce-product","display_name":"ecommerce-product","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.ecommerce-product.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.product","name":"ecommerce-product","display_name":"ecommerce-product","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -6420,16 +7288,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000039, '9a0ce835-dcc0-4cb4-8a37-bdba2639f60c', 100001, 0, 1,
   'agent.ecommerce.customer.service', 'ecommerce-customer-service', 'ecommerce-customer-service', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.customer.service","name":"ecommerce-customer-service","display_name":"ecommerce-customer-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["ecommerce","customer-service","retention","service","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.customer.service","name":"ecommerce-customer-service","display_name":"ecommerce-customer-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["ecommerce","conversation","customer-service","retention","service","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -6440,8 +7311,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000039, 100001, 0, 'agent.ecommerce.customer.service',
-  'version.ecommerce-customer-service.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.customer.service","name":"ecommerce-customer-service","display_name":"ecommerce-customer-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.ecommerce-customer-service.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.customer.service","name":"ecommerce-customer-service","display_name":"ecommerce-customer-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -6574,16 +7446,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000040, 'ff0d34d9-2690-4290-8076-07558a03f282', 100001, 0, 1,
   'agent.ecommerce.ads', 'ecommerce-ads', 'ecommerce-ads', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.ads","name":"ecommerce-ads","display_name":"ecommerce-ads","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["ecommerce","advertising","roi","traffic","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.ads","name":"ecommerce-ads","display_name":"ecommerce-ads","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["ecommerce","conversation","advertising","roi","traffic","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -6594,8 +7469,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000040, 100001, 0, 'agent.ecommerce.ads',
-  'version.ecommerce-ads.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.ads","name":"ecommerce-ads","display_name":"ecommerce-ads","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.ecommerce-ads.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.ecommerce.ads","name":"ecommerce-ads","display_name":"ecommerce-ads","description":"Official SDKWork managed agent","version":"1.3.0","domain":"ecommerce","agent_kind":"conversation","category_code":"ecommerce","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -6752,16 +7628,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000041, 'f5859a07-3d28-467a-8e2b-446659b1ef11', 100001, 0, 1,
   'agent.realestate.rental', 'realestate-rental', 'realestate-rental', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.rental","name":"realestate-rental","display_name":"realestate-rental","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["realestate","rental","lease","tenant","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.rental","name":"realestate-rental","display_name":"realestate-rental","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","agent_kind":"conversation","category_code":"realestate","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["realestate","conversation","rental","lease","tenant","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -6772,8 +7651,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000041, 100001, 0, 'agent.realestate.rental',
-  'version.realestate-rental.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.rental","name":"realestate-rental","display_name":"realestate-rental","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.realestate-rental.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.rental","name":"realestate-rental","display_name":"realestate-rental","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","agent_kind":"conversation","category_code":"realestate","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -6930,16 +7810,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000042, 'de9f39c1-660a-4e07-8297-fe99212b63cc', 100001, 0, 1,
   'agent.realestate.valuation', 'realestate-valuation', 'realestate-valuation', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.valuation","name":"realestate-valuation","display_name":"realestate-valuation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["realestate","valuation","comparables","investment","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.valuation","name":"realestate-valuation","display_name":"realestate-valuation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","agent_kind":"conversation","category_code":"realestate","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["realestate","conversation","valuation","comparables","investment","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -6950,8 +7833,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000042, 100001, 0, 'agent.realestate.valuation',
-  'version.realestate-valuation.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.valuation","name":"realestate-valuation","display_name":"realestate-valuation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.realestate-valuation.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.realestate.valuation","name":"realestate-valuation","display_name":"realestate-valuation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"realestate","agent_kind":"conversation","category_code":"realestate","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -7108,16 +7992,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000043, 'dcf299a5-c550-4bfa-8f5c-fcd421a5e310', 100001, 0, 1,
   'agent.restaurant.operations', 'restaurant-operations', 'restaurant-operations', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.operations","name":"restaurant-operations","display_name":"restaurant-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["restaurant","fnb","operations","menu-cost","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.operations","name":"restaurant-operations","display_name":"restaurant-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["restaurant","conversation","fnb","operations","menu-cost","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -7128,8 +8015,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000043, 100001, 0, 'agent.restaurant.operations',
-  'version.restaurant-operations.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.operations","name":"restaurant-operations","display_name":"restaurant-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.restaurant-operations.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.operations","name":"restaurant-operations","display_name":"restaurant-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -7286,16 +8174,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000044, 'cb3fe7e3-9570-418d-8a8c-872c67fd98b9', 100001, 0, 1,
   'agent.restaurant.menu.development', 'restaurant-menu-development', 'restaurant-menu-development', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.menu.development","name":"restaurant-menu-development","display_name":"restaurant-menu-development","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["restaurant","menu","recipe","costing","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.menu.development","name":"restaurant-menu-development","display_name":"restaurant-menu-development","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["restaurant","conversation","menu","recipe","costing","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -7306,8 +8197,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000044, 100001, 0, 'agent.restaurant.menu.development',
-  'version.restaurant-menu-development.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.menu.development","name":"restaurant-menu-development","display_name":"restaurant-menu-development","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.restaurant-menu-development.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.menu.development","name":"restaurant-menu-development","display_name":"restaurant-menu-development","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -7464,16 +8356,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000045, 'c0a664d5-59b2-40bb-8836-bb05f7e4ce3e', 100001, 0, 1,
   'agent.restaurant.food.safety', 'restaurant-food-safety', 'restaurant-food-safety', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.food.safety","name":"restaurant-food-safety","display_name":"restaurant-food-safety","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["restaurant","food-safety","haccp","hygiene","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.food.safety","name":"restaurant-food-safety","display_name":"restaurant-food-safety","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["restaurant","conversation","food-safety","haccp","hygiene","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -7484,8 +8379,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000045, 100001, 0, 'agent.restaurant.food.safety',
-  'version.restaurant-food-safety.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.food.safety","name":"restaurant-food-safety","display_name":"restaurant-food-safety","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.restaurant-food-safety.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.food.safety","name":"restaurant-food-safety","display_name":"restaurant-food-safety","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -7642,16 +8538,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000046, '1b3c8a27-3de0-4437-86f1-4cdd9848170c', 100001, 0, 1,
   'agent.restaurant.marketing', 'restaurant-marketing', 'restaurant-marketing', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.marketing","name":"restaurant-marketing","display_name":"restaurant-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["restaurant","marketing","delivery","reviews","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.marketing","name":"restaurant-marketing","display_name":"restaurant-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["restaurant","conversation","marketing","delivery","reviews","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -7662,8 +8561,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000046, 100001, 0, 'agent.restaurant.marketing',
-  'version.restaurant-marketing.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.marketing","name":"restaurant-marketing","display_name":"restaurant-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.restaurant-marketing.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.restaurant.marketing","name":"restaurant-marketing","display_name":"restaurant-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"restaurant","agent_kind":"conversation","category_code":"restaurant","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -7820,16 +8720,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000047, 'aee77924-3709-4746-8865-474366da9012', 100001, 0, 1,
   'agent.enterprise.consulting', 'enterprise-consulting', 'enterprise-consulting', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.consulting","name":"enterprise-consulting","display_name":"enterprise-consulting","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["enterprise","consulting","operating-model","process","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.consulting","name":"enterprise-consulting","display_name":"enterprise-consulting","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["enterprise","conversation","consulting","operating-model","process","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -7840,8 +8743,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000047, 100001, 0, 'agent.enterprise.consulting',
-  'version.enterprise-consulting.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.consulting","name":"enterprise-consulting","display_name":"enterprise-consulting","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.enterprise-consulting.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.consulting","name":"enterprise-consulting","display_name":"enterprise-consulting","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -7998,16 +8902,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000048, '080ae9a1-e034-4f04-89c3-e79ac56f2b1b', 100001, 0, 1,
   'agent.enterprise.hr', 'enterprise-hr', 'enterprise-hr', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.hr","name":"enterprise-hr","display_name":"enterprise-hr","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["enterprise","hr","recruiting","performance","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.hr","name":"enterprise-hr","display_name":"enterprise-hr","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["enterprise","conversation","hr","recruiting","performance","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -8018,8 +8925,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000048, 100001, 0, 'agent.enterprise.hr',
-  'version.enterprise-hr.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.hr","name":"enterprise-hr","display_name":"enterprise-hr","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.enterprise-hr.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.hr","name":"enterprise-hr","display_name":"enterprise-hr","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -8176,16 +9084,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000049, '3c4c2a6d-ab72-439b-8d31-79ffabc722d6', 100001, 0, 1,
   'agent.enterprise.tax', 'enterprise-tax', 'enterprise-tax', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.tax","name":"enterprise-tax","display_name":"enterprise-tax","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["enterprise","tax","finance","compliance","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.tax","name":"enterprise-tax","display_name":"enterprise-tax","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["enterprise","conversation","tax","finance","compliance","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -8196,8 +9107,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000049, 100001, 0, 'agent.enterprise.tax',
-  'version.enterprise-tax.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.tax","name":"enterprise-tax","display_name":"enterprise-tax","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.enterprise-tax.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.tax","name":"enterprise-tax","display_name":"enterprise-tax","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -8354,16 +9266,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000050, 'e98993a1-b267-4936-8c89-681c5903a7c6', 100001, 0, 1,
   'agent.enterprise.b2b.sales', 'enterprise-b2b-sales', 'enterprise-b2b-sales', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.b2b.sales","name":"enterprise-b2b-sales","display_name":"enterprise-b2b-sales","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["enterprise","b2b","sales","account-plan","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.b2b.sales","name":"enterprise-b2b-sales","display_name":"enterprise-b2b-sales","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["enterprise","conversation","b2b","sales","account-plan","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -8374,8 +9289,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000050, 100001, 0, 'agent.enterprise.b2b.sales',
-  'version.enterprise-b2b-sales.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.b2b.sales","name":"enterprise-b2b-sales","display_name":"enterprise-b2b-sales","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.enterprise-b2b-sales.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.enterprise.b2b.sales","name":"enterprise-b2b-sales","display_name":"enterprise-b2b-sales","description":"Official SDKWork managed agent","version":"1.3.0","domain":"enterprise","agent_kind":"conversation","category_code":"enterprise","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -8532,16 +9448,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000051, 'e4ec5619-178f-49ae-8c88-bb55f147d048', 100001, 0, 1,
   'agent.government.service.guide', 'government-service-guide', 'government-service-guide', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.service.guide","name":"government-service-guide","display_name":"government-service-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["government","public-service","procedure","materials","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.service.guide","name":"government-service-guide","display_name":"government-service-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["government","conversation","public-service","procedure","materials","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -8552,8 +9471,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000051, 100001, 0, 'agent.government.service.guide',
-  'version.government-service-guide.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.service.guide","name":"government-service-guide","display_name":"government-service-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.government-service-guide.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.service.guide","name":"government-service-guide","display_name":"government-service-guide","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -8710,16 +9630,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000052, '136cd0d7-2972-49e9-8307-716ddf6f074a', 100001, 0, 1,
   'agent.government.policy.interpretation', 'government-policy-interpretation', 'government-policy-interpretation', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.policy.interpretation","name":"government-policy-interpretation","display_name":"government-policy-interpretation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["government","policy","interpretation","compliance","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.policy.interpretation","name":"government-policy-interpretation","display_name":"government-policy-interpretation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["government","conversation","policy","interpretation","compliance","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -8730,8 +9653,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000052, 100001, 0, 'agent.government.policy.interpretation',
-  'version.government-policy-interpretation.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.policy.interpretation","name":"government-policy-interpretation","display_name":"government-policy-interpretation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.government-policy-interpretation.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.policy.interpretation","name":"government-policy-interpretation","display_name":"government-policy-interpretation","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -8888,16 +9812,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000053, '5379f1c2-fd8b-4c19-8a7f-1162c7ef81d8', 100001, 0, 1,
   'agent.government.document', 'government-document', 'government-document', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.document","name":"government-document","display_name":"government-document","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["government","official-document","writing","review","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.document","name":"government-document","display_name":"government-document","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["government","conversation","official-document","writing","review","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -8908,8 +9835,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000053, 100001, 0, 'agent.government.document',
-  'version.government-document.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.document","name":"government-document","display_name":"government-document","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.government-document.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.document","name":"government-document","display_name":"government-document","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -9066,16 +9994,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000054, 'ca16b56b-337a-49f5-856f-cf1d3ed426e1', 100001, 0, 1,
   'agent.government.digital', 'government-digital', 'government-digital', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.digital","name":"government-digital","display_name":"government-digital","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["government","digital-government","solution","data-governance","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.digital","name":"government-digital","display_name":"government-digital","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["government","conversation","digital-government","solution","data-governance","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -9086,8 +10017,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000054, 100001, 0, 'agent.government.digital',
-  'version.government-digital.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.digital","name":"government-digital","display_name":"government-digital","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.government-digital.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.government.digital","name":"government-digital","display_name":"government-digital","description":"Official SDKWork managed agent","version":"1.3.0","domain":"government","agent_kind":"conversation","category_code":"government","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -9244,16 +10176,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000055, '0d3ffb2a-3fd7-428a-8938-4aa3bc5c22b3', 100001, 0, 1,
   'agent.hotel.operations', 'hotel-operations', 'hotel-operations', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.operations","name":"hotel-operations","display_name":"hotel-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["hospitality","hotel","operations","guest-experience","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.operations","name":"hotel-operations","display_name":"hotel-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["hospitality","conversation","hotel","operations","guest-experience","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -9264,8 +10199,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000055, 100001, 0, 'agent.hotel.operations',
-  'version.hotel-operations.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.operations","name":"hotel-operations","display_name":"hotel-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.hotel-operations.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.operations","name":"hotel-operations","display_name":"hotel-operations","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -9422,16 +10358,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000056, '49f2df90-1a19-4fbf-80bf-8055eda0056b', 100001, 0, 1,
   'agent.hotel.revenue', 'hotel-revenue', 'hotel-revenue', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.revenue","name":"hotel-revenue","display_name":"hotel-revenue","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["hospitality","hotel","revenue-management","pricing","forecast","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.revenue","name":"hotel-revenue","display_name":"hotel-revenue","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["hospitality","conversation","hotel","revenue-management","pricing","forecast","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -9442,8 +10381,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000056, 100001, 0, 'agent.hotel.revenue',
-  'version.hotel-revenue.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.revenue","name":"hotel-revenue","display_name":"hotel-revenue","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.hotel-revenue.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.revenue","name":"hotel-revenue","display_name":"hotel-revenue","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -9600,16 +10540,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000057, '14f783ed-a4b4-43e6-8b1b-712d5397deb1', 100001, 0, 1,
   'agent.hotel.guest.service', 'hotel-guest-service', 'hotel-guest-service', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.guest.service","name":"hotel-guest-service","display_name":"hotel-guest-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["hospitality","hotel","guest-service","front-desk","complaint","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.guest.service","name":"hotel-guest-service","display_name":"hotel-guest-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["hospitality","conversation","hotel","guest-service","front-desk","complaint","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -9620,8 +10563,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000057, 100001, 0, 'agent.hotel.guest.service',
-  'version.hotel-guest-service.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.guest.service","name":"hotel-guest-service","display_name":"hotel-guest-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.hotel-guest-service.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.guest.service","name":"hotel-guest-service","display_name":"hotel-guest-service","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -9778,16 +10722,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000058, '9ba1c7e7-7514-408a-89d9-5af154e5a13e', 100001, 0, 1,
   'agent.hotel.marketing', 'hotel-marketing', 'hotel-marketing', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.marketing","name":"hotel-marketing","display_name":"hotel-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["hospitality","hotel","marketing","ota","distribution","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.marketing","name":"hotel-marketing","display_name":"hotel-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["hospitality","conversation","hotel","marketing","ota","distribution","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -9798,8 +10745,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000058, 100001, 0, 'agent.hotel.marketing',
-  'version.hotel-marketing.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.marketing","name":"hotel-marketing","display_name":"hotel-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.hotel-marketing.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hotel.marketing","name":"hotel-marketing","display_name":"hotel-marketing","description":"Official SDKWork managed agent","version":"1.3.0","domain":"hospitality","agent_kind":"conversation","category_code":"hospitality","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -9956,16 +10904,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000059, '6abc61a9-9b41-4526-8367-3cf05c210632', 100001, 0, 1,
   'agent.writing.novelist', 'writing-novelist', 'writing-novelist', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.novelist","name":"writing-novelist","display_name":"writing-novelist","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["writing","novel","fiction","story","serial","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.novelist","name":"writing-novelist","display_name":"writing-novelist","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["writing","conversation","novel","fiction","story","serial","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -9976,8 +10927,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000059, 100001, 0, 'agent.writing.novelist',
-  'version.writing-novelist.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.novelist","name":"writing-novelist","display_name":"writing-novelist","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.writing-novelist.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.novelist","name":"writing-novelist","display_name":"writing-novelist","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -10110,16 +11062,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000060, '07671c2b-ed19-4b01-8003-4d73ae8a3a69', 100001, 0, 1,
   'agent.writing.book.author', 'writing-book-author', 'writing-book-author', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.book.author","name":"writing-book-author","display_name":"writing-book-author","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["writing","book","nonfiction","outline","publishing","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.book.author","name":"writing-book-author","display_name":"writing-book-author","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["writing","conversation","book","nonfiction","outline","publishing","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -10130,8 +11085,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000060, 100001, 0, 'agent.writing.book.author',
-  'version.writing-book-author.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.book.author","name":"writing-book-author","display_name":"writing-book-author","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.writing-book-author.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.book.author","name":"writing-book-author","display_name":"writing-book-author","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -10288,16 +11244,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000061, '96c19f3e-168c-4510-8171-2f1d10ca6239', 100001, 0, 1,
   'agent.writing.news.reporter', 'writing-news-reporter', 'writing-news-reporter', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.news.reporter","name":"writing-news-reporter","display_name":"writing-news-reporter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["writing","news","reporting","interview","fact-check","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.news.reporter","name":"writing-news-reporter","display_name":"writing-news-reporter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["writing","conversation","news","reporting","interview","fact-check","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -10308,8 +11267,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000061, 100001, 0, 'agent.writing.news.reporter',
-  'version.writing-news-reporter.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.news.reporter","name":"writing-news-reporter","display_name":"writing-news-reporter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.writing-news-reporter.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.news.reporter","name":"writing-news-reporter","display_name":"writing-news-reporter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -10442,16 +11402,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000062, 'f3b12307-6f69-45d6-8bf4-71c5d095c2ec', 100001, 0, 1,
   'agent.writing.article.writer', 'writing-article-writer', 'writing-article-writer', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.article.writer","name":"writing-article-writer","display_name":"writing-article-writer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["writing","article","blog","wechat","content","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.article.writer","name":"writing-article-writer","display_name":"writing-article-writer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["writing","conversation","article","blog","wechat","content","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -10462,8 +11425,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000062, 100001, 0, 'agent.writing.article.writer',
-  'version.writing-article-writer.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.article.writer","name":"writing-article-writer","display_name":"writing-article-writer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.writing-article-writer.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.article.writer","name":"writing-article-writer","display_name":"writing-article-writer","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -10620,16 +11584,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000063, '5ab4480f-8279-49c7-84a9-f74fa7cc9274', 100001, 0, 1,
   'agent.writing.copywriter', 'writing-copywriter', 'writing-copywriter', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.copywriter","name":"writing-copywriter","display_name":"writing-copywriter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["writing","copywriting","marketing","headline","conversion","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.copywriter","name":"writing-copywriter","display_name":"writing-copywriter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["writing","conversation","copywriting","marketing","headline","conversion","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -10640,8 +11607,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000063, 100001, 0, 'agent.writing.copywriter',
-  'version.writing-copywriter.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.copywriter","name":"writing-copywriter","display_name":"writing-copywriter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.writing-copywriter.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.copywriter","name":"writing-copywriter","display_name":"writing-copywriter","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -10774,16 +11742,19 @@ INSERT INTO ai_agent (
 ) VALUES (
   366300000000000064, 'fb7ba58c-5121-4df7-8665-c296d5890dbb', 100001, 0, 1,
   'agent.writing.editor', 'writing-editor', 'writing-editor', NULL,
-  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.editor","name":"writing-editor","display_name":"writing-editor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, NULL,
-  NULL, 'sdkwork-native', 1, 3, '["writing","editing","revision","proofreading","style","official","commercial"]'::jsonb, '[]'::jsonb,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.editor","name":"writing-editor","display_name":"writing-editor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, '1.0.0', NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 1, 3, '["writing","conversation","editing","revision","proofreading","style","official","commercial"]'::jsonb, '[]'::jsonb,
   TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
 )
 ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
   code = EXCLUDED.code,
   manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
   implementation_type = EXCLUDED.implementation_type,
   status = EXCLUDED.status,
   visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
   allowed_role_codes = EXCLUDED.allowed_role_codes,
   updated_at = EXCLUDED.updated_at
 ;
@@ -10794,8 +11765,9 @@ INSERT INTO ai_agent_version (
   description, created_by, created_at, activated_at
 ) VALUES (
   366500000000000064, 100001, 0, 'agent.writing.editor',
-  'version.writing-editor.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.editor","name":"writing-editor","display_name":"writing-editor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, NULL, NULL,
-  'sdkwork-native', NULL, 1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+  'version.writing-editor.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.writing.editor","name":"writing-editor","display_name":"writing-editor","description":"Official SDKWork managed agent","version":"1.3.0","domain":"writing","agent_kind":"conversation","category_code":"writing","runtime":{"family":"rig","engine":"rig","implementation_kind":"typed-local-provider","implementation_type":"rig-rust","provider_id":"provider.rig.rust","capabilities":["model.chat","tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active"}'::jsonb, NULL, 'provider.rig.rust',
+  'typed-local-provider', 'rig-rust', 'Official SDKWork managed agent',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
 )
 ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
@@ -10918,6 +11890,272 @@ ON CONFLICT (tenant_id, agent_id, slot_id) DO UPDATE SET
   status = EXCLUDED.status,
   updated_at = EXCLUDED.updated_at,
   deleted_at = NULL
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000001, '597a9edc-b922-4620-8025-a3c30646c066', 100001, 0, 1,
+  'agent.openclaw', 'openclaw', 'openclaw', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.openclaw","name":"openclaw","display_name":"openclaw","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"openclaw","protocol":"harness.agent.runtime.v1","implementation_kind":"process-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.openclaw","version":"1.0.0","entrypoint":"openclaw/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'process-adapter', 'custom', 1, 3, '["local-execution","local","harness","openclaw","automation","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000001, 100001, 0, 'agent.openclaw',
+  'version.openclaw.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.openclaw","name":"openclaw","display_name":"openclaw","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"openclaw","protocol":"harness.agent.runtime.v1","implementation_kind":"process-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.openclaw","version":"1.0.0","entrypoint":"openclaw/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'process-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000002, 'e31a9c42-0e94-40bc-801a-a1c49d6535b6', 100001, 0, 1,
+  'agent.workbuddy', 'workbuddy', 'workbuddy', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.workbuddy","name":"workbuddy","display_name":"workbuddy","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"workbuddy","protocol":"harness.agent.runtime.v1","implementation_kind":"process-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.workbuddy","version":"1.0.0","entrypoint":"workbuddy/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'process-adapter', 'custom', 1, 3, '["local-execution","local","harness","workbuddy","desktop","office","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000002, 100001, 0, 'agent.workbuddy',
+  'version.workbuddy.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.workbuddy","name":"workbuddy","display_name":"workbuddy","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"workbuddy","protocol":"harness.agent.runtime.v1","implementation_kind":"process-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.workbuddy","version":"1.0.0","entrypoint":"workbuddy/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'process-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000003, '77ba10a6-2c4a-4ec4-8b1e-e3f803c17613', 100001, 0, 1,
+  'agent.codex.cli', 'codex-cli', 'codex-cli', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.codex.cli","name":"codex-cli","display_name":"codex-cli","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"codex","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.codex-cli","version":"1.0.0","entrypoint":"codex/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 1, 3, '["local-execution","local","harness","codex","cli","coding","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000003, 100001, 0, 'agent.codex.cli',
+  'version.codex-cli.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.codex.cli","name":"codex-cli","display_name":"codex-cli","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"codex","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.codex-cli","version":"1.0.0","entrypoint":"codex/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000004, 'a9ee93f1-df10-48a2-8b91-d0d3b7b97a79', 100001, 0, 1,
+  'agent.claude.code', 'claude-code', 'claude-code', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.claude.code","name":"claude-code","display_name":"claude-code","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"claude-code","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.claude-code","version":"1.0.0","entrypoint":"claude-code/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 1, 3, '["local-execution","local","harness","claude-code","cli","coding","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000004, 100001, 0, 'agent.claude.code',
+  'version.claude-code.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.claude.code","name":"claude-code","display_name":"claude-code","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"claude-code","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.claude-code","version":"1.0.0","entrypoint":"claude-code/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000005, '1eab0fcf-bd40-451b-884c-6014fd412124', 100001, 0, 1,
+  'agent.gemini.cli', 'gemini-cli', 'gemini-cli', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.gemini.cli","name":"gemini-cli","display_name":"gemini-cli","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"gemini-cli","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.gemini-cli","version":"1.0.0","entrypoint":"gemini-cli/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 1, 3, '["local-execution","local","harness","gemini","cli","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000005, 100001, 0, 'agent.gemini.cli',
+  'version.gemini-cli.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.gemini.cli","name":"gemini-cli","display_name":"gemini-cli","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"gemini-cli","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.gemini-cli","version":"1.0.0","entrypoint":"gemini-cli/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000006, '9ffbe3a2-9f59-419f-8e1f-616bb0a33a47', 100001, 0, 1,
+  'agent.opencode', 'opencode', 'opencode', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.opencode","name":"opencode","display_name":"opencode","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"opencode","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.opencode","version":"1.0.0","entrypoint":"opencode/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 1, 3, '["local-execution","local","harness","opencode","cli","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000006, 100001, 0, 'agent.opencode',
+  'version.opencode.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.opencode","name":"opencode","display_name":"opencode","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"opencode","protocol":"harness.agent.runtime.v1","implementation_kind":"protocol-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.opencode","version":"1.0.0","entrypoint":"opencode/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'protocol-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
+;
+
+INSERT INTO ai_agent (
+  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,
+  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,
+  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,
+  created_at, updated_at, deleted_at, version
+) VALUES (
+  366600000000000007, 'c207a02d-f6d3-48d2-83fc-68deef6e2796', 100001, 0, 1,
+  'agent.hermes.agent', 'hermes-agent', 'hermes-agent', NULL,
+  '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hermes.agent","name":"hermes-agent","display_name":"hermes-agent","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"hermes","protocol":"harness.agent.runtime.v1","implementation_kind":"process-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.hermes-agent","version":"1.0.0","entrypoint":"hermes/manifest.json","installMode":"extract","checksum":null}}'::jsonb, '1.0.0', NULL, 'provider.harness.local',
+  'process-adapter', 'custom', 1, 3, '["local-execution","local","harness","hermes","autonomous","official","commercial"]'::jsonb, '[]'::jsonb,
+  TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00', NULL, 0
+)
+ON CONFLICT (tenant_id, agent_id) DO UPDATE SET
+  code = EXCLUDED.code,
+  manifest_schema_version = EXCLUDED.manifest_schema_version,
+  implementation_provider_id = EXCLUDED.implementation_provider_id,
+  implementation_kind = EXCLUDED.implementation_kind,
+  implementation_type = EXCLUDED.implementation_type,
+  status = EXCLUDED.status,
+  visibility = EXCLUDED.visibility,
+  tags_json = EXCLUDED.tags_json,
+  allowed_role_codes = EXCLUDED.allowed_role_codes,
+  updated_at = EXCLUDED.updated_at
+;
+
+INSERT INTO ai_agent_version (
+  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,
+  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,
+  description, created_by, created_at, activated_at
+) VALUES (
+  366700000000000007, 100001, 0, 'agent.hermes.agent',
+  'version.hermes-agent.1', 1, '{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.hermes.agent","name":"hermes-agent","display_name":"hermes-agent","description":"Official SDKWork managed agent","version":"1.3.0","domain":"local-execution","agent_kind":"local-execution","category_code":"local-execution","runtime":{"family":"harness","engine":"hermes","protocol":"harness.agent.runtime.v1","implementation_kind":"process-adapter","implementation_type":"custom","provider_id":"provider.harness.local","capabilities":["tool.invoke","shell.exec","file.read","file.write","process.manage","session.resume"]},"required_capabilities":["model.chat"],"optional_capabilities":["tool.invoke","knowledge.retrieve","memory.retrieve","session.resume"],"event_families":["agent.lifecycle"],"owner_name":"SDKWork","status":"active","distribution":{"kind":"archive","format":"zip","archiveRef":"archive.sdkwork.hermes-agent","version":"1.0.0","entrypoint":"hermes/manifest.json","installMode":"extract","checksum":null}}'::jsonb, NULL, 'provider.harness.local',
+  'process-adapter', 'custom', 'Official SDKWork local-execution agent package',
+  1, TIMESTAMPTZ '2026-11-03T00:00:00+08:00', TIMESTAMPTZ '2026-11-03T00:00:00+08:00'
+)
+ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING
 ;
 
 COMMIT;

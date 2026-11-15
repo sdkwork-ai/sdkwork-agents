@@ -19,14 +19,14 @@ BEGIN
     FROM ai_agent
     WHERE agent_id LIKE 'agent.%'
       AND agent_id <> 'agent.chat.default';
-    IF failures <> 64 THEN
-        RAISE EXCEPTION 'expected 64 catalog agents, found %', failures;
+    IF failures <> 71 THEN
+        RAISE EXCEPTION 'expected 71 catalog agents, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
     FROM ai_agent_version;
-    IF failures <> 64 THEN
-        RAISE EXCEPTION 'expected 64 agent versions, found %', failures;
+    IF failures <> 71 THEN
+        RAISE EXCEPTION 'expected 71 agent versions, found %', failures;
     END IF;
 
     SELECT count(*) INTO failures
@@ -39,6 +39,7 @@ BEGIN
     FROM ai_agent a
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND NOT EXISTS (
           SELECT 1 FROM ai_agent_composition_slot s
           WHERE s.tenant_id = a.tenant_id AND s.agent_id = a.agent_id
@@ -52,6 +53,7 @@ BEGIN
     FROM ai_agent a
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND NOT EXISTS (
           SELECT 1 FROM ai_agent_composition_slot s
           WHERE s.tenant_id = a.tenant_id AND s.agent_id = a.agent_id
@@ -65,6 +67,7 @@ BEGIN
     FROM ai_agent a
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND NOT EXISTS (
           SELECT 1 FROM ai_agent_composition_slot s
           WHERE s.tenant_id = a.tenant_id AND s.agent_id = a.agent_id
@@ -78,6 +81,7 @@ BEGIN
     FROM ai_agent a
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND NOT EXISTS (
           SELECT 1 FROM ai_agent_composition_slot s
           WHERE s.tenant_id = a.tenant_id AND s.agent_id = a.agent_id
@@ -95,6 +99,7 @@ BEGIN
       ON k.id = s.target_ref::bigint AND k.tenant_id = a.tenant_id
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND k.id IS NULL;
     IF failures <> 0 THEN
         RAISE EXCEPTION '% knowledge slots reference a missing kb_space', failures;
@@ -108,6 +113,7 @@ BEGIN
       ON m.id = replace(s.target_ref, 'space:', '')::bigint AND m.tenant_id = a.tenant_id
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND m.id IS NULL;
     IF failures <> 0 THEN
         RAISE EXCEPTION '% memory slots reference a missing ai_space', failures;
@@ -121,6 +127,7 @@ BEGIN
       ON m.server_key = s.target_ref AND m.tenant_id = a.tenant_id
     WHERE a.agent_id LIKE 'agent.%'
       AND a.agent_id <> 'agent.chat.default'
+      AND a.agent_kind = 'conversation'
       AND m.server_key IS NULL;
     IF failures <> 0 THEN
         RAISE EXCEPTION '% MCP slots reference a missing ai_mcp_server', failures;
@@ -138,6 +145,7 @@ BEGIN
     FROM ai_agent
     WHERE agent_id LIKE 'agent.%'
       AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'conversation'
       AND coalesce(default_code_task_intent_json->'constraints', '[]'::jsonb)::text NOT LIKE '%knowledge.base.%';
     IF failures <> 0 THEN
         RAISE EXCEPTION '% agents lack a management-profile knowledge reference', failures;
@@ -234,6 +242,7 @@ BEGIN
     FROM ai_agent
     WHERE agent_id LIKE 'agent.%'
       AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'conversation'
       AND length(default_code_task_intent_json->>'prompt') < 900;
     IF failures <> 0 THEN
         RAISE EXCEPTION '% agents have a prompt shorter than 900 characters', failures;
@@ -256,10 +265,120 @@ BEGIN
       AND agent_id <> 'agent.chat.default'
       AND manifest_json->>'domain' NOT IN (
           'engineering', 'education', 'healthcare', 'legal', 'travel', 'ecommerce', 'realestate',
-          'restaurant', 'enterprise', 'government', 'hospitality', 'writing'
+          'restaurant', 'enterprise', 'government', 'hospitality', 'writing', 'local-execution'
       );
     IF failures <> 0 THEN
         RAISE EXCEPTION '% agents use an unknown category', failures;
+    END IF;
+
+    -- Delivery shapes: the two kinds are initialized, hosted agents default to
+    -- the Rig implementation, and local agents carry a Harness runtime plus a
+    -- zip archive distribution.
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'conversation';
+    IF failures <> 64 THEN
+        RAISE EXCEPTION 'expected 64 conversation agents, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'local-execution';
+    IF failures <> 7 THEN
+        RAISE EXCEPTION 'expected 7 local-execution agents, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'conversation'
+      AND (runtime_family <> 'rig'
+           OR implementation_type <> 'rig-rust'
+           OR implementation_kind <> 'typed-local-provider'
+           OR implementation_provider_id <> 'provider.rig.rust');
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% conversation agents are not bound to the default Rig runtime', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'local-execution'
+      AND (runtime_family <> 'harness'
+           OR implementation_type <> 'custom'
+           OR implementation_provider_id <> 'provider.harness.local'
+           OR manifest_json #>> '{runtime,protocol}' <> 'harness.agent.runtime.v1');
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% local agents are not bound to the Harness runtime', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'local-execution'
+      AND (
+          distribution_kind <> 'archive'
+          OR distribution_json IS NULL
+          OR distribution_json->>'format' <> 'zip'
+          OR distribution_json->>'installMode' <> 'extract'
+          OR distribution_json->>'entrypoint' IS NULL
+          OR distribution_json->>'archiveRef' NOT LIKE 'archive.sdkwork.%'
+      );
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% local agents lack a valid zip archive distribution', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE agent_id LIKE 'agent.%'
+      AND agent_id <> 'agent.chat.default'
+      AND agent_kind = 'conversation'
+      AND distribution_kind <> 'manifest';
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% conversation agents declare an archive distribution', failures;
+    END IF;
+
+    -- Professional taxonomy: 9 domains, 25 specialties, every agent on a live
+    -- leaf category, and no agent pointing at a parent node.
+    SELECT count(*) INTO failures
+    FROM ai_agent_category
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL;
+    IF failures <> 34 THEN
+        RAISE EXCEPTION 'expected 34 agent categories, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent_category
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL AND parent_id IS NULL;
+    IF failures <> 9 THEN
+        RAISE EXCEPTION 'expected 9 agent category domains, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent a
+    WHERE a.agent_id LIKE 'agent.%'
+      AND a.agent_id <> 'agent.chat.default'
+      AND (
+          a.category_code IS NULL
+          OR NOT EXISTS (
+              SELECT 1 FROM ai_agent_category c
+              WHERE c.tenant_id = a.tenant_id
+                AND c.organization_id = a.organization_id
+                AND c.category_code = a.category_code
+                AND c.parent_id IS NOT NULL
+                AND c.status = 1
+                AND c.deleted_at IS NULL
+          )
+      );
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% agents reference a missing or non-leaf agent category', failures;
     END IF;
 
     SELECT count(*) INTO failures
@@ -290,10 +409,19 @@ BEGIN
     FROM ai_agent_composition_slot
     WHERE slot_kind = 'mcp'
       AND target_ref = 'mcp.sdkwork.knowledgebase-notes'
-      AND policy_json->>'toolPolicy' = 'read-write'
-      AND jsonb_array_length(policy_json->'tools') >= 5;
+      AND policy_json->>'toolPolicy' = 'read-write';
     IF failures <> 4 THEN
         RAISE EXCEPTION 'expected 4 read-write knowledgebase-notes slots, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent_composition_slot
+    WHERE slot_kind = 'mcp'
+      AND target_ref = 'mcp.sdkwork.knowledgebase-notes'
+      AND policy_json->>'toolPolicy' = 'read-write'
+      AND jsonb_array_length(policy_json->'tools') < 4;
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% knowledgebase-notes slots expose fewer than four tools', failures;
     END IF;
 
     RAISE NOTICE 'agent catalog verification passed';
@@ -301,6 +429,11 @@ END $$;
 
 SELECT
     (SELECT count(*) FROM ai_agent WHERE agent_id LIKE 'agent.%' AND agent_id <> 'agent.chat.default') AS agents,
+    (SELECT count(*) FROM ai_agent WHERE agent_id LIKE 'agent.%' AND agent_id <> 'agent.chat.default' AND agent_kind = 'conversation') AS conversation_agents,
+    (SELECT count(*) FROM ai_agent WHERE agent_id LIKE 'agent.%' AND agent_id <> 'agent.chat.default' AND agent_kind = 'local-execution') AS local_execution_agents,
+    (SELECT count(*) FROM ai_agent WHERE agent_id LIKE 'agent.%' AND agent_id <> 'agent.chat.default' AND runtime_family = 'rig') AS rig_agents,
+    (SELECT count(*) FROM ai_agent WHERE agent_id LIKE 'agent.%' AND agent_id <> 'agent.chat.default' AND runtime_family = 'harness') AS harness_agents,
+    (SELECT count(*) FROM ai_agent_category WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL) AS agent_categories,
     (SELECT count(*) FROM ai_agent_version) AS versions,
     (SELECT count(*) FROM ai_agent_composition_slot) AS slots,
     (SELECT count(*) FROM kb_space WHERE id BETWEEN 533000000000000001 AND 533000000000000064) AS knowledge_spaces,
