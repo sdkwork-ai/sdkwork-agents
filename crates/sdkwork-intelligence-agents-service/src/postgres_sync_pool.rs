@@ -172,7 +172,7 @@ impl BlockingPostgresPool {
     where
         F: Future<Output = Result<T, sqlx::Error>>,
     {
-        self.runtime.block_on(future)
+        block_on_runtime(self.runtime.as_ref(), future)
     }
 
     pub fn run_kernel<F, T>(&self, future: F) -> Result<T, sdkwork_agent_kernel::KernelError>
@@ -223,14 +223,32 @@ impl BlockingPostgresPool {
     }
 }
 
+/// Drives `future` on the pool's private runtime from any calling context.
+///
+/// The pool's connections are registered with the private runtime's reactor,
+/// so the future must be polled on that runtime; polling it on the caller's
+/// reactor (for example through `Handle::block_on`) stalls the socket
+/// readiness that only the private driver can deliver.
+///
+/// * Outside an async runtime (startup, worker threads, CLI) the private
+///   runtime is entered directly.
+/// * Inside an async host the calling thread is already driving another
+///   runtime, so entering the private one would panic with
+///   `Cannot start a runtime from within a runtime`. `block_in_place` hands the
+///   current worker core to a sibling thread and clears the entered-runtime
+///   marker for the whole closure, which makes the private runtime enterable
+///   here. The embedding runtime must be multi-threaded (`#[tokio::main]`,
+///   `Runtime::new()`); blocking a `current_thread` runtime is impossible, and
+///   tokio reports that with its own panic.
 fn block_on_runtime<F, T>(runtime: &Runtime, future: F) -> T
 where
     F: Future<Output = T>,
 {
-    match tokio::runtime::Handle::try_current() {
-        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(future)),
-        Err(_) => runtime.block_on(future),
+    if tokio::runtime::Handle::try_current().is_err() {
+        return runtime.block_on(future);
     }
+
+    tokio::task::block_in_place(|| runtime.block_on(future))
 }
 
 impl Drop for BlockingPostgresPool {
@@ -293,15 +311,54 @@ macro_rules! pg_query_optional {
 
 #[cfg(test)]
 mod tests {
-    use super::{block_on_runtime, map_sqlx_error};
+    use super::{block_on_runtime, map_sqlx_error, BlockingPostgresPool};
     use sdkwork_agent_kernel::KernelErrorKind;
+    use sdkwork_database_config::{DatabaseConfig, DatabaseEngine};
+    use sdkwork_database_sqlx::{DatabasePool, PoolContext};
+    use std::sync::Arc;
     use tokio::runtime::Runtime;
+
+    /// A pool whose connection is never opened. The assertions below exercise
+    /// the runtime bridging only, so no PostgreSQL server is required.
+    fn lazy_test_pool() -> BlockingPostgresPool {
+        let config = DatabaseConfig {
+            engine: DatabaseEngine::Postgres,
+            url: "postgres://sdkwork:sdkwork@127.0.0.1:1/sdkwork_agents_test".to_owned(),
+            ..DatabaseConfig::default()
+        };
+        let pg_pool = sqlx::postgres::PgPoolOptions::new()
+            .connect_lazy(&config.url)
+            .expect("lazy postgres pool builds");
+        BlockingPostgresPool::from_database_pool(
+            DatabasePool::Postgres(pg_pool, PoolContext { config }),
+            Arc::new(Runtime::new().expect("private runtime builds")),
+        )
+        .expect("blocking pool wraps a postgres database pool")
+    }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn blocking_adapter_can_drive_a_future_inside_an_async_host() {
         let runtime = Runtime::new().expect("private runtime builds");
         assert_eq!(block_on_runtime(&runtime, async { 42 }), 42);
         tokio::task::block_in_place(|| drop(runtime));
+    }
+
+    /// Regression: `run`/`run_kernel` (and therefore every `pg_query!`,
+    /// `pg_query_optional!` and `pg_execute!` call site) used to enter the
+    /// private runtime directly, which panics on the request path with
+    /// `Cannot start a runtime from within a runtime` and surfaces as a 503
+    /// "embedded dependency returned a server error" envelope.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn run_drives_the_private_runtime_from_inside_an_async_host() {
+        let pool = lazy_test_pool();
+        let value = pool.run(async { Ok::<u32, sqlx::Error>(7) });
+        assert_eq!(value.expect("blocking run completes"), 7);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn block_on_drives_the_private_runtime_from_inside_an_async_host() {
+        let pool = lazy_test_pool();
+        assert_eq!(pool.block_on(async { 13 }), 13);
     }
 
     #[test]
