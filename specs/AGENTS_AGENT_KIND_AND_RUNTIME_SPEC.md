@@ -96,7 +96,9 @@ A local-execution agent manifest carries `distribution`:
   console computes SHA-256 in the browser and replaces the descriptor with the
   Drive locator (`driveUri`, `fileName`, `sizeBytes`, `checksum`).
 - Uploaded archives use the declared upload purpose `agent.package_archive`
-  (`agent-package`), retention `long_term`, and a maximum size of 512 MiB.
+  (`agent-package`), Drive upload profile `archive`, retention `long_term`, and a
+  maximum size of 512 MiB. The renamed archive is stored in Drive; the agent
+  manifest keeps only the locator, integrity evidence, and archive identity.
 
 ## 5. Professional Category Taxonomy
 
@@ -132,15 +134,20 @@ write path:
 | Column | Source | Default |
 | --- | --- | --- |
 | `agent_kind` | `manifest.agent_kind` | `conversation` |
-| `runtime_family` | `manifest.runtime.family` | `rig` |
+| `runtime_family` | `manifest.runtime.family`, else `rig` when `implementation_type = rig-rust` | `NULL` |
 | `category_code` | `manifest.category_code` | `NULL` |
 | `distribution_kind` | `manifest.distribution.kind` | `manifest` |
 | `distribution_json` | `manifest.distribution` | `NULL` |
 
 Writers must not insert or update these columns directly; PostgreSQL rejects
 that. Update the manifest and the projection follows in the same statement.
+A manifest without a runtime descriptor is never labeled `rig` unless its
+implementation type is `rig-rust`.
 
-Migration: `database/migrations/postgres/0006_agent_kind_runtime_and_category`.
+Migration: `database/migrations/postgres/0006_agent_kind_runtime_and_category`,
+the `0007_agent_runtime_family_from_implementation` correction, and
+`0008_agent_kind_distribution_constraints` (local agents require a bounded zip
+archive and the harness protocol; conversation agents reject an archive).
 
 ## 7. Catalog Initialization
 

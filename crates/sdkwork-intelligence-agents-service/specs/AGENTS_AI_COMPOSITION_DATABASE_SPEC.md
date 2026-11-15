@@ -1,6 +1,6 @@
 # SDKWork Agents Database Specification
 
-- Version: `7.5.0`
+- Version: `7.7.0`
 - Status: active
 - Domain: `intelligence`
 - Capability: `agents`
@@ -338,7 +338,7 @@ partial indexes declared by the baseline.
 
 ## 11. Schema Lifecycle
 
-PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.5.0` authority and
+PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.7.0` authority and
 contains the complete 32-table model. The application is pre-launch, so every
 development, test, staging and release-candidate database must be created from
 that baseline. Importing or reinterpreting databases created from an earlier

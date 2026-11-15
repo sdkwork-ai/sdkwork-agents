@@ -2,7 +2,7 @@
 
 Owner: `agents-platform`
 
-Canonical contract: `database/contract/schema.yaml` (`7.5.0`)
+Canonical contract: `database/contract/schema.yaml` (`7.7.0`)
 
 Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
 
@@ -32,7 +32,7 @@ remain owned by their respective modules.
 
 ## Engine And Lifecycle
 
-PostgreSQL is the only managed-store engine. The `7.5.0` greenfield baseline
+PostgreSQL is the only managed-store engine. The `7.7.0` greenfield baseline
 contains the complete 33-table Session execution, Task scheduling, and
 execution-placement model. It is the only database state supported before the
 first release. `baseline-plus-migrations` remains the lifecycle strategy. New
@@ -66,17 +66,17 @@ are indexed with GIN for role-membership filtering.
 
 This module is in **initialization state** for greenfield deployments:
 
-1. **Baseline** 鈥?`database/ddl/baseline/{engine}/0001_agents_baseline.sql` contains the full DDL snapshot.
-2. **Migrations** 鈥?`database/migrations/{engine}/` carries the ordered
+1. **Baseline** 闁?`database/ddl/baseline/{engine}/0001_agents_baseline.sql` contains the full DDL snapshot.
+2. **Migrations** 闁?`database/migrations/{engine}/` carries the ordered
    catch-up migrations that align previously initialized schemas with the
    folded baseline. Fresh baseline installs no-op them via `IF NOT EXISTS`.
-3. **Seeds** 鈥?`database/seeds/common/002_agent_catalog.sql` provisions the
+3. **Seeds** 闁?`database/seeds/common/002_agent_catalog.sql` provisions the
    official 58-agent catalog identity and references, while
    `database/seeds/locales/{zh-CN,en-US}/` carry the localized display,
    management profile, and prompt payload. The catalog also provisions one
    knowledge space and one memory space per agent through the owning modules.
    See [Official agent catalog](../docs/guides/operator/agent-catalog.md).
-4. **Drift** 鈥?run `pnpm db:drift:check` before release.
+4. **Drift** 闁?run `pnpm db:drift:check` before release.
 
 ## Commands
 

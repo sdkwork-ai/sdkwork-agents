@@ -1,5 +1,5 @@
 -- SDKWork Agents PostgreSQL greenfield baseline.
--- Contract: database/contract/schema.yaml (7.5.0)
+-- Contract: database/contract/schema.yaml (7.7.0)
 -- PostgreSQL is the only managed-store authority for this contract.
 -- Sibling modules own memory, knowledge, skills, prompts, MCP, model catalogs,
 -- runtime-location details, and Drive bytes. Agents stores stable references only.
@@ -67,7 +67,10 @@ CREATE TABLE IF NOT EXISTS ai_agent (
         ) STORED,
     runtime_family VARCHAR(64)
         GENERATED ALWAYS AS (
-            COALESCE(NULLIF(BTRIM(manifest_json #>> '{runtime,family}'), ''), 'rig')
+            COALESCE(
+                NULLIF(BTRIM(manifest_json #>> '{runtime,family}'), ''),
+                CASE WHEN implementation_type = 'rig-rust' THEN 'rig' ELSE NULL END
+            )
         ) STORED,
     category_code VARCHAR(128)
         GENERATED ALWAYS AS (
@@ -123,6 +126,29 @@ CREATE TABLE IF NOT EXISTS ai_agent (
     CONSTRAINT ck_ai_agent_distribution_kind CHECK (distribution_kind IN ('manifest', 'archive')),
     CONSTRAINT ck_ai_agent_distribution_json CHECK (
         distribution_json IS NULL OR jsonb_typeof(distribution_json) = 'object'
+    ),
+    CONSTRAINT ck_ai_agent_kind_distribution CHECK (
+        (agent_kind = 'local-execution' AND distribution_kind = 'archive')
+        OR (agent_kind = 'conversation' AND distribution_kind = 'manifest')
+    ),
+    CONSTRAINT ck_ai_agent_archive_distribution CHECK (
+        distribution_kind <> 'archive'
+        OR (
+            distribution_json->>'format' = 'zip'
+            AND NULLIF(BTRIM(distribution_json->>'entrypoint'), '') IS NOT NULL
+            AND (
+                NULLIF(BTRIM(distribution_json->>'archiveRef'), '') IS NOT NULL
+                OR NULLIF(BTRIM(distribution_json->>'driveUri'), '') IS NOT NULL
+            )
+            AND octet_length(distribution_json::text) <= 16384
+        )
+    ),
+    CONSTRAINT ck_ai_agent_local_harness_runtime CHECK (
+        agent_kind <> 'local-execution'
+        OR (
+            runtime_family = 'harness'
+            AND manifest_json #>> '{runtime,protocol}' = 'harness.agent.runtime.v1'
+        )
     )
 );
 
@@ -1991,7 +2017,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_outbox_event_retention
 -- Session activity materialization
 -- ---------------------------------------------------------------------------
 -- `ai_agent_session.activity_at` is the materialized recency key for the
--- session-activity feed (DATABASE_SPEC §20.5 keyset ordering). The column is
+-- session-activity feed (DATABASE_SPEC 鎼?0.5 keyset ordering). The column is
 -- maintained by triggers so every child write (Turn, Interaction, runtime
 -- binding, user state) atomically refreshes the owning Session in the same
 -- transaction as the child write; the feed query then orders and keysets on
@@ -2269,7 +2295,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_category_tenant_org_parent
 
 -- Foreign-key lookup indexes: RESTRICT parent deletes and tenant-scoped child
 -- lookups otherwise scan these child tables. Folded into the baseline per the
--- pre-launch baseline-plus-fold discipline (DATABASE_SPEC §schema lifecycle).
+-- pre-launch baseline-plus-fold discipline (DATABASE_SPEC 鎼俿chema lifecycle).
 CREATE INDEX IF NOT EXISTS idx_ai_agent_audit_event_agent_internal
     ON ai_agent_audit_event (agent_internal_id, id);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_task_run_session

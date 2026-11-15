@@ -305,6 +305,33 @@ BEGIN
         RAISE EXCEPTION '% conversation agents are not bound to the default Rig runtime', failures;
     END IF;
 
+    -- The runtime projection is honest: a manifest without a runtime descriptor
+    -- is not labeled rig unless its implementation type is rig-rust.
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE runtime_family = 'rig'
+      AND implementation_type <> 'rig-rust';
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% non-Rig agents are labeled with the rig runtime family', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE implementation_type = 'rig-rust'
+      AND runtime_family <> 'rig';
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% Rig agents are missing their runtime family', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_agent
+    WHERE manifest_json #>> '{runtime,family}' IS NULL
+      AND implementation_type <> 'rig-rust'
+      AND runtime_family IS NOT NULL;
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% agents expose a runtime family with no declared runtime', failures;
+    END IF;
+
     SELECT count(*) INTO failures
     FROM ai_agent
     WHERE agent_id LIKE 'agent.%'

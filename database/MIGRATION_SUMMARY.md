@@ -6,11 +6,11 @@ Updated: 2026-10-03
 
 ## Current Contract
 
-- Contract version: `7.5.0`
+- Contract version: `7.7.0`
 - Managed engine: PostgreSQL
 - Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
 - Lifecycle strategy: `baseline-plus-migrations`
-- Development migrations: catch-up set `0001`..`0006` aligning
+- Development migrations: catch-up set `0001`..`0008` aligning
   previously initialized shared development schemas with the folded baseline
 - Active tables: 33
 
@@ -22,7 +22,8 @@ folded to the complete schema; the restored catch-up migrations
 standardization, `0003` execution host registry and session execution
 placement, `0004` agent role assignment, `0005` managed agent category
 catalog, `0006` manifest-derived agent kind/runtime/category/distribution
-projection columns) re-align databases that were
+projection columns, `0007` honest runtime-family projection, `0008` delivery
+invariant constraints) re-align databases that were
 initialized from an older baseline and no-op on fresh baseline installs via
 `IF NOT EXISTS`. There is
 no dual-write path, derived read store, legacy Session table, or runtime
