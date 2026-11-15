@@ -13,7 +13,9 @@ professional category taxonomy.
 - `AGENT_CATEGORY_TREE` — nine professional domains and twenty-five assignable
   specialties. Agents reference a leaf code through `categoryCode`.
 - `MCP_SERVERS` — the 18 shared MCP catalog entries referenced by agents.
-- `MCP_CATEGORIES` — the 12 industry MCP categories used by the catalog UI.
+- `MCP_CATEGORIES` — the 16 tool-domain categories used by the catalog UI. Every
+  MCP server references a defined category; research, analysis, productivity, and
+  language complete the taxonomy.
   Each server also gets a deterministic draft connector; activation adds the
   endpoint and credentials without changing the catalog seed.
 - `COMMON_GUARDRAILS_*` — cross-domain safety invariants appended to every prompt.

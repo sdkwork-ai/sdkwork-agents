@@ -1,7 +1,7 @@
 # Official Agent Catalog
 
 - Status: active
-- Catalog version: `1.4.0`
+- Catalog version: `1.5.0`
 - Owner: `agents-platform`
 - Source of truth: [`scripts/agent-catalog/catalog.mjs`](../../../scripts/agent-catalog/catalog.mjs)
 - Generator: [`scripts/generate-agent-catalog-seeds.mjs`](../../../scripts/generate-agent-catalog-seeds.mjs)
@@ -209,7 +209,9 @@ Ready after seeding:
 - every agent has a complete Chinese management profile and system prompt;
 - every agent has version history and stable composition references;
 - knowledge spaces and memory spaces exist, are active, and are tenant-scoped;
-- 18 MCP server entries, 12 industry categories, and 18 draft connectors exist.
+- 18 MCP server entries, 16 tool-domain categories, and 18 draft connectors exist.
+  Every server category is a defined category; research, analysis, productivity,
+  and language complete the tool-domain taxonomy used by the catalog.
   Each server points at its latest draft connector; no connector has an endpoint
   or credential until an operator activates it.
 - the six writing agents declare their intended tool descriptors on the

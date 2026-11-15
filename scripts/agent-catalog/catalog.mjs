@@ -14,7 +14,7 @@
  * generator, so reseeding never reallocates identity.
  */
 
-export const CATALOG_VERSION = "1.4.0";
+export const CATALOG_VERSION = "1.5.0";
 export const CATALOG_OWNER = "SDKWork";
 export const TENANT_ID = 100001;
 export const ORGANIZATION_ID = 0;
@@ -222,19 +222,33 @@ export const MCP_SERVERS = [
   },
 ];
 
+/**
+ * MCP tool-domain taxonomy.
+ *
+ * This is deliberately orthogonal to the agent practice taxonomy
+ * (`AGENT_CATEGORY_TREE`) and to the skills marketplace categories: it
+ * classifies the *tool surface* a server exposes, not the profession an agent
+ * serves or the commercial package a skill ships in. Every `MCP_SERVERS[].category`
+ * must reference a code defined here; the catalog verifier fails closed on an
+ * undefined code so the admin category picker never shows an ungrouped server.
+ */
 export const MCP_CATEGORIES = [
-  { code: "engineering", name: "Engineering", zhName: "工程技术", description: "Code, infrastructure, and engineering delivery tools." },
-  { code: "education", name: "Education", zhName: "教育学习", description: "Curriculum, textbooks, exams, and learning resources." },
-  { code: "healthcare", name: "Healthcare", zhName: "医疗健康", description: "Clinical guidance, drug references, and medical evidence." },
-  { code: "legal", name: "Legal", zhName: "法律法务", description: "Statutes, cases, regulations, and legal research." },
-  { code: "travel", name: "Travel", zhName: "旅游出行", description: "Flights, hotels, points of interest, transit, and weather." },
-  { code: "ecommerce", name: "E-commerce", zhName: "电商零售", description: "Catalog, traffic, conversion, advertising, and after-sales data." },
-  { code: "realestate", name: "Real Estate", zhName: "房产家居", description: "Listings, comparables, community data, and property policy." },
-  { code: "restaurant", name: "Restaurant and F&B", zhName: "餐饮食品", description: "Menu costing, POS, suppliers, inventory, and food safety." },
-  { code: "enterprise", name: "Enterprise Services", zhName: "企业服务", description: "Registration, tax, HR, qualification, and B2B references." },
-  { code: "government", name: "Government and Public Service", zhName: "政务公共服务", description: "Official policy, service guides, and administrative procedures." },
-  { code: "hospitality", name: "Hotel and Hospitality", zhName: "酒店住宿", description: "Room inventory, rates, OTA channels, and guest experience." },
-  { code: "writing", name: "Writing and Publishing", zhName: "写作出版", description: "Style guides, source verification, editorial standards, and knowledgebase notes." },
+  { code: "engineering", name: "Engineering", zhName: "工程技术", description: "Code, infrastructure, and engineering delivery tools.", iconRef: "Code2" },
+  { code: "education", name: "Education", zhName: "教育学习", description: "Curriculum, textbooks, exams, and learning resources.", iconRef: "GraduationCap" },
+  { code: "healthcare", name: "Healthcare", zhName: "医疗健康", description: "Clinical guidance, drug references, and medical evidence.", iconRef: "Stethoscope" },
+  { code: "legal", name: "Legal", zhName: "法律法务", description: "Statutes, cases, regulations, and legal research.", iconRef: "Scale" },
+  { code: "travel", name: "Travel", zhName: "旅游出行", description: "Flights, hotels, points of interest, transit, and weather.", iconRef: "Plane" },
+  { code: "ecommerce", name: "E-commerce", zhName: "电商零售", description: "Catalog, traffic, conversion, advertising, and after-sales data.", iconRef: "ShoppingCart" },
+  { code: "realestate", name: "Real Estate", zhName: "房产家居", description: "Listings, comparables, community data, and property policy.", iconRef: "House" },
+  { code: "restaurant", name: "Restaurant and F&B", zhName: "餐饮食品", description: "Menu costing, POS, suppliers, inventory, and food safety.", iconRef: "UtensilsCrossed" },
+  { code: "enterprise", name: "Enterprise Services", zhName: "企业服务", description: "Registration, tax, HR, qualification, and B2B references.", iconRef: "Building2" },
+  { code: "government", name: "Government and Public Service", zhName: "政务公共服务", description: "Official policy, service guides, and administrative procedures.", iconRef: "Landmark" },
+  { code: "hospitality", name: "Hotel and Hospitality", zhName: "酒店住宿", description: "Room inventory, rates, OTA channels, and guest experience.", iconRef: "BedDouble" },
+  { code: "writing", name: "Writing and Publishing", zhName: "写作出版", description: "Style guides, source verification, editorial standards, and knowledgebase notes.", iconRef: "PenLine" },
+  { code: "research", name: "Research and Retrieval", zhName: "研究与检索", description: "Web research, documentation search, source verification, and citation.", iconRef: "Search" },
+  { code: "analysis", name: "Data and Analysis", zhName: "数据与分析", description: "Deterministic calculation, modeling, and scenario analysis.", iconRef: "ChartNoAxesCombined" },
+  { code: "productivity", name: "Productivity and Office", zhName: "效率与办公", description: "Documents, tables, files, and day-to-day office work.", iconRef: "ClipboardList" },
+  { code: "language", name: "Language and Translation", zhName: "语言与翻译", description: "Terminology-controlled translation and localization.", iconRef: "Languages" },
 ];
 
 export const COMMON_GUARDRAILS_ZH = [

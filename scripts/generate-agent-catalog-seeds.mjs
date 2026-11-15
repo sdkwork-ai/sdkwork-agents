@@ -416,6 +416,28 @@ function validateCatalog() {
   validateTaxonomy();
   validateKinds();
   validateLocalAgents(seenCodes, seenIds);
+  validateMcpCatalog();
+}
+
+function validateMcpCatalog() {
+  const categoryCodes = new Set();
+  for (const category of MCP_CATEGORIES) {
+    assert(
+      category.code && /^[a-z][a-z0-9_-]{1,63}$/.test(category.code),
+      `invalid MCP category code ${category.code}`,
+    );
+    assert(!categoryCodes.has(category.code), `duplicate MCP category ${category.code}`);
+    categoryCodes.add(category.code);
+    assert(category.name && category.zhName, `MCP category ${category.code} needs bilingual names`);
+    assert(category.description, `MCP category ${category.code} needs a description`);
+    assert(category.iconRef, `MCP category ${category.code} needs an icon reference`);
+  }
+  for (const server of MCP_SERVERS) {
+    assert(
+      categoryCodes.has(server.category),
+      `MCP server ${server.key} uses undefined category ${server.category}`,
+    );
+  }
 }
 
 function validateTaxonomy() {
@@ -1072,15 +1094,16 @@ function renderMcpCommon() {
       [
         "INSERT INTO ai_mcp_server_category (",
         "  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,",
-        "  sort_order, lifecycle_status, version, created_at, updated_at, created_by, updated_by",
+        "  sort_order, icon_ref, lifecycle_status, version, created_at, updated_at, created_by, updated_by",
         ") VALUES (",
         `  ${id}, ${sqlText(uuidFor(`mcp-category:${category.code}`))}, ${TENANT_ID}, ${ORGANIZATION_ID},`,
-        `  ${sqlText(category.code)}, ${sqlText(category.code)}, NULL, 0, ${index + 1}, 1, 0,`,
+        `  ${sqlText(category.code)}, ${sqlText(category.code)}, NULL, 0, ${index + 1}, ${sqlText(category.iconRef ?? "")}, 1, 0,`,
         `  ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}, ${OWNER_USER_ID}, ${OWNER_USER_ID}`,
         ")",
         "ON CONFLICT (tenant_id, category_code) DO UPDATE SET",
         "  name = EXCLUDED.name,",
         "  sort_order = EXCLUDED.sort_order,",
+        "  icon_ref = EXCLUDED.icon_ref,",
         "  lifecycle_status = EXCLUDED.lifecycle_status,",
         "  updated_at = EXCLUDED.updated_at",
         ";",

@@ -95,6 +95,14 @@ function verifyCatalog() {
   validateCatalog();
   assert(AGENTS.length === 64, `expected 64 agents, got ${AGENTS.length}`);
   assert(MCP_SERVERS.length === 18, `expected 18 MCP servers, got ${MCP_SERVERS.length}`);
+  assert(MCP_CATEGORIES.length === 16, `expected 16 MCP categories, got ${MCP_CATEGORIES.length}`);
+  const mcpCategoryCodes = new Set(MCP_CATEGORIES.map((category) => category.code));
+  for (const server of MCP_SERVERS) {
+    assert(
+      mcpCategoryCodes.has(server.category),
+      `MCP server ${server.key} uses undefined category ${server.category}`,
+    );
+  }
   const categoryCounts = new Map();
   for (const agent of AGENTS) {
     categoryCounts.set(agent.category, (categoryCounts.get(agent.category) ?? 0) + 1);
@@ -473,6 +481,7 @@ export function verifyAgentCatalog() {
     categories: [...AGENT_CATEGORY_CODES].sort(),
     runtimeFamilies: [...new Set([...AGENTS, ...LOCAL_EXECUTION_AGENTS].map((agent) => agent.runtime.family))].sort(),
     mcpServers: MCP_SERVERS.length,
+    mcpCategories: MCP_CATEGORIES.length,
   };
 }
 

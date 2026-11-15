@@ -214,9 +214,29 @@ BEGIN
 
     SELECT count(*) INTO failures
     FROM ai_mcp_server_category
-    WHERE id BETWEEN 539000000000000001 AND 539000000000000012;
-    IF failures <> 12 THEN
-        RAISE EXCEPTION 'expected 12 MCP category entries, found %', failures;
+    WHERE id BETWEEN 539000000000000001 AND 539000000000000016;
+    IF failures <> 16 THEN
+        RAISE EXCEPTION 'expected 16 MCP category entries, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_mcp_server_category
+    WHERE id BETWEEN 539000000000000001 AND 539000000000000016
+      AND icon_ref IS NULL;
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% MCP categories miss an icon reference', failures;
+    END IF;
+
+    -- Every catalog server must reference a defined category; an undefined code
+    -- would render as an ungrouped server in the catalog UI.
+    SELECT count(*) INTO failures
+    FROM ai_mcp_server s
+    LEFT JOIN ai_mcp_server_category c
+      ON c.tenant_id = s.tenant_id AND c.category_code = s.category_code
+    WHERE s.server_key LIKE 'mcp.sdkwork.%'
+      AND c.id IS NULL;
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% MCP servers reference an undefined category', failures;
     END IF;
 
     SELECT count(*) INTO failures
@@ -470,7 +490,7 @@ SELECT
     (SELECT count(*) FROM kb_space WHERE id BETWEEN 533000000000000001 AND 533000000000000064) AS knowledge_spaces,
     (SELECT count(*) FROM ai_space WHERE id BETWEEN 534000000000000001 AND 534000000000000064) AS memory_spaces,
     (SELECT count(*) FROM ai_mcp_server WHERE server_key LIKE 'mcp.sdkwork.%') AS mcp_servers,
-    (SELECT count(*) FROM ai_mcp_server_category WHERE id BETWEEN 539000000000000001 AND 539000000000000012) AS mcp_categories,
+    (SELECT count(*) FROM ai_mcp_server_category WHERE id BETWEEN 539000000000000001 AND 539000000000000016) AS mcp_categories,
     (SELECT count(*) FROM ai_mcp_connector WHERE id BETWEEN 538000000000000001 AND 538000000000000018) AS mcp_connectors;
 
 COMMIT;
