@@ -14,7 +14,7 @@
  * generator, so reseeding never reallocates identity.
  */
 
-export const CATALOG_VERSION = "1.3.0";
+export const CATALOG_VERSION = "1.4.0";
 export const CATALOG_OWNER = "SDKWork";
 export const TENANT_ID = 100001;
 export const ORGANIZATION_ID = 0;
