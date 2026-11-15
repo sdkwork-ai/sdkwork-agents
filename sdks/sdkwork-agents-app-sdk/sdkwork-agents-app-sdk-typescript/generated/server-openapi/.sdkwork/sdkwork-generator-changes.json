@@ -9,13 +9,11 @@
     "protocol": "http",
     "packageName": "@sdkwork/agents-app-sdk"
   },
-  "changeFingerprint": "d943fb1e6b9373b522930b1864bc11ea8dc5ef24cd19b3a925fb0a1b53e8c4e6",
+  "changeFingerprint": "341ea79470e9a4f04cd4d0d00daf78664eac3376ada3d3c8411cfc1ffe8e2496",
   "changes": {
     "createdGeneratedFiles": [],
     "updatedGeneratedFiles": [
-      "src/types/agent-record.ts",
-      "src/types/create-agent-request.ts",
-      "src/types/update-agent-request.ts"
+      "src/api/ai.ts"
     ],
     "unchangedGeneratedFiles": [
       "bin/publish-core.mjs",
@@ -28,7 +26,6 @@
       "package.json",
       "README.md",
       "sdkwork-sdk.json",
-      "src/api/ai.ts",
       "src/api/base.ts",
       "src/api/index.ts",
       "src/api/paths.ts",
@@ -96,6 +93,7 @@
       "src/types/agent-provider-binding-list-response.ts",
       "src/types/agent-provider-binding-record.ts",
       "src/types/agent-provider-binding-response.ts",
+      "src/types/agent-record.ts",
       "src/types/agent-resource-user-state-list-response.ts",
       "src/types/agent-resource-user-state-record.ts",
       "src/types/agent-resource-user-state-response.ts",
@@ -201,6 +199,7 @@
       "src/types/create-agent-project-request.ts",
       "src/types/create-agent-prompt-optimization-request.ts",
       "src/types/create-agent-provider-binding-request.ts",
+      "src/types/create-agent-request.ts",
       "src/types/create-agent-session-checkpoint-request.ts",
       "src/types/create-agent-session-request.ts",
       "src/types/create-agent-session-runtime-binding-request.ts",
@@ -265,6 +264,7 @@
       "src/types/update-agent-item-feedback-request.ts",
       "src/types/update-agent-project-composition-slot-request.ts",
       "src/types/update-agent-project-request.ts",
+      "src/types/update-agent-request.ts",
       "src/types/update-agent-session-runtime-binding-request.ts",
       "src/types/update-agent-session-user-state-request.ts",
       "src/types/update-agent-turn-input-queue-entry-request.ts",
@@ -770,6 +770,7 @@
         "area": "api-surface",
         "paths": [
           "src/api/ai.d.ts",
+          "src/api/ai.ts",
           "src/api/base.d.ts",
           "src/api/index.d.ts",
           "src/api/paths.d.ts"
@@ -838,7 +839,6 @@
           "src/types/agent-provider-binding-record.d.ts",
           "src/types/agent-provider-binding-response.d.ts",
           "src/types/agent-record.d.ts",
-          "src/types/agent-record.ts",
           "src/types/agent-resource-user-state-list-response.d.ts",
           "src/types/agent-resource-user-state-record.d.ts",
           "src/types/agent-resource-user-state-response.d.ts",
@@ -945,7 +945,6 @@
           "src/types/create-agent-prompt-optimization-request.d.ts",
           "src/types/create-agent-provider-binding-request.d.ts",
           "src/types/create-agent-request.d.ts",
-          "src/types/create-agent-request.ts",
           "src/types/create-agent-session-checkpoint-request.d.ts",
           "src/types/create-agent-session-request.d.ts",
           "src/types/create-agent-session-runtime-binding-request.d.ts",
@@ -1011,7 +1010,6 @@
           "src/types/update-agent-project-composition-slot-request.d.ts",
           "src/types/update-agent-project-request.d.ts",
           "src/types/update-agent-request.d.ts",
-          "src/types/update-agent-request.ts",
           "src/types/update-agent-session-runtime-binding-request.d.ts",
           "src/types/update-agent-session-user-state-request.d.ts",
           "src/types/update-agent-turn-input-queue-entry-request.d.ts",

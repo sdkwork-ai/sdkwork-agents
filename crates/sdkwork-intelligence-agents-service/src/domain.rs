@@ -759,6 +759,10 @@ pub struct AgentBusinessRecord {
     pub display_name: String,
     pub description: Option<String>,
     pub manifest: AgentManifest,
+    /// Category registry code derived from `manifest_json ->> 'category_code'`
+    /// (`ai_agent.category_code`). The category registry owns the definition;
+    /// this is only the reference the listing filters on.
+    pub category_code: Option<String>,
     pub default_code_task_intent: Option<CodeTaskIntent>,
     pub implementation_provider_id: Option<String>,
     pub implementation_kind: Option<AgentImplementationKind>,

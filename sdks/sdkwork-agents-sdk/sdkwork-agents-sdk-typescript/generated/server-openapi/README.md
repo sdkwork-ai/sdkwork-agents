@@ -30,6 +30,8 @@ const params = {
   page: 2,
   page_size: 3,
   q: 'q',
+  category_code: 'category_code',
+  role_codes: 'role_codes',
 };
 const result = await client.ai.agents.list(params);
 ```
@@ -76,6 +78,8 @@ const params = {
   page: 2,
   page_size: 3,
   q: 'q',
+  category_code: 'category_code',
+  role_codes: 'role_codes',
 };
 const result = await client.ai.agents.list(params);
 ```
@@ -91,6 +95,8 @@ try {
     page: 2,
     page_size: 3,
     q: 'q',
+    category_code: 'category_code',
+    role_codes: 'role_codes',
   };
   const result = await client.ai.agents.list(params);
 } catch (error) {

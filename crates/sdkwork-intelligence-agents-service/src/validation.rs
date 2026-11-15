@@ -204,6 +204,98 @@ pub(crate) fn parse_optional_rfc3339_datetime(
     parse_rfc3339_datetime(value, field_name).map(Some)
 }
 
+// ---------------------------------------------------------------------------
+// Agent list scope filters
+// ---------------------------------------------------------------------------
+
+/// Selector value that keeps every agent category in a listing.
+pub(crate) const AGENT_LIST_ALL_CATEGORIES: &str = "all";
+
+/// Localized equivalent of [`AGENT_LIST_ALL_CATEGORIES`] the clients ship.
+const AGENT_LIST_ALL_CATEGORIES_ZH: &str = "全部";
+
+/// Normalizes a `category_code` selector to `None` (every category) or one code.
+///
+/// The category registry codes are lower-kebab (`ai_agent.category_code` is
+/// constrained to `^[a-z0-9][a-z0-9_-]{1,127}$`), so the sentinel comparison is
+/// case-insensitive and the returned code is lowercased. The SQL push-down then
+/// compares the canonical column directly and the in-memory adapter matches the
+/// same code set.
+pub(crate) fn normalize_category_filter(value: Option<&str>) -> Option<String> {
+    let trimmed = value?.trim();
+    if trimmed.is_empty()
+        || trimmed.eq_ignore_ascii_case(AGENT_LIST_ALL_CATEGORIES)
+        || trimmed == AGENT_LIST_ALL_CATEGORIES_ZH
+    {
+        return None;
+    }
+    Some(trimmed.to_ascii_lowercase())
+}
+
+/// Parses a comma-separated `role_codes` value into a sorted, unique scope.
+///
+/// Codes are IAM role codes (`NAMING_SPEC.md` role-code pattern); blank entries
+/// are dropped rather than rejected so a trailing comma stays harmless. The
+/// stored codes are canonical lowercase, so the filter lowercases each code and
+/// normalizes the order; the JSONB `?|` push-down then matches the stored array
+/// exactly.
+pub(crate) fn normalize_role_code_filter(value: Option<&str>) -> Vec<String> {
+    let Some(value) = value else {
+        return Vec::new();
+    };
+    let mut codes = value
+        .split(',')
+        .map(str::trim)
+        .filter(|code| !code.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>();
+    codes.sort();
+    codes.dedup();
+    codes
+}
+
+/// True when an agent restricted to `allowed` is part of the caller's scope.
+///
+/// An empty `role_codes` is the "all data" view and matches everything. An
+/// empty `allowed` list means the agent is open to every role (the documented
+/// default of `ai_agent.allowed_role_codes`), so it matches every scope even
+/// when the caller narrows the listing by role.
+pub(crate) fn role_scope_allows(allowed: &[String], role_codes: &[String]) -> bool {
+    role_codes.is_empty()
+        || allowed.is_empty()
+        || allowed.iter().any(|code| {
+            role_codes
+                .iter()
+                .any(|scope| scope.eq_ignore_ascii_case(code))
+        })
+}
+
+/// True when an agent's category matches the normalized category filter.
+///
+/// An agent without a category never matches a specific category filter; it
+/// still appears in the all-category view because that view passes `None`.
+pub(crate) fn category_matches(record_category: Option<&str>, category: &str) -> bool {
+    record_category.is_some_and(|value| value.eq_ignore_ascii_case(category))
+}
+
+/// True when an agent satisfies the optional category and role list filters.
+///
+/// Both filters only remove rows from the already tenant/org/visibility/owner
+/// scoped listing, so this predicate can never widen visibility.
+pub(crate) fn agent_list_scope_filter_matches(
+    record_category: Option<&str>,
+    record_allowed_role_codes: &[String],
+    category_code: Option<&str>,
+    role_codes: &[String],
+) -> bool {
+    if let Some(category) = category_code {
+        if !category_matches(record_category, category) {
+            return false;
+        }
+    }
+    role_scope_allows(record_allowed_role_codes, role_codes)
+}
+
 fn is_valid_capability_id(capability_id: &str) -> bool {
     capability_id.chars().all(is_standard_id_character) && has_non_empty_dot_segments(capability_id)
 }
@@ -410,5 +502,123 @@ mod tests {
             }
             _ => panic!("expected validation error"),
         }
+    }
+
+    #[test]
+    fn category_filter_drops_the_all_selectors() {
+        assert_eq!(normalize_category_filter(None), None);
+        assert_eq!(normalize_category_filter(Some("  ")), None);
+        assert_eq!(normalize_category_filter(Some("ALL")), None);
+        assert_eq!(
+            normalize_category_filter(Some(AGENT_LIST_ALL_CATEGORIES_ZH)),
+            None
+        );
+        assert_eq!(
+            normalize_category_filter(Some(" Engineering ")),
+            Some("engineering".to_string())
+        );
+    }
+
+    #[test]
+    fn role_code_filter_trims_sorts_dedupes_and_lowercases() {
+        assert_eq!(normalize_role_code_filter(None), Vec::<String>::new());
+        assert_eq!(
+            normalize_role_code_filter(Some("org_admin, ORG_OPERATIONS,,org_admin,")),
+            vec!["org_admin".to_string(), "org_operations".to_string()]
+        );
+        assert_eq!(
+            normalize_role_code_filter(Some(" , ")),
+            Vec::<String>::new()
+        );
+    }
+
+    #[test]
+    fn role_scope_matches_open_agents_and_named_roles() {
+        let all_data: Vec<String> = Vec::new();
+        let operator = vec!["org_admin".to_string()];
+        let open: Vec<String> = Vec::new();
+        let restricted = vec!["org_finance".to_string()];
+
+        // The all-data view keeps every agent, including restricted ones.
+        assert!(role_scope_allows(&restricted, &all_data));
+        // An open agent is always visible, even to a role-narrowed caller.
+        assert!(role_scope_allows(&open, &operator));
+        // The match is case-insensitive across the stored and requested codes.
+        assert!(role_scope_allows(&["ORG_ADMIN".to_string()], &operator));
+        // A different role scope does not leak the restricted agent.
+        assert!(!role_scope_allows(&restricted, &operator));
+    }
+
+    #[test]
+    fn category_match_is_case_insensitive_and_never_matches_absent_codes() {
+        assert!(category_matches(Some("Engineering"), "engineering"));
+        assert!(!category_matches(Some("education"), "engineering"));
+        assert!(!category_matches(None, "engineering"));
+    }
+
+    #[test]
+    fn scope_filters_compose_without_widening_the_listing() {
+        let open: Vec<String> = Vec::new();
+        let finance = vec!["org_finance".to_string()];
+        let operator = vec!["org_admin".to_string()];
+
+        // All-data view: no category restriction, no role restriction.
+        assert!(agent_list_scope_filter_matches(
+            Some("engineering"),
+            &finance,
+            None,
+            &[]
+        ));
+        // Category alone narrows to that category.
+        assert!(agent_list_scope_filter_matches(
+            Some("engineering"),
+            &finance,
+            Some("engineering"),
+            &[]
+        ));
+        assert!(!agent_list_scope_filter_matches(
+            Some("education"),
+            &finance,
+            Some("engineering"),
+            &[]
+        ));
+        // Role alone keeps open agents plus the named role.
+        assert!(agent_list_scope_filter_matches(
+            Some("engineering"),
+            &open,
+            None,
+            &operator
+        ));
+        assert!(agent_list_scope_filter_matches(
+            Some("engineering"),
+            &["org_admin".to_string()],
+            None,
+            &operator
+        ));
+        assert!(!agent_list_scope_filter_matches(
+            Some("engineering"),
+            &finance,
+            None,
+            &operator
+        ));
+        // Both filters compose: the row must satisfy category AND role scope.
+        assert!(agent_list_scope_filter_matches(
+            Some("engineering"),
+            &open,
+            Some("engineering"),
+            &operator
+        ));
+        assert!(!agent_list_scope_filter_matches(
+            Some("education"),
+            &open,
+            Some("engineering"),
+            &operator
+        ));
+        assert!(!agent_list_scope_filter_matches(
+            Some("engineering"),
+            &finance,
+            Some("engineering"),
+            &operator
+        ));
     }
 }

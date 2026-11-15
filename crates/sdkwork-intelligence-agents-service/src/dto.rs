@@ -27,8 +27,9 @@ use crate::session_activity::{
 };
 use crate::task_scheduler::{TaskRunAttemptListQuery, TaskRunListQuery};
 use crate::validation::{
-    is_trimmed_blank, parse_expected_version, parse_organization_id, parse_owner_user_id,
-    parse_tenant_id, validate_requested_at,
+    is_trimmed_blank, normalize_category_filter, normalize_role_code_filter,
+    parse_expected_version, parse_organization_id, parse_owner_user_id, parse_tenant_id,
+    validate_requested_at,
 };
 use sdkwork_agent_kernel::{AgentManifest, KernelError, KernelResult, PolicySubject};
 use sdkwork_code_kernel::CodeTaskIntent;
@@ -44,6 +45,10 @@ pub struct ListAgentsRequestDto {
     pub include_deleted: bool,
     pub search_query: Option<String>,
     pub visibility: Option<String>,
+    /// Raw `category_code` selector: blank or the `all` sentinel keeps every category.
+    pub category_code: Option<String>,
+    /// Raw comma-separated IAM role scope: blank keeps the all-data view.
+    pub role_codes: Option<String>,
     pub pagination: PaginationParams,
 }
 
@@ -65,6 +70,9 @@ impl ListAgentsRequestDto {
         if let Some(visibility) = self.visibility {
             query = query.with_visibility(parse_visibility(&visibility)?);
         }
+        query = query
+            .with_category_code(normalize_category_filter(self.category_code.as_deref()))
+            .with_role_codes(normalize_role_code_filter(self.role_codes.as_deref()));
         query = query.with_pagination(self.pagination);
         Ok(ListAgentsCommand {
             query,
@@ -3749,12 +3757,54 @@ mod tests {
             include_deleted: false,
             search_query: Some("beta".to_string()),
             visibility: None,
+            category_code: None,
+            role_codes: None,
             pagination: PaginationParams::default(),
         }
         .into_command(sample_subject())
         .expect("mapping should succeed");
 
         assert_eq!(command.query.search_query.as_deref(), Some("beta"));
+    }
+
+    #[test]
+    fn list_request_normalizes_category_and_role_filters() {
+        let command = ListAgentsRequestDto {
+            tenant_id: "100001".to_string(),
+            organization_id: None,
+            owner_user_id: None,
+            include_deleted: false,
+            search_query: None,
+            visibility: None,
+            category_code: Some(" All ".to_string()),
+            role_codes: Some("org_operations,org_admin,org_admin".to_string()),
+            pagination: PaginationParams::default(),
+        }
+        .into_command(sample_subject())
+        .expect("mapping should succeed");
+
+        assert_eq!(command.query.category_code, None);
+        assert_eq!(
+            command.query.role_codes,
+            vec!["org_admin".to_string(), "org_operations".to_string()]
+        );
+
+        let command = ListAgentsRequestDto {
+            tenant_id: "100001".to_string(),
+            organization_id: None,
+            owner_user_id: None,
+            include_deleted: false,
+            search_query: None,
+            visibility: None,
+            category_code: Some(" engineering ".to_string()),
+            role_codes: Some("  ".to_string()),
+            pagination: PaginationParams::default(),
+        }
+        .into_command(sample_subject())
+        .expect("mapping should succeed");
+
+        assert_eq!(command.query.category_code.as_deref(), Some("engineering"));
+        assert!(command.query.role_codes.is_empty());
     }
 
     #[test]
@@ -3894,6 +3944,7 @@ mod tests {
             display_name: "Alpha".to_string(),
             description: None,
             manifest: sample_manifest("agent.alpha"),
+            category_code: None,
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,
@@ -3931,6 +3982,7 @@ mod tests {
             display_name: "Alpha".to_string(),
             description: None,
             manifest: sample_manifest("agent.alpha"),
+            category_code: None,
             default_code_task_intent: Some(
                 CodeTaskIntent::new("Answer from approved knowledge only.")
                     .with_context_path("knowledge.base.product")

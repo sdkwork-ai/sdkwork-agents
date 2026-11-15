@@ -1,13 +1,13 @@
 #![cfg(feature = "postgres-sync")]
 
 use sdkwork_intelligence_agents_service::{
-    SQL_COMPLETE_AGENT_TURN_STATE, SQL_COUNT_AGENT_INTERACTIONS, SQL_COUNT_AGENT_SESSIONS,
-    SQL_COUNT_AGENT_SESSION_ITEMS, SQL_INSERT_AGENT, SQL_INSERT_AGENT_COMPOSITION_SLOT,
-    SQL_INSERT_AGENT_INTERACTION, SQL_INSERT_AGENT_PROVIDER_BINDING, SQL_INSERT_AGENT_SESSION,
-    SQL_INSERT_AGENT_SESSION_ITEM, SQL_INSERT_AGENT_SESSION_RUNTIME_BINDING, SQL_INSERT_AGENT_TASK,
-    SQL_INSERT_AGENT_TURN, SQL_INSERT_AUDIT_EVENT, SQL_LIST_AGENT,
-    SQL_LIST_AGENT_COMPOSITION_SLOTS, SQL_LIST_AGENT_INTERACTIONS,
-    SQL_LIST_AGENT_PROVIDER_BINDINGS, SQL_LIST_AGENT_SESSIONS,
+    SQL_COMPLETE_AGENT_TURN_STATE, SQL_COUNT_AGENT, SQL_COUNT_AGENT_INTERACTIONS,
+    SQL_COUNT_AGENT_SESSIONS, SQL_COUNT_AGENT_SESSION_ITEMS, SQL_INSERT_AGENT,
+    SQL_INSERT_AGENT_COMPOSITION_SLOT, SQL_INSERT_AGENT_INTERACTION,
+    SQL_INSERT_AGENT_PROVIDER_BINDING, SQL_INSERT_AGENT_SESSION, SQL_INSERT_AGENT_SESSION_ITEM,
+    SQL_INSERT_AGENT_SESSION_RUNTIME_BINDING, SQL_INSERT_AGENT_TASK, SQL_INSERT_AGENT_TURN,
+    SQL_INSERT_AUDIT_EVENT, SQL_LIST_AGENT, SQL_LIST_AGENT_COMPOSITION_SLOTS,
+    SQL_LIST_AGENT_INTERACTIONS, SQL_LIST_AGENT_PROVIDER_BINDINGS, SQL_LIST_AGENT_SESSIONS,
     SQL_LIST_AGENT_SESSION_ACTIVITY_HEADS, SQL_LIST_AGENT_SESSION_ITEMS,
     SQL_LIST_AGENT_SESSION_ITEMS_CURSOR_ASC, SQL_LIST_AGENT_SESSION_ITEMS_CURSOR_DESC,
     SQL_LIST_AGENT_SESSION_ITEMS_DESC, SQL_LIST_AGENT_SESSION_ITEMS_RECENT_CONTEXT,
@@ -450,6 +450,30 @@ fn sql_list_agent_has_mandatory_pagination() {
         SQL_LIST_AGENT.contains("OFFSET $8"),
         "SQL_LIST_AGENT must have OFFSET parameter for page navigation"
     );
+}
+
+#[test]
+fn sql_list_agent_pushes_category_and_role_scope_filters() {
+    // The two optional list filters must narrow the same WHERE clause that
+    // already carries tenant/org/owner/visibility scoping, so neither filter can
+    // widen the listing; both list and count must stay in sync.
+    for (query_name, sql) in [
+        ("SQL_LIST_AGENT", SQL_LIST_AGENT),
+        ("SQL_COUNT_AGENT", SQL_COUNT_AGENT),
+    ] {
+        assert!(
+            sql.contains("category_code = $"),
+            "{query_name} must push the category filter into the WHERE clause"
+        );
+        assert!(
+            sql.contains("jsonb_array_length(allowed_role_codes) = 0"),
+            "{query_name} must keep agents whose allowed_role_codes list is empty"
+        );
+        assert!(
+            sql.contains("allowed_role_codes ?| $"),
+            "{query_name} must intersect the role filter through the JSONB array operator"
+        );
+    }
 }
 
 #[test]
