@@ -1,5 +1,5 @@
 -- SDKWork Agents PostgreSQL greenfield baseline.
--- Contract: database/contract/schema.yaml (7.3.0)
+-- Contract: database/contract/schema.yaml (7.7.0)
 -- PostgreSQL is the only managed-store authority for this contract.
 -- Sibling modules own memory, knowledge, skills, prompts, MCP, model catalogs,
 -- runtime-location details, and Drive bytes. Agents stores stable references only.
@@ -58,6 +58,36 @@ CREATE TABLE IF NOT EXISTS ai_agent (
     updated_at TIMESTAMPTZ NOT NULL,
     deleted_at TIMESTAMPTZ,
     version BIGINT NOT NULL DEFAULT 0,
+    -- Manifest-derived delivery projections. The manifest is the authored
+    -- authority; these STORED columns keep list filters and drift checks
+    -- consistent for every writer without a second write path.
+    agent_kind VARCHAR(32)
+        GENERATED ALWAYS AS (
+            COALESCE(NULLIF(BTRIM(manifest_json ->> 'agent_kind'), ''), 'conversation')
+        ) STORED,
+    runtime_family VARCHAR(64)
+        GENERATED ALWAYS AS (
+            COALESCE(
+                NULLIF(BTRIM(manifest_json #>> '{runtime,family}'), ''),
+                CASE WHEN implementation_type = 'rig-rust' THEN 'rig' ELSE NULL END
+            )
+        ) STORED,
+    category_code VARCHAR(128)
+        GENERATED ALWAYS AS (
+            NULLIF(BTRIM(manifest_json ->> 'category_code'), '')
+        ) STORED,
+    distribution_kind VARCHAR(32)
+        GENERATED ALWAYS AS (
+            COALESCE(NULLIF(BTRIM(manifest_json #>> '{distribution,kind}'), ''), 'manifest')
+        ) STORED,
+    distribution_json JSONB
+        GENERATED ALWAYS AS (
+            CASE
+                WHEN jsonb_typeof(manifest_json -> 'distribution') = 'object'
+                    THEN manifest_json -> 'distribution'
+                ELSE NULL
+            END
+        ) STORED,
     CONSTRAINT uk_ai_agent_uuid UNIQUE (uuid),
     CONSTRAINT uk_ai_agent_tenant_agent_id UNIQUE (tenant_id, agent_id),
     CONSTRAINT uk_ai_agent_tenant_code UNIQUE (tenant_id, code),
@@ -86,7 +116,40 @@ CREATE TABLE IF NOT EXISTS ai_agent (
     ),
     CONSTRAINT ck_ai_agent_status CHECK (status IN (0, 1, 2, 3, 4)),
     CONSTRAINT ck_ai_agent_visibility CHECK (visibility IN (0, 1, 2, 3)),
-    CONSTRAINT ck_ai_agent_version CHECK (version >= 0)
+    CONSTRAINT ck_ai_agent_version CHECK (version >= 0),
+    CONSTRAINT ck_ai_agent_agent_kind CHECK (agent_kind IN ('conversation', 'local-execution')),
+    CONSTRAINT ck_ai_agent_runtime_family CHECK (runtime_family ~ '^[a-z][a-z0-9_-]{1,63}$'),
+    CONSTRAINT ck_ai_agent_category_code CHECK (
+        category_code IS NULL
+        OR category_code ~ '^[a-z0-9][a-z0-9_-]{1,127}$'
+    ),
+    CONSTRAINT ck_ai_agent_distribution_kind CHECK (distribution_kind IN ('manifest', 'archive')),
+    CONSTRAINT ck_ai_agent_distribution_json CHECK (
+        distribution_json IS NULL OR jsonb_typeof(distribution_json) = 'object'
+    ),
+    CONSTRAINT ck_ai_agent_kind_distribution CHECK (
+        (agent_kind = 'local-execution' AND distribution_kind = 'archive')
+        OR (agent_kind = 'conversation' AND distribution_kind = 'manifest')
+    ),
+    CONSTRAINT ck_ai_agent_archive_distribution CHECK (
+        distribution_kind <> 'archive'
+        OR (
+            distribution_json->>'format' = 'zip'
+            AND NULLIF(BTRIM(distribution_json->>'entrypoint'), '') IS NOT NULL
+            AND (
+                NULLIF(BTRIM(distribution_json->>'archiveRef'), '') IS NOT NULL
+                OR NULLIF(BTRIM(distribution_json->>'driveUri'), '') IS NOT NULL
+            )
+            AND octet_length(distribution_json::text) <= 16384
+        )
+    ),
+    CONSTRAINT ck_ai_agent_local_harness_runtime CHECK (
+        agent_kind <> 'local-execution'
+        OR (
+            runtime_family = 'harness'
+            AND manifest_json #>> '{runtime,protocol}' = 'harness.agent.runtime.v1'
+        )
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_ai_agent_tenant_org_status_updated
@@ -98,6 +161,15 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_list_filters
     WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_ai_agent_allowed_roles
     ON ai_agent USING GIN (allowed_role_codes)
+    WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ai_agent_tenant_kind_status
+    ON ai_agent (tenant_id, organization_id, agent_kind, status, updated_at DESC, id DESC)
+    WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ai_agent_tenant_category
+    ON ai_agent (tenant_id, organization_id, category_code, status, updated_at DESC, id DESC)
+    WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_ai_agent_tenant_runtime
+    ON ai_agent (tenant_id, organization_id, runtime_family, status)
     WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS ai_agent_runtime_binding (
@@ -1945,7 +2017,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_outbox_event_retention
 -- Session activity materialization
 -- ---------------------------------------------------------------------------
 -- `ai_agent_session.activity_at` is the materialized recency key for the
--- session-activity feed (DATABASE_SPEC §20.5 keyset ordering). The column is
+-- session-activity feed (DATABASE_SPEC 鎼?0.5 keyset ordering). The column is
 -- maintained by triggers so every child write (Turn, Interaction, runtime
 -- binding, user state) atomically refreshes the owning Session in the same
 -- transaction as the child write; the feed query then orders and keysets on
@@ -2223,7 +2295,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_agent_category_tenant_org_parent
 
 -- Foreign-key lookup indexes: RESTRICT parent deletes and tenant-scoped child
 -- lookups otherwise scan these child tables. Folded into the baseline per the
--- pre-launch baseline-plus-fold discipline (DATABASE_SPEC §schema lifecycle).
+-- pre-launch baseline-plus-fold discipline (DATABASE_SPEC 鎼俿chema lifecycle).
 CREATE INDEX IF NOT EXISTS idx_ai_agent_audit_event_agent_internal
     ON ai_agent_audit_event (agent_internal_id, id);
 CREATE INDEX IF NOT EXISTS idx_ai_agent_task_run_session

@@ -261,7 +261,10 @@ impl AgentBusinessRow {
             code: record.code.clone(),
             display_name: record.display_name.clone(),
             description: record.description.clone(),
-            manifest_json: manifest_to_json(&record.manifest)?,
+            manifest_json: manifest_to_json_with_category(
+                &record.manifest,
+                record.category_code.as_deref(),
+            )?,
             default_code_task_intent_json: intent_to_json(
                 record.default_code_task_intent.as_ref(),
             )?,
@@ -292,6 +295,7 @@ impl AgentBusinessRow {
             display_name: self.display_name,
             description: self.description,
             manifest: manifest_from_json(&self.manifest_json)?,
+            category_code: manifest_category_code(&self.manifest_json),
             default_code_task_intent: intent_from_json(
                 self.default_code_task_intent_json.as_deref(),
             )?,
@@ -7073,6 +7077,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
             .filter(|q| !is_blank(Some(q.as_str())))
             .map(|q| format!("%{}%", trim(q).to_lowercase()));
         let visibility_code = query.visibility.map(|visibility| visibility.as_db_code());
+        let category_code = query.category_code.as_deref();
+        let role_codes = query.role_codes.as_slice();
         let page_size = usize_to_i64(query.pagination.page_size, "pagination.page_size")?;
         let offset = usize_to_i64(query.pagination.offset, "pagination.offset")?;
 
@@ -7087,7 +7093,9 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 search_query,
                 visibility_code,
                 page_size,
-                offset
+                offset,
+                category_code,
+                role_codes
             )?;
 
             let mut mapped_rows = Vec::with_capacity(rows.len());
@@ -7116,6 +7124,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
             .filter(|q| !is_blank(Some(q.as_str())))
             .map(|q| format!("%{}%", trim(q).to_lowercase()));
         let visibility_code = query.visibility.map(|visibility| visibility.as_db_code());
+        let category_code = query.category_code.as_deref();
+        let role_codes = query.role_codes.as_slice();
 
         self.with_pool(|pool| {
             let row = pg_query_optional!(
@@ -7126,7 +7136,9 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 owner_user_id,
                 include_deleted,
                 search_query,
-                visibility_code
+                visibility_code,
+                category_code,
+                role_codes
             )?;
             let total: i64 = row
                 .map(|value| {
@@ -14329,6 +14341,10 @@ struct AgentManifestSnapshot {
     status: String,
     implementation_provider_id: Option<String>,
     implementation_kind: Option<String>,
+    /// Category registry reference (`ai_agent.category_code`). Omitted when the
+    /// agent has no category so existing manifests keep their exact shape.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    category_code: Option<String>,
 }
 
 impl From<&AgentManifest> for AgentManifestSnapshot {
@@ -14349,6 +14365,7 @@ impl From<&AgentManifest> for AgentManifestSnapshot {
             status: value.status.clone(),
             implementation_provider_id: None,
             implementation_kind: None,
+            category_code: None,
         }
     }
 }
@@ -14412,8 +14429,34 @@ struct AuditPayloadSnapshot {
 }
 
 pub(crate) fn manifest_to_json(manifest: &AgentManifest) -> KernelResult<String> {
-    serde_json::to_string(&AgentManifestSnapshot::from(manifest))
+    manifest_to_json_with_category(manifest, None)
+}
+
+/// Serializes a manifest, carrying the stored agent category back into
+/// `manifest_json` so an update cannot erase `ai_agent.category_code`.
+fn manifest_to_json_with_category(
+    manifest: &AgentManifest,
+    category_code: Option<&str>,
+) -> KernelResult<String> {
+    let mut snapshot = AgentManifestSnapshot::from(manifest);
+    snapshot.category_code = category_code
+        .map(str::trim)
+        .filter(|code| !code.is_empty())
+        .map(str::to_string);
+    serde_json::to_string(&snapshot)
         .map_err(|error| KernelError::validation(format!("invalid manifest json: {error}")))
+}
+
+/// Reads the category registry reference out of a stored `manifest_json`, the
+/// same expression the generated `ai_agent.category_code` column derives.
+fn manifest_category_code(manifest_json: &str) -> Option<String> {
+    let manifest: serde_json::Value = serde_json::from_str(manifest_json).ok()?;
+    manifest
+        .get("category_code")
+        .and_then(serde_json::Value::as_str)
+        .map(str::trim)
+        .filter(|code| !code.is_empty())
+        .map(str::to_string)
 }
 
 pub(crate) fn manifest_from_json(input: &str) -> KernelResult<AgentManifest> {
@@ -16282,5 +16325,60 @@ mod tests {
         let roundtripped = row.into_record().expect("row converts back");
         assert_eq!(roundtripped, record);
         assert!(record.is_scheduler_eligible());
+    }
+
+    /// The listing category filter reads `ai_agent.category_code`, which the
+    /// schema derives from `manifest_json ->> 'category_code'`. The record must
+    /// carry that value so the in-memory adapter filters on the same data, and
+    /// a write must not drop it from the stored manifest.
+    #[test]
+    fn agent_business_row_derives_and_preserves_the_manifest_category() {
+        let row = super::AgentBusinessRow {
+            id: 7,
+            uuid: "agent-business-uuid".to_string(),
+            tenant_id: 100_001,
+            organization_id: 0,
+            owner_user_id: 100,
+            agent_id: "agent.alpha".to_string(),
+            code: "alpha".to_string(),
+            display_name: "Alpha".to_string(),
+            description: None,
+            manifest_json: r#"{"schema_version":"1.0.0","manifest_type":"agent","agent_id":"agent.alpha","name":"alpha","display_name":"Alpha","description":"d","version":"0.1.0","domain":"intelligence","required_capabilities":[],"optional_capabilities":[],"event_families":[],"owner_name":"sdkwork","status":"active","category_code":"  engineering  "}"#.to_string(),
+            default_code_task_intent_json: None,
+            implementation_provider_id: None,
+            implementation_kind: None,
+            implementation_type: crate::domain::AgentImplementationType::SdkworkNative
+                .as_str()
+                .to_string(),
+            status: crate::domain::AgentBusinessStatus::Active.as_db_code(),
+            visibility: crate::domain::AgentVisibility::Organization.as_db_code(),
+            tags_json: "[]".to_string(),
+            allowed_role_codes_json: "[]".to_string(),
+            created_at: "2026-06-01T00:00:00Z".to_string(),
+            updated_at: "2026-06-01T00:00:00Z".to_string(),
+            deleted_at: None,
+            version: 1,
+        };
+
+        let record = row.into_record().expect("row should map to a record");
+        assert_eq!(record.category_code.as_deref(), Some("engineering"));
+        assert!(record.allowed_role_codes.is_empty());
+
+        let stored = super::AgentBusinessRow::from_record(&record).expect("record should map back");
+        assert!(
+            stored
+                .manifest_json
+                .contains("\"category_code\":\"engineering\""),
+            "stored manifest must keep the category: {}",
+            stored.manifest_json
+        );
+        assert_eq!(
+            stored
+                .into_record()
+                .expect("row should map back to a record")
+                .category_code
+                .as_deref(),
+            Some("engineering")
+        );
     }
 }

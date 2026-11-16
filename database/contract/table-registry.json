@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "sdkwork.database.table-registry",
-  "contractVersion": "7.4.0",
+  "contractVersion": "7.7.0",
   "moduleId": "agents",
   "tables": [
     {

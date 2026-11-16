@@ -4571,6 +4571,15 @@ struct ListAgentsQueryParams {
     scope: Option<String>,
     include_deleted: Option<bool>,
     q: Option<String>,
+    /// Category selector: blank or `all` keeps every category.
+    ///
+    /// The HTTP wire name is `category_code` (API_SPEC section 14.1.1); the
+    /// camelCase alias matches the SDK-level DTO property name.
+    #[serde(alias = "categoryCode")]
+    category_code: Option<String>,
+    /// Comma-separated IAM role scope: blank keeps the all-data view.
+    #[serde(alias = "roleCodes")]
+    role_codes: Option<String>,
     page: Option<usize>,
     page_size: Option<usize>,
 }
@@ -4581,6 +4590,10 @@ struct AppListAgentsQueryParams {
     scope: Option<String>,
     include_deleted: Option<bool>,
     q: Option<String>,
+    #[serde(alias = "categoryCode")]
+    category_code: Option<String>,
+    #[serde(alias = "roleCodes")]
+    role_codes: Option<String>,
     page: Option<usize>,
     page_size: Option<usize>,
 }
@@ -6117,6 +6130,8 @@ async fn app_list_agents(
             scope: query.scope,
             include_deleted: query.include_deleted,
             q: query.q,
+            category_code: query.category_code,
+            role_codes: query.role_codes,
             page: query.page,
             page_size: query.page_size,
         };
@@ -13557,6 +13572,8 @@ async fn execute_list(
         include_deleted,
         search_query: query.q,
         visibility,
+        category_code: query.category_code,
+        role_codes: query.role_codes,
         pagination: PaginationParams::default()
             .with_page_size(page_size)
             .with_page(page),
@@ -17575,6 +17592,173 @@ mod tests {
         let body = to_bytes(response.into_body(), 1024 * 1024).await.unwrap();
         let repeated_get_payload: Value = serde_json::from_slice(&body).unwrap();
         assert_eq!(repeated_get_payload["data"], get_payload["data"]);
+    }
+
+    async fn create_app_agent_with_roles(
+        app: &axum::Router,
+        agent_id: &str,
+        code: &str,
+        allowed_role_codes: &[&str],
+    ) {
+        let mut body = create_agent_body(agent_id, code);
+        body["allowedRoleCodes"] = json!(allowed_role_codes);
+        let request = Request::builder()
+            .method("POST")
+            .uri("/app/v3/api/ai/agents")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .expect("request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("create request should succeed");
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
+
+    async fn list_agent_ids_at(app: &axum::Router, uri: &str) -> Vec<String> {
+        let request = Request::builder()
+            .method("GET")
+            .uri(uri)
+            .body(Body::empty())
+            .expect("request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("list request should succeed");
+        assert_eq!(response.status(), StatusCode::OK, "list uri: {uri}");
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body should be readable");
+        let payload: Value =
+            serde_json::from_slice(&bytes).expect("list response should be a JSON envelope");
+        let mut agent_ids = payload["data"]["items"]
+            .as_array()
+            .expect("items should be an array")
+            .iter()
+            .map(|item| {
+                item["agentId"]
+                    .as_str()
+                    .expect("agent item should carry agentId")
+                    .to_string()
+            })
+            .collect::<Vec<_>>();
+        agent_ids.sort();
+        agent_ids
+    }
+
+    async fn seeded_agent_scope_router() -> axum::Router {
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let app = build_test_router(state);
+        create_app_agent_with_roles(&app, "agent.alpha", "alpha", &[]).await;
+        create_app_agent_with_roles(&app, "agent.beta", "beta", &["org_admin"]).await;
+        create_app_agent_with_roles(&app, "agent.gamma", "gamma", &["org_finance"]).await;
+        app
+    }
+
+    #[tokio::test]
+    async fn agent_list_all_data_view_returns_every_agent_for_both_surfaces() {
+        let app = seeded_agent_scope_router().await;
+        let expected = vec![
+            "agent.alpha".to_string(),
+            "agent.beta".to_string(),
+            "agent.gamma".to_string(),
+        ];
+
+        assert_eq!(
+            list_agent_ids_at(&app, "/app/v3/api/ai/agents?page_size=50").await,
+            expected
+        );
+        assert_eq!(
+            list_agent_ids_at(&app, "/backend/v3/api/ai/agents?page_size=50").await,
+            expected
+        );
+        // The `all` category sentinel and an empty role scope are the all-data view.
+        assert_eq!(
+            list_agent_ids_at(
+                &app,
+                "/app/v3/api/ai/agents?page_size=50&categoryCode=all&roleCodes="
+            )
+            .await,
+            expected
+        );
+        assert_eq!(
+            list_agent_ids_at(
+                &app,
+                "/backend/v3/api/ai/agents?page_size=50&category_code=all&role_codes="
+            )
+            .await,
+            expected
+        );
+    }
+
+    #[tokio::test]
+    async fn agent_list_role_scope_keeps_open_agents_and_the_named_role() {
+        let app = seeded_agent_scope_router().await;
+
+        // camelCase alias (SDK-level DTO spelling) on the app surface.
+        assert_eq!(
+            list_agent_ids_at(
+                &app,
+                "/app/v3/api/ai/agents?page_size=50&roleCodes=org_admin"
+            )
+            .await,
+            vec!["agent.alpha".to_string(), "agent.beta".to_string()]
+        );
+        // snake_case wire name (API_SPEC section 14.1.1) on the backend surface.
+        assert_eq!(
+            list_agent_ids_at(
+                &app,
+                "/backend/v3/api/ai/agents?page_size=50&role_codes=org_finance"
+            )
+            .await,
+            vec!["agent.alpha".to_string(), "agent.gamma".to_string()]
+        );
+        // An unrelated role keeps only the open agent.
+        assert_eq!(
+            list_agent_ids_at(
+                &app,
+                "/app/v3/api/ai/agents?page_size=50&roleCodes=org_operations"
+            )
+            .await,
+            vec!["agent.alpha".to_string()]
+        );
+    }
+
+    #[tokio::test]
+    async fn agent_list_category_filter_narrows_and_composes_with_the_role_scope() {
+        let app = seeded_agent_scope_router().await;
+
+        // None of the agents declares a category, so a specific category filter
+        // removes every agent instead of leaving the listing untouched.
+        assert!(list_agent_ids_at(
+            &app,
+            "/app/v3/api/ai/agents?page_size=50&categoryCode=engineering"
+        )
+        .await
+        .is_empty());
+
+        // The filters compose: the role scope still applies under a category filter.
+        assert!(list_agent_ids_at(
+            &app,
+            "/backend/v3/api/ai/agents?page_size=50&category_code=engineering&role_codes=org_admin"
+        )
+        .await
+        .is_empty());
+        // The role scope alone keeps the open agent plus the named role.
+        assert_eq!(
+            list_agent_ids_at(
+                &app,
+                "/backend/v3/api/ai/agents?page_size=50&category_code=all&role_codes=org_admin"
+            )
+            .await,
+            vec!["agent.alpha".to_string(), "agent.beta".to_string()]
+        );
     }
 }
 

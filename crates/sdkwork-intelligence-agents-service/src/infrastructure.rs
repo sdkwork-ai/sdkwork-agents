@@ -46,7 +46,8 @@ use crate::task_scheduling::{
     AgentTaskStatus, AgentTaskTriggerKind,
 };
 use crate::validation::{
-    parse_rfc3339_datetime, validate_standard_id, ID_PREFIX_ATTEMPT, ID_PREFIX_RUN, ID_PREFIX_TURN,
+    agent_list_scope_filter_matches, parse_rfc3339_datetime, validate_standard_id,
+    ID_PREFIX_ATTEMPT, ID_PREFIX_RUN, ID_PREFIX_TURN,
 };
 use crate::webhook::{AgentWebhookDeliveryRecord, AgentWebhookRecord};
 use crate::workspace::{AgentWorkspaceRecord, AgentWorkspaceStatus};
@@ -7086,6 +7087,14 @@ fn agent_matches_list_query(record: &AgentBusinessRecord, query: &AgentListQuery
             return false;
         }
     }
+    if !agent_list_scope_filter_matches(
+        record.category_code.as_deref(),
+        &record.allowed_role_codes,
+        query.category_code.as_deref(),
+        &query.role_codes,
+    ) {
+        return false;
+    }
     if let Some(search_query) = query.search_query.as_ref() {
         if !is_blank(Some(search_query.as_str())) {
             let normalized_query = trim(search_query).to_lowercase();
@@ -7283,7 +7292,7 @@ mod tests {
         AgentProviderBindingRecord, AgentSessionEntrySurface, AgentSessionKind, AgentSessionStatus,
         AgentSessionTitleSource, AgentVisibility,
     };
-    use crate::ports::{PaginationParams, ProviderBindingListQuery, MAX_PAGE_SIZE};
+    use crate::ports::{AgentListQuery, PaginationParams, ProviderBindingListQuery, MAX_PAGE_SIZE};
     use crate::validation::ID_PREFIX_ITEM;
     use sdkwork_agent_kernel::AgentManifest;
     use sdkwork_agent_kernel::KernelErrorKind;
@@ -7308,6 +7317,216 @@ mod tests {
         }
     }
 
+    /// Builds a tenant-scoped agent record for the listing filter tests. The
+    /// record mirrors what the SQL adapter reads back: the category reference
+    /// and the IAM role scope are carried on the record itself.
+    fn scoped_agent_record(
+        id: u64,
+        agent_id: &str,
+        category_code: Option<&str>,
+        allowed_role_codes: &[&str],
+    ) -> AgentBusinessRecord {
+        AgentBusinessRecord {
+            id,
+            agent_id: agent_id.to_string(),
+            tenant_id: 100_001,
+            organization_id: 0,
+            owner_user_id: 100,
+            code: agent_id.replace('.', "-"),
+            display_name: agent_id.to_string(),
+            description: None,
+            manifest: sample_manifest(agent_id),
+            category_code: category_code.map(str::to_string),
+            default_code_task_intent: None,
+            implementation_provider_id: None,
+            implementation_kind: None,
+            implementation_type: AgentImplementationType::SdkworkNative,
+            status: AgentBusinessStatus::Active,
+            visibility: AgentVisibility::Organization,
+            tags: Vec::new(),
+            allowed_role_codes: allowed_role_codes
+                .iter()
+                .map(|code| (*code).to_string())
+                .collect(),
+            version: 1,
+            created_at: "2026-06-01T00:00:00Z".to_string(),
+            updated_at: "2026-06-01T00:00:00Z".to_string(),
+            deleted_at: None,
+        }
+    }
+
+    fn seeded_listing_repository() -> InMemoryAgentRepository {
+        let repository = InMemoryAgentRepository::new();
+        for record in [
+            scoped_agent_record(1, "agent.engineering.open", Some("engineering"), &[]),
+            scoped_agent_record(
+                2,
+                "agent.engineering.admin",
+                Some("engineering"),
+                &["org_admin"],
+            ),
+            scoped_agent_record(3, "agent.education.open", Some("education"), &[]),
+            scoped_agent_record(
+                4,
+                "agent.finance.restricted",
+                Some("finance"),
+                &["org_finance"],
+            ),
+            scoped_agent_record(5, "agent.uncategorized.open", None, &[]),
+        ] {
+            repository
+                .insert(record)
+                .expect("seed record insert should succeed");
+        }
+        repository
+    }
+
+    fn list_agent_ids(repository: &InMemoryAgentRepository, query: AgentListQuery) -> Vec<String> {
+        repository
+            .list(&query)
+            .expect("agent list should succeed")
+            .into_iter()
+            .map(|record| record.agent_id)
+            .collect()
+    }
+
+    #[test]
+    fn in_memory_agent_list_all_data_view_returns_every_agent() {
+        let repository = seeded_listing_repository();
+        let query = AgentListQuery::for_tenant(100_001).with_page_size(50);
+
+        let agent_ids = list_agent_ids(&repository, query.clone());
+        assert_eq!(agent_ids.len(), 5);
+        assert_eq!(
+            repository
+                .count_agents(&query)
+                .expect("agent count should succeed"),
+            5
+        );
+    }
+
+    #[test]
+    fn in_memory_agent_list_narrows_to_the_requested_category() {
+        let repository = seeded_listing_repository();
+
+        let query = AgentListQuery::for_tenant(100_001)
+            .with_page_size(50)
+            .with_category_code(Some("engineering".to_string()));
+        let mut agent_ids = list_agent_ids(&repository, query.clone());
+        agent_ids.sort();
+        assert_eq!(
+            agent_ids,
+            vec!["agent.engineering.admin", "agent.engineering.open"]
+        );
+        assert_eq!(
+            repository
+                .count_agents(&query)
+                .expect("agent count should succeed"),
+            2
+        );
+
+        // An agent without a category never matches a category filter.
+        let uncategorized_only = AgentListQuery::for_tenant(100_001)
+            .with_page_size(50)
+            .with_category_code(Some("uncategorized".to_string()));
+        assert!(list_agent_ids(&repository, uncategorized_only).is_empty());
+    }
+
+    #[test]
+    fn in_memory_agent_list_keeps_open_agents_and_the_named_role() {
+        let repository = seeded_listing_repository();
+
+        let mut agent_ids = list_agent_ids(
+            &repository,
+            AgentListQuery::for_tenant(100_001)
+                .with_page_size(50)
+                .with_role_codes(vec!["org_admin".to_string()]),
+        );
+        agent_ids.sort();
+        // Open agents stay visible; agents restricted to another role do not.
+        assert_eq!(
+            agent_ids,
+            vec![
+                "agent.education.open",
+                "agent.engineering.admin",
+                "agent.engineering.open",
+                "agent.uncategorized.open",
+            ]
+        );
+        assert!(!agent_ids.contains(&"agent.finance.restricted".to_string()));
+    }
+
+    #[test]
+    fn in_memory_agent_list_role_filter_never_drops_open_agents() {
+        let repository = seeded_listing_repository();
+
+        for (role_scope, expected_restricted_agent) in [
+            (vec!["org_admin".to_string()], "agent.engineering.admin"),
+            (vec!["org_finance".to_string()], "agent.finance.restricted"),
+        ] {
+            let mut agent_ids = list_agent_ids(
+                &repository,
+                AgentListQuery::for_tenant(100_001)
+                    .with_page_size(50)
+                    .with_role_codes(role_scope),
+            );
+            agent_ids.sort();
+            // Agents open to every role are never removed by a role filter.
+            assert!(agent_ids.contains(&"agent.engineering.open".to_string()));
+            assert!(agent_ids.contains(&"agent.education.open".to_string()));
+            assert!(agent_ids.contains(&"agent.uncategorized.open".to_string()));
+            // Only the agent naming the requested role is added back.
+            assert!(agent_ids.contains(&expected_restricted_agent.to_string()));
+            for other_restricted in ["agent.engineering.admin", "agent.finance.restricted"] {
+                if other_restricted != expected_restricted_agent {
+                    assert!(!agent_ids.contains(&other_restricted.to_string()));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn in_memory_agent_list_composes_category_and_role_filters() {
+        let repository = seeded_listing_repository();
+
+        let mut agent_ids = list_agent_ids(
+            &repository,
+            AgentListQuery::for_tenant(100_001)
+                .with_page_size(50)
+                .with_category_code(Some("engineering".to_string()))
+                .with_role_codes(vec!["org_admin".to_string()]),
+        );
+        agent_ids.sort();
+        assert_eq!(
+            agent_ids,
+            vec!["agent.engineering.admin", "agent.engineering.open"]
+        );
+
+        // Both filters must match: the role-restricted finance agent is kept
+        // only because it is in the requested category and names the role.
+        assert_eq!(
+            list_agent_ids(
+                &repository,
+                AgentListQuery::for_tenant(100_001)
+                    .with_page_size(50)
+                    .with_category_code(Some("finance".to_string()))
+                    .with_role_codes(vec!["org_finance".to_string()]),
+            ),
+            vec!["agent.finance.restricted"]
+        );
+
+        // The category matches but the role scope does not, so the row is gone.
+        assert!(list_agent_ids(
+            &repository,
+            AgentListQuery::for_tenant(100_001)
+                .with_page_size(50)
+                .with_category_code(Some("engineering".to_string()))
+                .with_role_codes(vec!["org_finance".to_string()]),
+        )
+        .iter()
+        .all(|agent_id| agent_id == "agent.engineering.open"));
+    }
+
     #[test]
     fn in_memory_repository_rejects_stale_record_version_update() {
         let repository = InMemoryAgentRepository::new();
@@ -7321,6 +7540,7 @@ mod tests {
             display_name: "Alpha".to_string(),
             description: None,
             manifest: sample_manifest("agent.alpha"),
+            category_code: None,
             default_code_task_intent: None,
             implementation_provider_id: None,
             implementation_kind: None,

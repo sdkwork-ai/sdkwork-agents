@@ -34,6 +34,8 @@ paths:
       - $ref: '#/components/parameters/Page'
       - $ref: '#/components/parameters/PageSize'
       - $ref: '#/components/parameters/SearchQ'
+      - $ref: '#/components/parameters/CategoryCode'
+      - $ref: '#/components/parameters/RoleCodes'
       responses:
         '200':
           description: Managed agent list response
@@ -5078,6 +5080,25 @@ components:
         - published
         - mine
         - workspace
+    CategoryCode:
+      name: category_code
+      in: query
+      required: false
+      description: One agent category code from the category registry. Omit it, or
+        send `all`, to keep every category.
+      schema:
+        type: string
+        maxLength: 128
+    RoleCodes:
+      name: role_codes
+      in: query
+      required: false
+      description: Comma-separated IAM role codes of the signed-in operator, used as
+        the listing's role scope. An empty value keeps the all-data view; a value
+        keeps agents naming one of these roles plus the agents open to every role.
+      schema:
+        type: string
+        maxLength: 1024
     AgentIdPath:
       name: agentId
       in: path

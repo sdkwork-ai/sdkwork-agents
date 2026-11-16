@@ -2,7 +2,7 @@
 
 Pre-launch the agents schema is consolidated on the single greenfield baseline:
 `database/ddl/baseline/postgres/0001_agents_baseline.sql`. It contains the
-complete `7.4.0` schema (canonical Agent, Session, Turn, Task Run/Attempt,
+complete `7.7.0` schema (canonical Agent, Session, Turn, Task Run/Attempt,
 Turn input queue, provider Session directory, typed Interaction envelope,
 materialized Session activity keyset (`ai_agent_session.activity_at` with
 trigger-maintained recency), turn streaming-content checkpoint, execution
@@ -24,6 +24,16 @@ them via `IF NOT EXISTS`:
   (`[]` = every role, the default).
 - `0005` materializes the managed agent category catalog
   (`ai_agent_category`).
+- `0006` materializes the manifest-derived agent delivery projection columns
+  (`agent_kind`, `runtime_family`, `category_code`, `distribution_kind`,
+  `distribution_json`) on `ai_agent`; the manifest stays the authored
+  authority and a re-apply recomputes every value.
+- `0007` corrects `runtime_family` so a manifest without a runtime descriptor is
+  not labeled `rig`: the family derives from the declared runtime or from the
+  `rig-rust` implementation type, and stays NULL otherwise.
+- `0008` enforces the delivery invariants: local-execution agents require a
+  bounded zip archive (entrypoint plus archive reference or Drive locator) and
+  the harness runtime protocol; conversation agents reject an archive.
 
 The lifecycle orchestrator applies the baseline once on an empty schema
 (`baseline-plus-migrations`, `lifecycle.autoMigrate=false`). The drift gate

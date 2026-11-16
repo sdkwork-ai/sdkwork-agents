@@ -1,7 +1,7 @@
 # Official Agent Catalog
 
 - Status: active
-- Catalog version: `1.3.0`
+- Catalog version: `1.5.0`
 - Owner: `agents-platform`
 - Source of truth: [`scripts/agent-catalog/catalog.mjs`](../../../scripts/agent-catalog/catalog.mjs)
 - Generator: [`scripts/generate-agent-catalog-seeds.mjs`](../../../scripts/generate-agent-catalog-seeds.mjs)
@@ -13,7 +13,13 @@ The official catalog is the commercial starting set of managed agents for
 `tenant_id=100001`, `organization_id=0`. It is seeded through the standard
 database lifecycle, not through application code or an ad-hoc SQL console.
 
-The catalog ships **64 agents** across twelve business domains:
+The catalog ships **64 hosted conversation agents** across twelve business
+domains plus **7 local-execution agents** distributed as zip archives and driven
+by the local Harness runtime. Every agent is classified by a two-level
+professional taxonomy (9 domains, 25 specialties), and every hosted agent
+defaults to the Rig Rust implementation.
+
+The hosted catalog covers:
 
 | Domain | Agents | Representative roles |
 | --- | ---: | --- |
@@ -30,7 +36,7 @@ The catalog ships **64 agents** across twelve business domains:
 | Hotel / hospitality | 4 | Operations, revenue management, guest service, OTA marketing |
 | Writing / publishing | 6 | Novelist, book author, news reporter, article writer, copywriter, editor |
 
-Every agent receives:
+Every hosted conversation agent receives:
 
 - a stable `agent.<domain>.<role>` identity and a unique `code`;
 - a versioned `ai_agent_version` snapshot (`version_number=1`);
@@ -40,6 +46,34 @@ Every agent receives:
 - one skill binding carrying the role's pre-delivery quality gate;
 - a management profile with a localized system prompt, welcome message, model,
   temperature, suggested prompts, knowledge references, and skill references.
+
+Local-execution agents receive only identity, version, category, runtime, and
+archive distribution:
+
+| Agent | Engine | Archive | Category |
+| --- | --- | --- | --- |
+| OpenClaw 本地智能体 | `openclaw` | `archive.sdkwork.openclaw` | `local-execution` |
+| WorkBuddy 本地工作助理 | `workbuddy` | `archive.sdkwork.workbuddy` | `local-execution` |
+| Codex 本地编码智能体 | `codex` | `archive.sdkwork.codex-cli` | `local-execution` |
+| Claude Code 本地智能体 | `claude-code` | `archive.sdkwork.claude-code` | `local-execution` |
+| Gemini CLI 本地智能体 | `gemini-cli` | `archive.sdkwork.gemini-cli` | `local-execution` |
+| OpenCode 本地智能体 | `opencode` | `archive.sdkwork.opencode` | `local-execution` |
+| Hermes 本地智能体 | `hermes` | `archive.sdkwork.hermes-agent` | `local-execution` |
+
+They carry no knowledge, memory, MCP, skill, or prompt composition: those live
+inside the installed archive and are owned by the local Harness runtime.
+
+## 1.1 Professional Category Taxonomy
+
+`ai_agent_category` is seeded as a two-level taxonomy: nine domains
+(`technology`, `business`, `corporate`, `education`, `health`, `public-service`,
+`lifestyle`, `content`, `industrial`) and twenty-five specialties. Agents always
+reference a specialty; a domain is never assigned to an agent.
+
+The database projects the manifest into indexed columns so list filters stay
+consistent without a second write path: `agent_kind`, `runtime_family`,
+`category_code`, `distribution_kind`, and `distribution_json`. They are STORED
+generated columns; update the manifest, never the columns.
 
 ## 2. Ownership Boundaries
 
@@ -175,7 +209,9 @@ Ready after seeding:
 - every agent has a complete Chinese management profile and system prompt;
 - every agent has version history and stable composition references;
 - knowledge spaces and memory spaces exist, are active, and are tenant-scoped;
-- 18 MCP server entries, 12 industry categories, and 18 draft connectors exist.
+- 18 MCP server entries, 16 tool-domain categories, and 18 draft connectors exist.
+  Every server category is a defined category; research, analysis, productivity,
+  and language complete the tool-domain taxonomy used by the catalog.
   Each server points at its latest draft connector; no connector has an endpoint
   or credential until an operator activates it.
 - the six writing agents declare their intended tool descriptors on the

@@ -11,33 +11,79 @@
   "status": "ok",
   "mode": "apply",
   "hasChanges": true,
-  "hasDestructiveChanges": false,
-  "changeFingerprint": "72d2845aab0718bc80acacf5f99a96427fb500db29bc6e3f3fd9e6c9f6cdf84a",
+  "hasDestructiveChanges": true,
+  "changeFingerprint": "0d816fe84fd14ebd656ed39d00cb2d8f75cc8bb99e3e432da4f4205ec1e57dba",
   "changeImpact": {
     "schemaVersion": 1,
     "areas": [
+      "api-surface",
       "models"
     ],
     "details": [
       {
+        "area": "api-surface",
+        "paths": [
+          "src/api/ai.d.ts",
+          "src/api/ai.ts"
+        ]
+      },
+      {
         "area": "models",
         "paths": [
-          "src/types/agent-category-record.ts",
-          "src/types/agent-category-upsert-request.ts"
+          "src/types/agent-audit-event-list-response.d.ts",
+          "src/types/agent-category-list-response.d.ts",
+          "src/types/agent-category-record.d.ts",
+          "src/types/agent-category-response.d.ts",
+          "src/types/agent-category-upsert-request.d.ts",
+          "src/types/agent-composition-slot-list-response.d.ts",
+          "src/types/agent-composition-slot-response.d.ts",
+          "src/types/agent-interaction-claim-response.d.ts",
+          "src/types/agent-interaction-list-response.d.ts",
+          "src/types/agent-interaction-response.d.ts",
+          "src/types/agent-list-response.d.ts",
+          "src/types/agent-provider-binding-list-response.d.ts",
+          "src/types/agent-provider-binding-response.d.ts",
+          "src/types/agent-response.d.ts",
+          "src/types/agent-session-checkpoint-list-response.d.ts",
+          "src/types/agent-session-checkpoint-response.d.ts",
+          "src/types/agent-session-item-list-response.d.ts",
+          "src/types/agent-session-item-response.d.ts",
+          "src/types/agent-session-list-response.d.ts",
+          "src/types/agent-session-response.d.ts",
+          "src/types/agent-session-runtime-binding-list-response.d.ts",
+          "src/types/agent-session-runtime-binding-response.d.ts",
+          "src/types/agent-task-list-response.d.ts",
+          "src/types/agent-task-response.d.ts",
+          "src/types/agent-task-run-attempt-list-response.d.ts",
+          "src/types/agent-task-run-list-response.d.ts",
+          "src/types/agent-task-run-response.d.ts",
+          "src/types/agent-turn-execution-response.d.ts",
+          "src/types/agent-turn-list-response.d.ts",
+          "src/types/agent-turn-response.d.ts",
+          "src/types/execution-host-list-response.d.ts",
+          "src/types/execution-host-response.d.ts",
+          "src/types/index.d.ts",
+          "src/types/media-tool-directory-response.d.ts",
+          "src/types/problem-detail.d.ts",
+          "src/types/sdk-work-api-response.d.ts",
+          "src/types/tool-directory-entry-api-response.d.ts"
         ]
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: models. Verification is required."
+    "summary": "Detected impact areas: api-surface, models. Verification is required."
   },
   "executionDecision": {
     "schemaVersion": 1,
-    "riskLevel": "medium",
+    "riskLevel": "high",
     "nextAction": "verify",
     "requiresManualReview": false,
     "applyRequiresExpectedFingerprint": false,
     "summary": "Changes have been applied. Run the required verification plan now.",
     "reasons": [
+      "backed-up-generated-files",
+      "deleted-generated-files",
+      "manual-review-required",
       "verification-required"
     ]
   },
@@ -49,7 +95,7 @@
         "id": "verify-check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: models.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -67,7 +113,7 @@
         "id": "verify-build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -86,13 +132,13 @@
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: models. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: api-surface, models. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: models.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -110,7 +156,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -149,17 +195,16 @@
   "syncSummary": {
     "dryRun": false,
     "controlPlaneEnabled": true,
-    "writtenFiles": 2,
+    "writtenFiles": 1,
     "skippedScaffoldFiles": 2,
-    "skippedUnchangedGeneratedFiles": 148,
-    "deletedGeneratedFiles": 0,
+    "skippedUnchangedGeneratedFiles": 149,
+    "deletedGeneratedFiles": 38,
     "changeSummaryPath": ".sdkwork/sdkwork-generator-changes.json",
-    "changeFingerprint": "72d2845aab0718bc80acacf5f99a96427fb500db29bc6e3f3fd9e6c9f6cdf84a",
+    "changeFingerprint": "0d816fe84fd14ebd656ed39d00cb2d8f75cc8bb99e3e432da4f4205ec1e57dba",
     "changes": {
       "createdGeneratedFiles": [],
       "updatedGeneratedFiles": [
-        "src/types/agent-category-record.ts",
-        "src/types/agent-category-upsert-request.ts"
+        "src/api/ai.ts"
       ],
       "unchangedGeneratedFiles": [
         "bin/publish-core.mjs",
@@ -172,7 +217,6 @@
         "package.json",
         "README.md",
         "sdkwork-sdk.json",
-        "src/api/ai.ts",
         "src/api/base.ts",
         "src/api/index.ts",
         "src/api/paths.ts",
@@ -185,7 +229,9 @@
         "src/types/agent-audit-event-list-response.ts",
         "src/types/agent-audit-event.ts",
         "src/types/agent-category-list-response.ts",
+        "src/types/agent-category-record.ts",
         "src/types/agent-category-response.ts",
+        "src/types/agent-category-upsert-request.ts",
         "src/types/agent-composition-slot-kind.ts",
         "src/types/agent-composition-slot-list-response.ts",
         "src/types/agent-composition-slot-record.ts",
@@ -311,41 +357,162 @@
         "src/types/update-agent-status-request.ts",
         "tsconfig.json"
       ],
-      "deletedGeneratedFiles": [],
+      "deletedGeneratedFiles": [
+        "src/api/ai.d.ts",
+        "src/types/agent-audit-event-list-response.d.ts",
+        "src/types/agent-category-list-response.d.ts",
+        "src/types/agent-category-record.d.ts",
+        "src/types/agent-category-response.d.ts",
+        "src/types/agent-category-upsert-request.d.ts",
+        "src/types/agent-composition-slot-list-response.d.ts",
+        "src/types/agent-composition-slot-response.d.ts",
+        "src/types/agent-interaction-claim-response.d.ts",
+        "src/types/agent-interaction-list-response.d.ts",
+        "src/types/agent-interaction-response.d.ts",
+        "src/types/agent-list-response.d.ts",
+        "src/types/agent-provider-binding-list-response.d.ts",
+        "src/types/agent-provider-binding-response.d.ts",
+        "src/types/agent-response.d.ts",
+        "src/types/agent-session-checkpoint-list-response.d.ts",
+        "src/types/agent-session-checkpoint-response.d.ts",
+        "src/types/agent-session-item-list-response.d.ts",
+        "src/types/agent-session-item-response.d.ts",
+        "src/types/agent-session-list-response.d.ts",
+        "src/types/agent-session-response.d.ts",
+        "src/types/agent-session-runtime-binding-list-response.d.ts",
+        "src/types/agent-session-runtime-binding-response.d.ts",
+        "src/types/agent-task-list-response.d.ts",
+        "src/types/agent-task-response.d.ts",
+        "src/types/agent-task-run-attempt-list-response.d.ts",
+        "src/types/agent-task-run-list-response.d.ts",
+        "src/types/agent-task-run-response.d.ts",
+        "src/types/agent-turn-execution-response.d.ts",
+        "src/types/agent-turn-list-response.d.ts",
+        "src/types/agent-turn-response.d.ts",
+        "src/types/execution-host-list-response.d.ts",
+        "src/types/execution-host-response.d.ts",
+        "src/types/index.d.ts",
+        "src/types/media-tool-directory-response.d.ts",
+        "src/types/problem-detail.d.ts",
+        "src/types/sdk-work-api-response.d.ts",
+        "src/types/tool-directory-entry-api-response.d.ts"
+      ],
       "scaffoldedFiles": [],
       "preservedScaffoldFiles": [
         "custom/build-runtime.mjs",
         "custom/README.md"
       ],
-      "backedUpFiles": []
+      "backedUpFiles": [
+        "src/api/ai.d.ts",
+        "src/types/agent-audit-event-list-response.d.ts",
+        "src/types/agent-category-list-response.d.ts",
+        "src/types/agent-category-record.d.ts",
+        "src/types/agent-category-response.d.ts",
+        "src/types/agent-category-upsert-request.d.ts",
+        "src/types/agent-composition-slot-list-response.d.ts",
+        "src/types/agent-composition-slot-response.d.ts",
+        "src/types/agent-interaction-claim-response.d.ts",
+        "src/types/agent-interaction-list-response.d.ts",
+        "src/types/agent-interaction-response.d.ts",
+        "src/types/agent-list-response.d.ts",
+        "src/types/agent-provider-binding-list-response.d.ts",
+        "src/types/agent-provider-binding-response.d.ts",
+        "src/types/agent-response.d.ts",
+        "src/types/agent-session-checkpoint-list-response.d.ts",
+        "src/types/agent-session-checkpoint-response.d.ts",
+        "src/types/agent-session-item-list-response.d.ts",
+        "src/types/agent-session-item-response.d.ts",
+        "src/types/agent-session-list-response.d.ts",
+        "src/types/agent-session-response.d.ts",
+        "src/types/agent-session-runtime-binding-list-response.d.ts",
+        "src/types/agent-session-runtime-binding-response.d.ts",
+        "src/types/agent-task-list-response.d.ts",
+        "src/types/agent-task-response.d.ts",
+        "src/types/agent-task-run-attempt-list-response.d.ts",
+        "src/types/agent-task-run-list-response.d.ts",
+        "src/types/agent-task-run-response.d.ts",
+        "src/types/agent-turn-execution-response.d.ts",
+        "src/types/agent-turn-list-response.d.ts",
+        "src/types/agent-turn-response.d.ts",
+        "src/types/execution-host-list-response.d.ts",
+        "src/types/execution-host-response.d.ts",
+        "src/types/index.d.ts",
+        "src/types/media-tool-directory-response.d.ts",
+        "src/types/problem-detail.d.ts",
+        "src/types/sdk-work-api-response.d.ts",
+        "src/types/tool-directory-entry-api-response.d.ts"
+      ]
     },
     "impact": {
       "schemaVersion": 1,
       "areas": [
+        "api-surface",
         "models"
       ],
       "details": [
         {
+          "area": "api-surface",
+          "paths": [
+            "src/api/ai.d.ts",
+            "src/api/ai.ts"
+          ]
+        },
+        {
           "area": "models",
           "paths": [
-            "src/types/agent-category-record.ts",
-            "src/types/agent-category-upsert-request.ts"
+            "src/types/agent-audit-event-list-response.d.ts",
+            "src/types/agent-category-list-response.d.ts",
+            "src/types/agent-category-record.d.ts",
+            "src/types/agent-category-response.d.ts",
+            "src/types/agent-category-upsert-request.d.ts",
+            "src/types/agent-composition-slot-list-response.d.ts",
+            "src/types/agent-composition-slot-response.d.ts",
+            "src/types/agent-interaction-claim-response.d.ts",
+            "src/types/agent-interaction-list-response.d.ts",
+            "src/types/agent-interaction-response.d.ts",
+            "src/types/agent-list-response.d.ts",
+            "src/types/agent-provider-binding-list-response.d.ts",
+            "src/types/agent-provider-binding-response.d.ts",
+            "src/types/agent-response.d.ts",
+            "src/types/agent-session-checkpoint-list-response.d.ts",
+            "src/types/agent-session-checkpoint-response.d.ts",
+            "src/types/agent-session-item-list-response.d.ts",
+            "src/types/agent-session-item-response.d.ts",
+            "src/types/agent-session-list-response.d.ts",
+            "src/types/agent-session-response.d.ts",
+            "src/types/agent-session-runtime-binding-list-response.d.ts",
+            "src/types/agent-session-runtime-binding-response.d.ts",
+            "src/types/agent-task-list-response.d.ts",
+            "src/types/agent-task-response.d.ts",
+            "src/types/agent-task-run-attempt-list-response.d.ts",
+            "src/types/agent-task-run-list-response.d.ts",
+            "src/types/agent-task-run-response.d.ts",
+            "src/types/agent-turn-execution-response.d.ts",
+            "src/types/agent-turn-list-response.d.ts",
+            "src/types/agent-turn-response.d.ts",
+            "src/types/execution-host-list-response.d.ts",
+            "src/types/execution-host-response.d.ts",
+            "src/types/index.d.ts",
+            "src/types/media-tool-directory-response.d.ts",
+            "src/types/problem-detail.d.ts",
+            "src/types/sdk-work-api-response.d.ts",
+            "src/types/tool-directory-entry-api-response.d.ts"
           ]
         }
       ],
       "requiresVerification": true,
-      "summary": "Detected impact areas: models. Verification is required."
+      "summary": "Detected impact areas: api-surface, models. Verification is required."
     },
     "verificationPlan": {
       "shouldRun": true,
       "runPhase": "now",
-      "summary": "Detected impact areas: models. Verification is required. Run the required verification commands now against the generated SDK output.",
+      "summary": "Detected impact areas: api-surface, models. Verification is required. Run the required verification commands now against the generated SDK output.",
       "steps": [
         {
           "id": "check",
           "title": "Unified package check",
           "required": true,
-          "rationale": "Validate the generated package with the unified publish helper. Triggered by: models.",
+          "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models.",
           "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
           "command": "node",
           "args": [
@@ -363,7 +530,7 @@
           "id": "build",
           "title": "Unified package build",
           "required": true,
-          "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models.",
+          "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models.",
           "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-backend-sdk\\sdkwork-agents-backend-sdk-typescript\\generated\\server-openapi",
           "command": "node",
           "args": [
@@ -381,16 +548,58 @@
     },
     "executionDecision": {
       "schemaVersion": 1,
-      "riskLevel": "medium",
+      "riskLevel": "high",
       "nextAction": "verify",
       "requiresManualReview": false,
       "applyRequiresExpectedFingerprint": false,
       "summary": "Changes have been applied. Run the required verification plan now.",
       "reasons": [
+        "backed-up-generated-files",
+        "deleted-generated-files",
+        "manual-review-required",
         "verification-required"
       ]
     },
-    "backedUpFiles": [],
+    "backedUpFiles": [
+      "src/api/ai.d.ts",
+      "src/types/agent-audit-event-list-response.d.ts",
+      "src/types/agent-category-list-response.d.ts",
+      "src/types/agent-category-record.d.ts",
+      "src/types/agent-category-response.d.ts",
+      "src/types/agent-category-upsert-request.d.ts",
+      "src/types/agent-composition-slot-list-response.d.ts",
+      "src/types/agent-composition-slot-response.d.ts",
+      "src/types/agent-interaction-claim-response.d.ts",
+      "src/types/agent-interaction-list-response.d.ts",
+      "src/types/agent-interaction-response.d.ts",
+      "src/types/agent-list-response.d.ts",
+      "src/types/agent-provider-binding-list-response.d.ts",
+      "src/types/agent-provider-binding-response.d.ts",
+      "src/types/agent-response.d.ts",
+      "src/types/agent-session-checkpoint-list-response.d.ts",
+      "src/types/agent-session-checkpoint-response.d.ts",
+      "src/types/agent-session-item-list-response.d.ts",
+      "src/types/agent-session-item-response.d.ts",
+      "src/types/agent-session-list-response.d.ts",
+      "src/types/agent-session-response.d.ts",
+      "src/types/agent-session-runtime-binding-list-response.d.ts",
+      "src/types/agent-session-runtime-binding-response.d.ts",
+      "src/types/agent-task-list-response.d.ts",
+      "src/types/agent-task-response.d.ts",
+      "src/types/agent-task-run-attempt-list-response.d.ts",
+      "src/types/agent-task-run-list-response.d.ts",
+      "src/types/agent-task-run-response.d.ts",
+      "src/types/agent-turn-execution-response.d.ts",
+      "src/types/agent-turn-list-response.d.ts",
+      "src/types/agent-turn-response.d.ts",
+      "src/types/execution-host-list-response.d.ts",
+      "src/types/execution-host-response.d.ts",
+      "src/types/index.d.ts",
+      "src/types/media-tool-directory-response.d.ts",
+      "src/types/problem-detail.d.ts",
+      "src/types/sdk-work-api-response.d.ts",
+      "src/types/tool-directory-entry-api-response.d.ts"
+    ],
     "preservedLegacyFiles": false
   }
 }

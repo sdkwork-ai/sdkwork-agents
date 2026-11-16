@@ -302,6 +302,16 @@ pub struct AgentListQuery {
     pub search_query: Option<String>,
     /// When set, restricts results to a single visibility level (for example public marketplace).
     pub visibility: Option<AgentVisibility>,
+    /// When set, restricts results to agents in this `category_code`.
+    ///
+    /// `None` is the all-category view; an agent without a category never
+    /// matches a populated value.
+    pub category_code: Option<String>,
+    /// IAM role codes the caller is listing for. Empty is the all-data view.
+    ///
+    /// A populated scope keeps agents that name one of the codes plus agents
+    /// open to every role (`allowed_role_codes` empty).
+    pub role_codes: Vec<String>,
     pub pagination: PaginationParams,
 }
 
@@ -314,6 +324,8 @@ impl AgentListQuery {
             include_deleted: false,
             search_query: None,
             visibility: None,
+            category_code: None,
+            role_codes: Vec::new(),
             pagination: PaginationParams::default(),
         }
     }
@@ -366,6 +378,22 @@ impl AgentListQuery {
     /// Restrict list results to publicly visible agents (marketplace scope).
     pub fn with_public_visibility_only(mut self) -> Self {
         self.visibility = Some(AgentVisibility::Public);
+        self
+    }
+
+    /// Restrict list results to one normalized `category_code`.
+    ///
+    /// Passing `None` keeps the all-category view, which is the default.
+    pub fn with_category_code(mut self, category_code: Option<String>) -> Self {
+        self.category_code = category_code;
+        self
+    }
+
+    /// Restrict list results to the caller's normalized IAM role scope.
+    ///
+    /// An empty scope is the all-data view, which is the default.
+    pub fn with_role_codes(mut self, role_codes: Vec<String>) -> Self {
+        self.role_codes = role_codes;
         self
     }
 }

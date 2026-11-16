@@ -15,11 +15,17 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   AGENTS,
+  AGENT_CATEGORY_CODES,
+  AGENT_CATEGORY_TREE,
+  AGENT_KINDS,
   CATALOG_OWNER,
   CATALOG_VERSION,
   COMMON_GUARDRAILS_EN,
   COMMON_GUARDRAILS_ZH,
+  DEFAULT_CONVERSATION_RUNTIME_FAMILY,
   DEFAULT_MODEL,
+  LOCAL_EXECUTION_AGENTS,
+  LOCAL_EXECUTION_RUNTIME_FAMILY,
   MCP_CATEGORIES,
   MCP_SERVERS,
   ORGANIZATION_ID,
@@ -43,6 +49,9 @@ const MEMORY_BINDING_ID_BASE = 537000000000000001n;
 const MCP_SERVER_ID_BASE = 535000000000000001n;
 const MCP_CATEGORY_ID_BASE = 539000000000000001n;
 const MCP_CONNECTOR_ID_BASE = 538000000000000001n;
+const LOCAL_AGENT_ID_BASE = 366600000000000001n;
+const LOCAL_AGENT_VERSION_ID_BASE = 366700000000000001n;
+const AGENT_CATEGORY_ID_BASE = 540000000000000001n;
 
 function fail(message) {
   throw new Error(message);
@@ -115,6 +124,62 @@ function memorySubjectId(index) {
 
 function memoryBindingId(index) {
   return MEMORY_BINDING_ID_BASE + BigInt(index);
+}
+
+function localAgentRowId(index) {
+  return LOCAL_AGENT_ID_BASE + BigInt(index);
+}
+
+function localAgentVersionRowId(index) {
+  return LOCAL_AGENT_VERSION_ID_BASE + BigInt(index);
+}
+
+function agentCategoryRowId(index) {
+  return AGENT_CATEGORY_ID_BASE + BigInt(index);
+}
+
+/**
+ * Resolves the deterministic category row id for a category code.
+ *
+ * Parents occupy the first slots; every child gets its own slot after the
+ * parents, in tree order. The mapping is index-independent of iteration order
+ * because it walks the same tree for both phases.
+ */
+function categoryRowIds() {
+  const ids = new Map();
+  let cursor = 0;
+  for (const parent of AGENT_CATEGORY_TREE) {
+    ids.set(parent.code, agentCategoryRowId(cursor));
+    cursor += 1;
+  }
+  for (const parent of AGENT_CATEGORY_TREE) {
+    for (const child of parent.children) {
+      ids.set(child.code, agentCategoryRowId(cursor));
+      cursor += 1;
+    }
+  }
+  return ids;
+}
+
+function agentKind(agent) {
+  return agent.kind ?? "conversation";
+}
+
+function implementationColumns(agent) {
+  const runtime = agent.runtime;
+  return {
+    providerId: runtime.provider_id,
+    kind: runtime.implementation_kind,
+    type: runtime.implementation_type,
+  };
+}
+
+function distributionColumns(agent) {
+  const distribution = agent.distribution;
+  if (!distribution) {
+    return { kind: "manifest", json: null };
+  }
+  return { kind: "archive", json: distribution };
 }
 
 function bulletList(lines) {
@@ -198,10 +263,10 @@ function buildManagementProfile(agent, locale) {
   return {
     author: CATALOG_OWNER,
     avatar: agent.icon,
-    categoryId: agent.category,
+    categoryId: agent.categoryCode,
     color: agent.color,
     debugMode: false,
-    executionRoute: "in_process",
+    executionRoute: agentKind(agent) === "local-execution" ? "host" : "in_process",
     iconName: agent.icon,
     jsonMode: false,
     knowledgeBaseIds: [knowledgeKey(agent)],
@@ -230,7 +295,7 @@ function buildIntent(agent, locale) {
 
 function buildManifest(agent, locale) {
   const payload = agent[locale];
-  return {
+  const manifest = {
     schema_version: "1.0.0",
     manifest_type: "agent",
     agent_id: agentId(agent),
@@ -239,6 +304,9 @@ function buildManifest(agent, locale) {
     description: payload.tagline,
     version: CATALOG_VERSION,
     domain: agent.category,
+    agent_kind: agentKind(agent),
+    category_code: agent.categoryCode,
+    runtime: agent.runtime,
     required_capabilities: ["model.chat"],
     optional_capabilities: [
       "tool.invoke",
@@ -250,10 +318,14 @@ function buildManifest(agent, locale) {
     owner_name: "SDKWork",
     status: "active",
   };
+  if (agent.distribution) {
+    manifest.distribution = agent.distribution;
+  }
+  return manifest;
 }
 
 function buildBaseManifest(agent) {
-  return {
+  const manifest = {
     schema_version: "1.0.0",
     manifest_type: "agent",
     agent_id: agentId(agent),
@@ -262,6 +334,9 @@ function buildBaseManifest(agent) {
     description: "Official SDKWork managed agent",
     version: CATALOG_VERSION,
     domain: agent.category,
+    agent_kind: agentKind(agent),
+    category_code: agent.categoryCode,
+    runtime: agent.runtime,
     required_capabilities: ["model.chat"],
     optional_capabilities: [
       "tool.invoke",
@@ -273,6 +348,10 @@ function buildBaseManifest(agent) {
     owner_name: "SDKWork",
     status: "active",
   };
+  if (agent.distribution) {
+    manifest.distribution = agent.distribution;
+  }
+  return manifest;
 }
 
 function validateCatalog() {
@@ -334,6 +413,246 @@ function validateCatalog() {
   for (const category of ["engineering", "education", "healthcare", "legal", "travel", "ecommerce", "realestate", "writing"]) {
     assert(AGENTS.some((agent) => agent.category === category), `missing category ${category}`);
   }
+  validateTaxonomy();
+  validateKinds();
+  validateLocalAgents(seenCodes, seenIds);
+  validateMcpCatalog();
+}
+
+function validateMcpCatalog() {
+  const categoryCodes = new Set();
+  for (const category of MCP_CATEGORIES) {
+    assert(
+      category.code && /^[a-z][a-z0-9_-]{1,63}$/.test(category.code),
+      `invalid MCP category code ${category.code}`,
+    );
+    assert(!categoryCodes.has(category.code), `duplicate MCP category ${category.code}`);
+    categoryCodes.add(category.code);
+    assert(category.name && category.zhName, `MCP category ${category.code} needs bilingual names`);
+    assert(category.description, `MCP category ${category.code} needs a description`);
+    assert(category.iconRef, `MCP category ${category.code} needs an icon reference`);
+  }
+  for (const server of MCP_SERVERS) {
+    assert(
+      categoryCodes.has(server.category),
+      `MCP server ${server.key} uses undefined category ${server.category}`,
+    );
+  }
+}
+
+function validateTaxonomy() {
+  const parentCodes = new Set();
+  const leafCodes = new Set();
+  for (const parent of AGENT_CATEGORY_TREE) {
+    assert(parent.code && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(parent.code), `invalid category code ${parent.code}`);
+    assert(!parentCodes.has(parent.code), `duplicate category code ${parent.code}`);
+    parentCodes.add(parent.code);
+    for (const field of ["name", "zhName", "description", "zhDescription", "iconRef"]) {
+      assert(
+        typeof parent[field] === "string" && parent[field].trim().length > 0,
+        `category ${parent.code} missing ${field}`,
+      );
+    }
+    assert(Array.isArray(parent.children) && parent.children.length >= 1, `category ${parent.code} needs a child`);
+    for (const child of parent.children) {
+      assert(child.code && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(child.code), `invalid child code ${child.code}`);
+      assert(!parentCodes.has(child.code), `child code ${child.code} collides with a parent`);
+      assert(!leafCodes.has(child.code), `duplicate child code ${child.code}`);
+      leafCodes.add(child.code);
+      for (const field of ["name", "zhName", "description", "zhDescription", "iconRef"]) {
+        assert(
+          typeof child[field] === "string" && child[field].trim().length > 0,
+          `category ${child.code} missing ${field}`,
+        );
+      }
+    }
+    assert(
+      !(parent.children ?? []).some((child) => Array.isArray(child.children) && child.children.length > 0),
+      `category ${parent.code} exceeds the two-level taxonomy limit`,
+    );
+  }
+  assert(
+    AGENT_CATEGORY_CODES.length === leafCodes.size,
+    "AGENT_CATEGORY_CODES must list each leaf exactly once",
+  );
+  for (const code of leafCodes) {
+    assert(AGENT_CATEGORY_CODES.includes(code), `leaf ${code} missing from AGENT_CATEGORY_CODES`);
+  }
+}
+
+function validateKinds() {
+  assert(AGENT_KINDS.length === 2, "exactly two agent kinds are supported");
+  for (const agent of AGENTS) {
+    assert(agent.kind === "conversation", `${agent.slug} hosted agents must be conversation kind`);
+    assert(agent.runtime.family === DEFAULT_CONVERSATION_RUNTIME_FAMILY, `${agent.slug} runtime family`);
+    assert(agent.runtime.implementation_type === "rig-rust", `${agent.slug} must default to the Rig implementation`);
+    assert(AGENT_CATEGORY_CODES.includes(agent.categoryCode), `${agent.slug} unknown category ${agent.categoryCode}`);
+    assert(!agent.distribution, `${agent.slug} hosted agents must not declare an archive`);
+  }
+  assert(
+    AGENTS.some((agent) => agent.kind === "conversation") &&
+      LOCAL_EXECUTION_AGENTS.some((agent) => agent.kind === "local-execution"),
+    "catalog must initialize both agent kinds",
+  );
+}
+
+function validateLocalAgents(seenCodes, seenIds) {
+  for (const agent of LOCAL_EXECUTION_AGENTS) {
+    assert(agent.slug && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(agent.slug), `invalid local slug ${agent.slug}`);
+    assert(!seenCodes.has(agent.slug), `duplicate slug ${agent.slug}`);
+    seenCodes.add(agent.slug);
+    const id = agentId(agent);
+    assert(!seenIds.has(id), `duplicate agent id ${id}`);
+    seenIds.add(id);
+    assert(agent.kind === "local-execution", `${agent.slug} must be local-execution kind`);
+    assert(agent.runtime.family === LOCAL_EXECUTION_RUNTIME_FAMILY, `${agent.slug} must use the harness runtime`);
+    assert(
+      agent.runtime.protocol === "harness.agent.runtime.v1",
+      `${agent.slug} must declare the harness runtime protocol`,
+    );
+    assert(agent.categoryCode === "local-execution", `${agent.slug} category must be local-execution`);
+    assert(agent.engine === agent.runtime.engine, `${agent.slug} runtime engine mismatch`);
+    const distribution = agent.distribution;
+    assert(distribution && distribution.kind === "archive", `${agent.slug} needs an archive distribution`);
+    assert(distribution.format === "zip", `${agent.slug} must be distributed as a zip archive`);
+    assert(
+      typeof distribution.archiveRef === "string" && distribution.archiveRef.startsWith("archive."),
+      `${agent.slug} archive ref must be a catalog archive reference`,
+    );
+    assert(
+      typeof distribution.entrypoint === "string" && distribution.entrypoint.endsWith("/manifest.json"),
+      `${agent.slug} archive entrypoint must name its manifest`,
+    );
+    assert(distribution.installMode === "extract", `${agent.slug} install mode must be extract`);
+    for (const locale of ["zh", "en"]) {
+      const payload = agent[locale];
+      assert(payload?.name?.trim(), `${agent.slug}.${locale}.name is required`);
+      assert(payload?.tagline?.trim(), `${agent.slug}.${locale}.tagline is required`);
+      assert(payload?.description?.trim(), `${agent.slug}.${locale}.description is required`);
+    }
+  }
+  assert(LOCAL_EXECUTION_AGENTS.length >= 2, "catalog must initialize at least two local-execution agents");
+}
+
+function renderAgentCategoryCommonBlocks() {
+  const blocks = [];
+  const ids = categoryRowIds();
+  AGENT_CATEGORY_TREE.forEach((parent, index) => {
+    blocks.push(
+      [
+        "INSERT INTO ai_agent_category (",
+        "  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,",
+        "  sort_order, icon_ref, status, created_by, updated_by, version,",
+        "  created_at, updated_at, deleted_at, deleted_by",
+        ") VALUES (",
+        `  ${ids.get(parent.code)}, ${sqlText(uuidFor(`agent-category:${parent.code}`))}, ${TENANT_ID}, ${ORGANIZATION_ID},`,
+        `  ${sqlText(parent.code)}, ${sqlText(parent.name)}, ${sqlText(parent.description)}, NULL,`,
+        `  ${(index + 1) * 10}, ${sqlText(parent.iconRef)}, 1, ${OWNER_USER_ID}, ${OWNER_USER_ID}, 0,`,
+        `  ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}, NULL, NULL`,
+        ")",
+        "ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET",
+        "  name = EXCLUDED.name,",
+        "  description = EXCLUDED.description,",
+        "  parent_id = EXCLUDED.parent_id,",
+        "  sort_order = EXCLUDED.sort_order,",
+        "  icon_ref = EXCLUDED.icon_ref,",
+        "  status = EXCLUDED.status,",
+        "  updated_at = EXCLUDED.updated_at,",
+        "  deleted_at = NULL",
+        ";",
+      ].join("\n"),
+    );
+  });
+  let childIndex = 0;
+  for (const parent of AGENT_CATEGORY_TREE) {
+    for (const child of parent.children) {
+      blocks.push(
+        [
+          "INSERT INTO ai_agent_category (",
+          "  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,",
+          "  sort_order, icon_ref, status, created_by, updated_by, version,",
+          "  created_at, updated_at, deleted_at, deleted_by",
+          ") VALUES (",
+          `  ${ids.get(child.code)}, ${sqlText(uuidFor(`agent-category:${child.code}`))}, ${TENANT_ID}, ${ORGANIZATION_ID},`,
+          `  ${sqlText(child.code)}, ${sqlText(child.name)}, ${sqlText(child.description)}, ${ids.get(parent.code)},`,
+          `  ${100 + childIndex}, ${sqlText(child.iconRef)}, 1, ${OWNER_USER_ID}, ${OWNER_USER_ID}, 0,`,
+          `  ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}, NULL, NULL`,
+          ")",
+          "ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET",
+          "  name = EXCLUDED.name,",
+          "  description = EXCLUDED.description,",
+          "  parent_id = EXCLUDED.parent_id,",
+          "  sort_order = EXCLUDED.sort_order,",
+          "  icon_ref = EXCLUDED.icon_ref,",
+          "  status = EXCLUDED.status,",
+          "  updated_at = EXCLUDED.updated_at,",
+          "  deleted_at = NULL",
+          ";",
+        ].join("\n"),
+      );
+      childIndex += 1;
+    }
+  }
+  return blocks;
+}
+
+function renderAgentIdentityBlock(agent, id, options) {
+  const implementation = implementationColumns(agent);
+  const distribution = distributionColumns(agent);
+  const tags = [
+    ...new Set([
+      agent.categoryCode,
+      agentKind(agent),
+      ...agent.tags,
+      "official",
+      "commercial",
+    ]),
+  ];
+  const manifest = options.manifest;
+  return [
+    "INSERT INTO ai_agent (",
+    "  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,",
+    "  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,",
+    "  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,",
+    "  created_at, updated_at, deleted_at, version",
+    ") VALUES (",
+    `  ${id}, ${sqlText(uuidFor(`agent:${agent.slug}`))}, ${TENANT_ID}, ${ORGANIZATION_ID}, ${OWNER_USER_ID},`,
+    `  ${sqlText(agentId(agent))}, ${sqlText(agent.slug)}, ${sqlText(agent.slug)}, NULL,`,
+    `  ${sqlJson(manifest)}, ${sqlText("1.0.0")}, NULL, ${sqlText(implementation.providerId)},`,
+    `  ${sqlText(implementation.kind)}, ${sqlText(implementation.type)}, 1, 3, ${sqlJson(tags)}, '[]'::jsonb,`,
+    `  ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}, NULL, 0`,
+    ")",
+    "ON CONFLICT (tenant_id, agent_id) DO UPDATE SET",
+    "  code = EXCLUDED.code,",
+    "  manifest_schema_version = EXCLUDED.manifest_schema_version,",
+    "  implementation_provider_id = EXCLUDED.implementation_provider_id,",
+    "  implementation_kind = EXCLUDED.implementation_kind,",
+    "  implementation_type = EXCLUDED.implementation_type,",
+    "  status = EXCLUDED.status,",
+    "  visibility = EXCLUDED.visibility,",
+    "  tags_json = EXCLUDED.tags_json,",
+    "  allowed_role_codes = EXCLUDED.allowed_role_codes,",
+    "  updated_at = EXCLUDED.updated_at",
+    ";",
+  ].join("\n");
+}
+
+function renderAgentVersionBlock(agent, id, options) {
+  const implementation = implementationColumns(agent);
+  return [
+    "INSERT INTO ai_agent_version (",
+    "  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,",
+    "  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,",
+    "  description, created_by, created_at, activated_at",
+    ") VALUES (",
+    `  ${id}, ${TENANT_ID}, ${ORGANIZATION_ID}, ${sqlText(agentId(agent))},`,
+    `  ${sqlText(`version.${agent.slug}.1`)}, 1, ${sqlJson(options.manifest)}, NULL, ${sqlText(implementation.providerId)},`,
+    `  ${sqlText(implementation.kind)}, ${sqlText(implementation.type)}, ${sqlText(options.description)},`,
+    `  ${OWNER_USER_ID}, ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}`,
+    ")",
+    "ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING",
+    ";",
+  ].join("\n");
 }
 
 function renderAgentsCommon() {
@@ -342,50 +661,18 @@ function renderAgentsCommon() {
   blocks.push(`-- Catalog revision: ${CATALOG_VERSION}.`);
   blocks.push("-- Generated by scripts/generate-agent-catalog-seeds.mjs from scripts/agent-catalog/catalog.mjs.");
   blocks.push("-- Display names, prompts, and skill instructions live under seeds/locales/{zh-CN,en-US}.");
+  blocks.push("-- Agent categories are a two-level professional taxonomy; agents reference a leaf code.");
   blocks.push("BEGIN;");
+  blocks.push(...renderAgentCategoryCommonBlocks());
   for (const [index, agent] of AGENTS.entries()) {
     const id = agentRowId(index);
     const manifest = buildBaseManifest(agent);
-    const tags = [...new Set([agent.category, ...agent.tags, "official", "commercial"])];
+    blocks.push(renderAgentIdentityBlock(agent, id, { manifest }));
     blocks.push(
-      [
-        "INSERT INTO ai_agent (",
-        "  id, uuid, tenant_id, organization_id, owner_user_id, agent_id, code, display_name, description,",
-        "  manifest_json, manifest_schema_version, default_code_task_intent_json, implementation_provider_id,",
-        "  implementation_kind, implementation_type, status, visibility, tags_json, allowed_role_codes,",
-        "  created_at, updated_at, deleted_at, version",
-        ") VALUES (",
-        `  ${id}, ${sqlText(uuidFor(`agent:${agent.slug}`))}, ${TENANT_ID}, ${ORGANIZATION_ID}, ${OWNER_USER_ID},`,
-        `  ${sqlText(agentId(agent))}, ${sqlText(agent.slug)}, ${sqlText(agent.slug)}, NULL,`,
-        `  ${sqlJson(manifest)}, ${sqlText("1.0.0")}, NULL, NULL,`,
-        `  NULL, ${sqlText("sdkwork-native")}, 1, 3, ${sqlJson(tags)}, '[]'::jsonb,`,
-        `  ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}, NULL, 0`,
-        ")",
-        "ON CONFLICT (tenant_id, agent_id) DO UPDATE SET",
-        "  code = EXCLUDED.code,",
-        "  manifest_schema_version = EXCLUDED.manifest_schema_version,",
-        "  implementation_type = EXCLUDED.implementation_type,",
-        "  status = EXCLUDED.status,",
-        "  visibility = EXCLUDED.visibility,",
-        "  allowed_role_codes = EXCLUDED.allowed_role_codes,",
-        "  updated_at = EXCLUDED.updated_at",
-        ";",
-      ].join("\n"),
-    );
-    blocks.push(
-      [
-        "INSERT INTO ai_agent_version (",
-        "  id, tenant_id, organization_id, agent_id, version_id, version_number, manifest_json,",
-        "  default_code_task_intent_json, implementation_provider_id, implementation_kind, implementation_type,",
-        "  description, created_by, created_at, activated_at",
-        ") VALUES (",
-        `  ${versionRowId(index)}, ${TENANT_ID}, ${ORGANIZATION_ID}, ${sqlText(agentId(agent))},`,
-        `  ${sqlText(`version.${agent.slug}.1`)}, 1, ${sqlJson(manifest)}, NULL, NULL, NULL,`,
-        `  ${sqlText("sdkwork-native")}, NULL, ${OWNER_USER_ID}, ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}`,
-        ")",
-        "ON CONFLICT (tenant_id, organization_id, agent_id, version_id) DO NOTHING",
-        ";",
-      ].join("\n"),
+      renderAgentVersionBlock(agent, versionRowId(index), {
+        manifest,
+        description: "Official SDKWork managed agent",
+      }),
     );
     const knowledgeId = knowledgeSpaceId(index);
     const memoryId = memorySpaceId(index);
@@ -483,9 +770,20 @@ function renderAgentsCommon() {
       );
     }
   }
+  for (const [index, agent] of LOCAL_EXECUTION_AGENTS.entries()) {
+    const manifest = buildBaseManifest(agent);
+    blocks.push(renderAgentIdentityBlock(agent, localAgentRowId(index), { manifest }));
+    blocks.push(
+      renderAgentVersionBlock(agent, localAgentVersionRowId(index), {
+        manifest,
+        description: "Official SDKWork local-execution agent package",
+      }),
+    );
+  }
   blocks.push("COMMIT;");
   return `${blocks.join("\n\n")}\n`;
 }
+
 
 function renderAgentsLocale(locale) {
   const blocks = [];
@@ -494,11 +792,46 @@ function renderAgentsLocale(locale) {
   blocks.push(`-- Catalog revision: ${CATALOG_VERSION}.`);
   blocks.push("-- Generated by scripts/generate-agent-catalog-seeds.mjs from scripts/agent-catalog/catalog.mjs.");
   blocks.push("BEGIN;");
+  for (const parent of AGENT_CATEGORY_TREE) {
+    const parentName = locale === "zh" ? parent.zhName : parent.name;
+    const parentDescription = locale === "zh" ? parent.zhDescription : parent.description;
+    blocks.push(
+      [
+        "UPDATE ai_agent_category SET",
+        `  name = ${sqlText(parentName)},`,
+        `  description = ${sqlText(parentDescription)},`,
+        `  updated_at = ${SEED_TIMESTAMP}`,
+        `WHERE tenant_id = ${TENANT_ID} AND organization_id = ${ORGANIZATION_ID} AND category_code = ${sqlText(parent.code)};`,
+      ].join("\n"),
+    );
+    for (const child of parent.children) {
+      const childName = locale === "zh" ? child.zhName : child.name;
+      const childDescription = locale === "zh" ? child.zhDescription : child.description;
+      blocks.push(
+        [
+          "UPDATE ai_agent_category SET",
+          `  name = ${sqlText(childName)},`,
+          `  description = ${sqlText(childDescription)},`,
+          `  updated_at = ${SEED_TIMESTAMP}`,
+          `WHERE tenant_id = ${TENANT_ID} AND organization_id = ${ORGANIZATION_ID} AND category_code = ${sqlText(child.code)};`,
+        ].join("\n"),
+      );
+    }
+  }
   for (const agent of AGENTS) {
     const payload = agent[locale];
     const manifest = buildManifest(agent, locale);
     const intent = buildIntent(agent, locale);
-    const tags = [...new Set([agent.category, ...agent.tags, "official", "commercial", localeTag.toLowerCase()])];
+    const tags = [
+      ...new Set([
+        agent.categoryCode,
+        agentKind(agent),
+        ...agent.tags,
+        "official",
+        "commercial",
+        localeTag.toLowerCase(),
+      ]),
+    ];
     blocks.push(
       [
         "UPDATE ai_agent SET",
@@ -527,6 +860,40 @@ function renderAgentsLocale(locale) {
         `  policy_json = ${sqlJson({ title: payload.skillTitle, instructions: payload.skill })},`,
         `  updated_at = ${SEED_TIMESTAMP}`,
         `WHERE tenant_id = ${TENANT_ID} AND agent_id = ${sqlText(agentId(agent))} AND slot_id = ${sqlText(`slot.skill.core`)};`,
+      ].join("\n"),
+    );
+  }
+  for (const agent of LOCAL_EXECUTION_AGENTS) {
+    const payload = agent[locale];
+    const manifest = buildManifest(agent, locale);
+    const tags = [
+      ...new Set([
+        agent.categoryCode,
+        agentKind(agent),
+        ...agent.tags,
+        "official",
+        "commercial",
+        localeTag.toLowerCase(),
+      ]),
+    ];
+    blocks.push(
+      [
+        "UPDATE ai_agent SET",
+        `  display_name = ${sqlText(payload.name)},`,
+        `  description = ${sqlText(payload.tagline)},`,
+        `  manifest_json = ${sqlJson(manifest)},`,
+        `  tags_json = ${sqlJson(tags)},`,
+        `  updated_at = ${SEED_TIMESTAMP}`,
+        `WHERE tenant_id = ${TENANT_ID} AND agent_id = ${sqlText(agentId(agent))};`,
+      ].join("\n"),
+    );
+    blocks.push(
+      [
+        "UPDATE ai_agent_version SET",
+        `  manifest_json = ${sqlJson(manifest)},`,
+        `  description = ${sqlText(payload.tagline)}`,
+        `WHERE tenant_id = ${TENANT_ID} AND organization_id = ${ORGANIZATION_ID}`,
+        `  AND agent_id = ${sqlText(agentId(agent))} AND version_id = ${sqlText(`version.${agent.slug}.1`)};`,
       ].join("\n"),
     );
   }
@@ -727,15 +1094,16 @@ function renderMcpCommon() {
       [
         "INSERT INTO ai_mcp_server_category (",
         "  id, uuid, tenant_id, organization_id, category_code, name, description, parent_id,",
-        "  sort_order, lifecycle_status, version, created_at, updated_at, created_by, updated_by",
+        "  sort_order, icon_ref, lifecycle_status, version, created_at, updated_at, created_by, updated_by",
         ") VALUES (",
         `  ${id}, ${sqlText(uuidFor(`mcp-category:${category.code}`))}, ${TENANT_ID}, ${ORGANIZATION_ID},`,
-        `  ${sqlText(category.code)}, ${sqlText(category.code)}, NULL, 0, ${index + 1}, 1, 0,`,
+        `  ${sqlText(category.code)}, ${sqlText(category.code)}, NULL, 0, ${index + 1}, ${sqlText(category.iconRef ?? "")}, 1, 0,`,
         `  ${SEED_TIMESTAMP}, ${SEED_TIMESTAMP}, ${OWNER_USER_ID}, ${OWNER_USER_ID}`,
         ")",
         "ON CONFLICT (tenant_id, category_code) DO UPDATE SET",
         "  name = EXCLUDED.name,",
         "  sort_order = EXCLUDED.sort_order,",
+        "  icon_ref = EXCLUDED.icon_ref,",
         "  lifecycle_status = EXCLUDED.lifecycle_status,",
         "  updated_at = EXCLUDED.updated_at",
         ";",
@@ -898,13 +1266,17 @@ function updateSeedManifest(repo, config) {
 export {
   AGENTS_ROOT,
   WORKSPACE_ROOT,
+  agentCategoryRowId,
   agentId,
   buildBaseManifest,
   buildManagementProfile,
   buildManifest,
   buildPrompt,
+  categoryRowIds,
   knowledgeKey,
   knowledgeSpaceId,
+  localAgentRowId,
+  localAgentVersionRowId,
   memorySpaceId,
   skillId,
   sqlText,
@@ -1007,7 +1379,9 @@ function main() {
     enFiles: ["001_agent_catalog_display.sql"],
   });
 
-  process.stdout.write(`catalog ${CATALOG_VERSION}: ${AGENTS.length} agents, ${MCP_SERVERS.length} MCP entries\n`);
+  process.stdout.write(
+    `catalog ${CATALOG_VERSION}: ${AGENTS.length} conversation agents, ${LOCAL_EXECUTION_AGENTS.length} local-execution agents, ${AGENT_CATEGORY_CODES.length} categories, ${MCP_SERVERS.length} MCP entries\n`,
+  );
 }
 
 if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {

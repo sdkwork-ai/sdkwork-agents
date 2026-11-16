@@ -15,7 +15,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
   AGENTS,
+  AGENT_CATEGORY_CODES,
+  AGENT_CATEGORY_TREE,
+  AGENT_KINDS,
   CATALOG_VERSION,
+  LOCAL_EXECUTION_AGENTS,
   MCP_CATEGORIES,
   MCP_SERVERS,
 } from "./agent-catalog/catalog.mjs";
@@ -23,6 +27,7 @@ import {
   agentId,
   buildManagementProfile,
   buildPrompt,
+  categoryRowIds,
   knowledgeKey,
   knowledgeSpaceId,
   memorySpaceId,
@@ -90,6 +95,14 @@ function verifyCatalog() {
   validateCatalog();
   assert(AGENTS.length === 64, `expected 64 agents, got ${AGENTS.length}`);
   assert(MCP_SERVERS.length === 18, `expected 18 MCP servers, got ${MCP_SERVERS.length}`);
+  assert(MCP_CATEGORIES.length === 16, `expected 16 MCP categories, got ${MCP_CATEGORIES.length}`);
+  const mcpCategoryCodes = new Set(MCP_CATEGORIES.map((category) => category.code));
+  for (const server of MCP_SERVERS) {
+    assert(
+      mcpCategoryCodes.has(server.category),
+      `MCP server ${server.key} uses undefined category ${server.category}`,
+    );
+  }
   const categoryCounts = new Map();
   for (const agent of AGENTS) {
     categoryCounts.set(agent.category, (categoryCounts.get(agent.category) ?? 0) + 1);
@@ -149,6 +162,9 @@ function verifyCatalog() {
   assert(k12 >= 8, `K12 coverage too small: ${k12}`);
   assert(university >= 6, `university coverage too small: ${university}`);
 
+  verifyKindsAndTaxonomy();
+  verifyLocalAgents();
+
   const ids = AGENTS.map(agentId);
   assert(new Set(ids).size === ids.length, "duplicate agent ids");
   const codes = AGENTS.map((agent) => agent.slug);
@@ -161,24 +177,117 @@ function verifyCatalog() {
       prompts.add(prompt);
     }
   }
+  const systemIds = [...AGENTS, ...LOCAL_EXECUTION_AGENTS].map(agentId);
+  assert(new Set(systemIds).size === systemIds.length, "duplicate system agent ids");
+}
+
+function verifyKindsAndTaxonomy() {
+  const leafCodes = new Set();
+  let parentCount = 0;
+  for (const parent of AGENT_CATEGORY_TREE) {
+    parentCount += 1;
+    assert(parent.children.length >= 1, `category ${parent.code} needs children`);
+    for (const child of parent.children) {
+      assert(!leafCodes.has(child.code), `duplicate leaf ${child.code}`);
+      leafCodes.add(child.code);
+      assert(
+        child.code !== parent.code,
+        `category ${child.code} must not reuse its parent code`,
+      );
+    }
+  }
+  assert(parentCount === 9, `expected 9 professional category domains, got ${parentCount}`);
+  assert(leafCodes.size === AGENT_CATEGORY_CODES.length, "leaf taxonomy and code list diverge");
+  assert(AGENT_CATEGORY_CODES.length === 25, `expected 25 leaf categories, got ${AGENT_CATEGORY_CODES.length}`);
+  const codeIndex = new Map(AGENT_CATEGORY_CODES.map((code, index) => [code, index]));
+  assert(codeIndex.size === AGENT_CATEGORY_CODES.length, "duplicate leaf category code");
+
+  const assigned = new Set();
+  for (const agent of AGENTS) {
+    assert(agent.kind === "conversation", `${agent.slug} must be a conversation agent`);
+    assert(agent.runtime?.family === "rig", `${agent.slug} must default to the Rig runtime`);
+    assert(agent.runtime?.implementation_type === "rig-rust", `${agent.slug} implementation must be rig-rust`);
+    assert(codeIndex.has(agent.categoryCode), `${agent.slug} has unknown leaf category ${agent.categoryCode}`);
+    assert(
+      buildManagementProfile(agent, "zh").categoryId === agent.categoryCode,
+      `${agent.slug} management profile category must match its leaf category`,
+    );
+    assigned.add(agent.categoryCode);
+  }
+  assert(AGENT_KINDS.length === 2, "two agent kinds are required");
+  assert(assigned.size >= 12, `too few leaf categories covered: ${assigned.size}`);
+}
+
+function verifyLocalAgents() {
+  assert(LOCAL_EXECUTION_AGENTS.length >= 2, "at least two local agents are required");
+  const codes = new Set();
+  for (const agent of LOCAL_EXECUTION_AGENTS) {
+    assert(!codes.has(agent.slug), `duplicate local slug ${agent.slug}`);
+    codes.add(agent.slug);
+    assert(agent.kind === "local-execution", `${agent.slug} kind`);
+    assert(agent.runtime?.family === "harness", `${agent.slug} must use the harness runtime`);
+    assert(
+      agent.runtime?.protocol === "harness.agent.runtime.v1",
+      `${agent.slug} must declare the harness runtime protocol`,
+    );
+    assert(agent.categoryCode === "local-execution", `${agent.slug} category`);
+    assert(agent.distribution?.kind === "archive", `${agent.slug} archive distribution`);
+    assert(agent.distribution?.format === "zip", `${agent.slug} zip format`);
+    assert(
+      typeof agent.distribution?.archiveRef === "string" &&
+        agent.distribution.archiveRef.startsWith("archive.sdkwork."),
+      `${agent.slug} archive reference`,
+    );
+    assert(
+      agent.distribution?.entrypoint.endsWith("/manifest.json"),
+      `${agent.slug} entrypoint manifest`,
+    );
+    assert(agent.distribution?.installMode === "extract", `${agent.slug} install mode`);
+    assert(agent.distribution?.checksum === null, `${agent.slug} checksum is resolved at download time`);
+  }
+  for (const slug of ["openclaw", "workbuddy"]) {
+    assert(codes.has(slug), `local catalog must include ${slug}`);
+  }
 }
 
 function verifyAgentsSql() {
   const common = read("database/seeds/common/002_agent_catalog.sql");
   const zh = read("database/seeds/locales/zh-CN/001_agent_catalog_display.sql");
   const en = read("database/seeds/locales/en-US/001_agent_catalog_display.sql");
-  assert(countMatches(common, /INSERT INTO ai_agent \(/g) === AGENTS.length, "agent insert count");
-  assert(countMatches(common, /INSERT INTO ai_agent_version \(/g) === AGENTS.length, "version insert count");
+  const systemAgentCount = AGENTS.length + LOCAL_EXECUTION_AGENTS.length;
+  assert(countMatches(common, /INSERT INTO ai_agent \(/g) === systemAgentCount, "agent insert count");
+  assert(
+    countMatches(common, /INSERT INTO ai_agent_version \(/g) === systemAgentCount,
+    "version insert count",
+  );
   const expectedSlots = AGENTS.reduce((total, agent) => total + 3 + agent.mcp.length, 0);
   assert(
     countMatches(common, /INSERT INTO ai_agent_composition_slot \(/g) === expectedSlots,
     "composition slot insert count",
   );
-  assert(countMatches(common, /ON CONFLICT \(tenant_id, agent_id\) DO UPDATE SET/g) === AGENTS.length, "agent upsert count");
+  assert(
+    countMatches(common, /ON CONFLICT \(tenant_id, agent_id\) DO UPDATE SET/g) === systemAgentCount,
+    "agent upsert count",
+  );
+  const categoryRows = AGENT_CATEGORY_TREE.reduce((total, parent) => total + 1 + parent.children.length, 0);
+  assert(
+    countMatches(common, /INSERT INTO ai_agent_category \(/g) === categoryRows,
+    "agent category insert count",
+  );
   for (const [locale, sql] of [["zh", zh], ["en", en]]) {
-    assert(countMatches(sql, /UPDATE ai_agent SET/g) === AGENTS.length, `${locale} agent update count`);
-    assert(countMatches(sql, /UPDATE ai_agent_version SET/g) === AGENTS.length, `${locale} version update count`);
+    assert(
+      countMatches(sql, /UPDATE ai_agent SET/g) === systemAgentCount,
+      `${locale} agent update count`,
+    );
+    assert(
+      countMatches(sql, /UPDATE ai_agent_version SET/g) === systemAgentCount,
+      `${locale} version update count`,
+    );
     assert(countMatches(sql, /UPDATE ai_agent_composition_slot SET/g) === AGENTS.length, `${locale} skill update count`);
+    assert(
+      countMatches(sql, /UPDATE ai_agent_category SET/g) === categoryRows,
+      `${locale} agent category update count`,
+    );
     assert(!sql.includes("NaN") && !sql.includes("undefined"), `${locale} SQL contains NaN/undefined`);
   }
   assert(!common.includes("NaN") && !common.includes("undefined"), "generated SQL contains NaN/undefined");
@@ -195,6 +304,32 @@ function verifyAgentsSql() {
     for (const key of agent.mcp) {
       assert(common.includes(`'${key}'`), `SQL missing MCP ref ${key} for ${agent.slug}`);
     }
+    assert(
+      common.includes(`"agent_kind":"${agent.kind}"`),
+      `SQL missing agent kind for ${agent.slug}`,
+    );
+    assert(
+      common.includes(`"category_code":"${agent.categoryCode}"`),
+      `SQL missing category code for ${agent.slug}`,
+    );
+  }
+  for (const agent of LOCAL_EXECUTION_AGENTS) {
+    assert(common.includes(`'${agentId(agent)}'`), `SQL missing local agent ${agent.slug}`);
+    assert(
+      common.includes(`"agent_kind":"local-execution"`),
+      "SQL missing the local-execution agent kind",
+    );
+    assert(
+      common.includes(`"archiveRef":"${agent.distribution.archiveRef}"`),
+      `SQL missing archive reference for ${agent.slug}`,
+    );
+    assert(common.includes(`"family":"harness"`), "SQL missing the harness runtime family");
+  }
+  for (const [code, rowId] of categoryRowIds()) {
+    assert(
+      common.includes(`${rowId}`) && common.includes(`'${code}'`),
+      `SQL missing agent category ${code}`,
+    );
   }
   const policySpaceCount = countMatches(common, /"spaceId":"\d{18}"/g);
   assert(policySpaceCount === AGENTS.length, `knowledge policy spaceId count ${policySpaceCount}`);
@@ -341,8 +476,12 @@ export function verifyAgentCatalog() {
   return {
     catalogVersion: CATALOG_VERSION,
     agents: AGENTS.length,
+    localExecutionAgents: LOCAL_EXECUTION_AGENTS.length,
+    agentKinds: AGENT_KINDS,
+    categories: [...AGENT_CATEGORY_CODES].sort(),
+    runtimeFamilies: [...new Set([...AGENTS, ...LOCAL_EXECUTION_AGENTS].map((agent) => agent.runtime.family))].sort(),
     mcpServers: MCP_SERVERS.length,
-    categories: [...new Set(AGENTS.map((agent) => agent.category))].sort(),
+    mcpCategories: MCP_CATEGORIES.length,
   };
 }
 

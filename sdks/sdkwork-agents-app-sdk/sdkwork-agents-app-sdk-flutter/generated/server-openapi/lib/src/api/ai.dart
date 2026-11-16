@@ -12,13 +12,15 @@ class AiApi {
   AiApi(this._client);
 
   /// List managed agents
-  Future<AgentListResponse?> agentsList([bool? includeDeleted, String? scope, int? page, int? pageSize, String? q]) async {
+  Future<AgentListResponse?> agentsList([bool? includeDeleted, String? scope, int? page, int? pageSize, String? q, String? categoryCode, String? roleCodes]) async {
     final query = buildQueryString([
       QueryParameterSpec('include_deleted', includeDeleted, 'form', true, false, null),
       QueryParameterSpec('scope', scope, 'form', true, false, null),
       QueryParameterSpec('page', page, 'form', true, false, null),
       QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
-      QueryParameterSpec('q', q, 'form', true, false, null)
+      QueryParameterSpec('q', q, 'form', true, false, null),
+      QueryParameterSpec('category_code', categoryCode, 'form', true, false, null),
+      QueryParameterSpec('role_codes', roleCodes, 'form', true, false, null)
     ]);
     final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/agents'), query));
     return (() {

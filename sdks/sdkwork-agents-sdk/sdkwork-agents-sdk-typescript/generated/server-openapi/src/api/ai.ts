@@ -496,6 +496,8 @@ export interface AiAgentsListParams {
   page?: number;
   pageSize?: number;
   q?: string;
+  categoryCode?: string;
+  roleCodes?: string;
 }
 
 export class AiAgentsApi {
@@ -539,6 +541,8 @@ export class AiAgentsApi {
       { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
       { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
       { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
+      { name: 'category_code', value: params?.categoryCode, style: 'form', explode: true, allowReserved: false },
+      { name: 'role_codes', value: params?.roleCodes, style: 'form', explode: true, allowReserved: false },
     ]);
     return this.client.request<SdkWorkPageData & { items: AgentRecord[]; }>(appendQueryString(customApiPath(`/ai/agents`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
   }

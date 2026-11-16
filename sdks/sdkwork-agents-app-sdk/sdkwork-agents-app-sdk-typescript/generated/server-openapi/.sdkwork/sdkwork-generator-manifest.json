@@ -52,7 +52,7 @@
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "c41a34a747a3afc76bdc81c9abffc950d8a68b9d3529a5416d07f444ce61e05c"
+      "sha256": "b74b0af8c93f69ca27c7e1de8ca56e68678412ad54a5644ed3d31084b1e1c09a"
     },
     {
       "path": "src/api/base.ts",
