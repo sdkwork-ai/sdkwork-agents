@@ -4,7 +4,7 @@
   "mode": "dry-run",
   "standardProfile": "sdkwork-v3",
   "sdkgenPath": "sdkwork-sdk-generator/bin/sdkgen.js",
-  "startedAt": "2026-11-16T17:21:03.629Z",
+  "startedAt": "2026-11-16T18:56:23.215Z",
   "families": [
     {
       "key": "open",
@@ -195,5 +195,5 @@
       ]
     }
   ],
-  "finishedAt": "2026-11-16T17:21:05.222Z"
+  "finishedAt": "2026-11-16T18:56:24.292Z"
 }

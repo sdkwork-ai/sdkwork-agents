@@ -134,6 +134,13 @@ paths:
       tags:
       - ai
       summary: Retrieve one managed agent
+      description: >-
+        Returns the agent when the caller may read it. Visibility is enforced on
+        the application surface — a `private` agent is readable only by its owner,
+        an `organization` agent only within the caller's organization scope, and
+        `tenant` / `public` agents by any caller of the tenant. A record the caller
+        may not read is reported as 404 instead of leaking its existence; the
+        backend administration surface reads every record.
       operationId: agents.retrieve
       security:
       - AuthToken: []

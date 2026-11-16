@@ -3483,8 +3483,27 @@ where
             "retrieve",
         )?;
 
+        self.find_agent_record(command.tenant_id, command.agent_id.as_str())
+    }
+
+    /// Loads one stored agent record without applying the IAM `retrieve`
+    /// policy.
+    ///
+    /// The application surface decides readability from the record's declared
+    /// visibility scope, so it must load the record even when the caller lacks
+    /// the coarse `ai.agents.read` permission: list-scoped callers may
+    /// legitimately address an agent they can see in the catalog. Callers MUST
+    /// run their own visibility decision on the returned record; this method
+    /// only rejects missing and soft-deleted records as `not_found`, matching
+    /// [`Self::get_agent`].
+    pub fn find_agent_record(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+    ) -> KernelResult<AgentBusinessRecord> {
+        validate_agent_id(agent_id)?;
         self.repository
-            .get(command.tenant_id, command.agent_id.as_str())?
+            .get(tenant_id, agent_id)?
             .ok_or_else(|| KernelError::not_found("agent not found"))
             .and_then(|record| {
                 if record.is_deleted() {
