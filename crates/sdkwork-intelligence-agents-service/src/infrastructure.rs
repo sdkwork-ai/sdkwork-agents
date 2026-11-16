@@ -46,8 +46,7 @@ use crate::task_scheduling::{
     AgentTaskStatus, AgentTaskTriggerKind,
 };
 use crate::validation::{
-    agent_list_scope_filter_matches, parse_rfc3339_datetime, validate_standard_id,
-    ID_PREFIX_ATTEMPT, ID_PREFIX_RUN, ID_PREFIX_TURN,
+    parse_rfc3339_datetime, validate_standard_id, ID_PREFIX_ATTEMPT, ID_PREFIX_RUN, ID_PREFIX_TURN,
 };
 use crate::webhook::{AgentWebhookDeliveryRecord, AgentWebhookRecord};
 use crate::workspace::{AgentWorkspaceRecord, AgentWorkspaceStatus};
@@ -7087,12 +7086,10 @@ fn agent_matches_list_query(record: &AgentBusinessRecord, query: &AgentListQuery
             return false;
         }
     }
-    if !agent_list_scope_filter_matches(
-        record.category_code.as_deref(),
-        &record.allowed_role_codes,
-        query.category_code.as_deref(),
-        &query.role_codes,
-    ) {
+    if !query
+        .catalog_view
+        .allows(record.category_code.as_deref(), &record.allowed_role_codes)
+    {
         return false;
     }
     if let Some(search_query) = query.search_query.as_ref() {
@@ -7296,6 +7293,7 @@ mod tests {
     use crate::validation::ID_PREFIX_ITEM;
     use sdkwork_agent_kernel::AgentManifest;
     use sdkwork_agent_kernel::KernelErrorKind;
+    use sdkwork_utils_rust::CatalogViewFilter;
 
     fn sample_manifest(agent_id: &str) -> AgentManifest {
         AgentManifest {
@@ -7411,7 +7409,7 @@ mod tests {
 
         let query = AgentListQuery::for_tenant(100_001)
             .with_page_size(50)
-            .with_category_code(Some("engineering".to_string()));
+            .with_catalog_view(CatalogViewFilter::from_query(Some("engineering"), None));
         let mut agent_ids = list_agent_ids(&repository, query.clone());
         agent_ids.sort();
         assert_eq!(
@@ -7428,7 +7426,7 @@ mod tests {
         // An agent without a category never matches a category filter.
         let uncategorized_only = AgentListQuery::for_tenant(100_001)
             .with_page_size(50)
-            .with_category_code(Some("uncategorized".to_string()));
+            .with_catalog_view(CatalogViewFilter::from_query(Some("uncategorized"), None));
         assert!(list_agent_ids(&repository, uncategorized_only).is_empty());
     }
 
@@ -7440,7 +7438,7 @@ mod tests {
             &repository,
             AgentListQuery::for_tenant(100_001)
                 .with_page_size(50)
-                .with_role_codes(vec!["org_admin".to_string()]),
+                .with_catalog_view(CatalogViewFilter::from_query(None, Some("org_admin"))),
         );
         agent_ids.sort();
         // Open agents stay visible; agents restricted to another role do not.
@@ -7461,14 +7459,14 @@ mod tests {
         let repository = seeded_listing_repository();
 
         for (role_scope, expected_restricted_agent) in [
-            (vec!["org_admin".to_string()], "agent.engineering.admin"),
-            (vec!["org_finance".to_string()], "agent.finance.restricted"),
+            ("org_admin", "agent.engineering.admin"),
+            ("org_finance", "agent.finance.restricted"),
         ] {
             let mut agent_ids = list_agent_ids(
                 &repository,
                 AgentListQuery::for_tenant(100_001)
                     .with_page_size(50)
-                    .with_role_codes(role_scope),
+                    .with_catalog_view(CatalogViewFilter::from_query(None, Some(role_scope))),
             );
             agent_ids.sort();
             // Agents open to every role are never removed by a role filter.
@@ -7493,8 +7491,10 @@ mod tests {
             &repository,
             AgentListQuery::for_tenant(100_001)
                 .with_page_size(50)
-                .with_category_code(Some("engineering".to_string()))
-                .with_role_codes(vec!["org_admin".to_string()]),
+                .with_catalog_view(CatalogViewFilter::from_query(
+                    Some("engineering"),
+                    Some("org_admin"),
+                )),
         );
         agent_ids.sort();
         assert_eq!(
@@ -7509,8 +7509,10 @@ mod tests {
                 &repository,
                 AgentListQuery::for_tenant(100_001)
                     .with_page_size(50)
-                    .with_category_code(Some("finance".to_string()))
-                    .with_role_codes(vec!["org_finance".to_string()]),
+                    .with_catalog_view(CatalogViewFilter::from_query(
+                        Some("finance"),
+                        Some("org_finance"),
+                    )),
             ),
             vec!["agent.finance.restricted"]
         );
@@ -7520,8 +7522,10 @@ mod tests {
             &repository,
             AgentListQuery::for_tenant(100_001)
                 .with_page_size(50)
-                .with_category_code(Some("engineering".to_string()))
-                .with_role_codes(vec!["org_finance".to_string()]),
+                .with_catalog_view(CatalogViewFilter::from_query(
+                    Some("engineering"),
+                    Some("org_finance"),
+                )),
         )
         .iter()
         .all(|agent_id| agent_id == "agent.engineering.open"));

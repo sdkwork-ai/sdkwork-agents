@@ -17760,6 +17760,41 @@ mod tests {
             vec!["agent.alpha".to_string(), "agent.beta".to_string()]
         );
     }
+
+    #[test]
+    fn list_agents_query_params_parse_the_wire_category_and_role_codes() {
+        let query: ListAgentsQueryParams =
+            serde_urlencoded::from_str("category_code=all&role_codes=org_admin,org_operations")
+                .expect("list query string parses");
+        assert_eq!(query.category_code.as_deref(), Some("all"));
+        assert_eq!(
+            query.role_codes.as_deref(),
+            Some("org_admin,org_operations")
+        );
+
+        let command = ListAgentsRequestDto {
+            tenant_id: "100001".to_string(),
+            organization_id: None,
+            owner_user_id: None,
+            include_deleted: false,
+            search_query: None,
+            visibility: None,
+            category_code: query.category_code,
+            role_codes: query.role_codes,
+            pagination: PaginationParams::default(),
+        }
+        .into_command(PolicySubject::new("u-1", "100001"))
+        .expect("list request should map");
+
+        let filter = command.query.catalog_view;
+        // `all` keeps every category, while the role scope still narrows.
+        assert_eq!(filter.category_code(), None);
+        assert!(!filter.is_all_data());
+        assert_eq!(
+            filter.role_codes(),
+            vec!["org_admin".to_string(), "org_operations".to_string()]
+        );
+    }
 }
 
 #[cfg(test)]

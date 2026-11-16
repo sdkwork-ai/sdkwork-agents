@@ -28,6 +28,7 @@ use crate::task_execution_cursor::{task_scope_fingerprint, TaskCursor};
 use crate::validation::optional_non_blank;
 use crate::workspace::{AgentWorkspaceRecord, AgentWorkspaceStatus};
 use sdkwork_agent_kernel::{KernelError, KernelEvent, KernelResult};
+use sdkwork_utils_rust::CatalogViewFilter;
 use std::collections::HashSet;
 
 // ---------------------------------------------------------------------------
@@ -302,16 +303,16 @@ pub struct AgentListQuery {
     pub search_query: Option<String>,
     /// When set, restricts results to a single visibility level (for example public marketplace).
     pub visibility: Option<AgentVisibility>,
-    /// When set, restricts results to agents in this `category_code`.
+    /// Normalized catalog view: the `category_code` selector plus the caller's
+    /// IAM role scope.
     ///
-    /// `None` is the all-category view; an agent without a category never
-    /// matches a populated value.
-    pub category_code: Option<String>,
-    /// IAM role codes the caller is listing for. Empty is the all-data view.
-    ///
-    /// A populated scope keeps agents that name one of the codes plus agents
-    /// open to every role (`allowed_role_codes` empty).
-    pub role_codes: Vec<String>,
+    /// The all-data view is the default; populated halves only remove agents
+    /// from the already tenant/org/visibility/owner scoped listing, so the view
+    /// can never widen visibility. The SQL adapter binds
+    /// [`CatalogViewFilter::category_code`] / [`CatalogViewFilter::role_codes`]
+    /// directly, and the in-memory adapter applies
+    /// [`CatalogViewFilter::allows`].
+    pub catalog_view: CatalogViewFilter,
     pub pagination: PaginationParams,
 }
 
@@ -324,8 +325,7 @@ impl AgentListQuery {
             include_deleted: false,
             search_query: None,
             visibility: None,
-            category_code: None,
-            role_codes: Vec::new(),
+            catalog_view: CatalogViewFilter::all_data(),
             pagination: PaginationParams::default(),
         }
     }
@@ -381,19 +381,12 @@ impl AgentListQuery {
         self
     }
 
-    /// Restrict list results to one normalized `category_code`.
+    /// Restrict list results to one normalized catalog view.
     ///
-    /// Passing `None` keeps the all-category view, which is the default.
-    pub fn with_category_code(mut self, category_code: Option<String>) -> Self {
-        self.category_code = category_code;
-        self
-    }
-
-    /// Restrict list results to the caller's normalized IAM role scope.
-    ///
-    /// An empty scope is the all-data view, which is the default.
-    pub fn with_role_codes(mut self, role_codes: Vec<String>) -> Self {
-        self.role_codes = role_codes;
+    /// Passing [`CatalogViewFilter::all_data`] keeps the all-data view, which
+    /// is the default.
+    pub fn with_catalog_view(mut self, catalog_view: CatalogViewFilter) -> Self {
+        self.catalog_view = catalog_view;
         self
     }
 }
