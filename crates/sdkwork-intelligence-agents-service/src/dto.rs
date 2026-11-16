@@ -116,6 +116,10 @@ impl CreateAgentRequestDto {
             display_name: self.display_name,
             description: self.description,
             manifest: self.manifest,
+            // The HTTP boundary owns the management-profile projection; a DTO
+            // built without one (imports, tests, internal callers) leaves the
+            // manifest category untouched.
+            profile_category_code: None,
             visibility: parse_visibility(&self.visibility)?,
             tags: self.tags,
             allowed_role_codes: normalize_allowed_role_codes(&self.allowed_role_codes)?,
@@ -295,6 +299,9 @@ impl UpdateAgentRequestDto {
             display_name: self.display_name,
             description: self.description,
             manifest: self.manifest,
+            // The HTTP boundary owns the management-profile projection; a DTO
+            // built without one leaves the stored category untouched.
+            profile_category_code: None,
             visibility,
             tags: self.tags,
             allowed_role_codes: self
@@ -477,7 +484,7 @@ impl AgentRecordDto {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct AgentManagementProfileDto {
     pub author: Option<String>,
     pub avatar: Option<String>,

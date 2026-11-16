@@ -65,6 +65,16 @@ pub struct CreateAgentCommand {
     pub display_name: String,
     pub description: Option<String>,
     pub manifest: AgentManifest,
+    /// Category authored by the request's management profile.
+    ///
+    /// Tri-state: `None` leaves the manifest category unset, `Some(None)`
+    /// clears it, `Some(Some(code))` sets it. The management profile is where
+    /// the console authors the category, while `ai_agent.category_code` (the
+    /// generated list-filter column) derives from `manifest_json.category_code`
+    /// — this projection is what keeps the two from disagreeing. The service
+    /// stores the canonical lowercase form so the column and the (lowercased)
+    /// catalog filter compare as equal strings.
+    pub profile_category_code: Option<Option<String>>,
     pub visibility: AgentVisibility,
     pub tags: Vec<String>,
     pub allowed_role_codes: Vec<String>,
@@ -84,6 +94,11 @@ pub struct UpdateAgentCommand {
     pub display_name: Option<String>,
     pub description: Option<String>,
     pub manifest: Option<AgentManifest>,
+    /// Category authored by this request's management profile; see
+    /// [`CreateAgentCommand::profile_category_code`]. `None` leaves the stored
+    /// category untouched, which is what a caller that sends no management
+    /// profile expects.
+    pub profile_category_code: Option<Option<String>>,
     pub visibility: Option<AgentVisibility>,
     pub tags: Option<Vec<String>>,
     pub allowed_role_codes: Option<Vec<String>>,

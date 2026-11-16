@@ -1403,7 +1403,11 @@ where
             display_name: command.display_name,
             description: command.description,
             manifest: command.manifest,
-            category_code: None,
+            category_code: command
+                .profile_category_code
+                .flatten()
+                .map(|code| code.trim().to_ascii_lowercase())
+                .filter(|code| !code.is_empty()),
             default_code_task_intent: command.default_code_task_intent,
             implementation_provider_id: command.implementation_provider_id,
             implementation_kind: command.implementation_kind,
@@ -3287,6 +3291,16 @@ where
         }
         if let Some(intent) = command.default_code_task_intent {
             record.default_code_task_intent = Some(intent);
+        }
+        // Project the management profile's category onto the record so the
+        // generated `ai_agent.category_code` column (derived from
+        // `manifest_json.category_code`) matches what the console shows. The
+        // command distinguishes "no profile in this request" (leave untouched)
+        // from "profile cleared the category" (clear the projection).
+        if let Some(profile_category) = command.profile_category_code {
+            record.category_code = profile_category
+                .map(|code| code.trim().to_ascii_lowercase())
+                .filter(|code| !code.is_empty());
         }
         if let Some(provider_id) = command.implementation_provider_id {
             if let Some(provider_id) = provider_id.as_deref() {
@@ -12164,6 +12178,7 @@ mod task_tests {
             display_name: display_name.to_string(),
             description: None,
             manifest: sample_manifest(agent_id),
+            profile_category_code: None,
             visibility: AgentVisibility::Private,
             tags: Vec::new(),
             allowed_role_codes: Vec::new(),
@@ -14642,6 +14657,7 @@ mod agent_ownership_tests {
             display_name: Some("Renamed".to_string()),
             description: None,
             manifest: None,
+            profile_category_code: None,
             visibility: None,
             tags: None,
             allowed_role_codes: None,
@@ -14726,6 +14742,68 @@ mod agent_ownership_tests {
             .expect("an app user must be able to edit the agent they created");
 
         assert_eq!(updated.display_name, "Renamed");
+    }
+
+    /// The console authors the agent category in the management profile, while
+    /// the list filter reads the generated `ai_agent.category_code` column
+    /// (`manifest_json.category_code`). Without the projection the category
+    /// filter would never find an agent the console classified.
+    #[test]
+    fn management_profile_category_projects_onto_the_list_filter() {
+        use sdkwork_utils_rust::CatalogViewFilter;
+
+        use crate::application::ListAgentsCommand;
+        use crate::dto::AgentManagementProfileDto;
+        use crate::ports::AgentListQuery;
+
+        let service = service();
+        let version = seed_agent(&service, "agent.category.project", OWNER_USER_ID, "echo");
+
+        let profile = AgentManagementProfileDto {
+            category_id: Some("Engineering".to_string()),
+            ..Default::default()
+        };
+        let mut command = update_cmd("agent.category.project", manage_subject(), version);
+        command.profile_category_code = Some(profile.category_id.clone());
+        command.default_code_task_intent = profile
+            .merge_into_default_code_task_intent(None)
+            .expect("merge the management profile");
+        let updated = service
+            .update_agent(command)
+            .expect("update the agent category");
+        // Stored canonically so the generated column and the lowercased catalog
+        // filter compare as equal strings.
+        assert_eq!(updated.category_code.as_deref(), Some("engineering"));
+
+        let category_matches = |category: &str| {
+            service
+                .list_agents(ListAgentsCommand {
+                    query: AgentListQuery::for_tenant(TENANT_ID)
+                        .with_catalog_view(CatalogViewFilter::from_query(Some(category), None)),
+                    requested_by: manage_subject(),
+                })
+                .expect("list the catalog by category")
+                .items
+                .len()
+        };
+        assert_eq!(category_matches("engineering"), 1);
+        assert_eq!(category_matches("operations"), 0);
+
+        // A request that carries no management profile must not disturb the
+        // stored category.
+        let mut rename = update_cmd("agent.category.project", manage_subject(), updated.version);
+        rename.display_name = Some("Renamed again".to_string());
+        let renamed = service.update_agent(rename).expect("rename the agent");
+        assert_eq!(renamed.category_code.as_deref(), Some("engineering"));
+
+        // Clearing the profile category clears the projection.
+        let mut clear = update_cmd("agent.category.project", manage_subject(), renamed.version);
+        clear.profile_category_code = Some(None);
+        let cleared = service
+            .update_agent(clear)
+            .expect("clear the agent category");
+        assert_eq!(cleared.category_code, None);
+        assert_eq!(category_matches("engineering"), 0);
     }
 
     #[test]

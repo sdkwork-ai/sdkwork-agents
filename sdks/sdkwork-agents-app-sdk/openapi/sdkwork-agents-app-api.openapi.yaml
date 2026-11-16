@@ -5325,8 +5325,10 @@ components:
       name: scope
       in: query
       required: false
-      description: List scope. Use `market`, `public`, or `published` for tenant-visible
-        catalog agents; omit for agents owned by the authenticated user.
+      description: List scope. Use `market`, `public`, or `published` for the public
+        storefront catalog, which lists only `public` agents in the `active` lifecycle
+        status (draft, disabled and archived agents never appear there); omit for
+        agents owned by the authenticated user, which keeps every status.
       schema:
         type: string
         enum:

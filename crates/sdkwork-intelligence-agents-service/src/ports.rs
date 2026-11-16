@@ -4,13 +4,12 @@ use crate::agent_turn_input_queue::{
     TurnInputQueueFailureRequest, TurnInputQueueListQuery, TurnInputQueueReorderEntry,
 };
 use crate::domain::{
-    AgentBusinessRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord,
+    AgentBusinessRecord, AgentBusinessStatus, AgentCompositionSlotKind, AgentCompositionSlotRecord,
     AgentExecutionHostKind, AgentExecutionHostRecord, AgentExecutionHostStatus,
-    AgentExecutionPlacementKind,
-    AgentExecutionPlacementRecord, AgentInteractionRecord, AgentItemDriveRefRecord,
-    AgentItemFeedbackRecord, AgentProviderBindingRecord, AgentResourceType,
-    AgentResourceUserStateRecord, AgentSessionCheckpointRecord, AgentSessionItemKind,
-    AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord,
+    AgentExecutionPlacementKind, AgentExecutionPlacementRecord, AgentInteractionRecord,
+    AgentItemDriveRefRecord, AgentItemFeedbackRecord, AgentProviderBindingRecord,
+    AgentResourceType, AgentResourceUserStateRecord, AgentSessionCheckpointRecord,
+    AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionRecord,
     AgentSessionRuntimeBindingRecord, AgentTaskRecord, AgentToolAssetRecord,
     AgentToolConfigurationRecord, AgentVisibility,
 };
@@ -303,6 +302,13 @@ pub struct AgentListQuery {
     pub search_query: Option<String>,
     /// When set, restricts results to a single visibility level (for example public marketplace).
     pub visibility: Option<AgentVisibility>,
+    /// When set, restricts results to one entity lifecycle status.
+    ///
+    /// The application marketplace scope sets this to
+    /// [`AgentBusinessStatus::Active`] so a draft or archived agent never
+    /// reaches a public listing, while the owner-scoped and admin listings
+    /// leave it unset and keep every status.
+    pub status: Option<AgentBusinessStatus>,
     /// Normalized catalog view: the `category_code` selector plus the caller's
     /// IAM role scope.
     ///
@@ -325,6 +331,7 @@ impl AgentListQuery {
             include_deleted: false,
             search_query: None,
             visibility: None,
+            status: None,
             catalog_view: CatalogViewFilter::all_data(),
             pagination: PaginationParams::default(),
         }
@@ -378,6 +385,12 @@ impl AgentListQuery {
     /// Restrict list results to publicly visible agents (marketplace scope).
     pub fn with_public_visibility_only(mut self) -> Self {
         self.visibility = Some(AgentVisibility::Public);
+        self
+    }
+
+    /// Restrict list results to one entity lifecycle status.
+    pub fn with_status(mut self, status: AgentBusinessStatus) -> Self {
+        self.status = Some(status);
         self
     }
 

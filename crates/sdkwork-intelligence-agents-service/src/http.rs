@@ -5510,7 +5510,7 @@ impl From<CodeTaskIntentBody> for CodeTaskIntent {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentManagementProfileBody {
     author: Option<String>,
@@ -5854,6 +5854,29 @@ impl AgentManagementProfileBody {
         validate_agent_management_profile_body(&self)?;
         Ok(self.into())
     }
+}
+
+/// The category a request's management profile authors, as a tri-state
+/// projection onto the stored agent record.
+///
+/// The console is the authoring surface for the agent category, but the list
+/// filter reads the generated `ai_agent.category_code` column, which derives
+/// from `manifest_json.category_code`. Returning a projection here (rather than
+/// reading the profile back out of the merged intent) is what lets the service
+/// tell "this request did not touch the category" apart from "this request
+/// cleared it": `None` vs `Some(None)`.
+fn management_profile_category_projection(
+    profile: Option<&AgentManagementProfileBody>,
+) -> Option<Option<String>> {
+    let profile = profile?;
+    Some(
+        profile
+            .category_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|code| !code.is_empty())
+            .map(str::to_string),
+    )
 }
 
 fn validate_agent_management_profile_body(
@@ -13553,10 +13576,14 @@ async fn execute_list(
 ) -> ApiResult<PageData<AgentRecordResponse>> {
     let include_deleted = query.include_deleted.unwrap_or(false);
     let (page, page_size) = normalized_pagination(query.page, query.page_size)?;
-    let visibility = if matches!(
+    // The marketplace scope is the public storefront: it lists only public
+    // agents that are actually published, so a draft or archived agent the
+    // console still owns never surfaces there.
+    let market_scope = matches!(
         query.scope.as_deref(),
         Some("market" | "public" | "published")
-    ) {
+    );
+    let visibility = if market_scope {
         Some("public".to_string())
     } else {
         None
@@ -13578,9 +13605,12 @@ async fn execute_list(
             .with_page_size(page_size)
             .with_page(page),
     };
-    let command = request_dto
+    let mut command = request_dto
         .into_command(scope.subject)
         .map_err(ApiProblem::from_kernel_error)?;
+    if market_scope {
+        command.query.status = Some(crate::domain::AgentBusinessStatus::Active);
+    }
 
     let result = with_service(&state, move |service| service.list_agents(command)).await?;
     let total_items = result.total_count.unwrap_or(0) as usize;
@@ -13612,6 +13642,8 @@ async fn execute_create(
     body: CreateAgentBody,
 ) -> ApiResult<ResourceData<AgentRecordResponse>> {
     let manifest = parse_manifest(body.manifest)?;
+    let profile_category_code =
+        management_profile_category_projection(body.management_profile.as_ref());
     let mut default_code_task_intent = body.default_code_task_intent.map(Into::into);
     if let Some(management_profile) = body.management_profile {
         default_code_task_intent = management_profile
@@ -13620,7 +13652,7 @@ async fn execute_create(
             .map_err(ApiProblem::from_kernel_error)?;
     }
 
-    let command = CreateAgentRequestDto {
+    let mut command = CreateAgentRequestDto {
         agent_id: body.agent_id,
         tenant_id: scope.tenant_id,
         organization_id: scope.organization_id,
@@ -13640,6 +13672,7 @@ async fn execute_create(
     }
     .into_command(scope.subject)
     .map_err(ApiProblem::from_kernel_error)?;
+    command.profile_category_code = profile_category_code;
 
     let record = with_service(&state, move |service| service.create_agent(command)).await?;
     Ok(ResourceData {
@@ -13672,6 +13705,8 @@ async fn execute_update(
     body: UpdateAgentBody,
 ) -> ApiResult<ResourceData<AgentRecordResponse>> {
     let acting_owner_user_id = scope.owner_evidence();
+    let profile_category_code =
+        management_profile_category_projection(body.management_profile.as_ref());
     let mut default_code_task_intent = body.default_code_task_intent.map(Into::into);
     if let Some(management_profile) = body.management_profile {
         let base_intent = match default_code_task_intent.take() {
@@ -13693,7 +13728,7 @@ async fn execute_update(
             .merge_into_default_code_task_intent(base_intent)
             .map_err(ApiProblem::from_kernel_error)?;
     }
-    let command = UpdateAgentRequestDto {
+    let mut command = UpdateAgentRequestDto {
         tenant_id: scope.tenant_id,
         agent_id,
         expected_version: body.expected_version,
@@ -13711,6 +13746,7 @@ async fn execute_update(
     }
     .into_command(scope.subject)
     .map_err(ApiProblem::from_kernel_error)?;
+    command.profile_category_code = profile_category_code;
 
     let record = with_service(&state, move |service| {
         service.update_agent_as(command, acting_owner_user_id)
@@ -15078,6 +15114,154 @@ mod tests {
             .get_or_init(|| std::sync::Mutex::new(()))
             .lock()
             .unwrap_or_else(|error| error.into_inner())
+    }
+
+    /// The projection is tri-state so an unrelated update never erases a
+    /// category the console set: no profile → untouched, profile without a
+    /// category → cleared, profile with one → set.
+    #[test]
+    fn management_profile_category_projection_is_tri_state() {
+        assert_eq!(management_profile_category_projection(None), None);
+
+        let mut profile = AgentManagementProfileBody::default();
+        assert_eq!(
+            management_profile_category_projection(Some(&profile)),
+            Some(None)
+        );
+
+        profile.category_id = Some("   ".to_string());
+        assert_eq!(
+            management_profile_category_projection(Some(&profile)),
+            Some(None)
+        );
+
+        profile.category_id = Some(" engineering ".to_string());
+        assert_eq!(
+            management_profile_category_projection(Some(&profile)),
+            Some(Some("engineering".to_string()))
+        );
+    }
+
+    /// The marketplace is the public storefront: it lists only public agents
+    /// that are actually published, while the owner still sees their drafts
+    /// through the owner-scoped list.
+    #[tokio::test]
+    async fn marketplace_list_publishes_only_active_agents() {
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let app = build_test_router(state);
+
+        let mut versions = std::collections::HashMap::new();
+        for (agent_id, code) in [
+            ("agent.market.live", "live"),
+            ("agent.market.draft", "draft"),
+        ] {
+            let body = json!({
+                "agentId": agent_id,
+                "code": code,
+                "displayName": code,
+                "description": "marketplace fixture",
+                "manifest": test_manifest(),
+                "visibility": "public",
+                "requestedAt": "2026-06-01T00:00:00Z"
+            });
+            let request = Request::builder()
+                .method("POST")
+                .uri("/backend/v3/api/ai/agents")
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("create request should be built");
+            let response = app
+                .clone()
+                .oneshot(request)
+                .await
+                .expect("create request should succeed");
+            assert_eq!(response.status(), StatusCode::CREATED);
+            let bytes = to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("create body should read");
+            let created: Value =
+                serde_json::from_slice(&bytes).expect("create body should be json");
+            versions.insert(
+                agent_id,
+                created["data"]["item"]["version"]
+                    .as_str()
+                    .expect("create response carries the version")
+                    .to_string(),
+            );
+        }
+
+        // Publish the first agent; the second stays a draft.
+        let status_body = json!({
+            "targetStatus": "active",
+            "expectedVersion": versions["agent.market.live"],
+            "requestedAt": "2026-06-01T00:01:00Z"
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/backend/v3/api/ai/agents/agent.market.live/status")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(status_body.to_string()))
+            .expect("status request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("status request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request = Request::builder()
+            .method("GET")
+            .uri("/app/v3/api/ai/agents?scope=market")
+            .body(Body::empty())
+            .expect("marketplace list request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("marketplace list request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("marketplace list body should read");
+        let body: Value = serde_json::from_slice(&bytes).expect("marketplace list should be json");
+        let items = body["data"]["items"]
+            .as_array()
+            .expect("marketplace list carries items");
+        assert_eq!(
+            items.len(),
+            1,
+            "a draft public agent must stay out of the marketplace: {body}"
+        );
+        assert_eq!(items[0]["agentId"], "agent.market.live");
+
+        // The owner-scoped list still shows both.
+        let request = Request::builder()
+            .method("GET")
+            .uri("/app/v3/api/ai/agents")
+            .body(Body::empty())
+            .expect("owner list request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("owner list request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("owner list body should read");
+        let body: Value = serde_json::from_slice(&bytes).expect("owner list should be json");
+        assert_eq!(
+            body["data"]["items"]
+                .as_array()
+                .expect("owner list carries items")
+                .len(),
+            2,
+            "the owner must still see their drafts: {body}"
+        );
     }
 
     struct AmbiguousProviderSessionProjectCwdResolver;

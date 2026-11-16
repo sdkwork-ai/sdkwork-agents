@@ -7086,6 +7086,11 @@ fn agent_matches_list_query(record: &AgentBusinessRecord, query: &AgentListQuery
             return false;
         }
     }
+    if let Some(status) = query.status {
+        if record.status != status {
+            return false;
+        }
+    }
     if !query
         .catalog_view
         .allows(record.category_code.as_deref(), &record.allowed_role_codes)
