@@ -42,7 +42,7 @@
         "VITE_SDKWORK_AGENTS_PC_APP_API_BASE_URL"
       ],
       "accessToken": {
-        "appId": "sdkwork-agents",
+        "appIdEnv": "SDKWORK_DEPLOY_APPLICATION_ID",
         "tenantId": "100001",
         "organizationId": "0",
         "permissionScope": [
@@ -74,7 +74,7 @@
         "VITE_SDKWORK_AGENTS_H5_APP_API_BASE_URL"
       ],
       "accessToken": {
-        "appId": "sdkwork-agents",
+        "appIdEnv": "SDKWORK_DEPLOY_APPLICATION_ID",
         "tenantId": "100001",
         "organizationId": "0",
         "permissionScope": [
@@ -104,7 +104,7 @@
         }
       },
       "accessToken": {
-        "appId": "sdkwork-agents",
+        "appIdEnv": "SDKWORK_DEPLOY_APPLICATION_ID",
         "tenantId": "100001",
         "organizationId": "0",
         "permissionScope": [
@@ -134,7 +134,25 @@
         }
       },
       "accessToken": {
-        "appId": "sdkwork-agents",
+        "appIdEnv": "SDKWORK_DEPLOY_APPLICATION_ID",
+        "tenantId": "100001",
+        "organizationId": "0",
+        "permissionScope": [
+          "iam:self"
+        ]
+      }
+    },
+    {
+      "id": "sdkwork-agents-harmony-mobile",
+      "root": "apps/sdkwork-agents-harmony-mobile",
+      "format": "harmony-native",
+      "runtimeTarget": "harmony-native",
+      "identityPrefixes": [
+        "SDKWORK_AGENTS"
+      ],
+      "bindings": {},
+      "accessToken": {
+        "appIdEnv": "SDKWORK_DEPLOY_APPLICATION_ID",
         "tenantId": "100001",
         "organizationId": "0",
         "permissionScope": [
