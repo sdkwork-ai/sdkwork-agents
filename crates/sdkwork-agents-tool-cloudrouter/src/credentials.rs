@@ -7,22 +7,26 @@
 //! invalid_request`).
 //!
 //! Both transports of a chat turn must therefore agree on **which** of the two
-//! credentials to present. This module exists so there is exactly one answer:
-//! before it, the in-process arm read `SDKWORK_CLOUDROUTER_OPEN_API_KEY` while
-//! the HTTP arm ignored the variable entirely and always sent the caller's
-//! token pair. The same turn consequently authenticated as a **different
-//! principal** depending only on the deployment profile — a billing and
-//! tenant-scope divergence that no single-arm test could observe.
+//! credentials to present, and on *which principal* the turn runs as. This
+//! module exists so there is exactly one answer.
 //!
 //! The rule, applied identically by [`crate::turn_transport`] and
 //! [`crate::chat_stream`]:
 //!
-//! 1. A configured, non-blank API key selects the API-key-only branch. That
-//!    identity is what an embedded deployment provisions for in-process
-//!    CloudRouter traffic.
-//! 2. Otherwise the caller's dual-token pair is presented verbatim, so the
-//!    surface projects the same principal and access context as an external
-//!    caller.
+//! 1. A turn that carries a caller identity (a non-blank `Authorization` bearer
+//!    from the verified request) presents that caller's dual-token pair
+//!    verbatim — `APP_SDK_INTEGRATION_SPEC.md` §5.2.1: a user-scoped call must
+//!    never be quietly re-authenticated as the deployment.
+//! 2. Only a **caller-less** turn (background/worker work) may present the
+//!    deployment-provisioned `X-API-Key` as its declared service identity.
+//! 3. A turn with neither presents no credential at all: the destination
+//!    rejects it with its own 401 instead of receiving a synthesized or empty
+//!    credential header.
+//!
+//! This ordering was previously inverted (a configured key beat the caller
+//! pair), which made the same streaming user turn authenticate as two different
+//! principals depending only on the deployment profile — a billing and
+//! tenant-scope divergence.
 
 /// Environment variable holding the deployment-provisioned CloudRouter
 /// open-api key.
@@ -49,7 +53,8 @@ pub const ACCESS_TOKEN_HEADER: &str = "Access-Token";
 /// the selection once and compare what each arm sends.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HopCredentials {
-    /// `X-API-Key` alone; neither token header is present.
+    /// `X-API-Key` alone; neither token header is present. Only for a
+    /// caller-less (background/worker) turn.
     ApiKey(String),
     /// The caller's `Authorization` bearer plus optional `Access-Token`.
     CallerPair {
@@ -58,30 +63,41 @@ pub enum HopCredentials {
         /// The caller's access token, when the inbound request carried one.
         access_token: Option<String>,
     },
+    /// Neither a caller identity nor a configured key: present no credential.
+    Unavailable,
 }
 
 impl HopCredentials {
     /// Selects the credential source for one hop.
     ///
-    /// `api_key` is the deployment-provisioned key, normalized (trimmed; a
-    /// blank value behaves as absent so it can never become an empty
-    /// credential header).
+    /// The caller's identity wins whenever it is present; `api_key` (the
+    /// deployment-provisioned service identity) is used only for a caller-less
+    /// turn. Both are normalized (trimmed; a blank value behaves as absent so it
+    /// can never become an empty credential header).
     pub fn select(api_key: Option<&str>, auth_token: &str, access_token: Option<&str>) -> Self {
+        if let Some(auth_token) = normalize(Some(auth_token)) {
+            return Self::CallerPair {
+                auth_token: auth_token.to_string(),
+                access_token: normalize(access_token).map(str::to_string),
+            };
+        }
         if let Some(api_key) = normalize(api_key) {
             return Self::ApiKey(api_key.to_string());
         }
-        Self::CallerPair {
-            auth_token: auth_token.to_string(),
-            access_token: normalize(access_token).map(str::to_string),
-        }
+        Self::Unavailable
     }
 
     /// The API key when this hop authenticates with one.
     pub fn api_key(&self) -> Option<&str> {
         match self {
             Self::ApiKey(api_key) => Some(api_key),
-            Self::CallerPair { .. } => None,
+            Self::CallerPair { .. } | Self::Unavailable => None,
         }
+    }
+
+    /// Whether this hop presents the caller's dual-token pair.
+    pub fn is_caller_pair(&self) -> bool {
+        matches!(self, Self::CallerPair { .. })
     }
 }
 
@@ -106,27 +122,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_configured_key_wins_over_the_caller_pair() {
+    fn the_caller_pair_wins_over_a_configured_key() {
         assert_eq!(
             HopCredentials::select(Some("sk-deployment"), "auth", Some("access")),
-            HopCredentials::ApiKey("sk-deployment".to_string())
+            HopCredentials::CallerPair {
+                auth_token: "auth".to_string(),
+                access_token: Some("access".to_string()),
+            },
+            "a user-scoped turn must never be re-authenticated as the deployment"
         );
     }
 
     #[test]
-    fn a_blank_key_behaves_as_absent() {
-        // A blank value must not shadow the caller's identity with an empty
-        // credential header.
+    fn a_configured_key_is_used_only_for_a_caller_less_turn() {
         for blank in ["", "   "] {
             assert_eq!(
-                HopCredentials::select(Some(blank), "auth", Some("access")),
-                HopCredentials::CallerPair {
-                    auth_token: "auth".to_string(),
-                    access_token: Some("access".to_string()),
-                },
-                "blank key {blank:?} must fall back to the caller pair"
+                HopCredentials::select(Some("sk-deployment"), blank, None),
+                HopCredentials::ApiKey("sk-deployment".to_string()),
+                "a caller-less turn uses the declared service identity"
             );
         }
+    }
+
+    #[test]
+    fn a_blank_key_and_blank_caller_select_no_credential() {
+        assert_eq!(
+            HopCredentials::select(Some("   "), "  ", Some("  ")),
+            HopCredentials::Unavailable
+        );
+        assert_eq!(
+            HopCredentials::select(None, "", None),
+            HopCredentials::Unavailable
+        );
     }
 
     #[test]

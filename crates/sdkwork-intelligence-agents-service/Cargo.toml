@@ -66,6 +66,7 @@ cron.workspace = true
 [dev-dependencies]
 async-trait.workspace = true
 serde_yaml.workspace = true
+serde_urlencoded.workspace = true
 sdkwork-agents-database-host.workspace = true
 
 [[test]]

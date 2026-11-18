@@ -472,9 +472,10 @@ fn embedded_turn_transport_end_to_end() {
         );
     }
 
-    // --- Step 5: configuring an API key switches to the API-key-only branch.
-    // CloudRouter answers `400 invalid_request` for "API key mixed with either
-    // token" (API_SPEC §10), so this branch must drop both token headers. ---
+    // --- Step 5: configuring an API key must NOT override the caller identity.
+    // A user turn projects the caller's pair and no API key; the deployment key
+    // is reserved for caller-less background turns (covered at unit level by
+    // pi_key_branch_omits_both_token_headers).
     let keyed = run_embedded_turn(
         &recorded,
         Some("sk-embedded-key"),
@@ -486,16 +487,17 @@ fn embedded_turn_transport_end_to_end() {
         let dispatches = recorded.lock().expect("recorded lock");
         let headers = &dispatches[1].headers;
         assert_eq!(
-            Some("sk-embedded-key"),
-            headers.get("x-api-key").map(|v| v.to_str().unwrap())
+            Some("Bearer login-auth-token"),
+            headers.get("authorization").map(|v| v.to_str().unwrap()),
+            "the caller pair wins over a configured deployment key"
+        );
+        assert_eq!(
+            Some("login-access-token"),
+            headers.get("Access-Token").map(|v| v.to_str().unwrap())
         );
         assert!(
-            !headers.contains_key("authorization"),
-            "an API-key turn must not also carry Authorization"
-        );
-        assert!(
-            !headers.contains_key("Access-Token"),
-            "an API-key turn must not also carry Access-Token"
+            !headers.contains_key("x-api-key"),
+            "a caller-bound turn must not also carry the deployment key"
         );
     }
 

@@ -635,6 +635,8 @@ fn apply_dual_token_headers(
                 );
             }
         }
+        // No caller identity and no configured key: present no credential.
+        HopCredentials::Unavailable => {}
     }
     Ok(())
 }
@@ -1269,9 +1271,9 @@ mod tests {
             keys
         };
 
-        // --- Case 1: a configured key must select the API-key branch in BOTH
-        // transports. This is the regression the module doc records: the HTTP
-        // arm used to ignore the variable and always send the caller's pair.
+        // --- Case 1: a configured deployment key must NOT override a caller
+        // identity. Both transports carry the caller's pair, so a streaming
+        // user turn cannot be re-authenticated as the deployment.
         std::env::set_var(ENV_CLOUDROUTER_OPEN_API_KEY, "sk-deployment");
         assert_eq!(
             embedded_open_api_key().as_deref(),
@@ -1284,14 +1286,40 @@ mod tests {
             http_headers,
             vec![
                 ("content-type".to_string(), "application/json".to_string()),
-                (API_KEY_HEADER.to_string(), "sk-deployment".to_string()),
+                (
+                    "authorization".to_string(),
+                    "Bearer caller-auth".to_string()
+                ),
+                (
+                    ACCESS_TOKEN_HEADER.to_ascii_lowercase(),
+                    "caller-access".to_string()
+                ),
             ],
-            "HTTP arm must send X-API-Key alone when the deployment key is set"
+            "HTTP arm must project the caller's pair even with a deployment key configured"
         );
         assert_eq!(
             in_process_keys("caller-auth", Some("caller-access")),
+            vec![
+                ACCESS_TOKEN_HEADER.to_ascii_lowercase(),
+                "authorization".to_string()
+            ],
+            "in-process arm must project the caller's pair even with a deployment key configured"
+        );
+
+        // --- Case 1b: a caller-less turn presents the deployment key alone in
+        // both transports (declared service identity for background work).
+        assert_eq!(
+            http_arm_credential_headers("", None),
+            vec![
+                ("content-type".to_string(), "application/json".to_string()),
+                (API_KEY_HEADER.to_string(), "sk-deployment".to_string()),
+            ],
+            "a caller-less HTTP turn uses the deployment key alone"
+        );
+        assert_eq!(
+            in_process_keys("", None),
             vec![API_KEY_HEADER.to_string()],
-            "in-process arm must send X-API-Key alone when the deployment key is set"
+            "a caller-less in-process turn uses the deployment key alone"
         );
 
         // --- Case 2: without a configured key both arms fall back to the
@@ -1337,6 +1365,16 @@ mod tests {
             vec!["authorization".to_string()],
             "a blank key leaves the in-process arm on the caller pair too"
         );
+
+        // --- Case 4: neither a caller nor a configured key presents no
+        // credential at all (never an empty or synthesized header).
+        std::env::remove_var(ENV_CLOUDROUTER_OPEN_API_KEY);
+        assert_eq!(
+            http_arm_credential_headers("", None),
+            vec![("content-type".to_string(), "application/json".to_string())],
+            "no credential is rendered when none is available"
+        );
+        assert!(in_process_keys("", None).is_empty());
 
         restore(previous);
     }

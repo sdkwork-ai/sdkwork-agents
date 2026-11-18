@@ -134,6 +134,13 @@ paths:
       tags:
       - ai
       summary: Retrieve one managed agent
+      description: >-
+        Returns the agent when the caller may read it. Visibility is enforced on
+        the application surface — a `private` agent is readable only by its owner,
+        an `organization` agent only within the caller's organization scope, and
+        `tenant` / `public` agents by any caller of the tenant. A record the caller
+        may not read is reported as 404 instead of leaking its existence; the
+        backend administration surface reads every record.
       operationId: agents.retrieve
       security:
       - AuthToken: []
@@ -5325,8 +5332,10 @@ components:
       name: scope
       in: query
       required: false
-      description: List scope. Use `market`, `public`, or `published` for tenant-visible
-        catalog agents; omit for agents owned by the authenticated user.
+      description: List scope. Use `market`, `public`, or `published` for the public
+        storefront catalog, which lists only `public` agents in the `active` lifecycle
+        status (draft, disabled and archived agents never appear there); omit for
+        agents owned by the authenticated user, which keeps every status.
       schema:
         type: string
         enum:

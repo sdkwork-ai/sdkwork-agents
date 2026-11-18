@@ -7077,8 +7077,9 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
             .filter(|q| !is_blank(Some(q.as_str())))
             .map(|q| format!("%{}%", trim(q).to_lowercase()));
         let visibility_code = query.visibility.map(|visibility| visibility.as_db_code());
-        let category_code = query.category_code.as_deref();
-        let role_codes = query.role_codes.as_slice();
+        let status_code = query.status.map(|status| status.as_db_code());
+        let category_code = query.catalog_view.category_code();
+        let role_codes = query.catalog_view.role_codes();
         let page_size = usize_to_i64(query.pagination.page_size, "pagination.page_size")?;
         let offset = usize_to_i64(query.pagination.offset, "pagination.offset")?;
 
@@ -7095,7 +7096,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 page_size,
                 offset,
                 category_code,
-                role_codes
+                role_codes,
+                status_code
             )?;
 
             let mut mapped_rows = Vec::with_capacity(rows.len());
@@ -7124,8 +7126,9 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
             .filter(|q| !is_blank(Some(q.as_str())))
             .map(|q| format!("%{}%", trim(q).to_lowercase()));
         let visibility_code = query.visibility.map(|visibility| visibility.as_db_code());
-        let category_code = query.category_code.as_deref();
-        let role_codes = query.role_codes.as_slice();
+        let status_code = query.status.map(|status| status.as_db_code());
+        let category_code = query.catalog_view.category_code();
+        let role_codes = query.catalog_view.role_codes();
 
         self.with_pool(|pool| {
             let row = pg_query_optional!(
@@ -7138,7 +7141,8 @@ impl AgentRepositoryAdapter for SyncPostgresAdapter {
                 search_query,
                 visibility_code,
                 category_code,
-                role_codes
+                role_codes,
+                status_code
             )?;
             let total: i64 = row
                 .map(|value| {

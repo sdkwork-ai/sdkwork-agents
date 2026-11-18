@@ -27,12 +27,12 @@ use crate::session_activity::{
 };
 use crate::task_scheduler::{TaskRunAttemptListQuery, TaskRunListQuery};
 use crate::validation::{
-    is_trimmed_blank, normalize_category_filter, normalize_role_code_filter,
-    parse_expected_version, parse_organization_id, parse_owner_user_id, parse_tenant_id,
-    validate_requested_at,
+    is_trimmed_blank, parse_expected_version, parse_organization_id, parse_owner_user_id,
+    parse_tenant_id, validate_requested_at,
 };
 use sdkwork_agent_kernel::{AgentManifest, KernelError, KernelResult, PolicySubject};
 use sdkwork_code_kernel::CodeTaskIntent;
+use sdkwork_utils_rust::CatalogViewFilter;
 use serde_json::{json, Map, Value};
 
 const AGENT_MANAGEMENT_PROFILE_CONSTRAINT_PREFIX: &str = "sdkwork.agent.pc.config:";
@@ -70,9 +70,12 @@ impl ListAgentsRequestDto {
         if let Some(visibility) = self.visibility {
             query = query.with_visibility(parse_visibility(&visibility)?);
         }
-        query = query
-            .with_category_code(normalize_category_filter(self.category_code.as_deref()))
-            .with_role_codes(normalize_role_code_filter(self.role_codes.as_deref()));
+        // Build the catalog view once from the raw wire values; every later
+        // layer reads the normalized filter instead of the raw selector text.
+        query = query.with_catalog_view(CatalogViewFilter::from_query(
+            self.category_code.as_deref(),
+            self.role_codes.as_deref(),
+        ));
         query = query.with_pagination(self.pagination);
         Ok(ListAgentsCommand {
             query,
@@ -113,6 +116,10 @@ impl CreateAgentRequestDto {
             display_name: self.display_name,
             description: self.description,
             manifest: self.manifest,
+            // The HTTP boundary owns the management-profile projection; a DTO
+            // built without one (imports, tests, internal callers) leaves the
+            // manifest category untouched.
+            profile_category_code: None,
             visibility: parse_visibility(&self.visibility)?,
             tags: self.tags,
             allowed_role_codes: normalize_allowed_role_codes(&self.allowed_role_codes)?,
@@ -292,6 +299,9 @@ impl UpdateAgentRequestDto {
             display_name: self.display_name,
             description: self.description,
             manifest: self.manifest,
+            // The HTTP boundary owns the management-profile projection; a DTO
+            // built without one leaves the stored category untouched.
+            profile_category_code: None,
             visibility,
             tags: self.tags,
             allowed_role_codes: self
@@ -474,7 +484,7 @@ impl AgentRecordDto {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct AgentManagementProfileDto {
     pub author: Option<String>,
     pub avatar: Option<String>,
@@ -3783,9 +3793,9 @@ mod tests {
         .into_command(sample_subject())
         .expect("mapping should succeed");
 
-        assert_eq!(command.query.category_code, None);
+        assert_eq!(command.query.catalog_view.category_code(), None);
         assert_eq!(
-            command.query.role_codes,
+            command.query.catalog_view.role_codes(),
             vec!["org_admin".to_string(), "org_operations".to_string()]
         );
 
@@ -3803,8 +3813,130 @@ mod tests {
         .into_command(sample_subject())
         .expect("mapping should succeed");
 
-        assert_eq!(command.query.category_code.as_deref(), Some("engineering"));
-        assert!(command.query.role_codes.is_empty());
+        assert_eq!(
+            command.query.catalog_view.category_code(),
+            Some("engineering")
+        );
+        assert!(command.query.catalog_view.role_codes().is_empty());
+    }
+
+    fn role_codes(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| value.to_string()).collect()
+    }
+
+    /// The listing predicate: the agent carries its category and IAM role
+    /// scope, the catalog view carries the request selector.
+    fn listing_keeps(
+        filter: &CatalogViewFilter,
+        agent_category_code: Option<&str>,
+        agent_allowed_role_codes: &[&str],
+    ) -> bool {
+        filter.allows(agent_category_code, &role_codes(agent_allowed_role_codes))
+    }
+
+    #[test]
+    fn list_catalog_view_all_data_keeps_every_agent() {
+        let command = ListAgentsRequestDto {
+            tenant_id: "100001".to_string(),
+            organization_id: None,
+            owner_user_id: None,
+            include_deleted: false,
+            search_query: None,
+            visibility: None,
+            category_code: None,
+            role_codes: None,
+            pagination: PaginationParams::default(),
+        }
+        .into_command(sample_subject())
+        .expect("mapping should succeed");
+        let filter = command.query.catalog_view;
+
+        assert!(filter.is_all_data());
+        assert!(listing_keeps(
+            &filter,
+            Some("engineering"),
+            &["org_finance"]
+        ));
+        assert!(listing_keeps(&filter, None, &[]));
+    }
+
+    #[test]
+    fn list_catalog_view_narrows_to_the_requested_category() {
+        let filter = CatalogViewFilter::from_query(Some(" Engineering "), None);
+
+        assert_eq!(filter.category_code(), Some("engineering"));
+        assert!(listing_keeps(
+            &filter,
+            Some("engineering"),
+            &["org_finance"]
+        ));
+        assert!(listing_keeps(&filter, Some("ENGINEERING"), &[]));
+        assert!(!listing_keeps(&filter, Some("education"), &[]));
+        // An agent without a category never matches a populated category.
+        assert!(!listing_keeps(&filter, None, &[]));
+    }
+
+    #[test]
+    fn list_catalog_view_all_sentinel_keeps_every_category() {
+        for selector in [
+            None,
+            Some(""),
+            Some("  "),
+            Some("all"),
+            Some("ALL"),
+            Some("全部"),
+        ] {
+            let filter = CatalogViewFilter::from_query(selector, None);
+            assert_eq!(filter.category_code(), None, "selector: {selector:?}");
+            assert!(listing_keeps(&filter, Some("engineering"), &[]));
+            assert!(listing_keeps(&filter, None, &[]));
+        }
+    }
+
+    #[test]
+    fn list_catalog_view_role_scope_keeps_open_agents_and_named_roles() {
+        // The all-data view keeps even an agent restricted to another role.
+        let all_data = CatalogViewFilter::all_data();
+        assert!(listing_keeps(
+            &all_data,
+            Some("engineering"),
+            &["org_finance"]
+        ));
+
+        let operator = CatalogViewFilter::from_query(None, Some("org_admin"));
+        // Open to every role: always visible, even to a role-narrowed caller.
+        assert!(listing_keeps(&operator, Some("engineering"), &[]));
+        // The named role matches case-insensitively.
+        assert!(listing_keeps(
+            &operator,
+            Some("engineering"),
+            &["ORG_ADMIN"]
+        ));
+        // A different role scope does not leak the restricted agent.
+        assert!(!listing_keeps(
+            &operator,
+            Some("engineering"),
+            &["org_finance"]
+        ));
+        assert_eq!(operator.role_codes(), role_codes(&["org_admin"]));
+    }
+
+    #[test]
+    fn list_catalog_view_composes_category_and_role_scope() {
+        let filter = CatalogViewFilter::from_query(Some("engineering"), Some("org_admin"));
+
+        assert!(!filter.is_all_data());
+        assert!(listing_keeps(&filter, Some("engineering"), &[]));
+        assert!(listing_keeps(&filter, Some("ENGINEERING"), &["org_admin"]));
+        // Category matches but the role scope does not.
+        assert!(!listing_keeps(
+            &filter,
+            Some("engineering"),
+            &["org_finance"]
+        ));
+        // Role scope matches but the category does not.
+        assert!(!listing_keeps(&filter, Some("education"), &[]));
+        assert!(!listing_keeps(&filter, None, &["org_admin"]));
     }
 
     #[test]

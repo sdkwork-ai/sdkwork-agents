@@ -4,7 +4,7 @@
   "mode": "dry-run",
   "standardProfile": "sdkwork-v3",
   "sdkgenPath": "sdkwork-sdk-generator/bin/sdkgen.js",
-  "startedAt": "2026-11-15T18:04:18.020Z",
+  "startedAt": "2026-11-16T18:56:23.215Z",
   "families": [
     {
       "key": "open",
@@ -114,13 +114,13 @@
         }
       ],
       "version": "0.1.0",
-      "fingerprint": "4bf066336e8927a49191ab333e929ca9eb30410f00f3bf4eeb17dfee9543e906",
+      "fingerprint": "907e1fc35648cc61b44b42f0572db0fa75375c029a6d8764b6475c4bd2c07828",
       "fingerprints": {
-        "typescript": "4bf066336e8927a49191ab333e929ca9eb30410f00f3bf4eeb17dfee9543e906",
+        "typescript": "907e1fc35648cc61b44b42f0572db0fa75375c029a6d8764b6475c4bd2c07828",
         "flutter": "614a545ec713c87a3fa01815575cad7c15af66ef558a38e42760cd7641208374"
       },
-      "hasChanges": false,
-      "riskLevel": "low",
+      "hasChanges": true,
+      "riskLevel": "high",
       "generated": false,
       "languages": [
         {
@@ -129,9 +129,9 @@
           "output": "sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-typescript/generated/server-openapi",
           "packageName": "@sdkwork/agents-app-sdk",
           "version": "0.1.0",
-          "fingerprint": "4bf066336e8927a49191ab333e929ca9eb30410f00f3bf4eeb17dfee9543e906",
-          "hasChanges": false,
-          "riskLevel": "low",
+          "fingerprint": "907e1fc35648cc61b44b42f0572db0fa75375c029a6d8764b6475c4bd2c07828",
+          "hasChanges": true,
+          "riskLevel": "high",
           "generated": false
         },
         {
@@ -173,12 +173,12 @@
         }
       ],
       "version": "0.1.0",
-      "fingerprint": "df817da8a3690157f33c1fb839f37d701f2387c0e4d39425468d3238bc49b435",
+      "fingerprint": "95b90438608617effd756f7423b40e562e504c09783f64962cd265a392d9a170",
       "fingerprints": {
-        "typescript": "df817da8a3690157f33c1fb839f37d701f2387c0e4d39425468d3238bc49b435"
+        "typescript": "95b90438608617effd756f7423b40e562e504c09783f64962cd265a392d9a170"
       },
-      "hasChanges": false,
-      "riskLevel": "low",
+      "hasChanges": true,
+      "riskLevel": "high",
       "generated": false,
       "languages": [
         {
@@ -187,13 +187,13 @@
           "output": "sdks/sdkwork-agents-backend-sdk/sdkwork-agents-backend-sdk-typescript/generated/server-openapi",
           "packageName": "@sdkwork/agents-backend-sdk",
           "version": "0.1.0",
-          "fingerprint": "df817da8a3690157f33c1fb839f37d701f2387c0e4d39425468d3238bc49b435",
-          "hasChanges": false,
-          "riskLevel": "low",
+          "fingerprint": "95b90438608617effd756f7423b40e562e504c09783f64962cd265a392d9a170",
+          "hasChanges": true,
+          "riskLevel": "high",
           "generated": false
         }
       ]
     }
   ],
-  "finishedAt": "2026-11-15T18:04:24.915Z"
+  "finishedAt": "2026-11-16T18:56:24.292Z"
 }

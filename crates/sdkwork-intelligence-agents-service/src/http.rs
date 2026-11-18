@@ -439,6 +439,48 @@ impl AgentRepository for DynAgentRepository {
         self.0.count_provider_bindings(query)
     }
 
+    fn insert_agent_version(
+        &self,
+        record: crate::domain::AgentVersionRecord,
+    ) -> KernelResult<crate::domain::AgentVersionRecord> {
+        self.0.insert_agent_version(record)
+    }
+
+    fn get_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentVersionRecord>> {
+        self.0
+            .get_agent_version(tenant_id, organization_id, agent_id, version_id)
+    }
+
+    fn list_agent_versions(
+        &self,
+        query: &crate::ports::AgentVersionListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentVersionRecord>> {
+        self.0.list_agent_versions(query)
+    }
+
+    fn activate_agent_version(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        agent_id: &str,
+        version_id: &str,
+        activated_at: &str,
+    ) -> KernelResult<Option<crate::domain::AgentVersionRecord>> {
+        self.0.activate_agent_version(
+            tenant_id,
+            organization_id,
+            agent_id,
+            version_id,
+            activated_at,
+        )
+    }
+
     fn insert_composition_slot(&self, record: AgentCompositionSlotRecord) -> KernelResult<()> {
         self.0.insert_composition_slot(record)
     }
@@ -1379,6 +1421,47 @@ impl AgentRepository for DynAgentRepository {
 
     fn count_interactions(&self, query: &crate::ports::InteractionListQuery) -> KernelResult<u64> {
         self.0.count_interactions(query)
+    }
+
+    fn insert_runtime_execution(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+    ) -> KernelResult<()> {
+        self.0.insert_runtime_execution(record)
+    }
+
+    fn update_runtime_execution(
+        &self,
+        record: crate::domain::AgentRuntimeExecutionRecord,
+    ) -> KernelResult<()> {
+        self.0.update_runtime_execution(record)
+    }
+
+    fn get_runtime_execution(
+        &self,
+        tenant_id: u64,
+        agent_id: &str,
+        execution_id: &str,
+    ) -> KernelResult<Option<crate::domain::AgentRuntimeExecutionRecord>> {
+        self.0
+            .get_runtime_execution(tenant_id, agent_id, execution_id)
+    }
+
+    fn list_runtime_executions(
+        &self,
+        query: &crate::ports::RuntimeExecutionListQuery,
+    ) -> KernelResult<Vec<crate::domain::AgentRuntimeExecutionRecord>> {
+        self.0.list_runtime_executions(query)
+    }
+
+    fn list_stale_runtime_executions(
+        &self,
+        tenant_id: u64,
+        updated_before: &str,
+        limit: usize,
+    ) -> KernelResult<Vec<crate::domain::AgentRuntimeExecutionRecord>> {
+        self.0
+            .list_stale_runtime_executions(tenant_id, updated_before, limit)
     }
 
     fn activate_provider_binding_atomic(
@@ -3096,11 +3179,11 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
         )
         .route(
             "/app/v3/api/ai/agents/{agentId}/tasks/{taskId}/runs",
-            get(list_task_runs),
+            get(app_list_task_runs),
         )
         .route(
             "/app/v3/api/ai/agents/{agentId}/tasks/{taskId}/runs/{runId}",
-            get(get_task_run),
+            get(app_get_task_run),
         )
         .route(
             "/app/v3/api/ai/agents/{agentId}/tasks/{taskId}/runs/{runId}/retry",
@@ -3112,7 +3195,7 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
         )
         .route(
             "/app/v3/api/ai/agents/{agentId}/tasks/{taskId}/runs/{runId}/attempts",
-            get(list_task_run_attempts),
+            get(app_list_task_run_attempts),
         )
         .route(
             "/app/v3/api/ai/agent_engines",
@@ -5510,7 +5593,7 @@ impl From<CodeTaskIntentBody> for CodeTaskIntent {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentManagementProfileBody {
     author: Option<String>,
@@ -5854,6 +5937,29 @@ impl AgentManagementProfileBody {
         validate_agent_management_profile_body(&self)?;
         Ok(self.into())
     }
+}
+
+/// The category a request's management profile authors, as a tri-state
+/// projection onto the stored agent record.
+///
+/// The console is the authoring surface for the agent category, but the list
+/// filter reads the generated `ai_agent.category_code` column, which derives
+/// from `manifest_json.category_code`. Returning a projection here (rather than
+/// reading the profile back out of the merged intent) is what lets the service
+/// tell "this request did not touch the category" apart from "this request
+/// cleared it": `None` vs `Some(None)`.
+fn management_profile_category_projection(
+    profile: Option<&AgentManagementProfileBody>,
+) -> Option<Option<String>> {
+    let profile = profile?;
+    Some(
+        profile
+            .category_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|code| !code.is_empty())
+            .map(str::to_string),
+    )
 }
 
 fn validate_agent_management_profile_body(
@@ -6415,7 +6521,7 @@ async fn backend_get_agent(
 ) -> Response {
     let result: ApiResult<ResourceData<AgentRecordResponse>> = async {
         let Path(agent_id) = agent_id.map_err(ApiProblem::from_path_rejection)?;
-        execute_get(state, RequestScope::from_context(context), agent_id).await
+        execute_get_with_surface(state, RequestScope::from_context(context), agent_id, false).await
     }
     .await;
     finish_api_json(&web_ctx, result)
@@ -6636,14 +6742,10 @@ async fn app_list_provider_bindings(
     let result: ApiResult<PageData<AgentProviderBindingRecordResponse>> = async {
         let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
         let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
-        execute_list_provider_bindings(
-            state,
-            RequestScope::from_context(context),
-            query.page,
-            query.page_size,
-            path.agent_id,
-        )
-        .await
+        let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &path.agent_id).await?;
+        execute_list_provider_bindings(state, scope, query.page, query.page_size, path.agent_id)
+            .await
     }
     .await;
     finish_api_json(&web_ctx, result)
@@ -6847,6 +6949,7 @@ async fn app_list_agent_calls(
         let Path(agent_id) = agent_id.map_err(ApiProblem::from_path_rejection)?;
         let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let page_size = normalized_cursor_page_size(query.page_size)?;
         let cursor = query
             .cursor
@@ -6900,6 +7003,7 @@ async fn app_get_agent_call(
     let result: ApiResult<ResourceData<AgentCallRecordResponse>> = async {
         let Path((agent_id, execution_id)) = path.map_err(ApiProblem::from_path_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let tenant_id = scope.tenant_id_u64()?;
         let record = with_service(&state, move |service| {
             service.get_agent_call(
@@ -6986,6 +7090,7 @@ async fn app_list_agent_versions(
         let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
         let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &path.agent_id).await?;
         let page_size = normalized_cursor_page_size(query.page_size)?;
         let tenant_id = scope.tenant_id_u64()?;
         let organization_id = scope.organization_id_u64()?;
@@ -7031,6 +7136,7 @@ async fn app_get_agent_version(
     let result: ApiResult<ResourceData<AgentVersionResponse>> = async {
         let Path((agent_id, version_id)) = path.map_err(ApiProblem::from_path_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let tenant_id = scope.tenant_id_u64()?;
         let organization_id = scope.organization_id_u64()?;
         let record = with_service(&state, move |service| {
@@ -7059,6 +7165,7 @@ async fn app_activate_agent_version(
     let result: ApiResult<ResourceData<AgentVersionResponse>> = async {
         let Path((agent_id, version_id)) = path.map_err(ApiProblem::from_path_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let tenant_id = scope.tenant_id_u64()?;
         let organization_id = scope.organization_id_u64()?;
         let occurred_at = server_now_rfc3339();
@@ -7591,14 +7698,10 @@ async fn app_list_composition_slots(
     let result: ApiResult<PageData<AgentCompositionSlotRecordResponse>> = async {
         let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
         let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
-        execute_list_composition_slots(
-            state,
-            RequestScope::from_context(context),
-            path.agent_id,
-            query.page,
-            query.page_size,
-        )
-        .await
+        let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &path.agent_id).await?;
+        execute_list_composition_slots(state, scope, path.agent_id, query.page, query.page_size)
+            .await
     }
     .await;
     finish_api_json(&web_ctx, result)
@@ -7629,6 +7732,7 @@ async fn app_get_agent_toolkit(
     let result: ApiResult<ResourceData<crate::toolkit::AgentToolkitOverview>> = async {
         let Path(agent_id) = agent_id.map_err(ApiProblem::from_path_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let tenant_id = scope.tenant_id_u64()?;
         let subject = scope.subject().clone();
         with_service(&state, move |service| {
@@ -7724,13 +7828,9 @@ async fn app_get_composition_slot(
 ) -> Response {
     let result: ApiResult<ResourceData<AgentCompositionSlotRecordResponse>> = async {
         let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
-        execute_get_composition_slot(
-            state,
-            RequestScope::from_context(context),
-            path.agent_id,
-            path.slot_id,
-        )
-        .await
+        let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &path.agent_id).await?;
+        execute_get_composition_slot(state, scope, path.agent_id, path.slot_id).await
     }
     .await;
     finish_api_json(&web_ctx, result)
@@ -10117,6 +10217,7 @@ async fn app_list_tasks(
         let Path(agent_id) = agent_id.map_err(ApiProblem::from_path_rejection)?;
         let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let page_size = normalized_cursor_page_size(query.page_size)?;
         let cursor = query
             .cursor
@@ -10199,6 +10300,7 @@ async fn app_get_task(
     let result: ApiResult<ResourceData<AgentTaskRecordDto>> = async {
         let Path((agent_id, task_id)) = path.map_err(ApiProblem::from_path_rejection)?;
         let scope = RequestScope::from_context(context);
+        ensure_app_agent_readable(&state, &scope, &agent_id).await?;
         let owner_scope = scope.owner_scope()?;
         let command = GetTaskCommand {
             tenant_id: parse_tenant_id(&scope.tenant_id).map_err(ApiProblem::from_kernel_error)?,
@@ -10426,6 +10528,27 @@ async fn list_task_runs(
     finish_api_json(&web_ctx, result)
 }
 
+/// Application-surface wrapper around [`list_task_runs`].
+///
+/// The shared handler also backs the open-api and backend route trees, so the
+/// agent visibility gate lives in the app wrapper rather than in the handler
+/// itself. The backend administration surface keeps reading every record.
+async fn app_list_task_runs(
+    state: State<AgentHttpState>,
+    context: Extension<AgentRequestContext>,
+    web_ctx: Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<(String, String)>, PathRejection>,
+    query: Result<Query<ListTaskRunsQueryParams>, QueryRejection>,
+) -> Response {
+    if let Ok(Path((agent_id, _task_id))) = &path {
+        let scope = RequestScope::from_context(context.0.clone());
+        if let Err(problem) = ensure_app_agent_readable(&state, &scope, agent_id).await {
+            return problem.into_response_for(&web_ctx);
+        }
+    }
+    list_task_runs(state, context, web_ctx, path, query).await
+}
+
 async fn get_task_run(
     State(state): State<AgentHttpState>,
     Extension(context): Extension<AgentRequestContext>,
@@ -10452,6 +10575,23 @@ async fn get_task_run(
     }
     .await;
     finish_api_json(&web_ctx, result)
+}
+
+/// Application-surface wrapper around [`get_task_run`]; see
+/// [`app_list_task_runs`] for why the gate sits in the wrapper.
+async fn app_get_task_run(
+    state: State<AgentHttpState>,
+    context: Extension<AgentRequestContext>,
+    web_ctx: Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<(String, String, String)>, PathRejection>,
+) -> Response {
+    if let Ok(Path((agent_id, _task_id, _run_id))) = &path {
+        let scope = RequestScope::from_context(context.0.clone());
+        if let Err(problem) = ensure_app_agent_readable(&state, &scope, agent_id).await {
+            return problem.into_response_for(&web_ctx);
+        }
+    }
+    get_task_run(state, context, web_ctx, path).await
 }
 
 async fn retry_task_run(
@@ -10566,6 +10706,24 @@ async fn list_task_run_attempts(
     }
     .await;
     finish_api_json(&web_ctx, result)
+}
+
+/// Application-surface wrapper around [`list_task_run_attempts`]; see
+/// [`app_list_task_runs`] for why the gate sits in the wrapper.
+async fn app_list_task_run_attempts(
+    state: State<AgentHttpState>,
+    context: Extension<AgentRequestContext>,
+    web_ctx: Extension<sdkwork_web_core::WebRequestContext>,
+    path: Result<Path<(String, String, String)>, PathRejection>,
+    query: Result<Query<ListTaskRunAttemptsQueryParams>, QueryRejection>,
+) -> Response {
+    if let Ok(Path((agent_id, _task_id, _run_id))) = &path {
+        let scope = RequestScope::from_context(context.0.clone());
+        if let Err(problem) = ensure_app_agent_readable(&state, &scope, agent_id).await {
+            return problem.into_response_for(&web_ctx);
+        }
+    }
+    list_task_run_attempts(state, context, web_ctx, path, query).await
 }
 
 async fn reconcile_task_run(
@@ -13553,10 +13711,14 @@ async fn execute_list(
 ) -> ApiResult<PageData<AgentRecordResponse>> {
     let include_deleted = query.include_deleted.unwrap_or(false);
     let (page, page_size) = normalized_pagination(query.page, query.page_size)?;
-    let visibility = if matches!(
+    // The marketplace scope is the public storefront: it lists only public
+    // agents that are actually published, so a draft or archived agent the
+    // console still owns never surfaces there.
+    let market_scope = matches!(
         query.scope.as_deref(),
         Some("market" | "public" | "published")
-    ) {
+    );
+    let visibility = if market_scope {
         Some("public".to_string())
     } else {
         None
@@ -13578,9 +13740,12 @@ async fn execute_list(
             .with_page_size(page_size)
             .with_page(page),
     };
-    let command = request_dto
+    let mut command = request_dto
         .into_command(scope.subject)
         .map_err(ApiProblem::from_kernel_error)?;
+    if market_scope {
+        command.query.status = Some(crate::domain::AgentBusinessStatus::Active);
+    }
 
     let result = with_service(&state, move |service| service.list_agents(command)).await?;
     let total_items = result.total_count.unwrap_or(0) as usize;
@@ -13612,6 +13777,8 @@ async fn execute_create(
     body: CreateAgentBody,
 ) -> ApiResult<ResourceData<AgentRecordResponse>> {
     let manifest = parse_manifest(body.manifest)?;
+    let profile_category_code =
+        management_profile_category_projection(body.management_profile.as_ref());
     let mut default_code_task_intent = body.default_code_task_intent.map(Into::into);
     if let Some(management_profile) = body.management_profile {
         default_code_task_intent = management_profile
@@ -13620,7 +13787,7 @@ async fn execute_create(
             .map_err(ApiProblem::from_kernel_error)?;
     }
 
-    let command = CreateAgentRequestDto {
+    let mut command = CreateAgentRequestDto {
         agent_id: body.agent_id,
         tenant_id: scope.tenant_id,
         organization_id: scope.organization_id,
@@ -13640,6 +13807,7 @@ async fn execute_create(
     }
     .into_command(scope.subject)
     .map_err(ApiProblem::from_kernel_error)?;
+    command.profile_category_code = profile_category_code;
 
     let record = with_service(&state, move |service| service.create_agent(command)).await?;
     Ok(ResourceData {
@@ -13647,22 +13815,87 @@ async fn execute_create(
     })
 }
 
+/// Whether an application caller may read one agent record.
+///
+/// The application surface must not expose another user's `private` agent or
+/// an `organization` agent from a different organization; the backend
+/// administration surface reads every record and is not gated.
+fn app_caller_may_read_agent(
+    record: &crate::domain::AgentBusinessRecord,
+    scope: &RequestScope,
+) -> bool {
+    use crate::domain::AgentVisibility;
+    // Mirrors the catalog predicate the plugins and MCP modules apply: numeric
+    // equality against the caller's organization scope / user id, with the
+    // tenant-level sentinel `0` compared like any other value.
+    let caller_org = scope.organization_id.parse::<u64>().unwrap_or_default();
+    let caller_user = scope.owner_evidence().unwrap_or_default();
+    match record.visibility {
+        AgentVisibility::Private => record.owner_user_id == caller_user,
+        AgentVisibility::Organization => record.organization_id == caller_org,
+        AgentVisibility::Tenant | AgentVisibility::Public => true,
+    }
+}
+
 async fn execute_get(
     state: AgentHttpState,
     scope: RequestScope,
     agent_id: String,
 ) -> ApiResult<ResourceData<AgentRecordResponse>> {
+    execute_get_with_surface(state, scope, agent_id, true).await
+}
+
+async fn execute_get_with_surface(
+    state: AgentHttpState,
+    scope: RequestScope,
+    agent_id: String,
+    app_surface: bool,
+) -> ApiResult<ResourceData<AgentRecordResponse>> {
     let command = GetAgentRequestDto {
-        tenant_id: scope.tenant_id,
+        tenant_id: scope.tenant_id.clone(),
         agent_id,
     }
-    .into_command(scope.subject)
+    .into_command(scope.subject.clone())
     .map_err(ApiProblem::from_kernel_error)?;
 
     let record = with_service(&state, move |service| service.get_agent(command)).await?;
+    if app_surface && !app_caller_may_read_agent(&record, &scope) {
+        // Hide the record instead of confirming it exists.
+        return Err(ApiProblem::not_found("agent"));
+    }
     Ok(ResourceData {
         item: map_agent_record(&AgentRecordDto::from_record(&record))?,
     })
+}
+
+/// Rejects an application-surface read when the caller may not read the agent
+/// record whose content it addresses.
+///
+/// The app route tree keeps its per-operation IAM authorization, but a caller
+/// holding only list permission can still address an arbitrary `agentId`; the
+/// `agentId`-keyed read handlers therefore apply the same visibility decision
+/// as `GET /app/v3/api/ai/agents/{agentId}` before touching stored content.
+/// The record is loaded through [`AgentsService::find_agent_record`] rather
+/// than [`AgentsService::get_agent`] so the visibility decision - not the
+/// coarse IAM `retrieve` permission - decides the outcome. A record the caller
+/// may not read is reported as `not_found`, never as a permission error, so
+/// its existence does not leak.
+async fn ensure_app_agent_readable(
+    state: &AgentHttpState,
+    scope: &RequestScope,
+    agent_id: &str,
+) -> ApiResult<()> {
+    let tenant_id = scope.tenant_id_u64()?;
+    let agent_id = agent_id.to_owned();
+    let record = with_service(state, move |service| {
+        service.find_agent_record(tenant_id, agent_id.as_str())
+    })
+    .await?;
+    if app_caller_may_read_agent(&record, scope) {
+        Ok(())
+    } else {
+        Err(ApiProblem::not_found("agent"))
+    }
 }
 
 async fn execute_update(
@@ -13672,6 +13905,8 @@ async fn execute_update(
     body: UpdateAgentBody,
 ) -> ApiResult<ResourceData<AgentRecordResponse>> {
     let acting_owner_user_id = scope.owner_evidence();
+    let profile_category_code =
+        management_profile_category_projection(body.management_profile.as_ref());
     let mut default_code_task_intent = body.default_code_task_intent.map(Into::into);
     if let Some(management_profile) = body.management_profile {
         let base_intent = match default_code_task_intent.take() {
@@ -13693,7 +13928,7 @@ async fn execute_update(
             .merge_into_default_code_task_intent(base_intent)
             .map_err(ApiProblem::from_kernel_error)?;
     }
-    let command = UpdateAgentRequestDto {
+    let mut command = UpdateAgentRequestDto {
         tenant_id: scope.tenant_id,
         agent_id,
         expected_version: body.expected_version,
@@ -13711,6 +13946,7 @@ async fn execute_update(
     }
     .into_command(scope.subject)
     .map_err(ApiProblem::from_kernel_error)?;
+    command.profile_category_code = profile_category_code;
 
     let record = with_service(&state, move |service| {
         service.update_agent_as(command, acting_owner_user_id)
@@ -15078,6 +15314,443 @@ mod tests {
             .get_or_init(|| std::sync::Mutex::new(()))
             .lock()
             .unwrap_or_else(|error| error.into_inner())
+    }
+
+    /// The projection is tri-state so an unrelated update never erases a
+    /// category the console set: no profile → untouched, profile without a
+    /// category → cleared, profile with one → set.
+    #[test]
+    fn management_profile_category_projection_is_tri_state() {
+        assert_eq!(management_profile_category_projection(None), None);
+
+        let mut profile = AgentManagementProfileBody::default();
+        assert_eq!(
+            management_profile_category_projection(Some(&profile)),
+            Some(None)
+        );
+
+        profile.category_id = Some("   ".to_string());
+        assert_eq!(
+            management_profile_category_projection(Some(&profile)),
+            Some(None)
+        );
+
+        profile.category_id = Some(" engineering ".to_string());
+        assert_eq!(
+            management_profile_category_projection(Some(&profile)),
+            Some(Some("engineering".to_string()))
+        );
+    }
+
+    /// The marketplace is the public storefront: it lists only public agents
+    /// that are actually published, while the owner still sees their drafts
+    /// through the owner-scoped list.
+    #[tokio::test]
+    async fn marketplace_list_publishes_only_active_agents() {
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let app = build_test_router(state);
+
+        let mut versions = std::collections::HashMap::new();
+        for (agent_id, code) in [
+            ("agent.market.live", "live"),
+            ("agent.market.draft", "draft"),
+        ] {
+            let body = json!({
+                "agentId": agent_id,
+                "code": code,
+                "displayName": code,
+                "description": "marketplace fixture",
+                "manifest": test_manifest(),
+                "visibility": "public",
+                "requestedAt": "2026-06-01T00:00:00Z"
+            });
+            let request = Request::builder()
+                .method("POST")
+                .uri("/backend/v3/api/ai/agents")
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("create request should be built");
+            let response = app
+                .clone()
+                .oneshot(request)
+                .await
+                .expect("create request should succeed");
+            assert_eq!(response.status(), StatusCode::CREATED);
+            let bytes = to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("create body should read");
+            let created: Value =
+                serde_json::from_slice(&bytes).expect("create body should be json");
+            versions.insert(
+                agent_id,
+                created["data"]["item"]["version"]
+                    .as_str()
+                    .expect("create response carries the version")
+                    .to_string(),
+            );
+        }
+
+        // Publish the first agent; the second stays a draft.
+        let status_body = json!({
+            "targetStatus": "active",
+            "expectedVersion": versions["agent.market.live"],
+            "requestedAt": "2026-06-01T00:01:00Z"
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/backend/v3/api/ai/agents/agent.market.live/status")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(status_body.to_string()))
+            .expect("status request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("status request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let request = Request::builder()
+            .method("GET")
+            .uri("/app/v3/api/ai/agents?scope=market")
+            .body(Body::empty())
+            .expect("marketplace list request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("marketplace list request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("marketplace list body should read");
+        let body: Value = serde_json::from_slice(&bytes).expect("marketplace list should be json");
+        let items = body["data"]["items"]
+            .as_array()
+            .expect("marketplace list carries items");
+        assert_eq!(
+            items.len(),
+            1,
+            "a draft public agent must stay out of the marketplace: {body}"
+        );
+        assert_eq!(items[0]["agentId"], "agent.market.live");
+
+        // The owner-scoped list still shows both.
+        let request = Request::builder()
+            .method("GET")
+            .uri("/app/v3/api/ai/agents")
+            .body(Body::empty())
+            .expect("owner list request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("owner list request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("owner list body should read");
+        let body: Value = serde_json::from_slice(&bytes).expect("owner list should be json");
+        assert_eq!(
+            body["data"]["items"]
+                .as_array()
+                .expect("owner list carries items")
+                .len(),
+            2,
+            "the owner must still see their drafts: {body}"
+        );
+    }
+
+    /// The application surface must not expose another user's `private` agent
+    /// by key; the owner and the tenant-wide `organization` visibility still
+    /// read normally.
+    #[tokio::test]
+    async fn app_retrieve_hides_another_users_private_agent() {
+        fn context_for(owner: &str) -> AgentRequestContext {
+            AgentRequestContext::new("100001", owner)
+                .with_organization_id("0")
+                .with_subject_id(owner)
+                .with_roles(["ai.agents.manage"])
+                .with_trace_id("trace-test-fixed")
+                .with_request_id("req-test-fixed")
+        }
+
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let owner_router = build_test_router_with_context(state.clone(), context_for("100"));
+        let other_router = build_test_router_with_context(state, context_for("101"));
+
+        for (agent_id, visibility) in [
+            ("agent.scope.private", "private"),
+            ("agent.scope.organization", "organization"),
+        ] {
+            let body = json!({
+                "agentId": agent_id,
+                "code": agent_id,
+                "displayName": agent_id,
+                "description": "visibility fixture",
+                "manifest": test_manifest(),
+                "visibility": visibility,
+                "requestedAt": "2026-06-01T00:00:00Z"
+            });
+            let request = Request::builder()
+                .method("POST")
+                .uri("/app/v3/api/ai/agents")
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("create request should be built");
+            let response = owner_router
+                .clone()
+                .oneshot(request)
+                .await
+                .expect("create request should succeed");
+            assert_eq!(response.status(), StatusCode::CREATED);
+        }
+
+        async fn retrieve(router: axum::Router, agent_id: &str) -> StatusCode {
+            let request = Request::builder()
+                .method("GET")
+                .uri(format!("/app/v3/api/ai/agents/{agent_id}"))
+                .body(Body::empty())
+                .expect("retrieve request should be built");
+            router
+                .oneshot(request)
+                .await
+                .expect("retrieve request should succeed")
+                .status()
+        }
+
+        // The owner reads both records.
+        assert_eq!(
+            retrieve(owner_router.clone(), "agent.scope.private").await,
+            StatusCode::OK
+        );
+        // Another user is told the private record does not exist.
+        assert_eq!(
+            retrieve(other_router.clone(), "agent.scope.private").await,
+            StatusCode::NOT_FOUND
+        );
+        // Organization visibility at the tenant-level scope (org 0) stays
+        // readable for other users of the same tenant.
+        assert_eq!(
+            retrieve(other_router, "agent.scope.organization").await,
+            StatusCode::OK
+        );
+    }
+
+    /// The visibility decision matrix: `private` is owner-only,
+    /// `organization` is same-organization, and `tenant` / `public` are readable
+    /// by any caller of the tenant.
+    #[test]
+    fn app_caller_may_read_agent_applies_visibility_matrix() {
+        fn visibility_record(
+            visibility: crate::domain::AgentVisibility,
+            owner_user_id: u64,
+            organization_id: u64,
+        ) -> crate::domain::AgentBusinessRecord {
+            crate::domain::AgentBusinessRecord {
+                id: 1,
+                agent_id: "agent.scope.private".to_string(),
+                tenant_id: 100001,
+                organization_id,
+                owner_user_id,
+                code: "agent.scope.private".to_string(),
+                display_name: "visibility".to_string(),
+                description: None,
+                manifest: parse_manifest(test_manifest()).expect("test manifest should parse"),
+                category_code: None,
+                default_code_task_intent: None,
+                implementation_provider_id: None,
+                implementation_kind: None,
+                implementation_type: crate::domain::AgentImplementationType::default(),
+                status: crate::domain::AgentBusinessStatus::Active,
+                visibility,
+                tags: Vec::new(),
+                allowed_role_codes: Vec::new(),
+                version: 1,
+                created_at: "2026-06-01T00:00:00Z".to_string(),
+                updated_at: "2026-06-01T00:00:00Z".to_string(),
+                deleted_at: None,
+            }
+        }
+
+        fn scope_for(owner_user_id: &str, organization_id: &str) -> RequestScope {
+            RequestScope::from_context(
+                AgentRequestContext::new("100001", owner_user_id)
+                    .with_organization_id(organization_id)
+                    .with_subject_id(owner_user_id)
+                    .with_roles(["ai.agents.manage"]),
+            )
+        }
+
+        use crate::domain::AgentVisibility;
+
+        let owner = scope_for("100", "0");
+        let same_org_user = scope_for("101", "0");
+        let other_org_user = scope_for("101", "42");
+
+        let private = visibility_record(AgentVisibility::Private, 100, 0);
+        assert!(app_caller_may_read_agent(&private, &owner));
+        assert!(!app_caller_may_read_agent(&private, &same_org_user));
+
+        let organization = visibility_record(AgentVisibility::Organization, 100, 0);
+        assert!(app_caller_may_read_agent(&organization, &owner));
+        assert!(app_caller_may_read_agent(&organization, &same_org_user));
+        assert!(!app_caller_may_read_agent(&organization, &other_org_user));
+
+        let tenant = visibility_record(AgentVisibility::Tenant, 100, 7);
+        assert!(app_caller_may_read_agent(&tenant, &other_org_user));
+
+        let public = visibility_record(AgentVisibility::Public, 100, 7);
+        assert!(app_caller_may_read_agent(&public, &other_org_user));
+    }
+
+    /// Every `{agentId}`-keyed application read must apply the retrieve gate,
+    /// not only `GET /app/v3/api/ai/agents/{agentId}`: a guessed id must not
+    /// expose a private agent's versions, calls, bindings, slots, toolkit or
+    /// tasks to another user, while the backend administration surface keeps
+    /// reading every record.
+    #[tokio::test]
+    async fn app_agent_scoped_reads_hide_another_users_private_agent() {
+        fn context_for(owner: &str) -> AgentRequestContext {
+            AgentRequestContext::new("100001", owner)
+                .with_organization_id("0")
+                .with_subject_id(owner)
+                .with_roles(["ai.agents.manage"])
+                .with_trace_id("trace-test-fixed")
+                .with_request_id("req-test-fixed")
+        }
+
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let owner_router = build_test_router_with_context(state.clone(), context_for("100"));
+        let other_router = build_test_router_with_context(state, context_for("101"));
+
+        for (agent_id, visibility) in [
+            ("agent.scope.private", "private"),
+            ("agent.scope.organization", "organization"),
+        ] {
+            let body = json!({
+                "agentId": agent_id,
+                "code": agent_id,
+                "displayName": agent_id,
+                "description": "visibility fixture",
+                "manifest": test_manifest(),
+                "visibility": visibility,
+                "requestedAt": "2026-06-01T00:00:00Z"
+            });
+            let request = Request::builder()
+                .method("POST")
+                .uri("/app/v3/api/ai/agents")
+                .header(CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string()))
+                .expect("create request should be built");
+            let response = owner_router
+                .clone()
+                .oneshot(request)
+                .await
+                .expect("create request should succeed");
+            assert_eq!(response.status(), StatusCode::CREATED);
+        }
+
+        async fn get(router: axum::Router, uri: String) -> (StatusCode, String) {
+            let request = Request::builder()
+                .method("GET")
+                .uri(uri)
+                .body(Body::empty())
+                .expect("get request should be built");
+            let response = router
+                .oneshot(request)
+                .await
+                .expect("get request should succeed");
+            let status = response.status();
+            let bytes = to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("get body should read");
+            (status, String::from_utf8_lossy(&bytes).to_string())
+        }
+        // Every app read under the private agent's id is owner-only.
+        for suffix in [
+            "",
+            "/versions",
+            "/calls",
+            "/provider_bindings",
+            "/composition_slots",
+            "/tasks",
+            "/toolkit",
+        ] {
+            let uri = format!("/app/v3/api/ai/agents/agent.scope.private{suffix}");
+            let (status, body) = get(owner_router.clone(), uri.clone()).await;
+            assert_eq!(status, StatusCode::OK, "the owner must read {uri}: {body}");
+            let (status, body) = get(other_router.clone(), uri.clone()).await;
+            assert_eq!(
+                status,
+                StatusCode::NOT_FOUND,
+                "another user must not read {uri}: {body}"
+            );
+        }
+
+        // A second user may read the shared organization-scope agent.
+        let (status, body) = get(
+            other_router.clone(),
+            "/app/v3/api/ai/agents/agent.scope.organization/versions".to_string(),
+        )
+        .await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "organization agent versions: {body}"
+        );
+
+        // The same gate applies to a stored version record read by id.
+        let version_body = json!({ "versionId": "version.private.1" });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/app/v3/api/ai/agents/agent.scope.private/versions")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(version_body.to_string()))
+            .expect("version create request should be built");
+        let response = owner_router
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("version create request should succeed");
+        assert_eq!(response.status(), StatusCode::OK);
+        let (status, body) = get(
+            owner_router.clone(),
+            "/app/v3/api/ai/agents/agent.scope.private/versions/version.private.1".to_string(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "owner version read: {body}");
+        let (status, body) = get(
+            other_router.clone(),
+            "/app/v3/api/ai/agents/agent.scope.private/versions/version.private.1".to_string(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "other version read: {body}");
+
+        // The backend administration surface is not gated.
+        let (status, body) = get(
+            other_router.clone(),
+            "/backend/v3/api/ai/agents/agent.scope.private".to_string(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "backend retrieve: {body}");
+        let (status, body) = get(
+            other_router,
+            "/backend/v3/api/ai/agents/agent.scope.private/tasks".to_string(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "backend tasks: {body}");
     }
 
     struct AmbiguousProviderSessionProjectCwdResolver;
@@ -17758,6 +18431,41 @@ mod tests {
             )
             .await,
             vec!["agent.alpha".to_string(), "agent.beta".to_string()]
+        );
+    }
+
+    #[test]
+    fn list_agents_query_params_parse_the_wire_category_and_role_codes() {
+        let query: ListAgentsQueryParams =
+            serde_urlencoded::from_str("category_code=all&role_codes=org_admin,org_operations")
+                .expect("list query string parses");
+        assert_eq!(query.category_code.as_deref(), Some("all"));
+        assert_eq!(
+            query.role_codes.as_deref(),
+            Some("org_admin,org_operations")
+        );
+
+        let command = ListAgentsRequestDto {
+            tenant_id: "100001".to_string(),
+            organization_id: None,
+            owner_user_id: None,
+            include_deleted: false,
+            search_query: None,
+            visibility: None,
+            category_code: query.category_code,
+            role_codes: query.role_codes,
+            pagination: PaginationParams::default(),
+        }
+        .into_command(PolicySubject::new("u-1", "100001"))
+        .expect("list request should map");
+
+        let filter = command.query.catalog_view;
+        // `all` keeps every category, while the role scope still narrows.
+        assert_eq!(filter.category_code(), None);
+        assert!(!filter.is_all_data());
+        assert_eq!(
+            filter.role_codes(),
+            vec!["org_admin".to_string(), "org_operations".to_string()]
         );
     }
 }

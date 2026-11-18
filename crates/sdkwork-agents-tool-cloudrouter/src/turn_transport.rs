@@ -400,6 +400,10 @@ fn build_surface_request(
                 builder = builder.header(ACCESS_TOKEN_HEADER, access_token);
             }
         }
+        // No caller identity and no configured key: present nothing. The
+        // destination rejects the turn with its own 401; no credential is
+        // synthesized here.
+        HopCredentials::Unavailable => {}
     }
     let payload = serde_json::to_vec(body).map_err(|error| SdkworkError::HttpStatus {
         status: EMBEDDED_LOCAL_FAILURE_STATUS,
@@ -710,7 +714,12 @@ mod tests {
         // rejects any request carrying two credential header sources
         // (`ApiKeyCredentialSourcesAmbiguous` → HTTP 400 `invalid_request`).
         let request = cloudrouter_open_sdk::models::OpenAiChatCompletionRequest::default();
-        let input = turn_request(&request);
+        // A caller-less (background/worker) turn is the only one allowed to
+        // present the deployment key as its declared service identity.
+        let input = CloudRouterTurnRequest {
+            auth_token: "",
+            ..turn_request(&request)
+        };
 
         let built = build_surface_request(
             "/v1/chat/completions",
@@ -789,8 +798,18 @@ mod tests {
             ..turn_request(&request)
         };
 
+        let caller_less = CloudRouterTurnRequest {
+            auth_token: "",
+            access_token: None,
+            ..turn_request(&request)
+        };
         for (label, input, api_key) in [
-            ("api-key", &with_access, Some("sk-embedded-key")),
+            ("api-key-caller-less", &caller_less, Some("sk-embedded-key")),
+            (
+                "caller-wins-over-key",
+                &with_access,
+                Some("sk-embedded-key"),
+            ),
             ("dual-token", &with_access, None),
             ("dual-token-no-access", &without_access, None),
         ] {
