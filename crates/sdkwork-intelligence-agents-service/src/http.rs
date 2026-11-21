@@ -15753,6 +15753,68 @@ mod tests {
         assert_eq!(status, StatusCode::OK, "backend tasks: {body}");
     }
 
+    /// The built-in chat agent is canonical and unique per tenant, so every
+    /// member shares one record. Clients used to create it with `private`
+    /// visibility, which made their own read succeed but everybody else's
+    /// retrieve answer 404 (and their fallback create answer 409). The create
+    /// boundary must normalize it to tenant visibility.
+    #[tokio::test]
+    async fn builtin_chat_agent_is_readable_by_every_tenant_member() {
+        fn context_for(owner: &str) -> AgentRequestContext {
+            AgentRequestContext::new("100001", owner)
+                .with_organization_id("0")
+                .with_subject_id(owner)
+                .with_roles(["ai.agents.manage"])
+                .with_trace_id("trace-test-fixed")
+                .with_request_id("req-test-fixed")
+        }
+
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            test_policy_provider(),
+        );
+        let owner_router = build_test_router_with_context(state.clone(), context_for("100"));
+        let other_router = build_test_router_with_context(state, context_for("101"));
+
+        let body = json!({
+            "agentId": crate::chat_agent_prompt::DEFAULT_CHAT_AGENT_ID,
+            "code": "agent-chat-default",
+            "displayName": "SDKWork Agents",
+            "description": "built-in assistant",
+            "manifest": test_manifest(),
+            "visibility": "private",
+            "requestedAt": "2026-06-01T00:00:00Z"
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/app/v3/api/ai/agents")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .expect("create request should be built");
+        let response = owner_router
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("create request should succeed");
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        let request = Request::builder()
+            .method("GET")
+            .uri("/app/v3/api/ai/agents/agent.chat.default")
+            .body(Body::empty())
+            .expect("retrieve request should be built");
+        let response = other_router
+            .oneshot(request)
+            .await
+            .expect("retrieve request should succeed");
+        assert_eq!(
+            response.status(),
+            StatusCode::OK,
+            "another tenant member must read the shared built-in agent"
+        );
+    }
+
     struct AmbiguousProviderSessionProjectCwdResolver;
 
     impl sdkwork_agents_runtime_facade::ProviderSessionProjectCwdResolver
