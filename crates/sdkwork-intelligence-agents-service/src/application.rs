@@ -1393,6 +1393,17 @@ where
             )?;
         }
 
+        // Built-in agent ids are canonical and unique per tenant: every member
+        // shares one record. A `private` record would hide the built-in agent
+        // from everybody but its creator while still occupying the id, so the
+        // requested visibility is normalized for the reserved ids.
+        let visibility = if crate::chat_agent_prompt::is_builtin_agent_id(command.agent_id.as_str())
+        {
+            AgentVisibility::Tenant
+        } else {
+            command.visibility
+        };
+
         let mut record = AgentBusinessRecord {
             id: self.repository.next_id()?,
             agent_id: command.agent_id,
@@ -1413,7 +1424,7 @@ where
             implementation_kind: command.implementation_kind,
             implementation_type: command.implementation_type.unwrap_or_default(),
             status: AgentBusinessStatus::Draft,
-            visibility: command.visibility,
+            visibility,
             tags: command.tags,
             allowed_role_codes: command.allowed_role_codes,
             version: 0,
@@ -3317,6 +3328,11 @@ where
         }
         if let Some(implementation_type) = command.implementation_type {
             record.implementation_type = implementation_type;
+        }
+        // Built-in agents stay tenant-shared no matter what a client asks for;
+        // this also repairs a legacy private record on its next update.
+        if crate::chat_agent_prompt::is_builtin_agent_id(record.agent_id.as_str()) {
+            record.visibility = AgentVisibility::Tenant;
         }
         record.mark_updated(command.requested_at.clone());
 
@@ -14761,6 +14777,70 @@ mod agent_ownership_tests {
             .expect("an app user must be able to edit the agent they created");
 
         assert_eq!(updated.display_name, "Renamed");
+    }
+
+    /// The built-in chat agent id is unique per tenant, so the record is shared
+    /// by every member. A private record would be readable only by its creator
+    /// (the application retrieve answers 404 for everybody else) while still
+    /// occupying the tenant-unique id (their create answers 409) — exactly the
+    /// broken state this normalization prevents.
+    #[test]
+    fn builtin_chat_agent_is_always_tenant_visible() {
+        use crate::chat_agent_prompt::DEFAULT_CHAT_AGENT_ID;
+        use crate::domain::AgentVisibility;
+
+        let service = service();
+        let created = service
+            .create_agent(create_agent_cmd(
+                DEFAULT_CHAT_AGENT_ID,
+                TENANT_ID,
+                0,
+                OWNER_USER_ID,
+                "agent-chat-default",
+                "SDKWork Agents",
+                "2026-09-23T00:00:00Z",
+            ))
+            .expect("create the built-in chat agent");
+        assert_eq!(
+            created.visibility,
+            AgentVisibility::Tenant,
+            "the built-in chat agent must be tenant-visible on create"
+        );
+
+        let mut update = update_cmd(DEFAULT_CHAT_AGENT_ID, manage_subject(), created.version);
+        update.visibility = Some(AgentVisibility::Private);
+        let updated = service
+            .update_agent_as(update, None)
+            .expect("update the built-in chat agent");
+        assert_eq!(
+            updated.visibility,
+            AgentVisibility::Tenant,
+            "an update must not be able to make the built-in chat agent private"
+        );
+    }
+
+    #[test]
+    fn ordinary_agents_keep_the_requested_visibility() {
+        use crate::domain::AgentVisibility;
+
+        let service = service();
+        let created = service
+            .create_agent(create_agent_cmd(
+                "agent.private.kept",
+                TENANT_ID,
+                0,
+                OWNER_USER_ID,
+                "private-kept",
+                "Private Kept",
+                "2026-09-23T00:00:00Z",
+            ))
+            .expect("create a private user agent");
+        assert_eq!(created.visibility, AgentVisibility::Private);
+        assert_ne!(
+            created.visibility,
+            AgentVisibility::Tenant,
+            "normalization is reserved for built-in agent ids"
+        );
     }
 
     /// The console authors the agent category in the management profile, while

@@ -18,6 +18,20 @@
 /// Reserved agent id of the built-in chat conversation agent.
 pub const DEFAULT_CHAT_AGENT_ID: &str = "agent.chat.default";
 
+/// Whether `agent_id` names a platform built-in agent.
+///
+/// Built-in ids are canonical and unique per tenant: every member of a tenant
+/// shares the one record. A `private` record for such an id would hide the
+/// built-in agent from every other member (an application read answers 404)
+/// while still occupying the tenant-unique id (a create attempt answers 409),
+/// which leaves the built-in assistant unusable for the rest of the tenant.
+/// The service therefore normalizes built-in agents to tenant visibility on
+/// every create and update; see `AgentsService::create_agent` and
+/// `AgentsService::update_agent_as`.
+pub fn is_builtin_agent_id(agent_id: &str) -> bool {
+    agent_id == DEFAULT_CHAT_AGENT_ID
+}
+
 /// Retired client-side default prompts. Clients (PC, H5, mini-program)
 /// historically seeded the built-in agent with this generic boilerplate; a
 /// turn still carrying it is treated as "no prompt configured".
@@ -154,5 +168,13 @@ mod tests {
             effective_system_prompt("agent.custom", Some("自定义")),
             Some("自定义".to_string())
         );
+    }
+
+    #[test]
+    fn only_the_reserved_default_agent_id_is_builtin() {
+        assert!(is_builtin_agent_id(DEFAULT_CHAT_AGENT_ID));
+        assert!(!is_builtin_agent_id("agent.chat.default.custom"));
+        assert!(!is_builtin_agent_id("agent.custom"));
+        assert!(!is_builtin_agent_id(""));
     }
 }

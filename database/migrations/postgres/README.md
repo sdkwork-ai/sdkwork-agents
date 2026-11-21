@@ -34,6 +34,10 @@ them via `IF NOT EXISTS`:
 - `0008` enforces the delivery invariants: local-execution agents require a
   bounded zip archive (entrypoint plus archive reference or Drive locator) and
   the harness runtime protocol; conversation agents reject an archive.
+- `0009` normalizes the built-in chat agent (`agent.chat.default`) to tenant
+  visibility: built-in ids are unique per tenant, so a `private` record made the
+  shared assistant unreadable for every member but its creator while still
+  answering 409 to their create attempts.
 
 The lifecycle orchestrator applies the baseline once on an empty schema
 (`baseline-plus-migrations`, `lifecycle.autoMigrate=false`). The drift gate
