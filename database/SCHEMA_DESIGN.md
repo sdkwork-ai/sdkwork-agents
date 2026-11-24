@@ -2,13 +2,13 @@
 
 Status: active
 
-Contract: `7.7.0`
+Contract: `7.8.0`
 
 Managed engine: PostgreSQL
 
 ## Ownership
 
-All 33 tables are authored and written by `sdkwork-intelligence-agents-service`.
+All 36 tables are authored and written by `sdkwork-intelligence-agents-service`.
 There are no imported tables, derived read stores, shadow copies, compatibility tables,
 or cross-module foreign keys. External capabilities are represented only by
 stable reference columns.
@@ -45,6 +45,10 @@ stable reference columns.
 | `ai_agent_model_configuration_profile` | Owner-scoped applied model configuration persisted for the runtime facade |
 | `ai_agent_tool_configuration` | Admin-managed per-tenant media tool configuration |
 | `ai_agent_tool_asset` | Generated media asset persisted to Drive outside session items |
+| `ai_agent_category` | Managed agent taxonomy for the agent catalog |
+| `ai_expert_team` | Expert-team aggregate: localized name, goal, constraints, delivery requirements, examples, coordinator template and lifecycle |
+| `ai_expert_team_member` | Ordered team membership: one expert agent per position with localized duty and instructions |
+| `ai_expert_persona` | Localized expert persona body per `(expert_agent_id, locale)` with its content hash |
 
 ## Composition References
 

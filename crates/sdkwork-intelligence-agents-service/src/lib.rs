@@ -8,6 +8,7 @@ mod chat_agent_prompt;
 mod cloud_router_executor;
 mod context_grounding;
 mod domain;
+mod expert_catalog;
 mod drive_asset_saver;
 mod dto;
 mod generations_tool_port;
@@ -53,6 +54,12 @@ pub use agent_category::PostgresAgentCategoryStore;
 pub use agent_category::{
     validate_upsert_command, AgentCategoryRecord, AgentCategoryStatus, AgentCategoryStore,
     InMemoryAgentCategoryStore, UpsertAgentCategoryCommand, ValidatedAgentCategoryCommand,
+};
+#[cfg(feature = "postgres-sync")]
+pub use expert_catalog::PostgresExpertCatalogStore;
+pub use expert_catalog::{
+    ExpertCatalogStore, ExpertDivisionRecord, ExpertPersonaRecord, ExpertRecord, ExpertTeamMemberRow,
+    ExpertTeamRow, InMemoryExpertCatalogStore,
 };
 pub use agent_turn::{AgentTurnMode, AgentTurnRecord, AgentTurnStatus};
 pub use agent_turn_input_queue::{

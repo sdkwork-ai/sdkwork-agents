@@ -22,7 +22,10 @@ BEGIN
         SELECT id, tenant_id, organization_id, agent_id
         FROM ai_agent
         WHERE manifest_json->>'owner_name' = 'SDKWork'
-          AND manifest_json->>'manifest_type' = 'agent';
+          AND manifest_json->>'manifest_type' = 'agent'
+          -- The expert catalog (`agent.expert.*`) is verified by its own
+          -- `expert_catalog_checks.sql`; keep this catalog's counts exact.
+          AND manifest_json->>'domain' <> 'experts';
 
     SELECT count(*) INTO failures
     FROM catalog_agent_ids;

@@ -15376,6 +15376,819 @@ class FieldError {
   }
 }
 
+class ExpertDivisionRecord {
+  final String code;
+  final String name;
+  final int sortOrder;
+  final int expertCount;
+
+  ExpertDivisionRecord({
+    required this.code,
+    required this.name,
+    required this.sortOrder,
+    required this.expertCount
+  });
+
+  factory ExpertDivisionRecord.fromJson(Map<String, dynamic> json) {
+    return ExpertDivisionRecord(
+      code: (() {
+        final value = json['code']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDivisionRecord.code is required');
+        }
+        return value;
+      })(),
+      name: (() {
+        final value = json['name']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDivisionRecord.name is required');
+        }
+        return value;
+      })(),
+      sortOrder: (() {
+        final value = json['sortOrder'];
+        if (value is! int) {
+          throw FormatException('ExpertDivisionRecord.sortOrder is required');
+        }
+        return value;
+      })(),
+      expertCount: (() {
+        final value = json['expertCount'];
+        if (value is! int) {
+          throw FormatException('ExpertDivisionRecord.expertCount is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'name': name,
+      'sortOrder': sortOrder,
+      'expertCount': expertCount,
+    };
+  }
+}
+
+class ExpertDivisionListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertDivisionListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertDivisionListResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertDivisionListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertDivisionListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertDivisionListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDivisionListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class ExpertRecord {
+  final String slug;
+  final String agentId;
+  final String name;
+  final String description;
+  final String emoji;
+  final String divisionCode;
+  final List<String> tags;
+
+  ExpertRecord({
+    required this.slug,
+    required this.agentId,
+    required this.name,
+    required this.description,
+    required this.emoji,
+    required this.divisionCode,
+    required this.tags
+  });
+
+  factory ExpertRecord.fromJson(Map<String, dynamic> json) {
+    return ExpertRecord(
+      slug: (() {
+        final value = json['slug']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.slug is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.agentId is required');
+        }
+        return value;
+      })(),
+      name: (() {
+        final value = json['name']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.name is required');
+        }
+        return value;
+      })(),
+      description: (() {
+        final value = json['description']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.description is required');
+        }
+        return value;
+      })(),
+      emoji: (() {
+        final value = json['emoji']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.emoji is required');
+        }
+        return value;
+      })(),
+      divisionCode: (() {
+        final value = json['divisionCode']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.divisionCode is required');
+        }
+        return value;
+      })(),
+      tags: (() {
+        final list = _sdkworkAsList(json['tags']);
+        if (list == null) {
+          throw FormatException('ExpertRecord.tags is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'slug': slug,
+      'agentId': agentId,
+      'name': name,
+      'description': description,
+      'emoji': emoji,
+      'divisionCode': divisionCode,
+      'tags': tags.map((item) => item).toList(),
+    };
+  }
+}
+
+class ExpertListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertListResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class ExpertDetailRecord {
+  final String slug;
+  final String agentId;
+  final String name;
+  final String description;
+  final String emoji;
+  final String divisionCode;
+  final List<String> tags;
+  final String persona;
+  final String personaLocale;
+  final List<String> personaLocales;
+  final String contentSha256;
+
+  ExpertDetailRecord({
+    required this.slug,
+    required this.agentId,
+    required this.name,
+    required this.description,
+    required this.emoji,
+    required this.divisionCode,
+    required this.tags,
+    required this.persona,
+    required this.personaLocale,
+    required this.personaLocales,
+    required this.contentSha256
+  });
+
+  factory ExpertDetailRecord.fromJson(Map<String, dynamic> json) {
+    return ExpertDetailRecord(
+      slug: (() {
+        final value = json['slug']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.slug is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.agentId is required');
+        }
+        return value;
+      })(),
+      name: (() {
+        final value = json['name']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.name is required');
+        }
+        return value;
+      })(),
+      description: (() {
+        final value = json['description']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.description is required');
+        }
+        return value;
+      })(),
+      emoji: (() {
+        final value = json['emoji']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.emoji is required');
+        }
+        return value;
+      })(),
+      divisionCode: (() {
+        final value = json['divisionCode']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.divisionCode is required');
+        }
+        return value;
+      })(),
+      tags: (() {
+        final list = _sdkworkAsList(json['tags']);
+        if (list == null) {
+          throw FormatException('ExpertDetailRecord.tags is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      persona: (() {
+        final value = json['persona']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.persona is required');
+        }
+        return value;
+      })(),
+      personaLocale: (() {
+        final value = json['personaLocale']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.personaLocale is required');
+        }
+        return value;
+      })(),
+      personaLocales: (() {
+        final list = _sdkworkAsList(json['personaLocales']);
+        if (list == null) {
+          throw FormatException('ExpertDetailRecord.personaLocales is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      contentSha256: (() {
+        final value = json['contentSha256']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.contentSha256 is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'slug': slug,
+      'agentId': agentId,
+      'name': name,
+      'description': description,
+      'emoji': emoji,
+      'divisionCode': divisionCode,
+      'tags': tags.map((item) => item).toList(),
+      'persona': persona,
+      'personaLocale': personaLocale,
+      'personaLocales': personaLocales.map((item) => item).toList(),
+      'contentSha256': contentSha256,
+    };
+  }
+}
+
+class ExpertDetailResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertDetailResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertDetailResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertDetailResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertDetailResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertDetailResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class ExpertTeamMember {
+  final String expertSlug;
+  final String expertAgentId;
+  final String duty;
+  final String instructions;
+
+  ExpertTeamMember({
+    required this.expertSlug,
+    required this.expertAgentId,
+    required this.duty,
+    required this.instructions
+  });
+
+  factory ExpertTeamMember.fromJson(Map<String, dynamic> json) {
+    return ExpertTeamMember(
+      expertSlug: (() {
+        final value = json['expertSlug']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamMember.expertSlug is required');
+        }
+        return value;
+      })(),
+      expertAgentId: (() {
+        final value = json['expertAgentId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamMember.expertAgentId is required');
+        }
+        return value;
+      })(),
+      duty: (() {
+        final value = json['duty']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamMember.duty is required');
+        }
+        return value;
+      })(),
+      instructions: (() {
+        final value = json['instructions']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamMember.instructions is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'expertSlug': expertSlug,
+      'expertAgentId': expertAgentId,
+      'duty': duty,
+      'instructions': instructions,
+    };
+  }
+}
+
+class ExpertTeamRecord {
+  final String teamId;
+  final String name;
+  final String description;
+  final List<String> tags;
+  final String goal;
+  final String deliveryRequirements;
+  final List<String> examples;
+  final String coordinatorMode;
+  final String coordinatorTemplateId;
+  final String locale;
+  final List<ExpertTeamMember> members;
+
+  ExpertTeamRecord({
+    required this.teamId,
+    required this.name,
+    required this.description,
+    required this.tags,
+    required this.goal,
+    required this.deliveryRequirements,
+    required this.examples,
+    required this.coordinatorMode,
+    required this.coordinatorTemplateId,
+    required this.locale,
+    required this.members
+  });
+
+  factory ExpertTeamRecord.fromJson(Map<String, dynamic> json) {
+    return ExpertTeamRecord(
+      teamId: (() {
+        final value = json['teamId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.teamId is required');
+        }
+        return value;
+      })(),
+      name: (() {
+        final value = json['name']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.name is required');
+        }
+        return value;
+      })(),
+      description: (() {
+        final value = json['description']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.description is required');
+        }
+        return value;
+      })(),
+      tags: (() {
+        final list = _sdkworkAsList(json['tags']);
+        if (list == null) {
+          throw FormatException('ExpertTeamRecord.tags is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      goal: (() {
+        final value = json['goal']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.goal is required');
+        }
+        return value;
+      })(),
+      deliveryRequirements: (() {
+        final value = json['deliveryRequirements']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.deliveryRequirements is required');
+        }
+        return value;
+      })(),
+      examples: (() {
+        final list = _sdkworkAsList(json['examples']);
+        if (list == null) {
+          throw FormatException('ExpertTeamRecord.examples is required');
+        }
+        return list
+            .map((item) => item?.toString())
+            .whereType<String>()
+            .toList();
+      })(),
+      coordinatorMode: (() {
+        final value = json['coordinatorMode']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.coordinatorMode is required');
+        }
+        return value;
+      })(),
+      coordinatorTemplateId: (() {
+        final value = json['coordinatorTemplateId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.coordinatorTemplateId is required');
+        }
+        return value;
+      })(),
+      locale: (() {
+        final value = json['locale']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.locale is required');
+        }
+        return value;
+      })(),
+      members: (() {
+        final list = _sdkworkAsList(json['members']);
+        if (list == null) {
+          throw FormatException('ExpertTeamRecord.members is required');
+        }
+        return list
+            .map((item) => (() {
+        final map = _sdkworkAsMap(item);
+        return map == null ? null : ExpertTeamMember.fromJson(map);
+      })())
+            .whereType<ExpertTeamMember>()
+            .toList();
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'teamId': teamId,
+      'name': name,
+      'description': description,
+      'tags': tags.map((item) => item).toList(),
+      'goal': goal,
+      'deliveryRequirements': deliveryRequirements,
+      'examples': examples.map((item) => item).toList(),
+      'coordinatorMode': coordinatorMode,
+      'coordinatorTemplateId': coordinatorTemplateId,
+      'locale': locale,
+      'members': members.map((item) => item.toJson()).toList(),
+    };
+  }
+}
+
+class ExpertTeamListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertTeamListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertTeamListResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertTeamListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertTeamListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertTeamListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class ExpertTeamResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertTeamResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertTeamResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertTeamResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertTeamResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertTeamResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class ExpertPersonaRecord {
+  final String expertSlug;
+  final String agentId;
+  final String locale;
+  final String persona;
+  final String contentSha256;
+
+  ExpertPersonaRecord({
+    required this.expertSlug,
+    required this.agentId,
+    required this.locale,
+    required this.persona,
+    required this.contentSha256
+  });
+
+  factory ExpertPersonaRecord.fromJson(Map<String, dynamic> json) {
+    return ExpertPersonaRecord(
+      expertSlug: (() {
+        final value = json['expertSlug']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertPersonaRecord.expertSlug is required');
+        }
+        return value;
+      })(),
+      agentId: (() {
+        final value = json['agentId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertPersonaRecord.agentId is required');
+        }
+        return value;
+      })(),
+      locale: (() {
+        final value = json['locale']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertPersonaRecord.locale is required');
+        }
+        return value;
+      })(),
+      persona: (() {
+        final value = json['persona']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertPersonaRecord.persona is required');
+        }
+        return value;
+      })(),
+      contentSha256: (() {
+        final value = json['contentSha256']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertPersonaRecord.contentSha256 is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'expertSlug': expertSlug,
+      'agentId': agentId,
+      'locale': locale,
+      'persona': persona,
+      'contentSha256': contentSha256,
+    };
+  }
+}
+
+class ExpertPersonaListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertPersonaListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertPersonaListResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertPersonaListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertPersonaListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertPersonaListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertPersonaListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
 class ProblemDetail {
   final String type;
   final String title;

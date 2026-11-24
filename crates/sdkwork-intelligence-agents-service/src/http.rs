@@ -1,5 +1,6 @@
 mod agent_categories;
 mod context;
+mod expert_catalog;
 mod media_tools;
 mod middleware;
 pub mod testing;
@@ -1710,6 +1711,11 @@ pub struct AgentHttpState {
     /// store is installed by the kernel bridge for server-authoritative
     /// deployments.
     pub(crate) agent_category_store: Arc<dyn crate::agent_category::AgentCategoryStore>,
+    /// Expert catalog read model (expert agents, divisions, teams, personas).
+    /// The in-memory store keeps local development and contract tests
+    /// self-contained; the PostgreSQL-backed store is installed by the kernel
+    /// bridge for server-authoritative deployments.
+    pub(crate) expert_catalog_store: Arc<dyn crate::expert_catalog::ExpertCatalogStore>,
 }
 
 #[derive(Clone)]
@@ -1755,7 +1761,21 @@ impl AgentHttpState {
             provider_session_cwd_resolver: None,
             media_tool_invocation: None,
             agent_category_store: Arc::new(crate::agent_category::InMemoryAgentCategoryStore::new()),
+            expert_catalog_store: Arc::new(crate::expert_catalog::InMemoryExpertCatalogStore::new()),
         }
+    }
+
+    /// Installs the expert catalog read model.
+    ///
+    /// Called by the kernel bridge with the PostgreSQL-backed catalog; an
+    /// unconfigured state keeps the in-memory catalog so local development and
+    /// contract tests remain self-contained.
+    pub fn with_expert_catalog_store(
+        mut self,
+        store: Arc<dyn crate::expert_catalog::ExpertCatalogStore>,
+    ) -> Self {
+        self.expert_catalog_store = store;
+        self
     }
 
     /// Installs the managed agent category catalog store.
@@ -3254,6 +3274,7 @@ pub fn build_app_routes() -> Router<AgentHttpState> {
             "/app/v3/api/ai/assets",
             get(app_list_tool_assets),
         )
+        .merge(expert_catalog::routes())
         .layer(axum::middleware::from_fn(
             middleware::reject_client_scope_selectors,
         ))

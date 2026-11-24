@@ -38,6 +38,13 @@ them via `IF NOT EXISTS`:
   visibility: built-in ids are unique per tenant, so a `private` record made the
   shared assistant unreadable for every member but its creator while still
   answering 409 to their create attempts.
+- `0010` materializes the expert catalog's team and persona aggregates
+  (`ai_expert_team`, `ai_expert_team_member`, `ai_expert_persona`). An expert is
+  an ordinary managed agent grouped by an `ai_agent_category` row; the
+  migration adds the ordered team membership and the localized persona body that
+  agents cannot express. The catalog data is authored in
+  `sdkwork-specs/specs/expert-catalog` (see `EXPERTS_CATALOG_SPEC.md`) and seeded
+  by `scripts/generate-expert-seeds.mjs`.
 
 The lifecycle orchestrator applies the baseline once on an empty schema
 (`baseline-plus-migrations`, `lifecycle.autoMigrate=false`). The drift gate

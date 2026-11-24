@@ -1112,6 +1112,42 @@ pub const AGENT_APP_API_OPERATIONS: &[ApiOperation] = &[
         tag: "ai",
         operation_id: "agents.assets.list",
     },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/expert_divisions",
+        tag: "ai",
+        operation_id: "experts.divisions.list",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/experts",
+        tag: "ai",
+        operation_id: "experts.list",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/experts/{slug}",
+        tag: "ai",
+        operation_id: "experts.retrieve",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/expert_teams",
+        tag: "ai",
+        operation_id: "expertTeams.list",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/expert_teams/{teamId}",
+        tag: "ai",
+        operation_id: "expertTeams.retrieve",
+    },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/expert_personas",
+        tag: "ai",
+        operation_id: "expertPersonas.list",
+    },
 ];
 
 pub const AGENT_BACKEND_API_OPERATIONS: &[ApiOperation] = &[

@@ -2,7 +2,7 @@
 
 Owner: `agents-platform`
 
-Canonical contract: `database/contract/schema.yaml` (`7.7.0`)
+Canonical contract: `database/contract/schema.yaml` (`7.8.0`)
 
 Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
 
@@ -30,10 +30,21 @@ writer. IM conversations, IM delivery state,
 runtime-location details, provider catalogs, capability content, and Drive bytes
 remain owned by their respective modules.
 
+The module also persists the SDKWork expert catalog: each expert is an
+ordinary managed agent (`ai_agent`) grouped by an expert category
+(`ai_agent_category`), and three aggregates carry what an agent cannot:
+`ai_expert_team` (a named team with both display locales and a coordinator
+template), `ai_expert_team_member` (ordered, localized duties and instructions)
+and `ai_expert_persona` (the localized persona body with its content hash).
+The catalog is authored in `sdkwork-specs/specs/expert-catalog` and rendered into
+the `003_expert_catalog` / `002_expert_catalog` seeds by
+`scripts/generate-expert-seeds.mjs`; see
+`sdkwork-specs/EXPERTS_CATALOG_SPEC.md`.
+
 ## Engine And Lifecycle
 
-PostgreSQL is the only managed-store engine. The `7.7.0` greenfield baseline
-contains the complete 33-table Session execution, Task scheduling, and
+PostgreSQL is the only managed-store engine. The `7.8.0` greenfield baseline
+contains the complete 36-table Session execution, Task scheduling, and
 execution-placement model. It is the only database state supported before the
 first release. `baseline-plus-migrations` remains the lifecycle strategy. New
 installations use the complete baseline; the post-baseline migration set brings

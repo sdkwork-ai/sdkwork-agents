@@ -4982,6 +4982,251 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
       parameters: []
+  /app/v3/api/ai/expert_divisions:
+    get:
+      tags:
+      - ai
+      summary: List expert divisions
+      description: The SDKWork expert catalog divisions (the expert taxonomy level)
+        with their expert counts.
+      operationId: experts.divisions.list
+      x-sdkwork-pagination-mode: offset
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: expert_divisions
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/SearchQ'
+      responses:
+        '200':
+          description: Expert division list response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertDivisionListResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/experts:
+    get:
+      tags:
+      - ai
+      summary: List experts
+      description: Expert summaries from the SDKWork expert catalog, filterable by
+        division and keyword.
+      operationId: experts.list
+      x-sdkwork-pagination-mode: offset
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: experts
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/SearchQ'
+      - name: division
+        in: query
+        required: false
+        description: Expert division code (`expert-<division>` or the bare division
+          code).
+        schema:
+          type: string
+          maxLength: 64
+      responses:
+        '200':
+          description: Expert list response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertListResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/experts/{slug}:
+    get:
+      tags:
+      - ai
+      summary: Retrieve one expert
+      description: One expert summary plus its persona body for the requested
+        locale.
+      operationId: experts.retrieve
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: experts
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9-]{1,127}$'
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+          default: zh-CN
+      responses:
+        '200':
+          description: Expert detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertDetailResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/expert_teams:
+    get:
+      tags:
+      - ai
+      summary: List expert teams
+      description: Expert teams with their ordered members, localized for the
+        requested locale.
+      operationId: expertTeams.list
+      x-sdkwork-pagination-mode: offset
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: expert_teams
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/SearchQ'
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+          default: zh-CN
+      responses:
+        '200':
+          description: Expert team list response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertTeamListResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/expert_teams/{teamId}:
+    get:
+      tags:
+      - ai
+      summary: Retrieve one expert team
+      description: One expert team with its ordered members, localized for the
+        requested locale.
+      operationId: expertTeams.retrieve
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: expert_teams
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - name: teamId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^team-[a-z][a-z0-9-]{0,63}$'
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+          default: zh-CN
+      responses:
+        '200':
+          description: Expert team detail response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertTeamResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/expert_personas:
+    get:
+      tags:
+      - ai
+      summary: List expert personas for one locale
+      description: Every expert persona body for the requested locale, used by a
+        consumer to sync the catalog offline.
+      operationId: expertPersonas.list
+      x-sdkwork-pagination-mode: offset
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: expert_personas
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - name: locale
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+          default: zh-CN
+      responses:
+        '200':
+          description: Expert persona list response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertPersonaListResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 components:
   securitySchemes:
     AuthToken:
@@ -12581,6 +12826,286 @@ components:
           maximum: 40099
           description: Optional field-level validation subcode when ProblemDetail.code
             is 40001 VALIDATION_ERROR.
+    ExpertDivisionRecord:
+      type: object
+      required:
+      - code
+      - name
+      - sortOrder
+      - expertCount
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        sortOrder:
+          type: integer
+        expertCount:
+          type: integer
+    ExpertDivisionListResponse:
+      description: Paginated expert division list response following SdkWorkApiResponse
+        envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkPageData'
+            - type: object
+              required:
+              - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpertDivisionRecord'
+    ExpertRecord:
+      type: object
+      required:
+      - slug
+      - agentId
+      - name
+      - description
+      - emoji
+      - divisionCode
+      - tags
+      properties:
+        slug:
+          type: string
+        agentId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        emoji:
+          type: string
+        divisionCode:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+    ExpertListResponse:
+      description: Paginated expert list response following SdkWorkApiResponse
+        envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkPageData'
+            - type: object
+              required:
+              - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpertRecord'
+    ExpertDetailRecord:
+      description: One expert summary plus the persona served for the resolved
+        locale.
+      allOf:
+      - $ref: '#/components/schemas/ExpertRecord'
+      - type: object
+        required:
+        - persona
+        - personaLocale
+        - personaLocales
+        - contentSha256
+        properties:
+          persona:
+            type: string
+          personaLocale:
+            type: string
+            enum:
+            - zh-CN
+            - en-US
+          personaLocales:
+            type: array
+            items:
+              type: string
+              enum:
+              - zh-CN
+              - en-US
+          contentSha256:
+            type: string
+    ExpertDetailResponse:
+      description: Single expert response following SdkWorkApiResponse envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkResourceData'
+            - type: object
+              required:
+              - item
+              properties:
+                item:
+                  $ref: '#/components/schemas/ExpertDetailRecord'
+    ExpertTeamMember:
+      type: object
+      required:
+      - expertSlug
+      - expertAgentId
+      - duty
+      - instructions
+      properties:
+        expertSlug:
+          type: string
+        expertAgentId:
+          type: string
+        duty:
+          type: string
+        instructions:
+          type: string
+    ExpertTeamRecord:
+      type: object
+      required:
+      - teamId
+      - name
+      - description
+      - tags
+      - goal
+      - deliveryRequirements
+      - examples
+      - coordinatorMode
+      - coordinatorTemplateId
+      - locale
+      - members
+      properties:
+        teamId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        goal:
+          type: string
+        deliveryRequirements:
+          type: string
+        examples:
+          type: array
+          items:
+            type: string
+        coordinatorMode:
+          type: string
+          enum:
+          - template
+          - custom
+        coordinatorTemplateId:
+          type: string
+          enum:
+          - general
+          - product
+          - technical
+          - content
+          - data
+          - research
+        locale:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpertTeamMember'
+    ExpertTeamListResponse:
+      description: Paginated expert team list response following SdkWorkApiResponse
+        envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkPageData'
+            - type: object
+              required:
+              - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpertTeamRecord'
+    ExpertTeamResponse:
+      description: Single expert team response following SdkWorkApiResponse
+        envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkResourceData'
+            - type: object
+              required:
+              - item
+              properties:
+                item:
+                  $ref: '#/components/schemas/ExpertTeamRecord'
+    ExpertPersonaRecord:
+      type: object
+      required:
+      - expertSlug
+      - agentId
+      - locale
+      - persona
+      - contentSha256
+      properties:
+        expertSlug:
+          type: string
+        agentId:
+          type: string
+        locale:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+        persona:
+          type: string
+        contentSha256:
+          type: string
+    ExpertPersonaListResponse:
+      description: Paginated expert persona list response following
+        SdkWorkApiResponse envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkPageData'
+            - type: object
+              required:
+              - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpertPersonaRecord'
     ProblemDetail:
       type: object
       additionalProperties: true

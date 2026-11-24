@@ -56,7 +56,7 @@
     "check:agent-workflow-standard": "node ../sdkwork-specs/tools/check-agent-workflow-standard.mjs --root .",
     "check:agent-catalog": "node scripts/verify-agent-catalog.mjs",
     "check:source-config-standard": "node ../sdkwork-specs/tools/check-source-config-standard.mjs --root .",
-    "check:contracts": "node --test tests/contract/platform-integration.contract.test.mjs tests/contract/database-framework.contract.test.mjs tests/contract/root-quality-gates.contract.test.mjs tests/contract/production-security.contract.test.mjs tests/contract/frontend-service-identity.contract.test.mjs tests/contract/agents-im-boundary.contract.test.mjs tests/contract/pc-upload-boundary.contract.test.mjs tests/contract/rust-service-module-boundaries.contract.test.mjs tests/contract/component-spec-inventory.contract.test.mjs tests/contract/dev-runtime-access.contract.test.mjs tests/contract/development-bootstrap.contract.test.mjs tests/contract/client-page-parity.contract.test.mjs tests/contract/agent-catalog.contract.test.mjs && node scripts/agents-open-sdk-surface-contract.test.mjs && node scripts/mini-program-runtime-contract.test.mjs && node scripts/flutter-mobile-runtime-contract.test.mjs && node scripts/client-surface-readiness-contract.test.mjs",
+    "check:contracts": "node --test tests/contract/platform-integration.contract.test.mjs tests/contract/database-framework.contract.test.mjs tests/contract/root-quality-gates.contract.test.mjs tests/contract/production-security.contract.test.mjs tests/contract/frontend-service-identity.contract.test.mjs tests/contract/agents-im-boundary.contract.test.mjs tests/contract/pc-upload-boundary.contract.test.mjs tests/contract/rust-service-module-boundaries.contract.test.mjs tests/contract/component-spec-inventory.contract.test.mjs tests/contract/dev-runtime-access.contract.test.mjs tests/contract/development-bootstrap.contract.test.mjs tests/contract/client-page-parity.contract.test.mjs tests/contract/agent-catalog.contract.test.mjs && node scripts/agents-open-sdk-surface-contract.test.mjs && node scripts/mini-program-runtime-contract.test.mjs && node scripts/flutter-mobile-runtime-contract.test.mjs && node scripts/client-surface-readiness-contract.test.mjs && node scripts/verify-expert-catalog.mjs && node --test tests/contract/expert-catalog.contract.test.mjs",
     "check:cors-standard": "node ../sdkwork-specs/tools/check-cors-standard.mjs --root .",
     "verify": "pnpm exec sdkwork-app verify",
     "clean": "pnpm exec sdkwork-app clean",
@@ -116,7 +116,9 @@
     "build:pc:staging:cloud": "node ../sdkwork-specs/tools/build-browser-client.mjs --root . --architecture pc --environment staging --deployment-profile cloud",
     "build:pc:demo:cloud": "node ../sdkwork-specs/tools/build-browser-client.mjs --root . --architecture pc --environment demo --deployment-profile cloud",
     "build:pc:prod:cloud": "node ../sdkwork-specs/tools/build-browser-client.mjs --root . --architecture pc --environment prod --deployment-profile cloud",
-    "check:release-access-token:require-anchor": "node ../sdkwork-specs/tools/check-release-access-token-env.mjs --root . --require-anchor"
+    "check:release-access-token:require-anchor": "node ../sdkwork-specs/tools/check-release-access-token-env.mjs --root . --require-anchor",
+    "gen-expert-seeds": "node scripts/generate-expert-seeds.mjs",
+    "check:expert-catalog": "node scripts/verify-expert-catalog.mjs"
   },
   "exports": {
     ".": {

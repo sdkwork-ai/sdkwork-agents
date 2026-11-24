@@ -2,17 +2,17 @@
 
 Status: active pre-launch baseline consolidation
 
-Updated: 2026-10-03
+Updated: 2026-11-25
 
 ## Current Contract
 
-- Contract version: `7.7.0`
+- Contract version: `7.8.0`
 - Managed engine: PostgreSQL
 - Physical authority: `database/ddl/baseline/postgres/0001_agents_baseline.sql`
 - Lifecycle strategy: `baseline-plus-migrations`
-- Development migrations: catch-up set `0001`..`0008` aligning
+- Development migrations: catch-up set `0001`..`0010` aligning
   previously initialized shared development schemas with the folded baseline
-- Active tables: 33
+- Active tables: 36
 
 The full current schema is installed from one baseline on an empty schema and
 tracked in `ops_database_installation_state`. The original pre-launch forward
@@ -23,7 +23,8 @@ standardization, `0003` execution host registry and session execution
 placement, `0004` agent role assignment, `0005` managed agent category
 catalog, `0006` manifest-derived agent kind/runtime/category/distribution
 projection columns, `0007` honest runtime-family projection, `0008` delivery
-invariant constraints) re-align databases that were
+invariant constraints, `0009` built-in chat agent tenant visibility, `0010`
+expert team and persona aggregates) re-align databases that were
 initialized from an older baseline and no-op on fresh baseline installs via
 `IF NOT EXISTS`. There is
 no dual-write path, derived read store, legacy Session table, or runtime

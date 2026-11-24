@@ -1347,6 +1347,88 @@ class AiApi {
       return map == null ? null : ToolAssetListResponse.fromJson(map);
     })();
   }
+
+  /// List expert divisions
+  Future<ExpertDivisionListResponse?> expertsDivisionsList([int? page, int? pageSize, String? q]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('page', page, 'form', true, false, null),
+      QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
+      QueryParameterSpec('q', q, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/expert_divisions'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertDivisionListResponse.fromJson(map);
+    })();
+  }
+
+  /// List experts
+  Future<ExpertListResponse?> expertsList([int? page, int? pageSize, String? q, String? division]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('page', page, 'form', true, false, null),
+      QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
+      QueryParameterSpec('q', q, 'form', true, false, null),
+      QueryParameterSpec('division', division, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/experts'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertListResponse.fromJson(map);
+    })();
+  }
+
+  /// Retrieve one expert
+  Future<ExpertDetailResponse?> expertsRetrieve(String slug, [String? locale]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('locale', locale, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/experts/${serializePathParameter(slug, const PathParameterSpec('slug', 'simple', false))}'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertDetailResponse.fromJson(map);
+    })();
+  }
+
+  /// List expert teams
+  Future<ExpertTeamListResponse?> expertTeamsList([int? page, int? pageSize, String? q, String? locale]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('page', page, 'form', true, false, null),
+      QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
+      QueryParameterSpec('q', q, 'form', true, false, null),
+      QueryParameterSpec('locale', locale, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/expert_teams'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertTeamListResponse.fromJson(map);
+    })();
+  }
+
+  /// Retrieve one expert team
+  Future<ExpertTeamResponse?> expertTeamsRetrieve(String teamId, [String? locale]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('locale', locale, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/expert_teams/${serializePathParameter(teamId, const PathParameterSpec('teamId', 'simple', false))}'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertTeamResponse.fromJson(map);
+    })();
+  }
+
+  /// List expert personas for one locale
+  Future<ExpertPersonaListResponse?> expertPersonasList([int? page, int? pageSize, String? locale]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('page', page, 'form', true, false, null),
+      QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
+      QueryParameterSpec('locale', locale, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/expert_personas'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertPersonaListResponse.fromJson(map);
+    })();
+  }
 }
 
 class PathParameterSpec {

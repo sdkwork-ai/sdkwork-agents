@@ -47,4 +47,26 @@ mod route_manifest_contracts {
             .match_route("GET", "/app/v3/api/ai/agents")
             .is_some());
     }
+
+    #[test]
+    fn app_route_manifest_carries_the_expert_catalog_surface() {
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/expert_divisions")
+            .is_some());
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/experts")
+            .is_some());
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/experts/{slug}")
+            .is_some());
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/expert_teams")
+            .is_some());
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/expert_teams/{teamId}")
+            .is_some());
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/expert_personas")
+            .is_some());
+    }
 }
