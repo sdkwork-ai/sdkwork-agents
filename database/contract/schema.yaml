@@ -2,7 +2,7 @@ schema_version: 1
 kind: sdkwork.database.schema
 database_role: authoritative-server
 module_id: agents
-contract_version: 7.7.0
+contract_version: 7.8.0
 owner_team: agents-platform
 compliance_level: L2
 engines:
@@ -209,6 +209,27 @@ tables:
       optional same-tenant parent (at most two levels), an optional icon
       reference, lifecycle status, sort order, and an optimistic-concurrency
       version.
+  - name: ai_expert_team
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: SDKWork expert-team aggregate. A team is a named, ordered set
+      of expert agents plus a coordinator template; both display locales are
+      stored on the row and the team is referenced by the stable `team_id`.
+  - name: ai_expert_team_member
+    profile: relation_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Ordered expert-team membership. One expert agent (stable
+      `agent.expert.*` id), its position, and the localized duty and
+      instructions it executes inside that team.
+  - name: ai_expert_persona
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Localized expert persona body with its content hash, one row per
+      expert agent and locale. The persona text is the summon payload; it never
+      lives in the agent manifest.
 external_references:
   - module: sdkwork-memory
     columns: [target_ref, target_version_ref]

@@ -1,8 +1,138 @@
 import { appApiPath } from './paths';
 import type { ApiRequestOptions, HttpClient } from '../http/client';
 
-import type { ActivateAgentProviderBindingRequest, AgentCallRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentEngineCatalog, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentItemFeedbackRecord, AgentModelProviderId, AgentProjectCompositionSlotRecord, AgentProjectMutationRequest, AgentProjectRecord, AgentProjectStatus, AgentProviderBindingRecord, AgentRecord, AgentResourceUserStateRecord, AgentRuntimeExecutionRecord, AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionItemSynchronizationResult, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentSessionStatus, AgentTaskRecord, AgentTaskRunAttemptRecord, AgentTaskRunRecord, AgentTaskStateChangeRequest, AgentToolkitOverview, AgentTurnInputQueueEntry, AgentTurnRecord, AgentTurnStreamEvent, AgentUsageRecord, AgentUsageSummary, AgentVersionRecord, AgentWebhookDelivery, AgentWebhookSubscription, AgentWebhookSubscriptionCreated, AgentWorkspaceMutationRequest, AgentWorkspaceRecord, AgentWorkspaceStatus, AnswerAgentInteractionRequest, AppliedAgentModelConfigurationRecord, AppliedAgentModelSelectionRecord, ApplyAgentModelConfigurationRequest, ApplyAgentModelSelectionRequest, ApproveAgentInteractionRequest, AppUpdateAgentSessionRequest, CancelAgentTaskRequest, CancelAgentTaskRunRequest, CancelAgentTurnRequest, ChangeAgentSessionRuntimeBindingStatusRequest, ClaimAgentInteractionRequest, ClaimNextAgentTurnInputQueueEntryRequest, ClaimNextAgentTurnInputQueueEntryResult, CloseAgentSessionRequest, CreateAgentCallRequest, CreateAgentCompositionSlotRequest, CreateAgentInteractionRequest, CreateAgentPreviewResponseRequest, CreateAgentProjectCompositionSlotRequest, CreateAgentProjectRequest, CreateAgentPromptOptimizationRequest, CreateAgentProviderBindingRequest, CreateAgentRequest, CreateAgentSessionCheckpointRequest, CreateAgentSessionRequest, CreateAgentSessionRuntimeBindingRequest, CreateAgentTaskRequest, CreateAgentTurnInputQueueEntryRequest, CreateAgentTurnRequest, CreateAgentVersionRequest, CreateAgentWorkspaceRequest, CreateWebhookSubscriptionRequest, EnsureDefaultAgentWorkspaceRequest, ExecuteAgentTaskRequest, FailAgentTurnInputQueueEntryRequest, ImportAgentProjectRequest, Int64String, InvalidateAgentSessionCheckpointRequest, McpServerMarketplaceRecord, MediaToolDirectoryEntry, MediaToolInvokeBody, MediaToolInvokeResponse, MigrateModelConfigurationRequest, ModelConfigurationSummaryRecord, PageInfo, ProjectSessionSynchronizationResult, ReorderAgentTurnInputQueueEntriesRequest, ReplaceAgentTaskRequest, ResolveAgentInteractionRequest, RestoreAgentRequest, RestoreAgentSessionCheckpointRequest, RetryAgentTaskRunRequest, RetryAgentTurnInputQueueEntryRequest, SdkWorkPageData, SessionActivitySummary, ToolAssetView, UpdateAgentCompositionSlotRequest, UpdateAgentItemFeedbackRequest, UpdateAgentProjectCompositionSlotRequest, UpdateAgentProjectRequest, UpdateAgentRequest, UpdateAgentSessionRuntimeBindingRequest, UpdateAgentSessionUserStateRequest, UpdateAgentTurnInputQueueEntryRequest, UpdateAgentWorkspaceRequest } from '../types';
+import type { ActivateAgentProviderBindingRequest, AgentCallRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentEngineCatalog, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentItemFeedbackRecord, AgentModelProviderId, AgentProjectCompositionSlotRecord, AgentProjectMutationRequest, AgentProjectRecord, AgentProjectStatus, AgentProviderBindingRecord, AgentRecord, AgentResourceUserStateRecord, AgentRuntimeExecutionRecord, AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionItemSynchronizationResult, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentSessionStatus, AgentTaskRecord, AgentTaskRunAttemptRecord, AgentTaskRunRecord, AgentTaskStateChangeRequest, AgentToolkitOverview, AgentTurnInputQueueEntry, AgentTurnRecord, AgentTurnStreamEvent, AgentUsageRecord, AgentUsageSummary, AgentVersionRecord, AgentWebhookDelivery, AgentWebhookSubscription, AgentWebhookSubscriptionCreated, AgentWorkspaceMutationRequest, AgentWorkspaceRecord, AgentWorkspaceStatus, AnswerAgentInteractionRequest, AppliedAgentModelConfigurationRecord, AppliedAgentModelSelectionRecord, ApplyAgentModelConfigurationRequest, ApplyAgentModelSelectionRequest, ApproveAgentInteractionRequest, AppUpdateAgentSessionRequest, CancelAgentTaskRequest, CancelAgentTaskRunRequest, CancelAgentTurnRequest, ChangeAgentSessionRuntimeBindingStatusRequest, ClaimAgentInteractionRequest, ClaimNextAgentTurnInputQueueEntryRequest, ClaimNextAgentTurnInputQueueEntryResult, CloseAgentSessionRequest, CreateAgentCallRequest, CreateAgentCompositionSlotRequest, CreateAgentInteractionRequest, CreateAgentPreviewResponseRequest, CreateAgentProjectCompositionSlotRequest, CreateAgentProjectRequest, CreateAgentPromptOptimizationRequest, CreateAgentProviderBindingRequest, CreateAgentRequest, CreateAgentSessionCheckpointRequest, CreateAgentSessionRequest, CreateAgentSessionRuntimeBindingRequest, CreateAgentTaskRequest, CreateAgentTurnInputQueueEntryRequest, CreateAgentTurnRequest, CreateAgentVersionRequest, CreateAgentWorkspaceRequest, CreateWebhookSubscriptionRequest, EnsureDefaultAgentWorkspaceRequest, ExecuteAgentTaskRequest, ExpertDetailRecord, ExpertDivisionRecord, ExpertPersonaRecord, ExpertRecord, ExpertTeamRecord, FailAgentTurnInputQueueEntryRequest, ImportAgentProjectRequest, Int64String, InvalidateAgentSessionCheckpointRequest, McpServerMarketplaceRecord, MediaToolDirectoryEntry, MediaToolInvokeBody, MediaToolInvokeResponse, MigrateModelConfigurationRequest, ModelConfigurationSummaryRecord, PageInfo, ProjectSessionSynchronizationResult, ReorderAgentTurnInputQueueEntriesRequest, ReplaceAgentTaskRequest, ResolveAgentInteractionRequest, RestoreAgentRequest, RestoreAgentSessionCheckpointRequest, RetryAgentTaskRunRequest, RetryAgentTurnInputQueueEntryRequest, SdkWorkPageData, SessionActivitySummary, ToolAssetView, UpdateAgentCompositionSlotRequest, UpdateAgentItemFeedbackRequest, UpdateAgentProjectCompositionSlotRequest, UpdateAgentProjectRequest, UpdateAgentRequest, UpdateAgentSessionRuntimeBindingRequest, UpdateAgentSessionUserStateRequest, UpdateAgentTurnInputQueueEntryRequest, UpdateAgentWorkspaceRequest } from '../types';
 
+
+export interface AiExpertPersonasListParams {
+  page?: number;
+  pageSize?: number;
+  locale?: 'zh-CN' | 'en-US';
+}
+
+export class AiExpertPersonasApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** List expert personas for one locale */
+  async list(params?: AiExpertPersonasListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: ExpertPersonaRecord[]; }> {
+    const query = buildQueryString([
+      { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
+      { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'locale', value: params?.locale, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<SdkWorkPageData & { items: ExpertPersonaRecord[]; }>(appendQueryString(appApiPath(`/ai/expert_personas`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+  }
+}
+
+export interface AiExpertTeamsListParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  locale?: 'zh-CN' | 'en-US';
+}
+
+export interface AiExpertTeamsRetrieveParams {
+  locale?: 'zh-CN' | 'en-US';
+}
+
+export class AiExpertTeamsApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** List expert teams */
+  async list(params?: AiExpertTeamsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: ExpertTeamRecord[]; }> {
+    const query = buildQueryString([
+      { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
+      { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
+      { name: 'locale', value: params?.locale, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<SdkWorkPageData & { items: ExpertTeamRecord[]; }>(appendQueryString(appApiPath(`/ai/expert_teams`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+  }
+
+/** Retrieve one expert team */
+  async retrieve(teamId: string, params?: AiExpertTeamsRetrieveParams, requestOptions?: ApiRequestOptions): Promise<ExpertTeamRecord> {
+    const query = buildQueryString([
+      { name: 'locale', value: params?.locale, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<ExpertTeamRecord>(appendQueryString(appApiPath(`/ai/expert_teams/${serializePathParameter(teamId, { name: 'teamId', style: 'simple', explode: false })}`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+  }
+}
+
+export interface AiExpertsDivisionsListParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+}
+
+export class AiExpertsDivisionsApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** List expert divisions */
+  async list(params?: AiExpertsDivisionsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: ExpertDivisionRecord[]; }> {
+    const query = buildQueryString([
+      { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
+      { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<SdkWorkPageData & { items: ExpertDivisionRecord[]; }>(appendQueryString(appApiPath(`/ai/expert_divisions`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+  }
+}
+
+export interface AiExpertsListParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  division?: string;
+}
+
+export interface AiExpertsRetrieveParams {
+  locale?: 'zh-CN' | 'en-US';
+}
+
+export class AiExpertsApi {
+  private client: HttpClient;
+  public readonly divisions: AiExpertsDivisionsApi;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+    this.divisions = new AiExpertsDivisionsApi(client);
+  }
+
+
+/** List experts */
+  async list(params?: AiExpertsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: ExpertRecord[]; }> {
+    const query = buildQueryString([
+      { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
+      { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
+      { name: 'division', value: params?.division, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<SdkWorkPageData & { items: ExpertRecord[]; }>(appendQueryString(appApiPath(`/ai/experts`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+  }
+
+/** Retrieve one expert */
+  async retrieve(slug: string, params?: AiExpertsRetrieveParams, requestOptions?: ApiRequestOptions): Promise<ExpertDetailRecord> {
+    const query = buildQueryString([
+      { name: 'locale', value: params?.locale, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<ExpertDetailRecord>(appendQueryString(appApiPath(`/ai/experts/${serializePathParameter(slug, { name: 'slug', style: 'simple', explode: false })}`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'item' });
+  }
+}
 
 export class AiAgentsAssetsApi {
   private client: HttpClient;
@@ -1404,9 +1534,15 @@ export class AiAgentsApi {
 
 export class AiApi {
   public readonly agents: AiAgentsApi;
+  public readonly experts: AiExpertsApi;
+  public readonly expertTeams: AiExpertTeamsApi;
+  public readonly expertPersonas: AiExpertPersonasApi;
 
   constructor(client: HttpClient) {
     this.agents = new AiAgentsApi(client);
+    this.experts = new AiExpertsApi(client);
+    this.expertTeams = new AiExpertTeamsApi(client);
+    this.expertPersonas = new AiExpertPersonasApi(client);
   }
 
 }

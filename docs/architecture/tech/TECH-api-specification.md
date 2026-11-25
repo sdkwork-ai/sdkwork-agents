@@ -4,7 +4,7 @@
 
 - Version: `6.0.0`
 - Status: active
-- Total operations: 248
+- Total operations: 254
 - Domain model: `AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem -> AgentInteraction`
 
 ## 1. Authorities
@@ -14,7 +14,7 @@ deterministic inventory and must be regenerated after an authority change.
 
 | Surface | Prefix | Operations | Authentication | Consumer SDK |
 | --- | --- | ---: | --- | --- |
-| App API | `/app/v3/api` | 127 | `Authorization` and `Access-Token` through the global app session | `@sdkwork/agents-app-sdk` and `sdkwork_agents_app_sdk` |
+| App API | `/app/v3/api` | 133 | `Authorization` and `Access-Token` through the global app session | `@sdkwork/agents-app-sdk` and `sdkwork_agents_app_sdk` |
 | Backend API | `/backend/v3/api` | 65 | `Authorization` and `Access-Token` for operator context | `@sdkwork/agents-backend-sdk` |
 | Open API | `/agent/v3/api` | 56 | `X-API-Key` | `@sdkwork/agents-sdk` |
 
@@ -178,6 +178,12 @@ Authority: [agents-app-api.openapi.yaml](../../../crates/sdkwork-intelligence-ag
 | 125 | GET | `/app/v3/api/ai/tools` | `agents.tools.list` | List media tool directory with effective tenant configuration |
 | 126 | POST | `/app/v3/api/ai/tools/{toolId}/invoke` | `agents.tools.invoke` | Invoke one media tool (optional saveToDrive persistence) |
 | 127 | GET | `/app/v3/api/ai/assets` | `agents.assets.list` | List generated media assets persisted to Drive |
+| 128 | GET | `/app/v3/api/ai/expert_divisions` | `experts.divisions.list` | List expert divisions |
+| 129 | GET | `/app/v3/api/ai/experts` | `experts.list` | List experts |
+| 130 | GET | `/app/v3/api/ai/experts/{slug}` | `experts.retrieve` | Retrieve one expert |
+| 131 | GET | `/app/v3/api/ai/expert_teams` | `expertTeams.list` | List expert teams |
+| 132 | GET | `/app/v3/api/ai/expert_teams/{teamId}` | `expertTeams.retrieve` | Retrieve one expert team |
+| 133 | GET | `/app/v3/api/ai/expert_personas` | `expertPersonas.list` | List expert personas for one locale |
 
 ### 4.2 Backend API
 

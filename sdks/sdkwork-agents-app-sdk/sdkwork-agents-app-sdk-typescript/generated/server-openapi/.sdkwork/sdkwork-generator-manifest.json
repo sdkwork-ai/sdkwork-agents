@@ -52,7 +52,7 @@
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "b74b0af8c93f69ca27c7e1de8ca56e68678412ad54a5644ed3d31084b1e1c09a"
+      "sha256": "f72797c5a3c4a648d97eee38fe4933ccf41a8b512654dccafc8ecfbc5f4470d2"
     },
     {
       "path": "src/api/base.ts",
@@ -799,6 +799,54 @@
       "sha256": "585d75bf88ab2482eee360bb5efae428ce4924a88e42bcb439fad039ce7a2add"
     },
     {
+      "path": "src/types/expert-detail-record.ts",
+      "sha256": "c41be64bd2cfed280d11b6ed5217945a5b752a03e02704fd840d36597a5e8de7"
+    },
+    {
+      "path": "src/types/expert-detail-response.ts",
+      "sha256": "aff38f611f90f5f8604e9059f01b886e8171e8898f115227fb3c5845b55b91e4"
+    },
+    {
+      "path": "src/types/expert-division-list-response.ts",
+      "sha256": "594d7b0bab5e429f9c3d9fb6dc97068394cee8ea4d3ef817ddf37d4bf8cfb135"
+    },
+    {
+      "path": "src/types/expert-division-record.ts",
+      "sha256": "bb00b05ac31cc2af320a6ebe955661c9f0a6eb31cab2256860561b2355a6a856"
+    },
+    {
+      "path": "src/types/expert-list-response.ts",
+      "sha256": "fc14b539ab11d1ad74cfb722f0815670b722b4ad281caabf2b156ad1c1b40645"
+    },
+    {
+      "path": "src/types/expert-persona-list-response.ts",
+      "sha256": "c420b9ebab21da597df7824d64986007f87881c460ea49a9f070f8ffd27aa636"
+    },
+    {
+      "path": "src/types/expert-persona-record.ts",
+      "sha256": "1aff2589a1a2da2048b254f9d333119973a8dd6e783b4fdfede7f13d2d216eca"
+    },
+    {
+      "path": "src/types/expert-record.ts",
+      "sha256": "8f8eb853e1903ea363434895852a894235696abfae04efa0a44c47c8b7981070"
+    },
+    {
+      "path": "src/types/expert-team-list-response.ts",
+      "sha256": "2fba1a7e4c42a25b48f8e2311fd430b74143be94d56ba1db7f24d67fcfbed9a7"
+    },
+    {
+      "path": "src/types/expert-team-member.ts",
+      "sha256": "c3e507a2dce5ac8445be5aaa2ccd52234aebce0323757d6ef3b95b763a310e85"
+    },
+    {
+      "path": "src/types/expert-team-record.ts",
+      "sha256": "c8e83dca97fd2fd289c62fb5c4db3d31b081aff3a4045b478abe7da58f94246d"
+    },
+    {
+      "path": "src/types/expert-team-response.ts",
+      "sha256": "4f9996d2f1cff20ef72d444050e1770a54ad8a19e328c6d56ad45ed15239626f"
+    },
+    {
       "path": "src/types/fail-agent-turn-input-queue-entry-request.ts",
       "sha256": "55b6e702114267c50dc02c6dd8f5e6a530cc87d4020ef2abcde84641e0e1b757"
     },
@@ -812,7 +860,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "c06d8a37d8f70d6d26749fd4d11b34c286d0dca16f8039a50ee7acefde4c7bd6"
+      "sha256": "08a675750bb645bb950913f0b9a3f7f3344f02eb1c1e18fe8504cbc4322ec4fb"
     },
     {
       "path": "src/types/int64-string.ts",

@@ -11,7 +11,8 @@ use sdkwork_intelligence_agents_service::{
     AgentHttpState, AllowAllPolicyProvider, CloudRouterFirstTurnExecutor, ExternalMcpToolExecutor,
     GenerationsToolExecutor, HttpGenerationsPort, IamGatedPolicyProvider, InMemoryAgentAuditSink,
     InMemoryAgentRepository, MediaToolExecutor, MediaToolInvocationService, MediaToolRegistry,
-    PostgresAgentCategoryStore, PostgresAgentConfigurationStore, RoutedTurnExecutor,
+    PostgresAgentCategoryStore, PostgresAgentConfigurationStore, PostgresExpertCatalogStore,
+    RoutedTurnExecutor,
     RuntimeFacadeTurnExecutor, SqlAgentAuditSink, SqlAgentRepository, SyncPostgresAdapter,
     TurnToolDispatcher, TurnToolkitConfig,
 };
@@ -391,9 +392,15 @@ fn production_postgres_agent_http_state(
 
     // Administrative agent taxonomy: the category catalog is tenant scoped
     // and lives in the same canonical Agents database.
-    let agent_category_store = PostgresAgentCategoryStore::from_pool(configuration_pool)
+    let agent_category_store = PostgresAgentCategoryStore::from_pool(configuration_pool.clone())
         .context("build agents category catalog store")?;
     state = state.with_agent_category_store(Arc::new(agent_category_store));
+
+    // Expert catalog read model: the same canonical Agents database carries the
+    // expert agents, divisions, teams and personas.
+    let expert_catalog_store = PostgresExpertCatalogStore::from_pool(configuration_pool)
+        .context("build agents expert catalog store")?;
+    state = state.with_expert_catalog_store(Arc::new(expert_catalog_store));
 
     // Media tool pipeline: registry + tenant configuration + server-side
     // drive persistence sharing the canonical Agents database.
