@@ -11701,8 +11701,8 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
- "sdkwork-api-assets-assembly",
  "sdkwork-database-sqlx",
+ "sdkwork-discovery-client",
  "sdkwork-generations-database-host",
  "sdkwork-generations-delivery-adapter",
  "sdkwork-generations-provider-adapter",
@@ -11723,6 +11723,17 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "sdkwork-assets-app-sdk-generated-rust"
+version = "0.1.0"
+dependencies = [
+ "http 1.5.0",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -11855,6 +11866,22 @@ dependencies = [
  "tokio",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "sdkwork-discovery-client"
+version = "0.1.0"
+dependencies = [
+ "if-addrs",
+ "reqwest 0.12.28",
+ "sdkwork-utils-rust",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -12053,6 +12080,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "reqwest 0.13.5",
+ "sdkwork-assets-app-sdk-generated-rust",
  "sdkwork-intelligence-generations-service",
  "sdkwork-utils-rust",
  "serde",
@@ -12091,6 +12119,7 @@ dependencies = [
  "sdkwork-utils-rust",
  "serde",
  "serde_json",
+ "thiserror 1.0.69",
  "tracing",
  "uuid",
 ]

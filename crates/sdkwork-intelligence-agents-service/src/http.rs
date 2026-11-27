@@ -7254,6 +7254,10 @@ fn map_agent_version(
     })
 }
 
+// registry:allow §5.2.2 out-of-scope — the only outbound client in this module is
+// `webhook_http_client`, which delivers to a subscription endpoint registered by
+// the user. That destination is data, not a base URL this process resolves; the
+// `/app/v3/api/...` paths in this file are the route table it *serves*.
 static WEBHOOK_HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
 
 fn webhook_http_client() -> &'static reqwest::Client {

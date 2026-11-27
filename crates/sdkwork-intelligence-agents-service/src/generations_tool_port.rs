@@ -79,6 +79,11 @@ pub fn is_insufficient_balance_failure(error: &str) -> bool {
 /// The HTTP client is built lazily: a misconfigured environment degrades to
 /// reqwest's default client instead of panicking on library construction
 /// (RUST_CODE_SPEC: no `unwrap`/`expect`/`panic!` reachable from public API).
+/// HTTP port for the federated generations app-api surface.
+///
+/// identity:service — `auth_token` / `access_token` are threaded as explicit
+/// call parameters by the tool-calling layer, which forwards the invoking
+/// caller's verified pair. This module never reads a process token value.
 #[derive(Debug, Clone)]
 pub struct HttpGenerationsPort {
     base_url: String,
@@ -91,6 +96,18 @@ impl HttpGenerationsPort {
             base_url: base_url.into(),
             client: OnceLock::new(),
         }
+    }
+
+    /// The federated generations app-api origin to dial for one request.
+    ///
+    /// `APP_SDK_INTEGRATION_SPEC.md` §5.2.2: the generations app-api is another
+    /// SDKWork surface, so it resolves through the shared registry component and
+    /// the configured origin is the degradation tier.
+    fn resolved_base_url(&self) -> String {
+        sdkwork_utils_rust::service_base_url::registry_base_url_or(
+            "sdkwork-generations",
+            &self.base_url,
+        )
     }
 
     fn client(&self) -> &Client {
@@ -186,7 +203,7 @@ impl HttpGenerationsPort {
         access_token: Option<&str>,
         idempotency_key: Option<&str>,
     ) -> Result<serde_json::Value, String> {
-        let url = format!("{}{}", self.base_url.trim_end_matches('/'), endpoint);
+        let url = format!("{}{}", self.resolved_base_url(), endpoint);
         let mut request = self.client().post(&url).bearer_auth(auth_token).json(&body);
         if let Some(access_token) = access_token.filter(|token| !token.trim().is_empty()) {
             request = request.header("Access-Token", access_token);
@@ -213,7 +230,7 @@ impl HttpGenerationsPort {
         auth_token: &str,
         access_token: Option<&str>,
     ) -> Result<serde_json::Value, String> {
-        let url = format!("{}{}", self.base_url.trim_end_matches('/'), endpoint);
+        let url = format!("{}{}", self.resolved_base_url(), endpoint);
         let mut request = self.client().get(&url).bearer_auth(auth_token);
         if let Some(access_token) = access_token.filter(|token| !token.trim().is_empty()) {
             request = request.header("Access-Token", access_token);
