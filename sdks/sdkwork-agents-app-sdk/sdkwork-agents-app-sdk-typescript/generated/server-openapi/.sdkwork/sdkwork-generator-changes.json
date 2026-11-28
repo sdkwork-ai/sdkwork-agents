@@ -9,15 +9,11 @@
     "protocol": "http",
     "packageName": "@sdkwork/agents-app-sdk"
   },
-  "changeFingerprint": "ca3f7c718fb2a6b467c0cf1dc0ddc35edb2e8c8775befe93f8a411833e3983dd",
+  "changeFingerprint": "12754b95ceabbb6082223894348d7d7d8edd09c61a05cbba79a3b9fad80ba2b7",
   "changes": {
-    "createdGeneratedFiles": [
-      "src/types/expert-persona-list-response.ts",
-      "src/types/expert-persona-record.ts"
-    ],
+    "createdGeneratedFiles": [],
     "updatedGeneratedFiles": [
-      "src/api/ai.ts",
-      "src/types/index.ts"
+      "src/types/expert-team-record.ts"
     ],
     "unchangedGeneratedFiles": [
       "bin/publish-core.mjs",
@@ -30,6 +26,7 @@
       "package.json",
       "README.md",
       "sdkwork-sdk.json",
+      "src/api/ai.ts",
       "src/api/base.ts",
       "src/api/index.ts",
       "src/api/paths.ts",
@@ -216,19 +213,24 @@
       "src/types/drive-asset-view.ts",
       "src/types/ensure-default-agent-workspace-request.ts",
       "src/types/execute-agent-task-request.ts",
+      "src/types/expert-collection-list-response.ts",
+      "src/types/expert-collection-member.ts",
+      "src/types/expert-collection-record.ts",
       "src/types/expert-detail-record.ts",
       "src/types/expert-detail-response.ts",
       "src/types/expert-division-list-response.ts",
       "src/types/expert-division-record.ts",
       "src/types/expert-list-response.ts",
+      "src/types/expert-persona-list-response.ts",
+      "src/types/expert-persona-record.ts",
       "src/types/expert-record.ts",
       "src/types/expert-team-list-response.ts",
       "src/types/expert-team-member.ts",
-      "src/types/expert-team-record.ts",
       "src/types/expert-team-response.ts",
       "src/types/fail-agent-turn-input-queue-entry-request.ts",
       "src/types/field-error.ts",
       "src/types/import-agent-project-request.ts",
+      "src/types/index.ts",
       "src/types/int64-string.ts",
       "src/types/invalidate-agent-session-checkpoint-request.ts",
       "src/types/legacy-agent-interaction-resolution.ts",
@@ -295,38 +297,29 @@
   "impact": {
     "schemaVersion": 1,
     "areas": [
-      "api-surface",
       "models"
     ],
     "details": [
       {
-        "area": "api-surface",
-        "paths": [
-          "src/api/ai.ts"
-        ]
-      },
-      {
         "area": "models",
         "paths": [
-          "src/types/expert-persona-list-response.ts",
-          "src/types/expert-persona-record.ts",
-          "src/types/index.ts"
+          "src/types/expert-team-record.ts"
         ]
       }
     ],
     "requiresVerification": true,
-    "summary": "Detected impact areas: api-surface, models. Verification is required."
+    "summary": "Detected impact areas: models. Verification is required."
   },
   "verificationPlan": {
     "shouldRun": true,
     "runPhase": "now",
-    "summary": "Detected impact areas: api-surface, models. Verification is required. Run the required verification commands now against the generated SDK output.",
+    "summary": "Detected impact areas: models. Verification is required. Run the required verification commands now against the generated SDK output.",
     "steps": [
       {
         "id": "check",
         "title": "Unified package check",
         "required": true,
-        "rationale": "Validate the generated package with the unified publish helper. Triggered by: api-surface, models.",
+        "rationale": "Validate the generated package with the unified publish helper. Triggered by: models.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [
@@ -344,7 +337,7 @@
         "id": "build",
         "title": "Unified package build",
         "required": true,
-        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: api-surface, models.",
+        "rationale": "Run the full package build because this language uses a lighter check path than the final build. Triggered by: models.",
         "workingDirectory": "D:\\sdkwork-space\\sdkwork-agents\\sdks\\sdkwork-agents-app-sdk\\sdkwork-agents-app-sdk-typescript\\generated\\server-openapi",
         "command": "node",
         "args": [

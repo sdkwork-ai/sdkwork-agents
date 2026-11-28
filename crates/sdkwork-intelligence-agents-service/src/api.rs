@@ -1148,6 +1148,12 @@ pub const AGENT_APP_API_OPERATIONS: &[ApiOperation] = &[
         tag: "ai",
         operation_id: "expertPersonas.list",
     },
+    ApiOperation {
+        method: "GET",
+        path: "/app/v3/api/ai/expert_collections",
+        tag: "ai",
+        operation_id: "expertCollections.list",
+    },
 ];
 
 pub const AGENT_BACKEND_API_OPERATIONS: &[ApiOperation] = &[
@@ -1964,7 +1970,7 @@ mod tests {
         let backend_openapi = include_str!("../specs/openapi/agents-backend-api.openapi.yaml");
 
         assert_eq!(AGENT_OPEN_API_OPERATIONS.len(), 56);
-        assert_eq!(AGENT_APP_API_OPERATIONS.len(), 127);
+        assert_eq!(AGENT_APP_API_OPERATIONS.len(), 134);
         assert_eq!(AGENT_BACKEND_API_OPERATIONS.len(), 65);
 
         assert_eq!(

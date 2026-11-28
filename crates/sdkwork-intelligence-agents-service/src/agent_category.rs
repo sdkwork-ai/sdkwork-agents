@@ -46,6 +46,12 @@ const MAX_CATEGORY_NAME_LENGTH: usize = 255;
 const MAX_CATEGORY_DESCRIPTION_LENGTH: usize = 2000;
 const MAX_CATEGORY_ICON_REF_LENGTH: usize = 512;
 const MAX_CATEGORY_SORT_ORDER: i32 = 9999;
+const MAX_CATEGORY_DEPTH: usize = 5;
+const MAX_CATEGORY_TAGS: usize = 20;
+const MAX_CATEGORY_TAG_LENGTH: usize = 64;
+const MAX_CATEGORY_ATTRIBUTES: usize = 50;
+const MAX_ATTRIBUTE_KEY_LENGTH: usize = 64;
+const MAX_ATTRIBUTE_VALUE_LENGTH: usize = 512;
 
 const VERSION_MISMATCH_DETAIL: &str = "sdkwork.version_mismatch";
 
@@ -128,6 +134,10 @@ pub struct AgentCategoryRecord {
     pub parent_id: Option<i64>,
     pub sort_order: i32,
     pub icon_ref: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub attributes: BTreeMap<String, String>,
     pub lifecycle_status: AgentCategoryStatus,
     #[serde(with = "sdkwork_utils_rust::serde_int64")]
     pub version: i64,
@@ -150,6 +160,10 @@ pub struct UpsertAgentCategoryCommand {
     #[serde(default)]
     pub icon_ref: Option<String>,
     #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub attributes: BTreeMap<String, String>,
+    #[serde(default)]
     pub status: Option<AgentCategoryStatus>,
     #[serde(default, with = "sdkwork_utils_rust::serde_int64::option")]
     pub expected_version: Option<i64>,
@@ -164,6 +178,8 @@ pub struct ValidatedAgentCategoryCommand {
     pub parent_id: Option<i64>,
     pub sort_order: i32,
     pub icon_ref: Option<String>,
+    pub tags: Vec<String>,
+    pub attributes: BTreeMap<String, String>,
     pub status: Option<AgentCategoryStatus>,
     pub expected_version: Option<i64>,
 }
@@ -179,6 +195,32 @@ pub trait AgentCategoryStore: Send + Sync {
         operator_id: u64,
         command: &ValidatedAgentCategoryCommand,
     ) -> KernelResult<AgentCategoryRecord>;
+
+    /// Soft-deletes one category and returns the tombstoned row.
+    fn delete(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        operator_id: u64,
+        category_code: &str,
+    ) -> KernelResult<AgentCategoryRecord>;
+
+    /// Rewrites one sibling group's sort order from the caller-computed set.
+    fn apply_sort_order(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        operator_id: u64,
+        orders: &[(i64, i32)],
+    ) -> KernelResult<()>;
+
+    /// Number of live agents filed under one category code.
+    fn count_agents_in_category(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        category_code: &str,
+    ) -> KernelResult<i64>;
 }
 
 /// Trims and validates an upsert command, failing before any row is touched.
@@ -218,6 +260,10 @@ pub fn validate_upsert_command(
         }
     }
 
+    let tags = normalize_category_tags(&command.tags);
+    let attributes = normalize_category_attributes(command.attributes.clone());
+    validate_category_taxonomy(&tags, &attributes)?;
+
     if !(0..=MAX_CATEGORY_SORT_ORDER).contains(&command.sort_order) {
         return Err(KernelError::validation(format!(
             "agent category sort order must be between 0 and {MAX_CATEGORY_SORT_ORDER}"
@@ -255,6 +301,8 @@ pub fn validate_upsert_command(
         parent_id: command.parent_id,
         sort_order: command.sort_order,
         icon_ref: icon_ref.map(str::to_owned),
+        tags,
+        attributes,
         status: command.status,
         expected_version: command.expected_version,
     })
@@ -264,11 +312,75 @@ fn normalize_optional_text(value: Option<&str>) -> Option<&str> {
     value.map(str::trim).filter(|value| !value.is_empty())
 }
 
-/// Validates the two-level taxonomy constraints against the current catalog.
+/// Trims tags, drops empty entries and removes case-insensitive duplicates.
+pub fn normalize_category_tags(tags: &[String]) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut normalized = Vec::new();
+    for tag in tags {
+        let value = tag.trim();
+        if value.is_empty() {
+            continue;
+        }
+        if seen.insert(value.to_lowercase()) {
+            normalized.push(value.to_owned());
+        }
+    }
+    normalized
+}
+
+/// Trims attribute keys and values and drops rows without a key.
+pub fn normalize_category_attributes(
+    attributes: BTreeMap<String, String>,
+) -> BTreeMap<String, String> {
+    attributes
+        .into_iter()
+        .map(|(key, value)| (key.trim().to_owned(), value.trim().to_owned()))
+        .filter(|(key, _)| !key.is_empty())
+        .collect()
+}
+
+fn validate_category_taxonomy(
+    tags: &[String],
+    attributes: &BTreeMap<String, String>,
+) -> KernelResult<()> {
+    if tags.len() > MAX_CATEGORY_TAGS {
+        return Err(KernelError::validation(format!(
+            "agent category tags cannot contain more than {MAX_CATEGORY_TAGS} entries"
+        )));
+    }
+    for tag in tags {
+        if tag.chars().count() > MAX_CATEGORY_TAG_LENGTH {
+            return Err(KernelError::validation(format!(
+                "agent category tag must be at most {MAX_CATEGORY_TAG_LENGTH} characters"
+            )));
+        }
+    }
+    if attributes.len() > MAX_CATEGORY_ATTRIBUTES {
+        return Err(KernelError::validation(format!(
+            "agent category attributes cannot contain more than {MAX_CATEGORY_ATTRIBUTES} entries"
+        )));
+    }
+    for (key, value) in attributes {
+        if key.chars().count() > MAX_ATTRIBUTE_KEY_LENGTH {
+            return Err(KernelError::validation(format!(
+                "agent category attribute key must be at most {MAX_ATTRIBUTE_KEY_LENGTH} characters"
+            )));
+        }
+        if value.chars().count() > MAX_ATTRIBUTE_VALUE_LENGTH {
+            return Err(KernelError::validation(format!(
+                "agent category attribute {key} must be at most {MAX_ATTRIBUTE_VALUE_LENGTH} characters"
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// Validates one placement decision against the current catalog.
 ///
-/// The caller passes every non-deleted category in the same tenant scope; the
-/// database foreign key remains the final guard for parent existence and
-/// tenant isolation.
+/// The caller passes every non-deleted category in the same tenant scope. The
+/// walk rejects self-parenting, cycles (including moving a subtree under its
+/// own descendant), unknown parents and any placement deeper than
+/// [`MAX_CATEGORY_DEPTH`]; a newly selected parent must still be active.
 pub fn validate_category_placement(
     categories: &[AgentCategoryRecord],
     category_code: &str,
@@ -297,26 +409,42 @@ pub fn validate_category_placement(
             "agent category parent must be active",
         ));
     }
-    if parent.parent_id.is_some() {
-        return Err(KernelError::validation(
-            "agent categories support at most two levels",
-        ));
-    }
 
-    if let Some(current) = current {
-        if current.id == parent_id {
+    let mut depth = 1usize;
+    let mut cursor = Some(parent_id);
+    let mut visited = std::collections::HashSet::new();
+    while let Some(current_id) = cursor {
+        if let Some(current) = current {
+            if current.id == current_id {
+                return Err(KernelError::validation(
+                    "agent category cannot be moved under its own descendant",
+                ));
+            }
+            if current.id == parent_id {
+                return Err(KernelError::validation(
+                    "agent category cannot be its own parent",
+                ));
+            }
+        }
+        if !visited.insert(current_id) {
             return Err(KernelError::validation(
-                "agent category cannot be its own parent",
+                "agent category hierarchy contains a cycle",
             ));
         }
-        if categories
+        let node = categories
             .iter()
-            .any(|record| record.parent_id == Some(current.id))
-        {
-            return Err(KernelError::validation(
-                "a category with child categories cannot become a child",
-            ));
-        }
+            .find(|record| record.id == current_id)
+            .ok_or_else(|| KernelError::validation("agent category parent does not exist"))?;
+        let Some(next) = node.parent_id else {
+            break;
+        };
+        depth += 1;
+        cursor = Some(next);
+    }
+    if depth + 1 > MAX_CATEGORY_DEPTH {
+        return Err(KernelError::validation(format!(
+            "agent category hierarchy cannot be deeper than {MAX_CATEGORY_DEPTH} levels"
+        )));
     }
 
     Ok(())
@@ -492,6 +620,8 @@ impl AgentCategoryStore for InMemoryAgentCategoryStore {
             parent_id: command.parent_id,
             sort_order: command.sort_order,
             icon_ref: command.icon_ref.clone(),
+            tags: command.tags.clone(),
+            attributes: command.attributes.clone(),
             lifecycle_status,
             version,
             created_at,
@@ -500,10 +630,59 @@ impl AgentCategoryStore for InMemoryAgentCategoryStore {
         records.insert(key, record.clone());
         Ok(record)
     }
+
+    fn delete(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        _operator_id: u64,
+        category_code: &str,
+    ) -> KernelResult<AgentCategoryRecord> {
+        let key = (tenant_id, organization_id, category_code.to_string());
+        let mut records = self.locked()?;
+        let record = records
+            .get_mut(&key)
+            .ok_or_else(|| KernelError::not_found("agent category does not exist"))?;
+        record.lifecycle_status = AgentCategoryStatus::Deleted;
+        record.version = record.version.saturating_add(1);
+        record.updated_at = now_rfc3339();
+        Ok(record.clone())
+    }
+
+    fn apply_sort_order(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        _operator_id: u64,
+        orders: &[(i64, i32)],
+    ) -> KernelResult<()> {
+        let mut records = self.locked()?;
+        for (id, sort_order) in orders {
+            for ((tenant, organization, _), record) in records.iter_mut() {
+                if *tenant == tenant_id && *organization == organization_id && record.id == *id {
+                    record.sort_order = *sort_order;
+                    record.version = record.version.saturating_add(1);
+                    record.updated_at = now_rfc3339();
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn count_agents_in_category(
+        &self,
+        _tenant_id: u64,
+        _organization_id: u64,
+        _category_code: &str,
+    ) -> KernelResult<i64> {
+        // The in-memory category store is not composed with the agent store;
+        // callers that need the reference count use the PostgreSQL store.
+        Ok(0)
+    }
 }
 
 #[cfg(feature = "postgres-sync")]
-const CATEGORY_SELECT: &str = "id, uuid, tenant_id, organization_id, category_code, name, description, parent_id, sort_order, icon_ref, status, version, created_at::text AS created_at, updated_at::text AS updated_at";
+const CATEGORY_SELECT: &str = "id, uuid, tenant_id, organization_id, category_code, name, description, parent_id, sort_order, icon_ref, tags_json, attributes_json, status, version, created_at::text AS created_at, updated_at::text AS updated_at";
 
 /// PostgreSQL-backed catalog over the canonical `ai_agent_category` table.
 #[cfg(feature = "postgres-sync")]
@@ -550,23 +729,34 @@ impl AgentCategoryStore for PostgresAgentCategoryStore {
         let uuid = build_category_uuid(tenant_id, organization_id, &command.category_code);
         let now = now_rfc3339();
         let status = command.status.map(AgentCategoryStatus::as_db_code);
+        let tags_json = serde_json::to_value(&command.tags).map_err(|error| {
+            KernelError::provider_error("agent_category_store", format!("encode tags: {error}"))
+        })?;
+        let attributes_json = serde_json::to_value(&command.attributes).map_err(|error| {
+            KernelError::provider_error(
+                "agent_category_store",
+                format!("encode attributes: {error}"),
+            )
+        })?;
         let query = format!(
             "INSERT INTO ai_agent_category \
-             (id, uuid, tenant_id, organization_id, category_code, name, description, parent_id, sort_order, icon_ref, status, created_by, updated_by, version, created_at, updated_at) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, COALESCE($11::smallint, 1::smallint), $12, $13, 0, $14, $15) \
+             (id, uuid, tenant_id, organization_id, category_code, name, description, parent_id, sort_order, icon_ref, tags_json, attributes_json, status, created_by, updated_by, version, created_at, updated_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13::smallint, 1::smallint), $14, $15, 0, $16, $17) \
              ON CONFLICT (tenant_id, organization_id, category_code) DO UPDATE SET \
                  name = EXCLUDED.name, \
                  description = EXCLUDED.description, \
                  parent_id = EXCLUDED.parent_id, \
                  sort_order = EXCLUDED.sort_order, \
                  icon_ref = EXCLUDED.icon_ref, \
-                 status = COALESCE($11::smallint, ai_agent_category.status), \
+                 tags_json = EXCLUDED.tags_json, \
+                 attributes_json = EXCLUDED.attributes_json, \
+                 status = COALESCE($13::smallint, ai_agent_category.status), \
                  updated_by = EXCLUDED.updated_by, \
                  updated_at = EXCLUDED.updated_at, \
                  deleted_at = NULL, \
                  deleted_by = NULL, \
                  version = ai_agent_category.version + 1 \
-             WHERE ($16::bigint IS NULL OR ai_agent_category.version = $16::bigint) \
+             WHERE ($18::bigint IS NULL OR ai_agent_category.version = $18::bigint) \
              RETURNING {CATEGORY_SELECT}"
         );
         let row = crate::pg_query_optional!(
@@ -582,6 +772,8 @@ impl AgentCategoryStore for PostgresAgentCategoryStore {
             command.parent_id,
             command.sort_order,
             command.icon_ref.clone(),
+            tags_json,
+            attributes_json,
             status,
             operator_id as i64,
             operator_id as i64,
@@ -599,6 +791,102 @@ impl AgentCategoryStore for PostgresAgentCategoryStore {
                 "agent category upsert returned no row",
             )),
         }
+    }
+
+    fn delete(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        operator_id: u64,
+        category_code: &str,
+    ) -> KernelResult<AgentCategoryRecord> {
+        let query = format!(
+            "UPDATE ai_agent_category SET \
+                 status = 4, deleted_at = CURRENT_TIMESTAMP, deleted_by = $3, \
+                 updated_by = $3, version = version + 1, updated_at = CURRENT_TIMESTAMP \
+             WHERE tenant_id = $1 AND organization_id = $2 AND category_code = $4 \
+               AND deleted_at IS NULL \
+             RETURNING {CATEGORY_SELECT}"
+        );
+        let row = crate::pg_query_optional!(
+            self.pool,
+            sqlx::AssertSqlSafe(query.as_str()),
+            tenant_id as i64,
+            organization_id as i64,
+            operator_id as i64,
+            category_code
+        )?;
+        match row {
+            Some(row) => row_to_category(&row),
+            None => Err(KernelError::not_found("agent category does not exist")),
+        }
+    }
+
+    fn apply_sort_order(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        operator_id: u64,
+        orders: &[(i64, i32)],
+    ) -> KernelResult<()> {
+        if orders.is_empty() {
+            return Ok(());
+        }
+        let ids = orders.iter().map(|(id, _)| *id).collect::<Vec<_>>();
+        let sort_orders = orders.iter().map(|(_, order)| *order).collect::<Vec<_>>();
+        let affected = crate::pg_execute!(
+            self.pool,
+            sqlx::AssertSqlSafe(
+                "WITH ordered AS ( \
+                     SELECT * FROM unnest($4::bigint[], $5::integer[]) AS entries(category_id, sort_order) \
+                 ) \
+                 UPDATE ai_agent_category AS category \
+                 SET sort_order = ordered.sort_order, \
+                     version = category.version + 1, \
+                     updated_by = $3, \
+                     updated_at = CURRENT_TIMESTAMP \
+                 FROM ordered \
+                 WHERE category.tenant_id = $1 AND category.organization_id = $2 \
+                   AND category.id = ordered.category_id AND category.deleted_at IS NULL"
+            ),
+            tenant_id as i64,
+            organization_id as i64,
+            operator_id as i64,
+            ids,
+            sort_orders
+        )?;
+        if affected != orders.len() as u64 {
+            return Err(KernelError::not_found(
+                "one or more agent categories no longer exist",
+            ));
+        }
+        Ok(())
+    }
+
+    fn count_agents_in_category(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        category_code: &str,
+    ) -> KernelResult<i64> {
+        let rows = crate::pg_query!(
+            self.pool,
+            sqlx::AssertSqlSafe(
+                "SELECT COUNT(*) AS agent_count FROM ai_agent \
+                 WHERE tenant_id = $1 AND organization_id = $2 AND category_code = $3 \
+                   AND deleted_at IS NULL AND status = 1"
+            ),
+            tenant_id as i64,
+            organization_id as i64,
+            category_code
+        )?;
+        rows.first()
+            .map(|row| {
+                use sqlx::Row as _;
+                row.try_get("agent_count")
+                    .map_err(|error| KernelError::provider_error("agent_category_row", error.to_string()))
+            })
+            .unwrap_or(Ok(0))
     }
 }
 
@@ -638,6 +926,8 @@ fn row_to_category(row: &crate::postgres_sync_pool::PgRow) -> KernelResult<Agent
         icon_ref: row.try_get("icon_ref").map_err(|error| {
             KernelError::provider_error("agent_category_row", error.to_string())
         })?,
+        tags: json_string_list(row, "tags_json")?,
+        attributes: json_string_map(row, "attributes_json")?,
         lifecycle_status: AgentCategoryStatus::from_db_code(status_code)?,
         version: row.try_get("version").map_err(|error| {
             KernelError::provider_error("agent_category_row", error.to_string())
@@ -649,6 +939,65 @@ fn row_to_category(row: &crate::postgres_sync_pool::PgRow) -> KernelResult<Agent
             KernelError::provider_error("agent_category_row", error.to_string())
         })?,
     })
+}
+
+#[cfg(feature = "postgres-sync")]
+fn json_string_list(
+    row: &crate::postgres_sync_pool::PgRow,
+    field: &str,
+) -> KernelResult<Vec<String>> {
+    use sqlx::Row as _;
+    let value: serde_json::Value = row
+        .try_get(field)
+        .map_err(|error| KernelError::provider_error("agent_category_row", error.to_string()))?;
+    let Some(items) = value.as_array() else {
+        return Err(KernelError::provider_error(
+            "agent_category_row",
+            format!("{field} must be a json array"),
+        ));
+    };
+    items
+        .iter()
+        .map(|item| {
+            item.as_str().map(str::to_owned).ok_or_else(|| {
+                KernelError::provider_error(
+                    "agent_category_row",
+                    format!("{field} items must be strings"),
+                )
+            })
+        })
+        .collect()
+}
+
+#[cfg(feature = "postgres-sync")]
+fn json_string_map(
+    row: &crate::postgres_sync_pool::PgRow,
+    field: &str,
+) -> KernelResult<BTreeMap<String, String>> {
+    use sqlx::Row as _;
+    let value: serde_json::Value = row
+        .try_get(field)
+        .map_err(|error| KernelError::provider_error("agent_category_row", error.to_string()))?;
+    let Some(entries) = value.as_object() else {
+        return Err(KernelError::provider_error(
+            "agent_category_row",
+            format!("{field} must be a json object"),
+        ));
+    };
+    entries
+        .iter()
+        .map(|(key, value)| {
+            value
+                .as_str()
+                .map(|text| (key.clone(), text.to_owned()))
+                .ok_or_else(|| {
+                    KernelError::provider_error(
+                        "agent_category_row",
+                        format!("{field} values must be strings"),
+                    )
+                })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -663,6 +1012,8 @@ mod tests {
             parent_id: None,
             sort_order: 0,
             icon_ref: None,
+            tags: Vec::new(),
+            attributes: BTreeMap::new(),
             status: None,
             expected_version: None,
         }
@@ -685,6 +1036,8 @@ mod tests {
             parent_id,
             sort_order: 0,
             icon_ref: None,
+            tags: Vec::new(),
+            attributes: BTreeMap::new(),
             lifecycle_status: status,
             version: 0,
             created_at: "2026-01-01T00:00:00.000Z".to_owned(),
@@ -710,6 +1063,8 @@ mod tests {
             parent_id: None,
             sort_order: 3,
             icon_ref: Some("  drive://icon/education  ".to_owned()),
+            tags: vec![" K-12 ".to_owned(), "k-12".to_owned(), "Teachers".to_owned()],
+            attributes: BTreeMap::new(),
             status: Some(AgentCategoryStatus::Active),
             expected_version: None,
         })
@@ -737,7 +1092,7 @@ mod tests {
     }
 
     #[test]
-    fn enforces_two_level_parent_rules() {
+    fn enforces_parent_active_cycle_and_depth_rules() {
         let categories = vec![
             record(1, "education", None, AgentCategoryStatus::Active),
             record(2, "education_k12", Some(1), AgentCategoryStatus::Active),
@@ -745,16 +1100,32 @@ mod tests {
             record(4, "finance_ops", Some(3), AgentCategoryStatus::Active),
         ];
 
+        // A third level is allowed now; a disabled parent is still rejected.
         assert!(validate_category_placement(&categories, "tech", Some(1)).is_ok());
-        assert!(validate_category_placement(&categories, "tech", Some(2)).is_err());
+        assert!(validate_category_placement(&categories, "tech", Some(2)).is_ok());
         assert!(validate_category_placement(&categories, "tech", Some(3)).is_err());
         assert!(
             validate_category_placement(&categories, "finance_ops", Some(3)).is_ok(),
             "an existing placement under a disabled parent must not block unrelated edits"
         );
+        // Self-parenting and moving a category under its own descendant are cycles.
         assert!(validate_category_placement(&categories, "education", Some(1)).is_err());
-        assert!(validate_category_placement(&categories, "education", Some(99)).is_err());
+        assert!(validate_category_placement(&categories, "education", Some(2)).is_err());
+        assert!(validate_category_placement(&categories, "tech", Some(99)).is_err());
         assert!(validate_category_placement(&categories, "tech", None).is_ok());
+
+        // A sixth level is refused.
+        let mut deep = vec![record(10, "l1", None, AgentCategoryStatus::Active)];
+        for id in 11..=15 {
+            deep.push(record(
+                id,
+                &format!("l{}", id - 9),
+                Some(id - 1),
+                AgentCategoryStatus::Active,
+            ));
+        }
+        assert!(validate_category_placement(&deep, "new", Some(13)).is_ok());
+        assert!(validate_category_placement(&deep, "new", Some(14)).is_err());
     }
 
     #[test]

@@ -63,6 +63,7 @@ function verifyDeterministicSeeds() {
 function verifyManifest(manifest, files) {
   const common = manifest.profiles.standard.common
   assert(common.includes('003_expert_catalog.sql'), 'standard profile does not seed the expert catalog')
+  assert(common.includes('004_expert_market.sql'), 'standard profile does not seed the expert market')
   const byRelative = new Map(files.map(file => [file.relative, file.content]))
   for (const [locale, relative] of Object.entries(LOCALE_SEEDS)) {
     const basename = path.posix.basename(relative)
@@ -136,6 +137,59 @@ function verifyPersonaHashes(catalog) {
   }
 }
 
+/**
+ * Assert the hand-maintained market seed carries one profile per expert and the
+ * six curated collections with their three ordered members each.
+ */
+function verifyMarketSeed(catalog) {
+  const market = read('common/004_expert_market.sql')
+  const slugs = new Set(catalog.experts.map(expert => expert.slug))
+  const knownIds = new Set(catalog.experts.map(expert => expertAgentId(expert.slug)))
+
+  assert(countMatches(market, /INSERT INTO ai_expert_collection \(/g) === 6, 'expert collection insert count')
+  assert(countMatches(market, /INSERT INTO ai_expert_collection_item \(/g) === 18, 'expert collection item insert count')
+  assert(countMatches(market, /INSERT INTO ai_expert_profile \(/g) === catalog.experts.length, 'expert profile insert count')
+
+  const collectionBlocks = market.split('INSERT INTO ai_expert_collection (').slice(1)
+  assert(collectionBlocks.length === 6, 'expert collection block count')
+  const collectionCodes = collectionBlocks.map(block => {
+    const tokens = [...block.matchAll(/'(collection-[a-z][a-z0-9-]*)'/g)].map(match => match[1])
+    const coverKeys = [...block.matchAll(/, '([a-z][a-z0-9-]*)',\r?\n/g)].map(match => match[1])
+    assert(coverKeys.length === 1, 'collection row must carry one cover key')
+    assert(
+      coverKeys[0] === tokens[0].replace('collection-', ''),
+      `${tokens[0]} cover key must equal the collection code suffix`,
+    )
+    return tokens[0]
+  })
+  for (const code of [
+    'collection-ecommerce',
+    'collection-content',
+    'collection-investment',
+    'collection-legal',
+    'collection-smallbusiness',
+    'collection-data',
+  ]) {
+    assert(collectionCodes.includes(code), `market seed is missing ${code}`)
+  }
+
+  // Every `agent.expert.*` reference must resolve to a real catalog slug.
+  for (const match of market.matchAll(/'(agent\.expert\.[a-z0-9.-]+)'/g)) {
+    assert(knownIds.has(match[1]), `market seed references unknown expert ${match[1]}`)
+  }
+  for (const block of market.split('INSERT INTO ai_expert_collection_item (').slice(1)) {
+    const collectionCode = block.match(/'(collection-[a-z][a-z0-9-]*)'/)?.[1]
+    const expertId = block.match(/'(agent\.expert\.[a-z0-9.-]+)'/)?.[1]
+    assert(collectionCode, 'collection item is missing its collection code')
+    assert(expertId && knownIds.has(expertId), `collection item references unknown expert ${expertId}`)
+  }
+  for (const block of market.split('INSERT INTO ai_expert_profile (').slice(1)) {
+    const expertId = block.match(/'(agent\.expert\.[a-z0-9.-]+)'/)?.[1]
+    assert(expertId && slugs.has(expertId.replace('agent.expert.', '')), `profile references unknown expert ${expertId}`)
+  }
+  assert(!/\bNaN\b/u.test(market) && !/\bundefined\b/u.test(market), 'market seed contains NaN/undefined')
+}
+
 verifyDeterministicSeeds()
 const catalog = readCatalog()
 const manifest = readManifest()
@@ -144,8 +198,9 @@ verifyManifest(manifest, files)
 verifyCommonSeed(catalog)
 for (const locale of Object.keys(LOCALE_SEEDS)) verifyLocaleSeed(catalog, locale)
 verifyPersonaHashes(catalog)
+verifyMarketSeed(catalog)
 process.stdout.write(
   `verify-expert-catalog: ${catalog.experts.length} experts, ${catalog.taxonomy.divisions.length} divisions, `
   + `${catalog.teams.length} teams, ${catalog.teams.reduce((total, team) => total + team.members.length, 0)} members, `
-  + `seeds and manifest verified\n`,
+  + `6 collections, ${catalog.experts.length} market profiles, seeds and manifest verified\n`,
 )

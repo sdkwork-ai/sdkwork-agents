@@ -2,7 +2,7 @@ schema_version: 1
 kind: sdkwork.database.schema
 database_role: authoritative-server
 module_id: agents
-contract_version: 7.8.0
+contract_version: 7.9.0
 owner_team: agents-platform
 compliance_level: L2
 engines:
@@ -230,6 +230,30 @@ tables:
     description: Localized expert persona body with its content hash, one row per
       expert agent and locale. The persona text is the summon payload; it never
       lives in the agent manifest.
+  - name: ai_expert_profile
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Per-expert market display profile keyed by the stable
+      `agent.expert.*` id — an editorial usage count (never telemetry), an
+      optional badge code, the catalog order inside the division, and the
+      publish timestamp. Experts without a row still serve with neutral
+      defaults.
+  - name: ai_expert_collection
+    profile: tenant_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Curated expert collection (the market's featured shelf) with a
+      bilingual name and description, a stable `cover_key` (the collection code
+      suffix the client maps to its own illustration), display order and
+      lifecycle status.
+  - name: ai_expert_collection_item
+    profile: relation_entity
+    lifecycle_status: active
+    owner: agents-platform
+    description: Ordered expert-collection membership with the bilingual label
+      the shelf shows; holds at most one row per expert and position inside a
+      collection.
 external_references:
   - module: sdkwork-memory
     columns: [target_ref, target_version_ref]

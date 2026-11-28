@@ -1,8 +1,35 @@
 import { appApiPath } from './paths';
 import type { ApiRequestOptions, HttpClient } from '../http/client';
 
-import type { ActivateAgentProviderBindingRequest, AgentCallRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentEngineCatalog, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentItemFeedbackRecord, AgentModelProviderId, AgentProjectCompositionSlotRecord, AgentProjectMutationRequest, AgentProjectRecord, AgentProjectStatus, AgentProviderBindingRecord, AgentRecord, AgentResourceUserStateRecord, AgentRuntimeExecutionRecord, AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionItemSynchronizationResult, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentSessionStatus, AgentTaskRecord, AgentTaskRunAttemptRecord, AgentTaskRunRecord, AgentTaskStateChangeRequest, AgentToolkitOverview, AgentTurnInputQueueEntry, AgentTurnRecord, AgentTurnStreamEvent, AgentUsageRecord, AgentUsageSummary, AgentVersionRecord, AgentWebhookDelivery, AgentWebhookSubscription, AgentWebhookSubscriptionCreated, AgentWorkspaceMutationRequest, AgentWorkspaceRecord, AgentWorkspaceStatus, AnswerAgentInteractionRequest, AppliedAgentModelConfigurationRecord, AppliedAgentModelSelectionRecord, ApplyAgentModelConfigurationRequest, ApplyAgentModelSelectionRequest, ApproveAgentInteractionRequest, AppUpdateAgentSessionRequest, CancelAgentTaskRequest, CancelAgentTaskRunRequest, CancelAgentTurnRequest, ChangeAgentSessionRuntimeBindingStatusRequest, ClaimAgentInteractionRequest, ClaimNextAgentTurnInputQueueEntryRequest, ClaimNextAgentTurnInputQueueEntryResult, CloseAgentSessionRequest, CreateAgentCallRequest, CreateAgentCompositionSlotRequest, CreateAgentInteractionRequest, CreateAgentPreviewResponseRequest, CreateAgentProjectCompositionSlotRequest, CreateAgentProjectRequest, CreateAgentPromptOptimizationRequest, CreateAgentProviderBindingRequest, CreateAgentRequest, CreateAgentSessionCheckpointRequest, CreateAgentSessionRequest, CreateAgentSessionRuntimeBindingRequest, CreateAgentTaskRequest, CreateAgentTurnInputQueueEntryRequest, CreateAgentTurnRequest, CreateAgentVersionRequest, CreateAgentWorkspaceRequest, CreateWebhookSubscriptionRequest, EnsureDefaultAgentWorkspaceRequest, ExecuteAgentTaskRequest, ExpertDetailRecord, ExpertDivisionRecord, ExpertPersonaRecord, ExpertRecord, ExpertTeamRecord, FailAgentTurnInputQueueEntryRequest, ImportAgentProjectRequest, Int64String, InvalidateAgentSessionCheckpointRequest, McpServerMarketplaceRecord, MediaToolDirectoryEntry, MediaToolInvokeBody, MediaToolInvokeResponse, MigrateModelConfigurationRequest, ModelConfigurationSummaryRecord, PageInfo, ProjectSessionSynchronizationResult, ReorderAgentTurnInputQueueEntriesRequest, ReplaceAgentTaskRequest, ResolveAgentInteractionRequest, RestoreAgentRequest, RestoreAgentSessionCheckpointRequest, RetryAgentTaskRunRequest, RetryAgentTurnInputQueueEntryRequest, SdkWorkPageData, SessionActivitySummary, ToolAssetView, UpdateAgentCompositionSlotRequest, UpdateAgentItemFeedbackRequest, UpdateAgentProjectCompositionSlotRequest, UpdateAgentProjectRequest, UpdateAgentRequest, UpdateAgentSessionRuntimeBindingRequest, UpdateAgentSessionUserStateRequest, UpdateAgentTurnInputQueueEntryRequest, UpdateAgentWorkspaceRequest } from '../types';
+import type { ActivateAgentProviderBindingRequest, AgentCallRecord, AgentCompositionSlotKind, AgentCompositionSlotRecord, AgentEngineCatalog, AgentInteractionKind, AgentInteractionRecord, AgentInteractionStatus, AgentItemFeedbackRecord, AgentModelProviderId, AgentProjectCompositionSlotRecord, AgentProjectMutationRequest, AgentProjectRecord, AgentProjectStatus, AgentProviderBindingRecord, AgentRecord, AgentResourceUserStateRecord, AgentRuntimeExecutionRecord, AgentSessionCheckpointRecord, AgentSessionItemKind, AgentSessionItemRecord, AgentSessionItemStatus, AgentSessionItemSynchronizationResult, AgentSessionRecord, AgentSessionRuntimeBindingRecord, AgentSessionStatus, AgentTaskRecord, AgentTaskRunAttemptRecord, AgentTaskRunRecord, AgentTaskStateChangeRequest, AgentToolkitOverview, AgentTurnInputQueueEntry, AgentTurnRecord, AgentTurnStreamEvent, AgentUsageRecord, AgentUsageSummary, AgentVersionRecord, AgentWebhookDelivery, AgentWebhookSubscription, AgentWebhookSubscriptionCreated, AgentWorkspaceMutationRequest, AgentWorkspaceRecord, AgentWorkspaceStatus, AnswerAgentInteractionRequest, AppliedAgentModelConfigurationRecord, AppliedAgentModelSelectionRecord, ApplyAgentModelConfigurationRequest, ApplyAgentModelSelectionRequest, ApproveAgentInteractionRequest, AppUpdateAgentSessionRequest, CancelAgentTaskRequest, CancelAgentTaskRunRequest, CancelAgentTurnRequest, ChangeAgentSessionRuntimeBindingStatusRequest, ClaimAgentInteractionRequest, ClaimNextAgentTurnInputQueueEntryRequest, ClaimNextAgentTurnInputQueueEntryResult, CloseAgentSessionRequest, CreateAgentCallRequest, CreateAgentCompositionSlotRequest, CreateAgentInteractionRequest, CreateAgentPreviewResponseRequest, CreateAgentProjectCompositionSlotRequest, CreateAgentProjectRequest, CreateAgentPromptOptimizationRequest, CreateAgentProviderBindingRequest, CreateAgentRequest, CreateAgentSessionCheckpointRequest, CreateAgentSessionRequest, CreateAgentSessionRuntimeBindingRequest, CreateAgentTaskRequest, CreateAgentTurnInputQueueEntryRequest, CreateAgentTurnRequest, CreateAgentVersionRequest, CreateAgentWorkspaceRequest, CreateWebhookSubscriptionRequest, EnsureDefaultAgentWorkspaceRequest, ExecuteAgentTaskRequest, ExpertCollectionRecord, ExpertDetailRecord, ExpertDivisionRecord, ExpertPersonaRecord, ExpertRecord, ExpertTeamRecord, FailAgentTurnInputQueueEntryRequest, ImportAgentProjectRequest, Int64String, InvalidateAgentSessionCheckpointRequest, McpServerMarketplaceRecord, MediaToolDirectoryEntry, MediaToolInvokeBody, MediaToolInvokeResponse, MigrateModelConfigurationRequest, ModelConfigurationSummaryRecord, PageInfo, ProjectSessionSynchronizationResult, ReorderAgentTurnInputQueueEntriesRequest, ReplaceAgentTaskRequest, ResolveAgentInteractionRequest, RestoreAgentRequest, RestoreAgentSessionCheckpointRequest, RetryAgentTaskRunRequest, RetryAgentTurnInputQueueEntryRequest, SdkWorkPageData, SessionActivitySummary, ToolAssetView, UpdateAgentCompositionSlotRequest, UpdateAgentItemFeedbackRequest, UpdateAgentProjectCompositionSlotRequest, UpdateAgentProjectRequest, UpdateAgentRequest, UpdateAgentSessionRuntimeBindingRequest, UpdateAgentSessionUserStateRequest, UpdateAgentTurnInputQueueEntryRequest, UpdateAgentWorkspaceRequest } from '../types';
 
+
+export interface AiExpertCollectionsListParams {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  locale?: 'zh-CN' | 'en-US';
+}
+
+export class AiExpertCollectionsApi {
+  private client: HttpClient;
+
+  constructor(client: HttpClient) {
+    this.client = client;
+  }
+
+
+/** List expert collections */
+  async list(params?: AiExpertCollectionsListParams, requestOptions?: ApiRequestOptions): Promise<SdkWorkPageData & { items: ExpertCollectionRecord[]; }> {
+    const query = buildQueryString([
+      { name: 'page', value: params?.page, style: 'form', explode: true, allowReserved: false },
+      { name: 'page_size', value: params?.pageSize, style: 'form', explode: true, allowReserved: false },
+      { name: 'q', value: params?.q, style: 'form', explode: true, allowReserved: false },
+      { name: 'locale', value: params?.locale, style: 'form', explode: true, allowReserved: false },
+    ]);
+    return this.client.request<SdkWorkPageData & { items: ExpertCollectionRecord[]; }>(appendQueryString(appApiPath(`/ai/expert_collections`), query), { ...(requestOptions?.signal !== undefined ? { signal: requestOptions.signal } : {}), ...(requestOptions?.timeout !== undefined ? { timeout: requestOptions.timeout } : {}), method: 'GET' as any, sdkworkUnwrapKind: 'page' });
+  }
+}
 
 export interface AiExpertPersonasListParams {
   page?: number;
@@ -1537,12 +1564,14 @@ export class AiApi {
   public readonly experts: AiExpertsApi;
   public readonly expertTeams: AiExpertTeamsApi;
   public readonly expertPersonas: AiExpertPersonasApi;
+  public readonly expertCollections: AiExpertCollectionsApi;
 
   constructor(client: HttpClient) {
     this.agents = new AiAgentsApi(client);
     this.experts = new AiExpertsApi(client);
     this.expertTeams = new AiExpertTeamsApi(client);
     this.expertPersonas = new AiExpertPersonasApi(client);
+    this.expertCollections = new AiExpertCollectionsApi(client);
   }
 
 }

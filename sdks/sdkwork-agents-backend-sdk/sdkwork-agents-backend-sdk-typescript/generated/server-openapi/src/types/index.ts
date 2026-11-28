@@ -25,6 +25,8 @@ export type { AgentCategoryRecord } from './agent-category-record';
 export type { AgentCategoryUpsertRequest } from './agent-category-upsert-request';
 export type { AgentCategoryListResponse } from './agent-category-list-response';
 export type { AgentCategoryResponse } from './agent-category-response';
+export type { AgentCategoryMoveRequest } from './agent-category-move-request';
+export type { AgentCategoryCommandResponse } from './agent-category-command-response';
 export type { AgentProviderBindingRecord } from './agent-provider-binding-record';
 export type { AgentProviderBindingResponse } from './agent-provider-binding-response';
 export type { AgentProviderBindingListResponse } from './agent-provider-binding-list-response';

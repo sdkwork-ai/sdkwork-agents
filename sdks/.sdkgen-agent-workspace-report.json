@@ -4,7 +4,7 @@
   "mode": "apply",
   "standardProfile": "sdkwork-v3",
   "sdkgenPath": "sdkwork-sdk-generator/bin/sdkgen.js",
-  "startedAt": "2026-11-24T19:50:59.808Z",
+  "startedAt": "2026-11-28T11:43:25.770Z",
   "families": [
     {
       "key": "app",
@@ -80,10 +80,10 @@
         }
       ],
       "version": "0.1.0",
-      "fingerprint": "ca3f7c718fb2a6b467c0cf1dc0ddc35edb2e8c8775befe93f8a411833e3983dd",
+      "fingerprint": "12754b95ceabbb6082223894348d7d7d8edd09c61a05cbba79a3b9fad80ba2b7",
       "fingerprints": {
-        "typescript": "ca3f7c718fb2a6b467c0cf1dc0ddc35edb2e8c8775befe93f8a411833e3983dd",
-        "flutter": "803cfae078592a20a53f011f6d1a7d4f8904d35a96da5e2803ef134f877fb7e9"
+        "typescript": "12754b95ceabbb6082223894348d7d7d8edd09c61a05cbba79a3b9fad80ba2b7",
+        "flutter": "6071a1b89eb1ac5afa56320377c31b9a1addcc90759252271c61b8b2a3f0cb21"
       },
       "hasChanges": false,
       "riskLevel": "medium",
@@ -95,7 +95,7 @@
           "output": "sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-typescript/generated/server-openapi",
           "packageName": "@sdkwork/agents-app-sdk",
           "version": "0.1.0",
-          "fingerprint": "ca3f7c718fb2a6b467c0cf1dc0ddc35edb2e8c8775befe93f8a411833e3983dd",
+          "fingerprint": "12754b95ceabbb6082223894348d7d7d8edd09c61a05cbba79a3b9fad80ba2b7",
           "hasChanges": false,
           "riskLevel": "medium",
           "generated": true
@@ -106,7 +106,7 @@
           "output": "sdks/sdkwork-agents-app-sdk/sdkwork-agents-app-sdk-flutter/generated/server-openapi",
           "packageName": "sdkwork_agents_app_sdk",
           "version": "0.1.0",
-          "fingerprint": "803cfae078592a20a53f011f6d1a7d4f8904d35a96da5e2803ef134f877fb7e9",
+          "fingerprint": "6071a1b89eb1ac5afa56320377c31b9a1addcc90759252271c61b8b2a3f0cb21",
           "hasChanges": false,
           "riskLevel": "medium",
           "generated": true
@@ -114,5 +114,5 @@
       ]
     }
   ],
-  "finishedAt": "2026-11-24T19:51:02.087Z"
+  "finishedAt": "2026-11-28T11:43:27.295Z"
 }

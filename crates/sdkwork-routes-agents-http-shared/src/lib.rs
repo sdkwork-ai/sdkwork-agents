@@ -68,5 +68,8 @@ mod route_manifest_contracts {
         assert!(app_route_manifest()
             .match_route("GET", "/app/v3/api/ai/expert_personas")
             .is_some());
+        assert!(app_route_manifest()
+            .match_route("GET", "/app/v3/api/ai/expert_collections")
+            .is_some());
     }
 }

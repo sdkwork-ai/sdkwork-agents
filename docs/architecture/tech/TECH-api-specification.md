@@ -4,7 +4,7 @@
 
 - Version: `6.0.0`
 - Status: active
-- Total operations: 254
+- Total operations: 255
 - Domain model: `AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem -> AgentInteraction`
 
 ## 1. Authorities
@@ -14,7 +14,7 @@ deterministic inventory and must be regenerated after an authority change.
 
 | Surface | Prefix | Operations | Authentication | Consumer SDK |
 | --- | --- | ---: | --- | --- |
-| App API | `/app/v3/api` | 133 | `Authorization` and `Access-Token` through the global app session | `@sdkwork/agents-app-sdk` and `sdkwork_agents_app_sdk` |
+| App API | `/app/v3/api` | 134 | `Authorization` and `Access-Token` through the global app session | `@sdkwork/agents-app-sdk` and `sdkwork_agents_app_sdk` |
 | Backend API | `/backend/v3/api` | 65 | `Authorization` and `Access-Token` for operator context | `@sdkwork/agents-backend-sdk` |
 | Open API | `/agent/v3/api` | 56 | `X-API-Key` | `@sdkwork/agents-sdk` |
 
@@ -184,6 +184,7 @@ Authority: [agents-app-api.openapi.yaml](../../../crates/sdkwork-intelligence-ag
 | 131 | GET | `/app/v3/api/ai/expert_teams` | `expertTeams.list` | List expert teams |
 | 132 | GET | `/app/v3/api/ai/expert_teams/{teamId}` | `expertTeams.retrieve` | Retrieve one expert team |
 | 133 | GET | `/app/v3/api/ai/expert_personas` | `expertPersonas.list` | List expert personas for one locale |
+| 134 | GET | `/app/v3/api/ai/expert_collections` | `expertCollections.list` | List expert collections |
 
 ### 4.2 Backend API
 

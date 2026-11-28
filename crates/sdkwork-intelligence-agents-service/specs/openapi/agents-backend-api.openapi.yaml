@@ -2360,6 +2360,88 @@ paths:
                 $ref: '#/components/schemas/ProblemDetail'
         default:
           $ref: '#/components/responses/Problem'
+    delete:
+      tags:
+      - ai
+      summary: Soft-delete one managed agent category (admin)
+      description: Retires the category when it owns no subtree and no live agent
+        references its code. The row is soft-deleted and leaves the catalog.
+      operationId: agentCategories.delete
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: agent_categories
+      x-sdkwork-permission: agent.business.category.manage
+      x-sdkwork-tenant-scope: tenant
+      x-sdkwork-audit-event: agent.business.category.deleted
+      parameters:
+      - name: categoryCode
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 128
+          pattern: ^[a-z0-9][a-z0-9_-]{1,127}$
+      responses:
+        '204':
+          description: Category soft-deleted
+        '400':
+          description: Category is still referenced
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        default:
+          $ref: '#/components/responses/Problem'
+  /backend/v3/api/ai/agent_categories/{categoryCode}/move:
+    post:
+      tags:
+      - ai
+      summary: Move one managed agent category among its siblings (admin)
+      description: Swaps the category with its previous or next sibling and renumbers
+        only that sibling group.
+      operationId: agentCategories.move
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: agent_categories
+      x-sdkwork-permission: agent.business.category.manage
+      x-sdkwork-wire-protocol: sdkwork-v3
+      x-sdkwork-tenant-scope: tenant
+      x-sdkwork-audit-event: agent.business.category.moved
+      parameters:
+      - name: categoryCode
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 2
+          maxLength: 128
+          pattern: ^[a-z0-9][a-z0-9_-]{1,127}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentCategoryMoveRequest'
+      responses:
+        '200':
+          description: Move accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentCategoryCommandResponse'
+        '400':
+          description: Invalid move
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
+        default:
+          $ref: '#/components/responses/Problem'
 components:
   securitySchemes:
     AuthToken:
@@ -3192,8 +3274,9 @@ components:
       type: object
       additionalProperties: false
       description: One managed agent category row. Categories form a tenant-scoped
-        taxonomy of at most two levels; `parentId` is the optional same-tenant
-        parent and `iconRef` is an optional presentation reference.
+        tree of at most five levels; `parentId` is the optional same-tenant
+        parent, `iconRef` is an optional presentation reference, and `tags` /
+        `attributes` carry free-form taxonomy metadata.
       required:
       - id
       - uuid
@@ -3204,6 +3287,8 @@ components:
       - parentId
       - sortOrder
       - iconRef
+      - tags
+      - attributes
       - lifecycleStatus
       - version
       - createdAt
@@ -3250,6 +3335,17 @@ components:
           - 'null'
           maxLength: 512
           description: Optional presentation reference (drive URI or URL) for the category icon.
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+          description: Free-form taxonomy tags used for filtering and display.
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          description: Free-form category attributes keyed by operator-defined names.
         lifecycleStatus:
           type: string
           enum:
@@ -3294,6 +3390,15 @@ components:
         iconRef:
           type: string
           maxLength: 512
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
         status:
           type: string
           enum:
@@ -3346,6 +3451,34 @@ components:
               properties:
                 item:
                   $ref: '#/components/schemas/AgentCategoryRecord'
+    AgentCategoryMoveRequest:
+      type: object
+      additionalProperties: false
+      description: Sibling move direction for one agent category.
+      required:
+      - direction
+      properties:
+        direction:
+          type: string
+          enum:
+          - up
+          - down
+    AgentCategoryCommandResponse:
+      description: Command acceptance for an agent category mutation following
+        the SdkWorkApiResponse envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            type: object
+            required:
+            - accepted
+            properties:
+              accepted:
+                type: boolean
     AgentProviderBindingRecord:
       type: object
       additionalProperties: false

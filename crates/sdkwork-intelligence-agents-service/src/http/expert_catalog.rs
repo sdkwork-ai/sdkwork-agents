@@ -1,5 +1,6 @@
 //! App-facing expert catalog read surface
-//! (`/app/v3/api/ai/expert_divisions`, `/experts`, `/expert_teams`).
+//! (`/app/v3/api/ai/expert_divisions`, `/experts`, `/expert_teams`,
+//! `/expert_collections`).
 //!
 //! The catalog is read-only: it is authored in `sdkwork-specs` and seeded into
 //! the managed-agent tables, so this module never writes. List endpoints follow
@@ -15,8 +16,9 @@ use sdkwork_web_core::WebRequestContext;
 use serde::{Deserialize, Serialize};
 
 use crate::expert_catalog::{
-    normalize_catalog_locale, persona_locale_candidates, ExpertCatalogStore, ExpertDivisionRecord,
-    ExpertPersonaRecord, ExpertRecord, ExpertTeamMemberRow, ExpertTeamRow, EXPERT_CATALOG_LOCALES,
+    normalize_catalog_locale, persona_locale_candidates, ExpertCatalogStore, ExpertCollectionRow,
+    ExpertDivisionRecord, ExpertPersonaRecord, ExpertRecord, ExpertTeamMemberRow, ExpertTeamRow,
+    EXPERT_CATALOG_LOCALES,
 };
 use crate::http::AgentHttpState;
 use crate::response::{
@@ -41,6 +43,10 @@ pub(crate) fn routes() -> Router<AgentHttpState> {
         .route("/app/v3/api/ai/experts/{slug}", get(app_get_expert))
         .route("/app/v3/api/ai/expert_teams", get(app_list_expert_teams))
         .route("/app/v3/api/ai/expert_personas", get(app_list_expert_personas))
+        .route(
+            "/app/v3/api/ai/expert_collections",
+            get(app_list_expert_collections),
+        )
         .route(
             "/app/v3/api/ai/expert_teams/{teamId}",
             get(app_get_expert_team),
@@ -99,15 +105,19 @@ struct ExpertTeamResponse {
     description: String,
     tags: Vec<String>,
     goal: String,
+    /// The team's shared constraints; authored in one language by the catalog.
+    constraints: String,
     delivery_requirements: String,
     examples: Vec<String>,
     coordinator_mode: String,
     coordinator_template_id: String,
+    /// A custom coordinator's prompt; empty for a template coordinator.
+    coordinator_prompt: String,
     locale: String,
     members: Vec<ExpertTeamMemberResponse>,
 }
 
-/// One expert detail with the persona served for the resolved locale.
+/// One localized expert detail with the persona served for the resolved locale.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ExpertDetailResponse {
@@ -118,10 +128,69 @@ struct ExpertDetailResponse {
     emoji: String,
     division_code: String,
     tags: Vec<String>,
+    usage_count: i32,
+    badge_code: Option<String>,
+    sort_order: i32,
+    published_at: Option<String>,
     persona: String,
     persona_locale: String,
     persona_locales: Vec<&'static str>,
     content_sha256: String,
+}
+
+/// One ordered member of a curated collection, both display locales.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExpertCollectionExpertResponse {
+    expert_slug: String,
+    expert_agent_id: String,
+    label: String,
+    label_en: String,
+}
+
+/// One curated expert collection, both display locales.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExpertCollectionResponse {
+    collection_code: String,
+    name: String,
+    name_en: String,
+    description: String,
+    description_en: String,
+    cover_key: String,
+    sort_order: i32,
+    experts: Vec<ExpertCollectionExpertResponse>,
+}
+
+/// One collection as served for the requested locale.
+///
+/// `name`/`description` and each member `label` follow the request's locale,
+/// exactly as the team payload does, while the `…En` fields keep the English
+/// text available to a client that renders a mixed-language list.
+fn collection_response(
+    collection: &ExpertCollectionRow,
+    locale: &str,
+) -> ExpertCollectionResponse {
+    let (name, description) = collection.localized(locale);
+    ExpertCollectionResponse {
+        collection_code: collection.collection_code.clone(),
+        name: name.to_owned(),
+        name_en: collection.name_en.clone(),
+        description: description.to_owned(),
+        description_en: collection.description_en.clone(),
+        cover_key: collection.cover_key.clone(),
+        sort_order: collection.sort_order,
+        experts: collection
+            .items
+            .iter()
+            .map(|item| ExpertCollectionExpertResponse {
+                expert_slug: item.expert_slug.clone(),
+                expert_agent_id: item.expert_agent_id.clone(),
+                label: item.localized(locale).to_owned(),
+                label_en: item.label_en.clone(),
+            })
+            .collect(),
+    }
 }
 
 fn localized_team(team: &ExpertTeamRow, locale: &str) -> ExpertTeamResponse {
@@ -132,10 +201,12 @@ fn localized_team(team: &ExpertTeamRow, locale: &str) -> ExpertTeamResponse {
         description: description.to_owned(),
         tags: tags.to_vec(),
         goal: goal.to_owned(),
+        constraints: team.constraints.clone(),
         delivery_requirements: delivery.to_owned(),
         examples: examples.to_vec(),
         coordinator_mode: team.coordinator_mode.clone(),
         coordinator_template_id: team.coordinator_template_id.clone(),
+        coordinator_prompt: team.coordinator_prompt.clone(),
         locale: locale.to_owned(),
         members: team
             .members
@@ -322,6 +393,10 @@ async fn app_get_expert(
                 emoji: expert.emoji,
                 division_code: expert.division_code,
                 tags: expert.tags,
+                usage_count: expert.usage_count,
+                badge_code: expert.badge_code,
+                sort_order: expert.sort_order,
+                published_at: expert.published_at,
                 persona: persona.persona_text,
                 persona_locale: persona.locale,
                 persona_locales: EXPERT_CATALOG_LOCALES.to_vec(),
@@ -364,6 +439,49 @@ async fn app_list_expert_teams(
     finish_api_json(&web_ctx, result)
 }
 
+/// Curated collections (the market's featured shelf). The payload carries both
+/// display locales; the resolved locale selects which language the keyword
+/// filter reads.
+async fn app_list_expert_collections(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<WebRequestContext>,
+    query: Result<Query<ExpertCatalogListQuery>, axum::extract::rejection::QueryRejection>,
+) -> Response {
+    let result: ApiResult<PageData<ExpertCollectionResponse>> = async {
+        let Query(query) = query.map_err(ApiProblem::from_query_rejection)?;
+        let (tenant_id, organization_id) = scope_ids(context)?;
+        let locale = normalize_catalog_locale(query.locale.as_deref());
+        let keyword = normalize_keyword(query.q.as_deref());
+        let items = state
+            .expert_catalog_store
+            .collections(tenant_id, organization_id)
+            .map_err(ApiProblem::from_kernel_error)?
+            .iter()
+            .map(|collection| collection_response(collection, locale))
+            .filter(|collection| {
+                keyword.as_deref().is_none_or(|keyword| {
+                    let (name, description) = if locale == "en-US" {
+                        (&collection.name_en, &collection.description_en)
+                    } else {
+                        (&collection.name, &collection.description)
+                    };
+                    collection.collection_code.to_lowercase().contains(keyword)
+                        || name.to_lowercase().contains(keyword)
+                        || description.to_lowercase().contains(keyword)
+                        || collection.experts.iter().any(|expert| {
+                            expert.label.to_lowercase().contains(keyword)
+                                || expert.label_en.to_lowercase().contains(keyword)
+                        })
+                })
+            })
+            .collect::<Vec<_>>();
+        Ok(paginate(items, query.page, query.page_size))
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
 async fn app_get_expert_team(
     State(state): State<AgentHttpState>,
     Extension(context): Extension<AgentRequestContext>,
@@ -392,6 +510,7 @@ async fn app_get_expert_team(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::expert_catalog::ExpertCollectionItemRow;
 
     fn team(_locale: &str) -> ExpertTeamRow {
         ExpertTeamRow {
@@ -404,12 +523,14 @@ mod tests {
             tags_en: vec!["requirements".to_owned()],
             goal: "目标".to_owned(),
             goal_en: "goal".to_owned(),
+            constraints: "only review".to_owned(),
             delivery_requirements: "交付".to_owned(),
             delivery_requirements_en: "delivery".to_owned(),
             examples: vec!["示例".to_owned()],
             examples_en: vec!["example".to_owned()],
             coordinator_mode: "template".to_owned(),
             coordinator_template_id: "product".to_owned(),
+            coordinator_prompt: String::new(),
             sort_order: 10,
             members: vec![ExpertTeamMemberRow {
                 expert_agent_id: "agent.expert.product-manager".to_owned(),
@@ -438,10 +559,13 @@ mod tests {
         assert_eq!(zh.name, "产品评审团");
         assert_eq!(zh.members[0].duty, "需求");
         assert_eq!(zh.locale, "zh-CN");
+        // The shared constraints are authored once, so both locales serve them.
+        assert_eq!(zh.constraints, "only review");
         let en = localized_team(&team("en-US"), "en-US");
         assert_eq!(en.name, "Product Review Team");
         assert_eq!(en.members[0].duty, "requirements");
         assert_eq!(en.locale, "en-US");
+        assert_eq!(en.constraints, "only review");
     }
 
     #[test]
@@ -454,11 +578,67 @@ mod tests {
             emoji: "🧩".to_owned(),
             division_code: "product".to_owned(),
             tags: vec!["roadmap".to_owned()],
+            usage_count: 0,
+            badge_code: None,
+            sort_order: 0,
+            published_at: None,
         };
         assert!(expert_matches(&expert, Some("product"), Some("经理")));
         assert!(expert_matches(&expert, None, Some("roadmap")));
         assert!(!expert_matches(&expert, Some("engineering"), None));
         assert!(!expert_matches(&expert, None, Some("missing")));
+    }
+
+    #[test]
+    fn serves_collections_with_both_locales_and_ordered_members() {
+        let collection = ExpertCollectionRow {
+            collection_code: "collection-ecommerce".to_owned(),
+            name: "电商运营".to_owned(),
+            name_en: "E-commerce Operations".to_owned(),
+            description: "精选电商运营专家。".to_owned(),
+            description_en: "Curated e-commerce operators.".to_owned(),
+            cover_key: "collection-ecommerce".to_owned(),
+            sort_order: 10,
+            items: vec![
+                ExpertCollectionItemRow {
+                    expert_agent_id: "agent.expert.marketing-ecommerce-operator".to_owned(),
+                    expert_slug: "marketing-ecommerce-operator".to_owned(),
+                    position: 0,
+                    label: "电商运营专家".to_owned(),
+                    label_en: "E-commerce Operations Specialist".to_owned(),
+                },
+                ExpertCollectionItemRow {
+                    expert_agent_id: "agent.expert.marketing-cross-border-ecommerce".to_owned(),
+                    expert_slug: "marketing-cross-border-ecommerce".to_owned(),
+                    position: 1,
+                    label: "跨境电商顾问".to_owned(),
+                    label_en: "Cross-Border E-Commerce Specialist".to_owned(),
+                },
+            ],
+        };
+        let response = collection_response(&collection, "zh-CN");
+        assert_eq!(response.collection_code, "collection-ecommerce");
+        assert_eq!(response.name, "电商运营");
+        assert_eq!(response.name_en, "E-commerce Operations");
+        assert_eq!(response.cover_key, "collection-ecommerce");
+        assert_eq!(response.experts.len(), 2);
+        assert_eq!(response.experts[0].expert_slug, "marketing-ecommerce-operator");
+        assert_eq!(response.experts[0].label, "电商运营专家");
+        assert_eq!(response.experts[0].label_en, "E-commerce Operations Specialist");
+        assert_eq!(response.experts[1].expert_agent_id, "agent.expert.marketing-cross-border-ecommerce");
+
+        // The same collection served for English localizes the display fields
+        // while keeping the English text addressable.
+        let english = collection_response(&collection, "en-US");
+        assert_eq!(english.name, "E-commerce Operations");
+        assert_eq!(english.experts[0].label, "E-commerce Operations Specialist");
+        assert_eq!(english.experts[0].label_en, "E-commerce Operations Specialist");
+
+        let value = serde_json::to_value(&response).unwrap();
+        assert_eq!(value["experts"][0]["expertSlug"], "marketing-ecommerce-operator");
+        assert!(value["experts"][0]["expertAgentId"].is_string());
+        assert_eq!(value["descriptionEn"], "Curated e-commerce operators.");
+        assert_eq!(value["sortOrder"], 10);
     }
 }
 

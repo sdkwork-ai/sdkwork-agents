@@ -19,7 +19,7 @@ const surfaces = [
     name: 'App API',
     key: 'app',
     prefix: '/app/v3/api',
-    expectedCount: 133,
+    expectedCount: 134,
     auth: '`Authorization` and `Access-Token` through the global app session',
     sdk: '`@sdkwork/agents-app-sdk` and `sdkwork_agents_app_sdk`',
     source:

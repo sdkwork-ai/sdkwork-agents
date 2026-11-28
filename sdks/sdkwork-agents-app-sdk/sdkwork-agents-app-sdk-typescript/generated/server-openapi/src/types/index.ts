@@ -243,4 +243,7 @@ export type { ExpertTeamListResponse } from './expert-team-list-response';
 export type { ExpertTeamResponse } from './expert-team-response';
 export type { ExpertPersonaRecord } from './expert-persona-record';
 export type { ExpertPersonaListResponse } from './expert-persona-list-response';
+export type { ExpertCollectionMember } from './expert-collection-member';
+export type { ExpertCollectionRecord } from './expert-collection-record';
+export type { ExpertCollectionListResponse } from './expert-collection-list-response';
 export type { ProblemDetail } from './problem-detail';

@@ -12,7 +12,7 @@
   "generatedFiles": [
     {
       "path": "bin/publish-core.mjs",
-      "sha256": "a47e95119bf3eafcbcb2102f7024c147f967924e4e3f343d1a29effb4b6765df"
+      "sha256": "6c2553df857f332f1a19e552f24b3320632d898eea5bd7a75fa5dc13a84b141b"
     },
     {
       "path": "bin/publish.ps1",
@@ -52,7 +52,7 @@
     },
     {
       "path": "src/api/ai.ts",
-      "sha256": "955a2cac99fc5c6ed7c09803a50575efad117ced0086928be8f5be3ccfcd43dd"
+      "sha256": "14ddc18d190d541dfea18fce2f723290a02dae056b78f36abccda43c3202f86f"
     },
     {
       "path": "src/api/base.ts",
@@ -99,12 +99,20 @@
       "sha256": "91b34e9a9a0a968e7e1f3e4eb498f6c77d432be17e33e81c7911af0846242ce7"
     },
     {
+      "path": "src/types/agent-category-command-response.ts",
+      "sha256": "188fdc931b0bc3cd10b9f49016df6e039667b2a473c041ab503214de1e78b9f8"
+    },
+    {
       "path": "src/types/agent-category-list-response.ts",
       "sha256": "7547fb0f17f0b96631585273c08669c4432d23677d85d6e18cb5e010b7959b6f"
     },
     {
+      "path": "src/types/agent-category-move-request.ts",
+      "sha256": "442b569149987d01463099e820f437e9c0180c30d6617f3db0abcd237deba299"
+    },
+    {
       "path": "src/types/agent-category-record.ts",
-      "sha256": "972e08e84e548a32873e3fb250fbef7040382bc53e84afc886f5c2c9d828fd16"
+      "sha256": "5bfff99d7158d031f104e362f751e04ef52c43f05619982bb013eba176dd698d"
     },
     {
       "path": "src/types/agent-category-response.ts",
@@ -112,7 +120,7 @@
     },
     {
       "path": "src/types/agent-category-upsert-request.ts",
-      "sha256": "bb2a183e92f0212a8ff9aef2bd0257c69d1de67fac4ea6fd2219942375aef618"
+      "sha256": "3ffab496647f2d92c931067c5ea76923875892d309470f9b904548e88f565b09"
     },
     {
       "path": "src/types/agent-composition-slot-kind.ts",
@@ -512,7 +520,7 @@
     },
     {
       "path": "src/types/index.ts",
-      "sha256": "ea0c3c40a3d1511383fa556d1d8158ed9c1f4647f4a7245beda28cf92f6366c7"
+      "sha256": "a345b8fba7d1143b660eb9bb87c245a7c419b6e7f126f2d05a2515b891c36416"
     },
     {
       "path": "src/types/int64-string.ts",

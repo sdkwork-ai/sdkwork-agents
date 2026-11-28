@@ -15486,6 +15486,10 @@ class ExpertRecord {
   final String emoji;
   final String divisionCode;
   final List<String> tags;
+  final int usageCount;
+  final String? badgeCode;
+  final int sortOrder;
+  final String? publishedAt;
 
   ExpertRecord({
     required this.slug,
@@ -15494,7 +15498,11 @@ class ExpertRecord {
     required this.description,
     required this.emoji,
     required this.divisionCode,
-    required this.tags
+    required this.tags,
+    required this.usageCount,
+    required this.badgeCode,
+    required this.sortOrder,
+    required this.publishedAt
   });
 
   factory ExpertRecord.fromJson(Map<String, dynamic> json) {
@@ -15550,6 +15558,52 @@ class ExpertRecord {
             .map((item) => item?.toString())
             .whereType<String>()
             .toList();
+      })(),
+      usageCount: (() {
+        final value = json['usageCount'];
+        if (value is! int) {
+          throw FormatException('ExpertRecord.usageCount is required');
+        }
+        return value;
+      })(),
+      badgeCode: (() {
+        if (!json.containsKey('badgeCode')) {
+          throw FormatException('ExpertRecord.badgeCode is required');
+        }
+        final _sdkworkRequiredValue = json['badgeCode'];
+        if (_sdkworkRequiredValue == null) {
+          return null;
+        }
+        return (() {
+        final value = _sdkworkRequiredValue?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.badgeCode is required');
+        }
+        return value;
+      })();
+      })(),
+      sortOrder: (() {
+        final value = json['sortOrder'];
+        if (value is! int) {
+          throw FormatException('ExpertRecord.sortOrder is required');
+        }
+        return value;
+      })(),
+      publishedAt: (() {
+        if (!json.containsKey('publishedAt')) {
+          throw FormatException('ExpertRecord.publishedAt is required');
+        }
+        final _sdkworkRequiredValue = json['publishedAt'];
+        if (_sdkworkRequiredValue == null) {
+          return null;
+        }
+        return (() {
+        final value = _sdkworkRequiredValue?.toString();
+        if (value == null) {
+          throw FormatException('ExpertRecord.publishedAt is required');
+        }
+        return value;
+      })();
       })()
     );
   }
@@ -15563,6 +15617,10 @@ class ExpertRecord {
       'emoji': emoji,
       'divisionCode': divisionCode,
       'tags': tags.map((item) => item).toList(),
+      'usageCount': usageCount,
+      'badgeCode': badgeCode,
+      'sortOrder': sortOrder,
+      'publishedAt': publishedAt,
     };
   }
 }
@@ -15621,6 +15679,10 @@ class ExpertDetailRecord {
   final String emoji;
   final String divisionCode;
   final List<String> tags;
+  final int usageCount;
+  final String? badgeCode;
+  final int sortOrder;
+  final String? publishedAt;
   final String persona;
   final String personaLocale;
   final List<String> personaLocales;
@@ -15634,6 +15696,10 @@ class ExpertDetailRecord {
     required this.emoji,
     required this.divisionCode,
     required this.tags,
+    required this.usageCount,
+    required this.badgeCode,
+    required this.sortOrder,
+    required this.publishedAt,
     required this.persona,
     required this.personaLocale,
     required this.personaLocales,
@@ -15694,6 +15760,52 @@ class ExpertDetailRecord {
             .whereType<String>()
             .toList();
       })(),
+      usageCount: (() {
+        final value = json['usageCount'];
+        if (value is! int) {
+          throw FormatException('ExpertDetailRecord.usageCount is required');
+        }
+        return value;
+      })(),
+      badgeCode: (() {
+        if (!json.containsKey('badgeCode')) {
+          throw FormatException('ExpertDetailRecord.badgeCode is required');
+        }
+        final _sdkworkRequiredValue = json['badgeCode'];
+        if (_sdkworkRequiredValue == null) {
+          return null;
+        }
+        return (() {
+        final value = _sdkworkRequiredValue?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.badgeCode is required');
+        }
+        return value;
+      })();
+      })(),
+      sortOrder: (() {
+        final value = json['sortOrder'];
+        if (value is! int) {
+          throw FormatException('ExpertDetailRecord.sortOrder is required');
+        }
+        return value;
+      })(),
+      publishedAt: (() {
+        if (!json.containsKey('publishedAt')) {
+          throw FormatException('ExpertDetailRecord.publishedAt is required');
+        }
+        final _sdkworkRequiredValue = json['publishedAt'];
+        if (_sdkworkRequiredValue == null) {
+          return null;
+        }
+        return (() {
+        final value = _sdkworkRequiredValue?.toString();
+        if (value == null) {
+          throw FormatException('ExpertDetailRecord.publishedAt is required');
+        }
+        return value;
+      })();
+      })(),
       persona: (() {
         final value = json['persona']?.toString();
         if (value == null) {
@@ -15737,6 +15849,10 @@ class ExpertDetailRecord {
       'emoji': emoji,
       'divisionCode': divisionCode,
       'tags': tags.map((item) => item).toList(),
+      'usageCount': usageCount,
+      'badgeCode': badgeCode,
+      'sortOrder': sortOrder,
+      'publishedAt': publishedAt,
       'persona': persona,
       'personaLocale': personaLocale,
       'personaLocales': personaLocales.map((item) => item).toList(),
@@ -15853,10 +15969,12 @@ class ExpertTeamRecord {
   final String description;
   final List<String> tags;
   final String goal;
+  final String constraints;
   final String deliveryRequirements;
   final List<String> examples;
   final String coordinatorMode;
   final String coordinatorTemplateId;
+  final String coordinatorPrompt;
   final String locale;
   final List<ExpertTeamMember> members;
 
@@ -15866,10 +15984,12 @@ class ExpertTeamRecord {
     required this.description,
     required this.tags,
     required this.goal,
+    required this.constraints,
     required this.deliveryRequirements,
     required this.examples,
     required this.coordinatorMode,
     required this.coordinatorTemplateId,
+    required this.coordinatorPrompt,
     required this.locale,
     required this.members
   });
@@ -15914,6 +16034,13 @@ class ExpertTeamRecord {
         }
         return value;
       })(),
+      constraints: (() {
+        final value = json['constraints']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.constraints is required');
+        }
+        return value;
+      })(),
       deliveryRequirements: (() {
         final value = json['deliveryRequirements']?.toString();
         if (value == null) {
@@ -15942,6 +16069,13 @@ class ExpertTeamRecord {
         final value = json['coordinatorTemplateId']?.toString();
         if (value == null) {
           throw FormatException('ExpertTeamRecord.coordinatorTemplateId is required');
+        }
+        return value;
+      })(),
+      coordinatorPrompt: (() {
+        final value = json['coordinatorPrompt']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertTeamRecord.coordinatorPrompt is required');
         }
         return value;
       })(),
@@ -15975,10 +16109,12 @@ class ExpertTeamRecord {
       'description': description,
       'tags': tags.map((item) => item).toList(),
       'goal': goal,
+      'constraints': constraints,
       'deliveryRequirements': deliveryRequirements,
       'examples': examples.map((item) => item).toList(),
       'coordinatorMode': coordinatorMode,
       'coordinatorTemplateId': coordinatorTemplateId,
+      'coordinatorPrompt': coordinatorPrompt,
       'locale': locale,
       'members': members.map((item) => item.toJson()).toList(),
     };
@@ -16174,6 +16310,210 @@ class ExpertPersonaListResponse {
         final value = json['traceId']?.toString();
         if (value == null) {
           throw FormatException('ExpertPersonaListResponse.traceId is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'code': code,
+      'data': data,
+      'traceId': traceId,
+    };
+  }
+}
+
+class ExpertCollectionMember {
+  final String expertSlug;
+  final String expertAgentId;
+  final String label;
+  final String labelEn;
+
+  ExpertCollectionMember({
+    required this.expertSlug,
+    required this.expertAgentId,
+    required this.label,
+    required this.labelEn
+  });
+
+  factory ExpertCollectionMember.fromJson(Map<String, dynamic> json) {
+    return ExpertCollectionMember(
+      expertSlug: (() {
+        final value = json['expertSlug']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionMember.expertSlug is required');
+        }
+        return value;
+      })(),
+      expertAgentId: (() {
+        final value = json['expertAgentId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionMember.expertAgentId is required');
+        }
+        return value;
+      })(),
+      label: (() {
+        final value = json['label']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionMember.label is required');
+        }
+        return value;
+      })(),
+      labelEn: (() {
+        final value = json['labelEn']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionMember.labelEn is required');
+        }
+        return value;
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'expertSlug': expertSlug,
+      'expertAgentId': expertAgentId,
+      'label': label,
+      'labelEn': labelEn,
+    };
+  }
+}
+
+class ExpertCollectionRecord {
+  final String collectionCode;
+  final String name;
+  final String nameEn;
+  final String description;
+  final String descriptionEn;
+  final String coverKey;
+  final int sortOrder;
+  final List<ExpertCollectionMember> experts;
+
+  ExpertCollectionRecord({
+    required this.collectionCode,
+    required this.name,
+    required this.nameEn,
+    required this.description,
+    required this.descriptionEn,
+    required this.coverKey,
+    required this.sortOrder,
+    required this.experts
+  });
+
+  factory ExpertCollectionRecord.fromJson(Map<String, dynamic> json) {
+    return ExpertCollectionRecord(
+      collectionCode: (() {
+        final value = json['collectionCode']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionRecord.collectionCode is required');
+        }
+        return value;
+      })(),
+      name: (() {
+        final value = json['name']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionRecord.name is required');
+        }
+        return value;
+      })(),
+      nameEn: (() {
+        final value = json['nameEn']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionRecord.nameEn is required');
+        }
+        return value;
+      })(),
+      description: (() {
+        final value = json['description']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionRecord.description is required');
+        }
+        return value;
+      })(),
+      descriptionEn: (() {
+        final value = json['descriptionEn']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionRecord.descriptionEn is required');
+        }
+        return value;
+      })(),
+      coverKey: (() {
+        final value = json['coverKey']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionRecord.coverKey is required');
+        }
+        return value;
+      })(),
+      sortOrder: (() {
+        final value = json['sortOrder'];
+        if (value is! int) {
+          throw FormatException('ExpertCollectionRecord.sortOrder is required');
+        }
+        return value;
+      })(),
+      experts: (() {
+        final list = _sdkworkAsList(json['experts']);
+        if (list == null) {
+          throw FormatException('ExpertCollectionRecord.experts is required');
+        }
+        return list
+            .map((item) => (() {
+        final map = _sdkworkAsMap(item);
+        return map == null ? null : ExpertCollectionMember.fromJson(map);
+      })())
+            .whereType<ExpertCollectionMember>()
+            .toList();
+      })()
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'collectionCode': collectionCode,
+      'name': name,
+      'nameEn': nameEn,
+      'description': description,
+      'descriptionEn': descriptionEn,
+      'coverKey': coverKey,
+      'sortOrder': sortOrder,
+      'experts': experts.map((item) => item.toJson()).toList(),
+    };
+  }
+}
+
+class ExpertCollectionListResponse {
+  final int code;
+  final dynamic data;
+  final String traceId;
+
+  ExpertCollectionListResponse({
+    required this.code,
+    required this.data,
+    required this.traceId
+  });
+
+  factory ExpertCollectionListResponse.fromJson(Map<String, dynamic> json) {
+    return ExpertCollectionListResponse(
+      code: (() {
+        final value = json['code'];
+        if (value is! int) {
+          throw FormatException('ExpertCollectionListResponse.code is required');
+        }
+        return value;
+      })(),
+      data: (() {
+        final map = _sdkworkAsMap(json['data']);
+        if (map == null) {
+          throw FormatException('ExpertCollectionListResponse.data is required');
+        }
+        return map;
+      })(),
+      traceId: (() {
+        final value = json['traceId']?.toString();
+        if (value == null) {
+          throw FormatException('ExpertCollectionListResponse.traceId is required');
         }
         return value;
       })()

@@ -3,8 +3,9 @@
 -- Run against the shared development schema after `db:seed`:
 --   psql "$SDKWORK_DATABASE_URL" -v ON_ERROR_STOP=1 -f database/verification/expert_catalog_checks.sql
 --
--- The script fails closed: any missing expert, team, member or persona, or a
--- dangling reference, raises an exception and leaves a non-zero exit.
+-- The script fails closed: any missing expert, team, member, persona, market
+-- profile or collection, or a dangling reference, raises an exception and
+-- leaves a non-zero exit.
 
 BEGIN;
 
@@ -14,6 +15,7 @@ SELECT set_config('app.current_organization_id', '0', true);
 DO $$
 DECLARE
     failures integer;
+    locale_count integer;
 BEGIN
     -- Scope every assertion to the seeded expert catalog. A tenant may own
     -- custom agents; those are not part of the catalog contract and must not
@@ -102,14 +104,44 @@ BEGIN
         RAISE EXCEPTION '% expert teams have an out-of-range member count', failures;
     END IF;
 
+    -- Every seeded team must be ingestible by the expert package that summons
+    -- it: that contract caps the shared constraints at 2000 characters and
+    -- requires a prompt for a custom coordinator. Storage enforces both; the
+    -- check keeps a future baseline change from silently relaxing them.
+    SELECT count(*) INTO failures
+    FROM ai_expert_team
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL
+      AND (
+          char_length(constraints_text) > 2000
+          OR (coordinator_mode = 'custom' AND char_length(BTRIM(coordinator_prompt)) = 0)
+      );
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% expert teams are outside the summonable contract (constraints > 2000 chars, or a custom coordinator without a prompt)', failures;
+    END IF;
+
+    -- Personas are seeded per active deployment locale: the seed profile
+    -- applies the locale sets the deployment configures, so a single-locale
+    -- deployment carries one persona per expert. The catalog must still be
+    -- complete in every locale it did seed, and zh-CN is the required one.
+    SELECT count(DISTINCT p.locale) INTO locale_count
+    FROM ai_expert_persona p
+    WHERE p.tenant_id = 100001 AND p.organization_id = 0;
+    IF NOT EXISTS (
+        SELECT 1 FROM ai_expert_persona p
+        WHERE p.tenant_id = 100001 AND p.organization_id = 0 AND p.locale = 'zh-CN'
+    ) THEN
+        RAISE EXCEPTION 'expected a zh-CN expert persona set';
+    END IF;
+
     SELECT count(*) INTO failures
     FROM ai_expert_persona
     WHERE tenant_id = 100001 AND organization_id = 0;
-    IF failures <> 662 THEN
-        RAISE EXCEPTION 'expected 662 expert personas, found %', failures;
+    IF failures <> 331 * locale_count THEN
+        RAISE EXCEPTION 'expected 331 personas per seeded locale (% locales), found %',
+            locale_count, failures;
     END IF;
 
-    -- Every expert carries both active locales.
+    -- Every expert carries every seeded locale.
     SELECT count(*) INTO failures
     FROM expert_agent_ids c
     WHERE (
@@ -118,10 +150,9 @@ BEGIN
         WHERE p.tenant_id = c.tenant_id
           AND p.organization_id = c.organization_id
           AND p.expert_agent_id = c.agent_id
-          AND p.locale IN ('zh-CN', 'en-US')
-    ) <> 2;
+    ) <> locale_count;
     IF failures <> 0 THEN
-        RAISE EXCEPTION '% expert agents are missing a zh-CN or en-US persona', failures;
+        RAISE EXCEPTION '% expert agents are missing a seeded locale persona', failures;
     END IF;
 
     -- Persona rows never belong to an agent outside the expert catalog.
@@ -134,7 +165,76 @@ BEGIN
         RAISE EXCEPTION '% personas reference a non-expert agent', failures;
     END IF;
 
-    RAISE NOTICE 'expert catalog verified: 331 agents, 22 categories, 5 teams, 15 members, 662 personas';
+    -- Market layer: exactly one editorial profile per seeded expert.
+    SELECT count(*) INTO failures
+    FROM ai_expert_profile
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL;
+    IF failures <> 331 THEN
+        RAISE EXCEPTION 'expected 331 expert market profiles, found %', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM expert_agent_ids c
+    WHERE NOT EXISTS (
+        SELECT 1 FROM ai_expert_profile p
+        WHERE p.tenant_id = c.tenant_id
+          AND p.organization_id = c.organization_id
+          AND p.expert_agent_id = c.agent_id
+          AND p.deleted_at IS NULL
+    );
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% expert agents are missing a market profile', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_expert_profile
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL
+      AND (usage_count < 0 OR sort_order < 0);
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% expert profiles carry a negative usage count or sort order', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_expert_collection
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL;
+    IF failures <> 6 THEN
+        RAISE EXCEPTION 'expected 6 expert collections, found %', failures;
+    END IF;
+
+    -- Every collection's cover key is the stable code suffix.
+    SELECT count(*) INTO failures
+    FROM ai_expert_collection
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL
+      AND cover_key <> replace(collection_code, 'collection-', '');
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% expert collections carry a cover key that is not the code suffix', failures;
+    END IF;
+
+    SELECT count(*) INTO failures
+    FROM ai_expert_collection_item
+    WHERE tenant_id = 100001 AND organization_id = 0 AND deleted_at IS NULL;
+    IF failures <> 18 THEN
+        RAISE EXCEPTION 'expected 18 expert collection items, found %', failures;
+    END IF;
+
+    -- Every collection member resolves to a seeded expert and its own shelf.
+    SELECT count(*) INTO failures
+    FROM ai_expert_collection_item i
+    LEFT JOIN expert_agent_ids c
+      ON c.tenant_id = i.tenant_id AND c.agent_id = i.expert_agent_id
+    LEFT JOIN ai_expert_collection col
+      ON col.tenant_id = i.tenant_id
+     AND col.organization_id = i.organization_id
+     AND col.collection_code = i.collection_code
+     AND col.deleted_at IS NULL
+    WHERE i.tenant_id = 100001 AND i.organization_id = 0
+      AND i.deleted_at IS NULL
+      AND (c.agent_id IS NULL OR col.id IS NULL);
+    IF failures <> 0 THEN
+        RAISE EXCEPTION '% collection items reference an unseeded expert or collection', failures;
+    END IF;
+
+    RAISE NOTICE 'expert catalog verified: 331 agents, 22 categories, 5 teams, 15 members, 662 personas, 331 profiles, 6 collections, 18 items';
 END
 $$;
 

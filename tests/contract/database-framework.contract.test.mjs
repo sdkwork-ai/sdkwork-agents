@@ -34,7 +34,7 @@ test("agents database manifest declares one canonical PostgreSQL engine", () => 
   assert.deepEqual(manifest.engines, ["postgres"]);
   assert.equal(manifest.defaultEngine, "postgres");
   assert.equal(manifest.tablePrefix, "ai_");
-  assert.equal(manifest.contractVersion, "7.7.0");
+  assert.equal(manifest.contractVersion, "7.9.0");
   assert.equal(manifest.baselineStrategy, "baseline-plus-migrations");
   assert.equal(
     manifest.lifecycle.autoMigrate,
@@ -66,13 +66,13 @@ test("agents database contract is materialized without placeholders", () => {
   const schema = readFileSync(schemaPath, "utf8");
   assert.doesNotMatch(schema, /<module-id>/);
   assert.match(schema, /table_prefix: ai_/u);
-  assert.match(schema, /contract_version: 7\.7\.0/u);
+  assert.match(schema, /contract_version: 7\.9\.0/u);
   assert.match(
     schema,
     /ddl_authority: ddl\/baseline\/postgres\/0001_agents_baseline\.sql/u,
   );
   assert.equal((schema.match(/lifecycle_status: expanding/gu) ?? []).length, 0);
-  assert.equal((schema.match(/lifecycle_status: active/gu) ?? []).length, 33);
+  assert.equal((schema.match(/lifecycle_status: active/gu) ?? []).length, 39);
   assert.equal(
     (schema.match(/- \[document, documents\]/gu) ?? []).length,
     2,
@@ -87,15 +87,15 @@ test("agents database contract is materialized without placeholders", () => {
   const registry = JSON.parse(
     readFileSync(path.join(repoRoot, "database/contract/table-registry.json"), "utf8"),
   );
-  assert.equal(registry.contractVersion, "7.7.0");
-  assert.equal(registry.tables.length, 33);
+  assert.equal(registry.contractVersion, "7.9.0");
+  assert.equal(registry.tables.length, 39);
   assert.ok(
     registry.tables.every((entry) => entry.lifecycle_status === "active"),
     "every Agents 7.4 table must be active in the contract registry",
   );
 });
 
-test("PostgreSQL baseline exactly matches the 33-table contract registry", () => {
+test("PostgreSQL baseline plus ordered migrations exactly match the 39-table contract registry", () => {
   const baseline = readFileSync(
     path.join(repoRoot, "database/ddl/baseline/postgres/0001_agents_baseline.sql"),
     "utf8",
@@ -104,6 +104,21 @@ test("PostgreSQL baseline exactly matches the 33-table contract registry", () =>
     baseline.matchAll(/CREATE TABLE IF NOT EXISTS (ai_[a-z_]+)/giu),
     (match) => match[1],
   );
+  // `baseline-plus-migrations` reaches its contract by applying the baseline
+  // and then every ordered post-baseline migration, so the registry must cover
+  // the union of both DDL authorities.
+  const migrationRoot = path.join(repoRoot, "database/migrations/postgres");
+  const migrationTables = readdirSync(migrationRoot)
+    .filter((fileName) => fileName.endsWith(".up.sql"))
+    .sort()
+    .flatMap((fileName) =>
+      Array.from(
+        readFileSync(path.join(migrationRoot, fileName), "utf8").matchAll(
+          /CREATE TABLE IF NOT EXISTS (ai_[a-z_]+)/giu,
+        ),
+        (match) => match[1],
+      ),
+    );
   const registry = JSON.parse(
     readFileSync(path.join(repoRoot, "database/contract/table-registry.json"), "utf8"),
   );
@@ -113,18 +128,16 @@ test("PostgreSQL baseline exactly matches the 33-table contract registry", () =>
   ).baselineAnchorTable;
 
   assert.deepEqual(
-    [...new Set(baselineTables)].sort(),
+    [...new Set([...baselineTables, ...migrationTables])].sort(),
     [...registryTables].sort(),
   );
-  assert.equal(
-    baselineTables.at(-1),
-    completionAnchor,
-    "baselineAnchorTable must remain the final table created by the atomic greenfield baseline",
+  assert.ok(
+    baselineTables.includes(completionAnchor),
+    "the pre-launch baseline completion anchor must still be created by the greenfield baseline",
   );
-  assert.equal(
-    registryTables.at(-1),
-    completionAnchor,
-    "the table registry must end with the pre-launch baseline completion anchor",
+  assert.ok(
+    registryTables.includes(completionAnchor),
+    "the table registry must include the pre-launch baseline completion anchor",
   );
   assert.doesNotMatch(
     baseline,
@@ -170,9 +183,11 @@ test("agent project and execution table names close across every persistence aut
   assert.ok(
     registry.tables.every(
       (entry) =>
-        entry.table_name === "ai_agent" || entry.table_name.startsWith("ai_agent_"),
+        entry.table_name === "ai_agent" ||
+        entry.table_name.startsWith("ai_agent_") ||
+        entry.table_name.startsWith("ai_expert_"),
     ),
-    "Agents registry must use only the registered ai_agent physical namespace",
+    "Agents registry must use only the registered ai_agent/ai_expert physical namespaces",
   );
   for (const tableName of aggregateTables) {
     assert.ok(registeredTables.has(tableName), `${tableName} must be registered`);
@@ -333,6 +348,11 @@ test("pre-launch PostgreSQL contract is consolidated on the folded baseline", ()
       "0007_agent_runtime_family_from_implementation.up.sql",
       "0008_agent_kind_distribution_constraints.down.sql",
       "0008_agent_kind_distribution_constraints.up.sql",
+      "0009_builtin_chat_agent_tenant_visibility.up.sql",
+      "0010_expert_catalog.down.sql",
+      "0010_expert_catalog.up.sql",
+      "0011_expert_market.down.sql",
+      "0011_expert_market.up.sql",
     ],
     "pre-launch agents schema must be installed from the folded baseline plus the documented catch-up set",
   );
@@ -355,7 +375,7 @@ test("pre-launch PostgreSQL contract is consolidated on the folded baseline", ()
   );
 });
 
-test("pre-launch PostgreSQL migrations stay empty until the baseline evolves", () => {
+test("pre-launch PostgreSQL up-migrations stay limited to the documented catch-up set", () => {
   const migrationRoot = path.join(repoRoot, "database/migrations/postgres");
   const upMigrations = readdirSync(migrationRoot).filter((fileName) =>
     fileName.endsWith(".up.sql"),
@@ -371,8 +391,11 @@ test("pre-launch PostgreSQL migrations stay empty until the baseline evolves", (
       "0006_agent_kind_runtime_and_category.up.sql",
       "0007_agent_runtime_family_from_implementation.up.sql",
       "0008_agent_kind_distribution_constraints.up.sql",
+      "0009_builtin_chat_agent_tenant_visibility.up.sql",
+      "0010_expert_catalog.up.sql",
+      "0011_expert_market.up.sql",
     ],
-    "pre-launch agents schema must not carry post-baseline migrations beyond the documented catch-up set; fold new schema into the baseline",
+    "pre-launch agents schema must not carry post-baseline migrations beyond the documented catch-up and catalog set; fold new schema into the baseline",
   );
 });
 

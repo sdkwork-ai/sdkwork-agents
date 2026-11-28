@@ -1,6 +1,6 @@
 # SDKWork Agents Database Specification
 
-- Version: `7.7.0`
+- Version: `7.9.0`
 - Status: active
 - Domain: `intelligence`
 - Capability: `agents`
@@ -33,7 +33,7 @@ and durable agent execution:
 AgentWorkspace -> AgentProject -> AgentSession -> AgentTurn -> AgentSessionItem -> AgentInteraction
 ```
 
-The managed store uses PostgreSQL and owns exactly 33 tables. It has no
+The managed store uses PostgreSQL and owns exactly 39 tables. It has no
 derived read tables, shadow tables, compatibility tables, dual-write path, or
 second session aggregate. A consumer may render an Agent Session as a dialog,
 but that presentation does not create another persistence vocabulary.
@@ -148,6 +148,23 @@ Task generation and scheduled instant once. A Run references the same tenant,
 organization, agent, owner and persisted Session as its Task. Worker claims use
 hashed lease tokens and monotonic fencing; infrastructure retries reuse the Run
 and Turn, while business retries create a linked Run.
+
+### 4.5 Expert catalog and market
+
+| Table | Profile | Responsibility |
+| --- | --- | --- |
+| `ai_expert_team` | tenant entity | Named expert team with both display locales and a coordinator template |
+| `ai_expert_team_member` | relation entity | Ordered team membership with localized duty and instructions |
+| `ai_expert_persona` | tenant entity | Localized expert persona body per expert agent and locale, with its content hash |
+| `ai_expert_profile` | tenant entity | Per-expert editorial usage count, badge code, division catalog order and publish timestamp |
+| `ai_expert_collection` | tenant entity | Curated collection with bilingual name/description, cover key, display order and lifecycle status |
+| `ai_expert_collection_item` | relation entity | Ordered collection membership with the bilingual expert label |
+
+An expert is an ordinary managed agent grouped by an `ai_agent_category` row.
+Members reference the stable `agent.expert.*` business identifier rather than a
+cross-table foreign key to `ai_agent`, because the catalog may be seeded before
+the agent rows. Collection items do reference their collection: both rows are
+owned by the same migration and a shelf cannot outlive its items.
 
 ## 5. Common Data Rules
 
@@ -338,8 +355,8 @@ partial indexes declared by the baseline.
 
 ## 11. Schema Lifecycle
 
-PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.7.0` authority and
-contains the complete 32-table model. The application is pre-launch, so every
+PostgreSQL `0001_agents_baseline.sql` is the greenfield `7.9.0` authority and
+contains the complete 39-table model. The application is pre-launch, so every
 development, test, staging and release-candidate database must be created from
 that baseline. Importing or reinterpreting databases created from an earlier
 application contract is unsupported.
@@ -367,4 +384,4 @@ The suite provisions and removes an isolated `sdkwork_ai_test_*` database and
 schema. Its evidence includes concurrent Task occurrence materialization, Run
 claiming, Attempt creation, lease recovery and stale-fence rejection. The
 contract is complete only when table inventory, DDL, repository behavior, API
-resources and generated SDK vocabulary agree on the full 23-table model.
+resources and generated SDK vocabulary agree on the full 39-table model.

@@ -10,10 +10,10 @@
 use axum::extract::rejection::PathRejection;
 use axum::extract::{Path, Query, State};
 use axum::response::Response;
-use axum::routing::{get, put};
+use axum::routing::{get, post, put};
 use axum::{Extension, Json, Router};
 use sdkwork_web_core::WebRequestContext;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::agent_category::{
     validate_category_placement, validate_upsert_command, AgentCategoryRecord, AgentCategoryStatus,
@@ -21,7 +21,8 @@ use crate::agent_category::{
 };
 use crate::http::AgentHttpState;
 use crate::response::{
-    finish_api_json, ApiProblem, ApiResult, PageData, PageInfo, PageMode, ResourceData,
+    finish_api_json, finish_api_response, no_content, ApiProblem, ApiResult, PageData, PageInfo,
+    PageMode, ResourceData,
 };
 
 use super::context::{AgentRequestContext, RequestScope};
@@ -60,9 +61,34 @@ pub struct AgentCategoryUpsertRequest {
     #[serde(default)]
     pub icon_ref: Option<String>,
     #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub attributes: std::collections::BTreeMap<String, String>,
+    #[serde(default)]
     pub status: Option<AgentCategoryStatus>,
     #[serde(default, with = "sdkwork_utils_rust::serde_int64::option")]
     pub expected_version: Option<i64>,
+}
+
+/// Which sibling a category move swaps the category with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentCategoryMoveDirection {
+    Up,
+    Down,
+}
+
+/// Move body for the category identified by the path code.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AgentCategoryMoveRequest {
+    pub direction: AgentCategoryMoveDirection,
+}
+
+/// Command envelope for `202`-style administrative mutations.
+#[derive(Debug, Serialize)]
+struct CommandAccepted {
+    accepted: bool,
 }
 
 /// Backend router fragment owned by the agent category catalog.
@@ -74,7 +100,11 @@ pub(crate) fn routes() -> Router<AgentHttpState> {
         )
         .route(
             "/backend/v3/api/ai/agent_categories/{categoryCode}",
-            put(backend_upsert_agent_category),
+            put(backend_upsert_agent_category).delete(backend_delete_agent_category),
+        )
+        .route(
+            "/backend/v3/api/ai/agent_categories/{categoryCode}/move",
+            post(backend_move_agent_category),
         )
 }
 
@@ -119,6 +149,8 @@ async fn backend_upsert_agent_category(
             parent_id: body.parent_id,
             sort_order: body.sort_order,
             icon_ref: body.icon_ref,
+            tags: body.tags,
+            attributes: body.attributes,
             status: body.status,
             expected_version: body.expected_version,
         })
@@ -128,9 +160,9 @@ async fn backend_upsert_agent_category(
         let organization_id = scope.organization_id_u64()?;
         let operator_id = context.owner_user_id.parse::<u64>().unwrap_or(0);
 
-        // The taxonomy is at most two levels deep. Validate the placement
-        // against the current catalog before the write; the database composite
-        // foreign key remains the final tenant-isolation guard.
+        // Validate the placement against the current catalog before the write;
+        // the database composite foreign key remains the final tenant-isolation
+        // guard.
         let categories = state
             .agent_category_store
             .list(tenant_id, organization_id)
@@ -146,6 +178,153 @@ async fn backend_upsert_agent_category(
     }
     .await;
     finish_api_json(&web_ctx, result)
+}
+
+async fn backend_delete_agent_category(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<WebRequestContext>,
+    path: Result<Path<AgentCategoryPathParams>, PathRejection>,
+) -> Response {
+    let result: ApiResult<Response> = async {
+        let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
+        let operator_id = context.owner_user_id.parse::<u64>().unwrap_or(0);
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let categories = state
+            .agent_category_store
+            .list(tenant_id, organization_id)
+            .map_err(ApiProblem::from_kernel_error)?;
+        let record = categories
+            .iter()
+            .find(|record| record.category_code == path.category_code)
+            .ok_or_else(|| {
+                ApiProblem::from_kernel_error(sdkwork_agent_kernel::KernelError::not_found(
+                    "agent category does not exist",
+                ))
+            })?;
+        let descendants = descendant_ids(&categories, record.id);
+        let referenced = state
+            .agent_category_store
+            .count_agents_in_category(tenant_id, organization_id, &path.category_code)
+            .map_err(ApiProblem::from_kernel_error)?;
+        if !descendants.is_empty() || referenced > 0 {
+            return Err(ApiProblem::from_kernel_error(
+                sdkwork_agent_kernel::KernelError::validation(format!(
+                    "agent category {} is still referenced by {referenced} agent(s) and {} descendant categor(ies)",
+                    path.category_code,
+                    descendants.len()
+                )),
+            ));
+        }
+        state
+            .agent_category_store
+            .delete(tenant_id, organization_id, operator_id, &path.category_code)
+            .map_err(ApiProblem::from_kernel_error)?;
+        no_content(&web_ctx)
+    }
+    .await;
+    finish_api_response(&web_ctx, result)
+}
+
+async fn backend_move_agent_category(
+    State(state): State<AgentHttpState>,
+    Extension(context): Extension<AgentRequestContext>,
+    Extension(web_ctx): Extension<WebRequestContext>,
+    path: Result<Path<AgentCategoryPathParams>, PathRejection>,
+    body: Result<Json<AgentCategoryMoveRequest>, axum::extract::rejection::JsonRejection>,
+) -> Response {
+    let result: ApiResult<CommandAccepted> = async {
+        let Path(path) = path.map_err(ApiProblem::from_path_rejection)?;
+        let Json(body) = body.map_err(ApiProblem::from_json_rejection)?;
+        let operator_id = context.owner_user_id.parse::<u64>().unwrap_or(0);
+        let scope = RequestScope::from_context(context);
+        let tenant_id = scope.tenant_id_u64()?;
+        let organization_id = scope.organization_id_u64()?;
+        let categories = state
+            .agent_category_store
+            .list(tenant_id, organization_id)
+            .map_err(ApiProblem::from_kernel_error)?;
+        let record = categories
+            .iter()
+            .find(|record| record.category_code == path.category_code)
+            .ok_or_else(|| {
+                ApiProblem::from_kernel_error(sdkwork_agent_kernel::KernelError::not_found(
+                    "agent category does not exist",
+                ))
+            })?;
+        let mut siblings = categories
+            .iter()
+            .filter(|candidate| candidate.parent_id == record.parent_id)
+            .cloned()
+            .collect::<Vec<_>>();
+        siblings.sort_by(|left, right| {
+            left.sort_order
+                .cmp(&right.sort_order)
+                .then_with(|| left.category_code.cmp(&right.category_code))
+        });
+        let index = siblings
+            .iter()
+            .position(|candidate| candidate.id == record.id)
+            .ok_or_else(|| {
+                ApiProblem::from_kernel_error(sdkwork_agent_kernel::KernelError::not_found(
+                    "agent category does not exist",
+                ))
+            })?;
+        let target = match body.direction {
+            AgentCategoryMoveDirection::Up => index.checked_sub(1).ok_or_else(|| {
+                ApiProblem::from_kernel_error(sdkwork_agent_kernel::KernelError::validation(
+                    "agent category is already first among its siblings",
+                ))
+            })?,
+            AgentCategoryMoveDirection::Down => {
+                if index + 1 >= siblings.len() {
+                    return Err(ApiProblem::from_kernel_error(
+                        sdkwork_agent_kernel::KernelError::validation(
+                            "agent category is already last among its siblings",
+                        ),
+                    ));
+                }
+                index + 1
+            }
+        };
+        siblings.swap(index, target);
+        let orders = siblings
+            .iter()
+            .enumerate()
+            .map(|(position, sibling)| {
+                (
+                    sibling.id,
+                    i32::try_from(position)
+                        .unwrap_or(i32::MAX)
+                        .saturating_mul(10),
+                )
+            })
+            .collect::<Vec<_>>();
+        state
+            .agent_category_store
+            .apply_sort_order(tenant_id, organization_id, operator_id, &orders)
+            .map_err(ApiProblem::from_kernel_error)?;
+        Ok(CommandAccepted { accepted: true })
+    }
+    .await;
+    finish_api_json(&web_ctx, result)
+}
+
+fn descendant_ids(categories: &[AgentCategoryRecord], root_id: i64) -> Vec<i64> {
+    let mut descendants = Vec::new();
+    let mut frontier = vec![root_id];
+    while let Some(parent) = frontier.pop() {
+        for record in categories
+            .iter()
+            .filter(|record| record.parent_id == Some(parent))
+        {
+            descendants.push(record.id);
+            frontier.push(record.id);
+        }
+    }
+    descendants
 }
 
 /// Path parameters of the category upsert endpoint.
@@ -224,6 +403,8 @@ mod tests {
             parent_id: None,
             sort_order,
             icon_ref: None,
+            tags: Vec::new(),
+            attributes: std::collections::BTreeMap::new(),
             lifecycle_status: AgentCategoryStatus::Active,
             version: 0,
             created_at: "2026-01-01T00:00:00.000Z".to_owned(),

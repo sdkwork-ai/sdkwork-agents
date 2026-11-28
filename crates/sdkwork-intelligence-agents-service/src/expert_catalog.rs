@@ -3,7 +3,10 @@
 //! The SDKWork expert catalog stores every expert as an ordinary managed agent
 //! (`ai_agent`, `agent.expert.<slug>`) grouped by an `ai_agent_category` row
 //! (`expert-<division>`), plus three aggregates defined by migration `0010`:
-//! `ai_expert_team`, `ai_expert_team_member` and `ai_expert_persona`.
+//! `ai_expert_team`, `ai_expert_team_member` and `ai_expert_persona`. The
+//! market's editorial layer from migration `0011` adds `ai_expert_profile`
+//! (usage count, badge, catalog order, publish time) and the curated
+//! collections `ai_expert_collection` / `ai_expert_collection_item`.
 //!
 //! The catalog is authored in `sdkwork-specs/specs/expert-catalog` and seeded by
 //! `scripts/generate-expert-seeds.mjs`; this module only reads it. It follows the
@@ -38,7 +41,12 @@ pub struct ExpertDivisionRecord {
     pub expert_count: u64,
 }
 
-/// One expert summary: the managed agent's stable identity and display data.
+/// One expert summary: the managed agent's stable identity, display data and
+/// the market profile joined from `ai_expert_profile`.
+///
+/// The profile columns are optional at the database level, so an expert
+/// without a profile row serves `usageCount: 0`, `badgeCode: null`,
+/// `sortOrder: 0` and `publishedAt: null`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExpertRecord {
@@ -49,6 +57,12 @@ pub struct ExpertRecord {
     pub emoji: String,
     pub division_code: String,
     pub tags: Vec<String>,
+    /// Curated editorial usage figure — never telemetry.
+    pub usage_count: i32,
+    pub badge_code: Option<String>,
+    /// Catalog order of the expert inside its division.
+    pub sort_order: i32,
+    pub published_at: Option<String>,
 }
 
 /// One localized expert persona body.
@@ -85,12 +99,18 @@ pub struct ExpertTeamRow {
     pub tags_en: Vec<String>,
     pub goal: String,
     pub goal_en: String,
+    /// The team's shared constraints. Authored in one language: the catalog
+    /// spec carries a single `constraints` string per team.
+    pub constraints: String,
     pub delivery_requirements: String,
     pub delivery_requirements_en: String,
     pub examples: Vec<String>,
     pub examples_en: Vec<String>,
     pub coordinator_mode: String,
     pub coordinator_template_id: String,
+    /// A custom coordinator's own prompt. Template coordinators leave it empty:
+    /// the package resolves their text from `coordinator_template_id`.
+    pub coordinator_prompt: String,
     pub sort_order: i32,
     pub members: Vec<ExpertTeamMemberRow>,
 }
@@ -127,6 +147,52 @@ impl ExpertTeamMemberRow {
             (&self.duty_en, &self.instructions_en)
         } else {
             (&self.duty, &self.instructions)
+        }
+    }
+}
+
+/// One ordered member of a curated expert collection, both display locales.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpertCollectionItemRow {
+    pub expert_agent_id: String,
+    pub expert_slug: String,
+    pub position: i32,
+    pub label: String,
+    pub label_en: String,
+}
+
+/// One curated expert collection (the market's featured shelf), both display
+/// locales and its ordered members.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpertCollectionRow {
+    pub collection_code: String,
+    pub name: String,
+    pub name_en: String,
+    pub description: String,
+    pub description_en: String,
+    pub cover_key: String,
+    pub sort_order: i32,
+    pub items: Vec<ExpertCollectionItemRow>,
+}
+
+impl ExpertCollectionRow {
+    /// The localized (name, description) pair.
+    pub fn localized(&self, locale: &str) -> (&str, &str) {
+        if locale == "en-US" {
+            (&self.name_en, &self.description_en)
+        } else {
+            (&self.name, &self.description)
+        }
+    }
+}
+
+impl ExpertCollectionItemRow {
+    /// The localized member label.
+    pub fn localized(&self, locale: &str) -> &str {
+        if locale == "en-US" {
+            &self.label_en
+        } else {
+            &self.label
         }
     }
 }
@@ -171,6 +237,19 @@ pub trait ExpertCatalogStore: Send + Sync {
         organization_id: u64,
         team_id: &str,
     ) -> KernelResult<Option<ExpertTeamRow>>;
+
+    fn collections(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<Vec<ExpertCollectionRow>>;
+
+    fn collection(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        collection_code: &str,
+    ) -> KernelResult<Option<ExpertCollectionRow>>;
 }
 
 /// Local-development catalog backing: empty by default, seeded explicitly by
@@ -181,6 +260,7 @@ pub struct InMemoryExpertCatalogStore {
     experts: Mutex<Vec<ExpertRecord>>,
     personas: Mutex<Vec<ExpertPersonaRecord>>,
     teams: Mutex<Vec<ExpertTeamRow>>,
+    collections: Mutex<Vec<ExpertCollectionRow>>,
 }
 
 impl InMemoryExpertCatalogStore {
@@ -205,6 +285,11 @@ impl InMemoryExpertCatalogStore {
 
     pub fn with_teams(self, teams: Vec<ExpertTeamRow>) -> Self {
         *self.teams.lock().unwrap() = teams;
+        self
+    }
+
+    pub fn with_collections(self, collections: Vec<ExpertCollectionRow>) -> Self {
+        *self.collections.lock().unwrap() = collections;
         self
     }
 }
@@ -287,23 +372,66 @@ impl ExpertCatalogStore for InMemoryExpertCatalogStore {
             .find(|team| team.team_id == team_id)
             .cloned())
     }
+
+    fn collections(
+        &self,
+        _tenant_id: u64,
+        _organization_id: u64,
+    ) -> KernelResult<Vec<ExpertCollectionRow>> {
+        Ok(self.collections.lock().unwrap().clone())
+    }
+
+    fn collection(
+        &self,
+        _tenant_id: u64,
+        _organization_id: u64,
+        collection_code: &str,
+    ) -> KernelResult<Option<ExpertCollectionRow>> {
+        Ok(self
+            .collections
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|collection| collection.collection_code == collection_code)
+            .cloned())
+    }
 }
 
 #[cfg(feature = "postgres-sync")]
-const EXPERT_SELECT: &str = "agent_id, \
-    COALESCE(display_name, '') AS display_name, \
-    COALESCE(description, '') AS description, \
-    COALESCE(manifest_json #>> '{expert,slug}', '') AS slug, \
-    COALESCE(manifest_json #>> '{expert,emoji}', '') AS emoji, \
-    COALESCE(manifest_json #>> '{expert,division_code}', '') AS division_code, \
-    tags_json::text AS tags_json";
+const EXPERT_SELECT: &str = "a.agent_id, \
+    COALESCE(a.display_name, '') AS display_name, \
+    COALESCE(a.description, '') AS description, \
+    COALESCE(a.manifest_json #>> '{expert,slug}', '') AS slug, \
+    COALESCE(a.manifest_json #>> '{expert,emoji}', '') AS emoji, \
+    COALESCE(a.manifest_json #>> '{expert,division_code}', '') AS division_code, \
+    a.tags_json::text AS tags_json, \
+    COALESCE(p.usage_count, 0) AS usage_count, \
+    p.badge_code AS badge_code, \
+    COALESCE(p.sort_order, 0) AS sort_order, \
+    to_char(p.published_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS published_at";
+
+/// The expert profile is optional: a LEFT JOIN keeps experts without an
+/// editorial profile row serving with neutral defaults.
+#[cfg(feature = "postgres-sync")]
+const EXPERT_PROFILE_JOIN: &str = "LEFT JOIN ai_expert_profile p \
+    ON p.tenant_id = a.tenant_id AND p.organization_id = a.organization_id \
+   AND p.expert_agent_id = a.agent_id AND p.deleted_at IS NULL";
+
+#[cfg(feature = "postgres-sync")]
+const COLLECTION_SELECT: &str = "collection_code, name, name_en, description, description_en, \
+    cover_key, sort_order";
+
+#[cfg(feature = "postgres-sync")]
+const COLLECTION_ITEM_SELECT: &str = "i.collection_code, i.expert_agent_id, i.position, \
+    i.label, i.label_en, \
+    COALESCE(a.manifest_json #>> '{expert,slug}', '') AS expert_slug";
 
 #[cfg(feature = "postgres-sync")]
 const TEAM_SELECT: &str = "team_id, name, name_en, description, description_en, \
     tags_json::text AS tags_json, tags_en_json::text AS tags_en_json, \
-    goal, goal_en, delivery_requirements, delivery_requirements_en, \
+    goal, goal_en, constraints_text, delivery_requirements, delivery_requirements_en, \
     examples_json::text AS examples_json, examples_en_json::text AS examples_en_json, \
-    coordinator_mode, coordinator_template_id, sort_order";
+    coordinator_mode, coordinator_template_id, coordinator_prompt, sort_order";
 
 #[cfg(feature = "postgres-sync")]
 const TEAM_MEMBER_SELECT: &str = "m.team_id, m.expert_agent_id, m.position, \
@@ -362,6 +490,7 @@ fn team_from_rows(team: &sqlx::postgres::PgRow, members: &[sqlx::postgres::PgRow
         tags_en: string_list(&team.try_get::<String, _>("tags_en_json").map_err(row_error)?),
         goal: team.try_get("goal").map_err(row_error)?,
         goal_en: team.try_get("goal_en").map_err(row_error)?,
+        constraints: team.try_get("constraints_text").map_err(row_error)?,
         delivery_requirements: team.try_get("delivery_requirements").map_err(row_error)?,
         delivery_requirements_en: team
             .try_get("delivery_requirements_en")
@@ -370,6 +499,7 @@ fn team_from_rows(team: &sqlx::postgres::PgRow, members: &[sqlx::postgres::PgRow
         examples_en: string_list(&team.try_get::<String, _>("examples_en_json").map_err(row_error)?),
         coordinator_mode: team.try_get("coordinator_mode").map_err(row_error)?,
         coordinator_template_id: team.try_get("coordinator_template_id").map_err(row_error)?,
+        coordinator_prompt: team.try_get("coordinator_prompt").map_err(row_error)?,
         sort_order: team.try_get("sort_order").map_err(row_error)?,
         members: ordered,
     })
@@ -413,11 +543,12 @@ impl ExpertCatalogStore for PostgresExpertCatalogStore {
 
     fn experts(&self, tenant_id: u64, organization_id: u64) -> KernelResult<Vec<ExpertRecord>> {
         let query = format!(
-            "SELECT {EXPERT_SELECT} FROM ai_agent \
-             WHERE tenant_id = $1 AND organization_id = $2 AND deleted_at IS NULL AND status = 1 \
-               AND manifest_json->>'domain' = 'experts' \
-               AND manifest_json->>'manifest_type' = 'agent' \
-             ORDER BY display_name ASC, agent_id ASC"
+            "SELECT {EXPERT_SELECT} FROM ai_agent a {EXPERT_PROFILE_JOIN} \
+             WHERE a.tenant_id = $1 AND a.organization_id = $2 \
+               AND a.deleted_at IS NULL AND a.status = 1 \
+               AND a.manifest_json->>'domain' = 'experts' \
+               AND a.manifest_json->>'manifest_type' = 'agent' \
+             ORDER BY a.display_name ASC, a.agent_id ASC"
         );
         let rows = crate::pg_query!(
             self.pool,
@@ -435,10 +566,11 @@ impl ExpertCatalogStore for PostgresExpertCatalogStore {
         slug: &str,
     ) -> KernelResult<Option<ExpertRecord>> {
         let query = format!(
-            "SELECT {EXPERT_SELECT} FROM ai_agent \
-             WHERE tenant_id = $1 AND organization_id = $2 AND deleted_at IS NULL AND status = 1 \
-               AND manifest_json->>'domain' = 'experts' \
-               AND manifest_json #>> '{{expert,slug}}' = $3 \
+            "SELECT {EXPERT_SELECT} FROM ai_agent a {EXPERT_PROFILE_JOIN} \
+             WHERE a.tenant_id = $1 AND a.organization_id = $2 \
+               AND a.deleted_at IS NULL AND a.status = 1 \
+               AND a.manifest_json->>'domain' = 'experts' \
+               AND a.manifest_json #>> '{{expert,slug}}' = $3 \
              LIMIT 1"
         );
         let row = crate::pg_query_optional!(
@@ -598,6 +730,117 @@ impl ExpertCatalogStore for PostgresExpertCatalogStore {
         )?;
         Ok(Some(team_from_rows(&team, &member_rows)?))
     }
+
+    fn collections(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+    ) -> KernelResult<Vec<ExpertCollectionRow>> {
+        let collections_query = format!(
+            "SELECT {COLLECTION_SELECT} FROM ai_expert_collection \
+             WHERE tenant_id = $1 AND organization_id = $2 AND deleted_at IS NULL AND status = 1 \
+             ORDER BY sort_order ASC, collection_code ASC"
+        );
+        let items_query = format!(
+            "SELECT {COLLECTION_ITEM_SELECT} \
+             FROM ai_expert_collection_item i \
+             LEFT JOIN ai_agent a \
+               ON a.tenant_id = i.tenant_id AND a.organization_id = i.organization_id \
+              AND a.agent_id = i.expert_agent_id \
+             WHERE i.tenant_id = $1 AND i.organization_id = $2 AND i.deleted_at IS NULL \
+             ORDER BY i.collection_code ASC, i.position ASC"
+        );
+        let collection_rows = crate::pg_query!(
+            self.pool,
+            sqlx::AssertSqlSafe(collections_query.as_str()),
+            tenant_id as i64,
+            organization_id as i64
+        )?;
+        let item_rows = crate::pg_query!(
+            self.pool,
+            sqlx::AssertSqlSafe(items_query.as_str()),
+            tenant_id as i64,
+            organization_id as i64
+        )?;
+        collection_rows
+            .iter()
+            .map(|collection| collection_from_rows(collection, &item_rows))
+            .collect()
+    }
+
+    fn collection(
+        &self,
+        tenant_id: u64,
+        organization_id: u64,
+        collection_code: &str,
+    ) -> KernelResult<Option<ExpertCollectionRow>> {
+        let collections_query = format!(
+            "SELECT {COLLECTION_SELECT} FROM ai_expert_collection \
+             WHERE tenant_id = $1 AND organization_id = $2 AND collection_code = $3 \
+               AND deleted_at IS NULL AND status = 1 \
+             LIMIT 1"
+        );
+        let items_query = format!(
+            "SELECT {COLLECTION_ITEM_SELECT} \
+             FROM ai_expert_collection_item i \
+             LEFT JOIN ai_agent a \
+               ON a.tenant_id = i.tenant_id AND a.organization_id = i.organization_id \
+              AND a.agent_id = i.expert_agent_id \
+             WHERE i.tenant_id = $1 AND i.organization_id = $2 AND i.collection_code = $3 \
+               AND i.deleted_at IS NULL \
+             ORDER BY i.position ASC"
+        );
+        let collection_row = crate::pg_query_optional!(
+            self.pool,
+            sqlx::AssertSqlSafe(collections_query.as_str()),
+            tenant_id as i64,
+            organization_id as i64,
+            collection_code
+        )?;
+        let Some(collection) = collection_row else {
+            return Ok(None);
+        };
+        let item_rows = crate::pg_query!(
+            self.pool,
+            sqlx::AssertSqlSafe(items_query.as_str()),
+            tenant_id as i64,
+            organization_id as i64,
+            collection_code
+        )?;
+        Ok(Some(collection_from_rows(&collection, &item_rows)?))
+    }
+}
+
+#[cfg(feature = "postgres-sync")]
+fn collection_from_rows(
+    collection: &sqlx::postgres::PgRow,
+    items: &[sqlx::postgres::PgRow],
+) -> KernelResult<ExpertCollectionRow> {
+    let collection_code: String = collection.try_get("collection_code").map_err(row_error)?;
+    let mut ordered = Vec::new();
+    for item in items {
+        let item_collection: String = item.try_get("collection_code").map_err(row_error)?;
+        if item_collection != collection_code {
+            continue;
+        }
+        ordered.push(ExpertCollectionItemRow {
+            expert_agent_id: item.try_get("expert_agent_id").map_err(row_error)?,
+            expert_slug: item.try_get("expert_slug").map_err(row_error)?,
+            position: item.try_get("position").map_err(row_error)?,
+            label: item.try_get("label").map_err(row_error)?,
+            label_en: item.try_get("label_en").map_err(row_error)?,
+        });
+    }
+    Ok(ExpertCollectionRow {
+        collection_code,
+        name: collection.try_get("name").map_err(row_error)?,
+        name_en: collection.try_get("name_en").map_err(row_error)?,
+        description: collection.try_get("description").map_err(row_error)?,
+        description_en: collection.try_get("description_en").map_err(row_error)?,
+        cover_key: collection.try_get("cover_key").map_err(row_error)?,
+        sort_order: collection.try_get("sort_order").map_err(row_error)?,
+        items: ordered,
+    })
 }
 
 #[cfg(feature = "postgres-sync")]
@@ -615,8 +858,38 @@ fn row_to_expert(row: &sqlx::postgres::PgRow) -> KernelResult<ExpertRecord> {
                 .map(str::to_owned)
                 .unwrap_or(category)
         },
-        tags: string_list(&row.try_get::<String, _>("tags_json").map_err(row_error)?),
+        tags: display_tags(
+            &string_list(&row.try_get::<String, _>("tags_json").map_err(row_error)?),
+            &row.try_get::<String, _>("division_code").map_err(row_error)?,
+        ),
+        usage_count: row.try_get("usage_count").map_err(row_error)?,
+        badge_code: row.try_get("badge_code").map_err(row_error)?,
+        sort_order: row.try_get("sort_order").map_err(row_error)?,
+        published_at: row.try_get("published_at").map_err(row_error)?,
     })
+}
+
+/// The managed-agent tag vocabulary that describes the record rather than the
+/// expert. A card renders `tags` as its subject chips, so the catalog serves
+/// the descriptive remainder and drops these plus the division the card already
+/// shows through its category facet.
+#[cfg(feature = "postgres-sync")]
+const SYSTEM_EXPERT_TAGS: [&str; 4] = ["expert", "conversation", "official", "commercial"];
+
+/// Keep only the tags that describe the expert's subject.
+#[cfg(feature = "postgres-sync")]
+fn display_tags(tags: &[String], category_code: &str) -> Vec<String> {
+    let division = category_code
+        .strip_prefix("expert-")
+        .unwrap_or(category_code)
+        .to_lowercase();
+    tags.iter()
+        .filter(|tag| {
+            let lower = tag.to_lowercase();
+            !SYSTEM_EXPERT_TAGS.contains(&lower.as_str()) && lower != division
+        })
+        .cloned()
+        .collect()
 }
 
 /// Normalize a requested locale to one of the catalog locales.
@@ -651,6 +924,29 @@ mod tests {
             emoji: "🧩".to_owned(),
             division_code: division.to_owned(),
             tags: vec!["expert".to_owned(), division.to_owned()],
+            usage_count: 12_800,
+            badge_code: Some("leader".to_owned()),
+            sort_order: 0,
+            published_at: Some("2026-11-20T00:00:00Z".to_owned()),
+        }
+    }
+
+    fn collection(collection_code: &str) -> ExpertCollectionRow {
+        ExpertCollectionRow {
+            collection_code: collection_code.to_owned(),
+            name: "电商运营".to_owned(),
+            name_en: "E-commerce Operations".to_owned(),
+            description: "精选电商运营专家。".to_owned(),
+            description_en: "Curated e-commerce operators.".to_owned(),
+            cover_key: collection_code.to_owned(),
+            sort_order: 10,
+            items: vec![ExpertCollectionItemRow {
+                expert_agent_id: "agent.expert.marketing-ecommerce-operator".to_owned(),
+                expert_slug: "marketing-ecommerce-operator".to_owned(),
+                position: 0,
+                label: "电商运营专家".to_owned(),
+                label_en: "E-commerce Operations Specialist".to_owned(),
+            }],
         }
     }
 
@@ -665,12 +961,14 @@ mod tests {
             tags_en: vec!["review".to_owned()],
             goal: "目标".to_owned(),
             goal_en: "goal".to_owned(),
+        constraints: "only review".to_owned(),
             delivery_requirements: "交付".to_owned(),
             delivery_requirements_en: "delivery".to_owned(),
             examples: vec!["示例".to_owned()],
             examples_en: vec!["example".to_owned()],
             coordinator_mode: "template".to_owned(),
             coordinator_template_id: "product".to_owned(),
+        coordinator_prompt: String::new(),
             sort_order: 10,
             members: vec![ExpertTeamMemberRow {
                 expert_agent_id: "agent.expert.product-manager".to_owned(),
@@ -695,7 +993,8 @@ mod tests {
                 persona_text: "persona".to_owned(),
                 content_sha256: "a".repeat(64),
             }])
-            .with_teams(vec![team("team-product")]);
+            .with_teams(vec![team("team-product")])
+            .with_collections(vec![collection("collection-ecommerce")]);
         assert_eq!(store.experts(1, 0).unwrap().len(), 1);
         assert_eq!(
             store.expert(1, 0, "product-manager").unwrap().unwrap().division_code,
@@ -715,6 +1014,58 @@ mod tests {
             store.team(1, 0, "team-product").unwrap().unwrap().members.len(),
             1
         );
+        assert_eq!(store.experts(1, 0).unwrap()[0].usage_count, 12_800);
+        assert_eq!(
+            store.experts(1, 0).unwrap()[0].badge_code.as_deref(),
+            Some("leader")
+        );
+        assert_eq!(store.collections(1, 0).unwrap().len(), 1);
+        assert_eq!(
+            store
+                .collection(1, 0, "collection-ecommerce")
+                .unwrap()
+                .unwrap()
+                .items
+                .len(),
+            1
+        );
+        assert!(store.collection(1, 0, "missing").unwrap().is_none());
+    }
+
+    #[test]
+    fn localizes_collections_and_member_labels() {
+        let collection = collection("collection-ecommerce");
+        assert_eq!(
+            collection.localized("zh-CN"),
+            ("电商运营", "精选电商运营专家。")
+        );
+        assert_eq!(
+            collection.localized("en-US"),
+            ("E-commerce Operations", "Curated e-commerce operators.")
+        );
+        assert_eq!(collection.items[0].localized("zh-CN"), "电商运营专家");
+        assert_eq!(
+            collection.items[0].localized("en-US"),
+            "E-commerce Operations Specialist"
+        );
+    }
+
+    #[test]
+    fn expert_without_profile_serializes_with_neutral_defaults() {
+        // The profile is a LEFT JOIN: an expert with no `ai_expert_profile` row
+        // must still serialize with zero usage, a null badge and no publish time.
+        let value = serde_json::to_value(ExpertRecord {
+            usage_count: 0,
+            badge_code: None,
+            sort_order: 0,
+            published_at: None,
+            ..expert("product-manager", "product")
+        })
+        .unwrap();
+        assert_eq!(value["usageCount"], 0);
+        assert!(value["badgeCode"].is_null());
+        assert_eq!(value["sortOrder"], 0);
+        assert!(value["publishedAt"].is_null());
     }
 
     #[test]
@@ -725,5 +1076,29 @@ mod tests {
         assert_eq!(normalize_catalog_locale(None), "zh-CN");
         assert_eq!(persona_locale_candidates("en-US"), vec!["en-US", "zh-CN"]);
         assert_eq!(persona_locale_candidates("zh-CN"), vec!["zh-CN", "en-US"]);
+    }
+
+    #[cfg(feature = "postgres-sync")]
+    #[test]
+    fn serves_only_the_descriptive_tags() {
+        // A managed expert's tags mix record vocabulary (`expert`,
+        // `conversation`, `official`, `commercial`) and its division with any
+        // descriptive tags. A card renders these as its subject chips, so the
+        // catalog serves only what describes the expert.
+        let tags = vec![
+            "expert".to_owned(),
+            "conversation".to_owned(),
+            "marketing".to_owned(),
+            "official".to_owned(),
+            "commercial".to_owned(),
+            "电商增长".to_owned(),
+        ];
+        assert_eq!(
+            display_tags(&tags, "expert-marketing"),
+            vec!["电商增长".to_owned()]
+        );
+        // A catalog with no descriptive tags serves an empty list rather than
+        // the record vocabulary.
+        assert!(display_tags(&tags[..5], "expert-marketing").is_empty());
     }
 }

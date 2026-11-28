@@ -5,6 +5,8 @@ export interface AgentCategoryUpsertRequest {
   parentId?: string | null;
   sortOrder?: number;
   iconRef?: string;
+  tags?: string[];
+  attributes?: Record<string, string>;
   status?: 'draft' | 'active' | 'disabled' | 'archived';
   /** Version the operator last read; a stale value returns HTTP 409. */
   expectedVersion?: string | null;

@@ -18609,3 +18609,270 @@ data: ",
         assert!(chunk.contains("\"code\":500") || chunk.contains("\"code\": 500"));
     }
 }
+
+/// Router-level contract for the expert catalog's app-facing surface.
+///
+/// The store's SQL and each handler's helpers are covered separately; this
+/// mounts the real combined route tree so the contract the market page consumes
+/// — paths, pagination, the response envelope and the editorial profile fields —
+/// is proven inside the service rather than inferred from the generated SDK.
+#[cfg(test)]
+mod expert_catalog_http_tests {
+    use std::sync::Arc;
+
+    use axum::body::{to_bytes, Body};
+    use axum::http::{Request, StatusCode};
+    use axum::Extension;
+    use serde_json::Value;
+    use tower::ServiceExt;
+
+    use super::context::AgentRequestContext;
+    use super::testing::test_web_context;
+    use super::{build_combined_routes, AgentHttpState};
+    use crate::expert_catalog::{
+        ExpertCollectionItemRow, ExpertCollectionRow, ExpertDivisionRecord, ExpertRecord,
+        ExpertTeamMemberRow, ExpertTeamRow, InMemoryExpertCatalogStore,
+    };
+    use crate::infrastructure::{
+        IamGatedPolicyProvider, InMemoryAgentAuditSink, InMemoryAgentRepository,
+    };
+
+    fn store() -> InMemoryExpertCatalogStore {
+        InMemoryExpertCatalogStore::new()
+            .with_divisions(vec![
+                ExpertDivisionRecord {
+                    code: "expert-design".to_owned(),
+                    name: "设计".to_owned(),
+                    sort_order: 10,
+                    expert_count: 2,
+                },
+                ExpertDivisionRecord {
+                    code: "expert-engineering".to_owned(),
+                    name: "工程".to_owned(),
+                    sort_order: 20,
+                    expert_count: 1,
+                },
+            ])
+            .with_experts(vec![
+                ExpertRecord {
+                    slug: "design-ui".to_owned(),
+                    agent_id: "agent.expert.design-ui".to_owned(),
+                    name: "界面设计师".to_owned(),
+                    description: "设计界面与视觉系统".to_owned(),
+                    emoji: "🎨".to_owned(),
+                    division_code: "design".to_owned(),
+                    tags: vec!["界面".to_owned(), "视觉".to_owned()],
+                    usage_count: 12_345,
+                    badge_code: Some("leader".to_owned()),
+                    sort_order: 3,
+                    published_at: Some("2026-11-19T16:00:00Z".to_owned()),
+                },
+                ExpertRecord {
+                    slug: "engineering-api".to_owned(),
+                    agent_id: "agent.expert.engineering-api".to_owned(),
+                    name: "接口工程师".to_owned(),
+                    description: "设计并实现接口".to_owned(),
+                    emoji: "🧩".to_owned(),
+                    division_code: "engineering".to_owned(),
+                    tags: Vec::new(),
+                    usage_count: 0,
+                    badge_code: None,
+                    sort_order: 0,
+                    published_at: None,
+                },
+            ])
+            .with_teams(vec![ExpertTeamRow {
+                team_id: "team-product".to_owned(),
+                name: "产品评审团".to_owned(),
+                name_en: "Product review team".to_owned(),
+                description: "评审产品方案".to_owned(),
+                description_en: "Reviews a product plan".to_owned(),
+                tags: vec!["产品".to_owned()],
+                tags_en: vec!["product".to_owned()],
+                goal: "给出评审结论".to_owned(),
+                goal_en: "Reach a verdict".to_owned(),
+                constraints: "Only review; report gaps instead of editing.".to_owned(),
+                delivery_requirements: "一份结论".to_owned(),
+                delivery_requirements_en: "One verdict".to_owned(),
+                examples: vec!["评审这份方案".to_owned()],
+                examples_en: vec!["Review this plan".to_owned()],
+                coordinator_mode: "template".to_owned(),
+                coordinator_template_id: "product".to_owned(),
+                coordinator_prompt: String::new(),
+                sort_order: 10,
+                members: vec![ExpertTeamMemberRow {
+                    expert_agent_id: "agent.expert.design-ui".to_owned(),
+                    expert_slug: "design-ui".to_owned(),
+                    position: 0,
+                    duty: "体验".to_owned(),
+                    duty_en: "experience".to_owned(),
+                    instructions: "检查流程".to_owned(),
+                    instructions_en: "check the flow".to_owned(),
+                }],
+            }])
+            .with_collections(vec![ExpertCollectionRow {
+                collection_code: "collection-ecommerce".to_owned(),
+                name: "电商运营".to_owned(),
+                name_en: "E-commerce operations".to_owned(),
+                description: "精选电商专家".to_owned(),
+                description_en: "Curated e-commerce experts".to_owned(),
+                cover_key: "ecommerce".to_owned(),
+                sort_order: 10,
+                items: vec![
+                    ExpertCollectionItemRow {
+                        expert_agent_id: "agent.expert.design-ui".to_owned(),
+                        expert_slug: "design-ui".to_owned(),
+                        position: 0,
+                        label: "中国电商运营专家".to_owned(),
+                        label_en: "China e-commerce operator".to_owned(),
+                    },
+                    ExpertCollectionItemRow {
+                        expert_agent_id: "agent.expert.engineering-api".to_owned(),
+                        expert_slug: "engineering-api".to_owned(),
+                        position: 1,
+                        label: "商家宣传页设计师".to_owned(),
+                        label_en: "Storefront designer".to_owned(),
+                    },
+                ],
+            }])
+    }
+
+    fn router() -> axum::Router {
+        let state = AgentHttpState::new(
+            InMemoryAgentRepository::new(),
+            InMemoryAgentAuditSink::default(),
+            IamGatedPolicyProvider::new("policy.agents.test.iam-gated"),
+        )
+        .with_expert_catalog_store(Arc::new(store()));
+        let context = AgentRequestContext::new("100001", "100")
+            .with_organization_id("0")
+            .with_subject_id("100")
+            .with_roles(["ai.agents.manage"])
+            .with_trace_id("trace-test-fixed")
+            .with_request_id("req-test-fixed");
+        build_combined_routes()
+            .with_state(state)
+            .layer(Extension(context))
+            .layer(Extension(test_web_context()))
+    }
+
+    async fn get_json(app: &axum::Router, uri: &str) -> (StatusCode, Value) {
+        let request = Request::builder()
+            .method("GET")
+            .uri(uri)
+            .body(Body::empty())
+            .expect("request should be built");
+        let response = app
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("request should be served");
+        let status = response.status();
+        let bytes = to_bytes(response.into_body(), usize::MAX)
+            .await
+            .expect("response body should read");
+        let body = if bytes.is_empty() {
+            Value::Null
+        } else {
+            serde_json::from_slice(&bytes).expect("response body should be json")
+        };
+        (status, body)
+    }
+
+    #[tokio::test]
+    async fn serves_experts_with_the_market_profile_fields() {
+        let (status, body) = get_json(&router(), "/app/v3/api/ai/experts?page=1&page_size=10").await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let items = body["data"]["items"]
+            .as_array()
+            .expect("the list envelope carries items");
+        assert_eq!(items.len(), 2);
+        let first = &items[0];
+        assert_eq!(first["slug"], "design-ui");
+        assert_eq!(first["agentId"], "agent.expert.design-ui");
+        assert_eq!(first["name"], "界面设计师");
+        assert_eq!(first["divisionCode"], "design");
+        assert_eq!(first["tags"], serde_json::json!(["界面", "视觉"]));
+        // The editorial profile the market cards render.
+        assert_eq!(first["usageCount"], 12_345);
+        assert_eq!(first["badgeCode"], "leader");
+        assert_eq!(first["sortOrder"], 3);
+        assert_eq!(first["publishedAt"], "2026-11-19T16:00:00Z");
+        // An expert without a profile row still serves neutral values.
+        let second = &items[1];
+        assert_eq!(second["usageCount"], 0);
+        assert!(second["badgeCode"].is_null());
+        assert!(second["publishedAt"].is_null());
+    }
+
+    #[tokio::test]
+    async fn serves_divisions_with_counts() {
+        let (status, body) =
+            get_json(&router(), "/app/v3/api/ai/expert_divisions?page=1&page_size=10").await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let items = body["data"]["items"].as_array().expect("divisions");
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0]["code"], "expert-design");
+        assert_eq!(items[0]["name"], "设计");
+        assert_eq!(items[0]["expertCount"], 2);
+    }
+
+    #[tokio::test]
+    async fn serves_collections_with_ordered_localized_members() {
+        let (status, body) = get_json(
+            &router(),
+            "/app/v3/api/ai/expert_collections?page=1&page_size=10&locale=en-US",
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let item = &body["data"]["items"][0];
+        assert_eq!(item["collectionCode"], "collection-ecommerce");
+        assert_eq!(item["name"], "E-commerce operations");
+        assert_eq!(item["coverKey"], "ecommerce");
+        let experts = item["experts"].as_array().expect("collection members");
+        assert_eq!(experts.len(), 2);
+        // Members keep their position order and localize their label.
+        assert_eq!(experts[0]["expertSlug"], "design-ui");
+        assert_eq!(experts[0]["label"], "China e-commerce operator");
+        assert_eq!(experts[1]["expertSlug"], "engineering-api");
+    }
+
+    #[tokio::test]
+    async fn serves_teams_with_members() {
+        let (status, body) =
+            get_json(&router(), "/app/v3/api/ai/expert_teams?page=1&page_size=10").await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let item = &body["data"]["items"][0];
+        assert_eq!(item["teamId"], "team-product");
+        assert_eq!(item["name"], "产品评审团");
+        assert_eq!(item["coordinatorMode"], "template");
+        let members = item["members"].as_array().expect("team members");
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0]["expertSlug"], "design-ui");
+        assert_eq!(members[0]["duty"], "体验");
+        // The runtime prompt and the team dialog both render the shared
+        // constraints and the delivery requirement, so the payload carries them.
+        assert_eq!(
+            item["constraints"],
+            "Only review; report gaps instead of editing."
+        );
+        assert_eq!(item["deliveryRequirements"], "一份结论");
+        // A template coordinator carries no prompt of its own; the package
+        // resolves the text from the template id.
+        assert_eq!(item["coordinatorPrompt"], "");
+    }
+
+    #[tokio::test]
+    async fn filters_by_division_and_reports_missing_experts() {
+        let (status, body) =
+            get_json(&router(), "/app/v3/api/ai/experts?page=1&page_size=10&division=engineering")
+                .await;
+        assert_eq!(status, StatusCode::OK, "{body}");
+        let items = body["data"]["items"].as_array().expect("filtered items");
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0]["slug"], "engineering-api");
+
+        let (status, _) = get_json(&router(), "/app/v3/api/ai/experts/not-a-real-expert").await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+    }
+}

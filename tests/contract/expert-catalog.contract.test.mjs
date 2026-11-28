@@ -5,17 +5,25 @@
  * committed files; these tests cover the generator itself.
  */
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, it } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import {
   LOCALE_SEEDS,
+  expertAgentId,
   personaBody,
   readCatalog,
   renderAll,
   renderSeedManifest,
 } from '../../scripts/generate-expert-seeds.mjs'
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
+const marketSeed = readFileSync(
+  path.join(repoRoot, 'database/seeds/common/004_expert_market.sql'),
+  'utf8',
+)
 
 describe('expert catalog seeds', () => {
   const catalog = readCatalog()
@@ -81,6 +89,68 @@ describe('expert catalog seeds', () => {
       assert.throws(() => readCatalog(file), /expected 331 experts/u)
     } finally {
       rmSync(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('seeds one market profile per expert with division-local sort order', () => {
+    const divisionPosition = new Map()
+    for (const expert of catalog.experts) {
+      const expected = divisionPosition.get(expert.divisionCode) ?? 0
+      divisionPosition.set(expert.divisionCode, expected + 1)
+      const match = marketSeed.match(
+        new RegExp(
+          `'${expertAgentId(expert.slug)}',\\s*(\\d+),\\s*(?:NULL|'[a-z][a-z0-9-]*'),\\s*(\\d+),\\s*TIMESTAMPTZ`,
+          'u',
+        ),
+      )
+      assert.ok(match, `missing market profile for ${expert.slug}`)
+      assert.ok(Number(match[1]) > 0, `usage count for ${expert.slug} must be positive`)
+      assert.equal(Number(match[2]), expected, `sort order for ${expert.slug}`)
+    }
+    assert.equal(
+      (marketSeed.match(/INSERT INTO ai_expert_profile \(/gu) ?? []).length,
+      catalog.experts.length,
+    )
+  })
+
+  it('seeds six curated collections of three real catalog experts', () => {
+    const codes = [
+      'collection-ecommerce',
+      'collection-content',
+      'collection-investment',
+      'collection-legal',
+      'collection-smallbusiness',
+      'collection-data',
+    ]
+    const slugs = new Set(catalog.experts.map(expert => expert.slug))
+
+    const collectionBlocks = marketSeed
+      .split('INSERT INTO ai_expert_collection (')
+      .slice(1)
+    assert.equal(collectionBlocks.length, 6)
+    for (const block of collectionBlocks) {
+      const collectionCode = block.match(/'(collection-[a-z][a-z0-9-]*)'/u)?.[1]
+      const coverKey = block.match(/, '([a-z][a-z0-9-]*)',\r?\n/u)?.[1]
+      assert.ok(codes.includes(collectionCode), `unexpected collection ${collectionCode}`)
+      assert.equal(
+        coverKey,
+        collectionCode.replace('collection-', ''),
+        `${collectionCode} coverKey must equal the collection code suffix`,
+      )
+    }
+
+    const itemBlocks = marketSeed
+      .split('INSERT INTO ai_expert_collection_item (')
+      .slice(1)
+    assert.equal(itemBlocks.length, 18)
+    for (const block of itemBlocks) {
+      const collectionCode = block.match(/'(collection-[a-z][a-z0-9-]*)'/u)?.[1]
+      const agentId = block.match(/'(agent\.expert\.[a-z0-9.-]+)'/u)?.[1]
+      assert.ok(codes.includes(collectionCode), `unknown collection ${collectionCode}`)
+      assert.ok(
+        agentId && slugs.has(agentId.replace('agent.expert.', '')),
+        `unknown collection member ${agentId}`,
+      )
     }
   })
 })

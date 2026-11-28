@@ -81,3 +81,12 @@ Extension points are limited to declared public exports, runtime entrypoints, SD
 ### Owner And Status
 
 Owner and lifecycle status are tracked in `specs/component.spec.json`.
+
+## Agent category taxonomy
+
+`agentCategories` exposes list, create/update (upsert by `categoryCode`), soft
+delete and sibling move. Categories form a tenant-scoped tree of at most five
+levels; `parentId` is nullable, `iconRef` stores a Drive logo reference, and
+`tags` / `attributes` carry free-form taxonomy metadata. Delete is refused while
+the category owns a subtree or a live agent references its code.
+

@@ -1429,6 +1429,21 @@ class AiApi {
       return map == null ? null : ExpertPersonaListResponse.fromJson(map);
     })();
   }
+
+  /// List expert collections
+  Future<ExpertCollectionListResponse?> expertCollectionsList([int? page, int? pageSize, String? q, String? locale]) async {
+    final query = buildQueryString([
+      QueryParameterSpec('page', page, 'form', true, false, null),
+      QueryParameterSpec('page_size', pageSize, 'form', true, false, null),
+      QueryParameterSpec('q', q, 'form', true, false, null),
+      QueryParameterSpec('locale', locale, 'form', true, false, null)
+    ]);
+    final response = await _client.get(ApiPaths.appendQueryString(ApiPaths.appPath('/ai/expert_collections'), query));
+    return (() {
+      final map = sdkworkResponseAsMap(response);
+      return map == null ? null : ExpertCollectionListResponse.fromJson(map);
+    })();
+  }
 }
 
 class PathParameterSpec {

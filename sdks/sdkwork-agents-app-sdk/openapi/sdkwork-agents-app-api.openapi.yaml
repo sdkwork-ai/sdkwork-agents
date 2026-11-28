@@ -5494,6 +5494,52 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetail'
+  /app/v3/api/ai/expert_collections:
+    get:
+      x-sdkwork-owner: sdkwork-agents
+      x-sdkwork-api-authority: sdkwork-agents-app-api
+      tags:
+      - ai
+      summary: List expert collections
+      description: Curated expert collections (the market's featured shelf) with
+        their bilingual name and description, cover key and ordered members.
+      operationId: expertCollections.list
+      x-sdkwork-pagination-mode: offset
+      security:
+      - AuthToken: []
+        AccessToken: []
+      x-sdkwork-domain: ai
+      x-sdkwork-resource: expert_collections
+      x-sdkwork-permission: ai.experts.read
+      x-sdkwork-tenant-scope: tenant
+      parameters:
+      - $ref: '#/components/parameters/Page'
+      - $ref: '#/components/parameters/PageSize'
+      - $ref: '#/components/parameters/SearchQ'
+      - name: locale
+        in: query
+        required: false
+        description: Locale used by the keyword filter; the payload carries both
+          display locales.
+        schema:
+          type: string
+          enum:
+          - zh-CN
+          - en-US
+          default: zh-CN
+      responses:
+        '200':
+          description: Expert collection list response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpertCollectionListResponse'
+        default:
+          description: Problem detail response
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetail'
 components:
   securitySchemes:
     AuthToken:
@@ -13139,6 +13185,10 @@ components:
       - emoji
       - divisionCode
       - tags
+      - usageCount
+      - badgeCode
+      - sortOrder
+      - publishedAt
       properties:
         slug:
           type: string
@@ -13156,6 +13206,26 @@ components:
           type: array
           items:
             type: string
+        usageCount:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Curated editorial usage figure for the expert market; never
+            telemetry.
+        badgeCode:
+          type: string
+          nullable: true
+          description: Optional short editorial badge code such as `leader`,
+            `official` or `enterprise`.
+        sortOrder:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Catalog order of the expert inside its division.
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
     ExpertListResponse:
       description: Paginated expert list response following SdkWorkApiResponse
         envelope.
@@ -13245,10 +13315,12 @@ components:
       - description
       - tags
       - goal
+      - constraints
       - deliveryRequirements
       - examples
       - coordinatorMode
       - coordinatorTemplateId
+      - coordinatorPrompt
       - locale
       - members
       properties:
@@ -13264,6 +13336,9 @@ components:
             type: string
         goal:
           type: string
+        constraints:
+          type: string
+          description: The team's shared constraints. The catalog authors them once, so every locale serves the same text.
         deliveryRequirements:
           type: string
         examples:
@@ -13284,6 +13359,9 @@ components:
           - content
           - data
           - research
+        coordinatorPrompt:
+          type: string
+          description: A custom coordinator's own prompt; empty for a template coordinator, whose text the app resolves from coordinatorTemplateId.
         locale:
           type: string
           enum:
@@ -13373,6 +13451,75 @@ components:
                   type: array
                   items:
                     $ref: '#/components/schemas/ExpertPersonaRecord'
+    ExpertCollectionMember:
+      type: object
+      required:
+      - expertSlug
+      - expertAgentId
+      - label
+      - labelEn
+      properties:
+        expertSlug:
+          type: string
+        expertAgentId:
+          type: string
+        label:
+          type: string
+        labelEn:
+          type: string
+    ExpertCollectionRecord:
+      type: object
+      required:
+      - collectionCode
+      - name
+      - nameEn
+      - description
+      - descriptionEn
+      - coverKey
+      - sortOrder
+      - experts
+      properties:
+        collectionCode:
+          type: string
+        name:
+          type: string
+        nameEn:
+          type: string
+        description:
+          type: string
+        descriptionEn:
+          type: string
+        coverKey:
+          type: string
+          description: Stable key the client maps to its own illustration.
+        sortOrder:
+          type: integer
+          format: int32
+          minimum: 0
+        experts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpertCollectionMember'
+    ExpertCollectionListResponse:
+      description: Paginated expert collection list response following
+        SdkWorkApiResponse envelope.
+      allOf:
+      - $ref: '#/components/schemas/SdkWorkApiResponse'
+      - type: object
+        required:
+        - data
+        properties:
+          data:
+            allOf:
+            - $ref: '#/components/schemas/SdkWorkPageData'
+            - type: object
+              required:
+              - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ExpertCollectionRecord'
     ProblemDetail:
       type: object
       additionalProperties: true

@@ -2,11 +2,12 @@
 
 Pre-launch the agents schema is consolidated on the single greenfield baseline:
 `database/ddl/baseline/postgres/0001_agents_baseline.sql`. It contains the
-complete `7.7.0` schema (canonical Agent, Session, Turn, Task Run/Attempt,
+complete `7.9.0` schema (canonical Agent, Session, Turn, Task Run/Attempt,
 Turn input queue, provider Session directory, typed Interaction envelope,
 materialized Session activity keyset (`ai_agent_session.activity_at` with
 trigger-maintained recency), turn streaming-content checkpoint, execution
-host registry, durable session execution placement, and
+host registry, durable session execution placement, the expert catalog with its
+market profiles and curated collections, and
 simplified `agent.`/`binding.`/`provider.` identity namespaces).
 
 The ordered catch-up migrations align previously initialized shared
@@ -45,6 +46,11 @@ them via `IF NOT EXISTS`:
   agents cannot express. The catalog data is authored in
   `sdkwork-specs/specs/expert-catalog` (see `EXPERTS_CATALOG_SPEC.md`) and seeded
   by `scripts/generate-expert-seeds.mjs`.
+- `0011` materializes the expert market's editorial layer
+  (`ai_expert_profile`, `ai_expert_collection`, `ai_expert_collection_item`):
+  the per-expert usage count, badge, division catalog order and publish time,
+  plus the curated featured shelves with ordered bilingual member labels. The
+  rows are seeded by the hand-maintained `004_expert_market` seed.
 
 The lifecycle orchestrator applies the baseline once on an empty schema
 (`baseline-plus-migrations`, `lifecycle.autoMigrate=false`). The drift gate
